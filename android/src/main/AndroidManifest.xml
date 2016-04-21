@@ -1,0 +1,15 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.regblanc.sgl"
+    android:versionCode="1"
+    android:versionName="0.1">
+
+    <uses-sdk
+        android:minSdkVersion="9"
+        android:targetSdkVersion="23"/>
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:label="ScalaGameLibrary">
+    </application>
+</manifest>

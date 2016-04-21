@@ -1,0 +1,33 @@
+package sgl
+package analytics
+
+trait NoAnalyticsProvider extends AnalyticsProvider {
+  this: GameScreensComponent =>
+
+  case class Event(name: String, params: EventParams) extends AbstractEvent
+
+  object Event extends EventCompanion {
+    override def createEvent(name: String, params: EventParams): Event = Event(name, params)
+    
+    override def levelUpEvent(level: Option[Long]): Event = Event("level_up", EventParams(level=level))
+    override def shareEvent(itemId: Option[String]): Event = Event("share", EventParams(itemId=itemId))
+    override def gameOverEvent(score: Option[Long], map: Option[String]): Event =
+      Event("game_over", EventParams(score=score, map=map))
+  }
+
+
+  class Analytics extends AbstractAnalytics {
+
+    override def logEvent(event: Event): Unit = {
+      println("Ignoring event to log: " + event)
+    }
+
+    override def logGameScreen(gameScreen: GameScreen): Unit = {
+      println("Ignoring new game screen to log: " + gameScreen)
+    }
+
+  }
+
+  override val Analytics: Analytics = new Analytics
+
+}
