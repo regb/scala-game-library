@@ -28,6 +28,12 @@ trait FirebaseAnalyticsProvider extends AnalyticsProvider with Lifecycle {
       Event(FirebaseAnalytics.Event.SHARE, EventParams(itemId=itemId))
     override def gameOverEvent(score: Option[Long], map: Option[String]): Event =
       Event("game_over", EventParams(score=score,map=map))
+    override def beginTutorialEvent(): Event =
+      Event(FirebaseAnalytics.Event.TUTORIAL_BEGIN, EventParams())
+    override def completeTutorialEvent(): Event =
+      Event(FirebaseAnalytics.Event.TUTORIAL_COMPLETE, EventParams())
+    override def postScore(score: Long, level: Option[Long], character: Option[String]): Event =
+      Event(FirebaseAnalytics.Event.POST_SCORE, EventParams(score=Some(score), level=level, character=character))
   }
 
   class Analytics extends AbstractAnalytics {
@@ -39,6 +45,7 @@ trait FirebaseAnalyticsProvider extends AnalyticsProvider with Lifecycle {
       params.itemId.foreach(id => bundle.putString(FirebaseAnalytics.Param.ITEM_ID, id))
       params.score.foreach(s => bundle.putLong(FirebaseAnalytics.Param.SCORE, s))
       params.map.foreach(m => bundle.putString("level_map", m))
+      params.character.foreach(c => bundle.putString(FirebaseAnalytics.Param.CHARACTER, c))
       bundle
     }
 
