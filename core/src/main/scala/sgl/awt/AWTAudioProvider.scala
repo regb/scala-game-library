@@ -6,6 +6,14 @@ import java.io.File
 
 trait AWTAudioProvider extends AudioProvider {
 
+
+  private def setClipVolume(clip: Clip, volume: Float): Unit = {
+    val gainControl = clip.getControl(FloatControl.Type.MASTER_GAIN).asInstanceOf[FloatControl]
+    val width: Float = gainControl.getMaximum-gainControl.getMinimum
+    val value = width*volume + gainControl.getMinimum
+    gainControl.setValue(value)
+  }
+
   type PlayedSound = Long
   class Sound(url: java.net.URL) extends AbstractSound {
 
@@ -20,6 +28,7 @@ trait AWTAudioProvider extends AudioProvider {
       lastClipId += 1
       val clip = AudioSystem.getClip//Line(new DataLine.Info(Clip.getClass, stream.getFormat))
       clip.open(audioStream)
+      setClipVolume(clip, volume)
       clip.start()
       clips += (lastClipId -> clip)
       lastClipId
@@ -49,16 +58,36 @@ trait AWTAudioProvider extends AudioProvider {
   class Music(url: java.net.URL) extends AbstractMusic {
     private val audioStream: AudioInputStream = AudioSystem.getAudioInputStream(url)
     private val clip = AudioSystem.getClip
+    //TODO: seems like calling open automatically starts the Music
+    //      (at least for some audio files) Should figure out why...
     clip.open(audioStream)
+    //clip.stop()
 
-    override def play(): Unit = clip.start()
-    override def pause(): Unit = clip.stop()
-    override def stop(): Unit = clip.stop()
+    private var isPlaying = false
+    private var shouldLoop = false
 
-    override def setLooping(isLooping: Boolean): Unit = {
-      if(isLooping)
+    override def play(): Unit = {
+      isPlaying = true
+      if(shouldLoop)
         clip.loop(Clip.LOOP_CONTINUOUSLY)
       else
+        clip.start()
+    }
+    override def pause(): Unit = {
+      isPlaying = false
+      clip.stop()
+    }
+    override def stop(): Unit = {
+      isPlaying = false
+      clip.stop()
+    }
+
+    override def setVolume(volume: Float): Unit = setClipVolume(clip, volume)
+    override def setLooping(isLooping: Boolean): Unit = {
+      shouldLoop = isLooping
+      if(isPlaying && isLooping)
+        clip.loop(Clip.LOOP_CONTINUOUSLY)
+      else if(isPlaying && !isLooping)
         clip.loop(0)
     }
 

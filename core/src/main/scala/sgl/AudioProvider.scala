@@ -43,6 +43,13 @@ trait AudioProvider {
     def pause(): Unit
     def stop(): Unit
 
+    /** Set the volume of the music
+      *
+      * The volume is between 0 and 1, with
+      * 0 meaning the lowest available value, and 1 the
+      * highest.
+      */
+    def setVolume(volume: Float): Unit
     def setLooping(isLooping: Boolean): Unit
 
     def dispose(): Unit
