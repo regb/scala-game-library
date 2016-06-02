@@ -2,10 +2,14 @@ package sgl
 
 import scala.io.Source
 
-/** Implement Save with standard file system files */
-class FileSystemSave(filename: String) extends AbstractSave {
+/** Implement Save with a standard file */
+class FileSave(filename: String) extends AbstractSave {
 
-  override def putInt(name: String, value: Int): Unit = {
+  //TODO: should make this a generic putX[X], and it should take
+  //      some implicit param to get the type and have the type info being
+  //      part of the serialization, to make sure we don't parse back Int as String
+
+  override def putString(name: String, value: String): Unit = {
     val rawLines: List[String] = try {
       Source.fromFile(filename).getLines().toList
     } catch {
@@ -22,7 +26,7 @@ class FileSystemSave(filename: String) extends AbstractSave {
       if(parsedLines.exists(_._1 == name))
         parsedLines.map{ case (n, v) =>
           if(n == name) 
-            (n, value.toString)//(v.toInt + value).toString)
+            (n, value.toString)
           else
             (n, v)
         }
@@ -36,22 +40,38 @@ class FileSystemSave(filename: String) extends AbstractSave {
       out.close
     }
   }
-
-  override def getInt(name: String): Option[Int] = {
+  override def getString(name: String): Option[String] = {
     Source.fromFile(filename).getLines().toList.flatMap(line => try {
       val Array(id, value) = line.split(":")
-      if(id == name) Some(value.toInt) else None
+      if(id == name) Some(value) else None
     } catch { 
       case (_: Exception) => None
     }).headOption
   }
+
+  override def putInt(name: String, value: Int): Unit = {
+    putString(name, value.toString)
+  }
+
+  override def getInt(name: String): Option[Int] = {
+    getString(name).flatMap(v => try {
+      Some(v.toInt)
+    } catch {
+      case (_: Exception) => None
+    })
+  }
     
   override def incInt(name: String): Unit = ???
 
-  override def putBoolean(name: String, value: Boolean): Unit = ???
-  override def getBoolean(name: String): Option[Boolean] = ???
-
-  override def putString(name: String, value: String): Unit = ???
-  override def getString(name: String): Option[String] = ???
+  override def putBoolean(name: String, value: Boolean): Unit = {
+    putString(name, value.toString)
+  }
+  override def getBoolean(name: String): Option[Boolean] = {
+    getString(name).flatMap(v => try {
+      Some(v.toBoolean)
+    } catch {
+      case (_: Exception) => None
+    })
+  }
 
 }
