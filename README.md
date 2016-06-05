@@ -51,3 +51,13 @@ on getting a great library to build 2D games than an average library to do every
 * No magic build tricks. Everything is explicitly implemented in Scala. No additional
 code generator to handle the different platform, setting up a deployment platform should
 be simple enough to be done manually.
+
+Code Organization
+-----------------
+
+I heavily use the cake pattern as a means to abstract the different backends and
+to correctly modularize the system. A good article to introduce using the cake pattern
+for dependencies injection is
+[this one](http://jonasboner.com/real-world-scala-dependency-injection-di/).
+There is also a [great talk](https://www.youtube.com/watch?v=yLbdw06tKPQ) that describes
+how to use the cake pattern, which closely ressembles our usage here.
