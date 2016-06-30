@@ -28,13 +28,14 @@ class AndroidSave(prefName: String, context: Context) extends AbstractSave {
     pref.getInt(name, default)
   }
 
-  override def incInt(name: String): Unit = {
+  override def incInt(name: String): Int = {
     val pref = context.getSharedPreferences(PreferenceFilename, Context.MODE_PRIVATE)
     val current = pref.getInt(name, 0)
     val newVal = current + 1
     val editor = pref.edit
     editor.putInt(name, newVal)
     editor.commit()
+    newVal
   }
 
   override def putBoolean(name: String, value: Boolean): Unit = {

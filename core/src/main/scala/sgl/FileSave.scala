@@ -61,8 +61,6 @@ class FileSave(filename: String) extends AbstractSave {
     })
   }
     
-  override def incInt(name: String): Unit = ???
-
   override def putBoolean(name: String, value: Boolean): Unit = {
     putString(name, value.toString)
   }
