@@ -8,7 +8,20 @@ package sgl
 trait AudioProvider {
 
   type PlayedSound
+
+  /** Represents data for short sound
+    *
+    * A Sound class should be able to load a short sound
+    * data, and generate a fresh, independent PlayedSound for
+    * each call to play. The same sound can be played and
+    * overlapped several times.
+    *
+    * PlayedSound resources are auto-freeing, typically they
+    * are going to be cleaned up either on stop, or when fully
+    * played.
+    */
   abstract class AbstractSound {
+
     /*
      * Return a PlayedSound object, which can be used to
      * do further manipulation on the sound currently being
@@ -22,9 +35,10 @@ trait AudioProvider {
 
     def stop(id: PlayedSound): Unit
 
-    //TODO
+    //TODO, probably should be part of the play method
     //def setPitch(id: PlayedSound): Unit
 
+    //TODO: probably should be part of the play method
     def setLooping(id: PlayedSound, isLooping: Boolean): Unit
 
     def dispose(): Unit
@@ -50,6 +64,7 @@ trait AudioProvider {
       * highest.
       */
     def setVolume(volume: Float): Unit
+
     def setLooping(isLooping: Boolean): Unit
 
     def dispose(): Unit

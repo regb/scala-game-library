@@ -82,6 +82,8 @@ trait AndroidAudioProvider extends AudioProvider with Lifecycle {
 
     override def setLooping(isLooping: Boolean): Unit = player.setLooping(isLooping)
 
+    override def setVolume(volume: Float): Unit = player.setVolume(volume, volume)
+
     override def dispose(): Unit = {
       player.release()
       clearLoadedMusic(this)
