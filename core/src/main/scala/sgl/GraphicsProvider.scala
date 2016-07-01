@@ -1,6 +1,6 @@
 package sgl
 
-trait GraphicsProvider {
+trait GraphicsProvider extends GraphicsHelpersComponent {
 
   abstract class AbstractBitmap {
     def height: Int
