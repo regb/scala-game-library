@@ -90,7 +90,8 @@ class InputBuffer {
 class SimpleInputBuffer(inputs: InputBuffer) {
   
   //abstraction over mouse, touch screen, stylus, and any other pointing device
-  object PointingDevice {
+  //TODO: not sure if it should be pointingDevice or PointingDevice (Caps or not)
+  object pointingDevice {
     //events
     def click: Option[(Int, Int)] = inputs.mouseClick.orElse(inputs.touchPoint)
     def down: Option[(Int, Int)] = inputs.mouseDown.orElse(inputs.touchDown)

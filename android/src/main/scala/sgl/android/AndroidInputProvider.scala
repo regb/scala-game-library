@@ -9,9 +9,6 @@ import _root_.android.view.KeyEvent
 trait AndroidInputProvider extends InputProvider with Lifecycle {
   this: AndroidWindowProvider =>
 
-  private var touchingPos: Option[(Int, Int)] = None
-  private var scrollVector: Option[(Float, Float)] = None
-
   abstract override def startup(): Unit = {
     super.startup()
     println("init of AndroidInputProvider")

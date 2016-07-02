@@ -15,9 +15,11 @@ trait AWTInputProvider extends InputProvider with Lifecycle {
       }
       override def mousePressed(e: MouseEvent): Unit = {
         inputBuffer.mouseDown = Some((e.getX, e.getY))
+        inputBuffer.mousePressed = Some((e.getX, e.getY))
       }
       override def mouseReleased(e: MouseEvent): Unit = {
         inputBuffer.mouseUp = Some((e.getX, e.getY))
+        inputBuffer.mousePressed = None
       }
     })
     gamePanel.addMouseMotionListener(new MouseAdapter() {
