@@ -28,7 +28,7 @@ class AndroidSave(prefName: String, context: Context) extends AbstractSave {
     pref.getInt(name, default)
   }
 
-  override def incInt(name: String, increment: Int = 0): Int = {
+  override def incInt(name: String, increment: Int = 1): Int = {
     val pref = context.getSharedPreferences(PreferenceFilename, Context.MODE_PRIVATE)
     val current = pref.getInt(name, 0)
     val newVal = current + increment
