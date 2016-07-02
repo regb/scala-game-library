@@ -60,6 +60,18 @@ class FileSave(filename: String) extends AbstractSave {
       case (_: Exception) => None
     })
   }
+
+  override def putLong(name: String, value: Long): Unit = {
+    putString(name, value.toString)
+  }
+
+  override def getLong(name: String): Option[Long] = {
+    getString(name).flatMap(v => try {
+      Some(v.toLong)
+    } catch {
+      case (_: Exception) => None
+    })
+  }
     
   override def putBoolean(name: String, value: Boolean): Unit = {
     putString(name, value.toString)

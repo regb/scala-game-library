@@ -28,15 +28,34 @@ class AndroidSave(prefName: String, context: Context) extends AbstractSave {
     pref.getInt(name, default)
   }
 
-  override def incInt(name: String): Int = {
+  override def incInt(name: String, increment: Int = 0): Int = {
     val pref = context.getSharedPreferences(PreferenceFilename, Context.MODE_PRIVATE)
     val current = pref.getInt(name, 0)
-    val newVal = current + 1
+    val newVal = current + increment
     val editor = pref.edit
     editor.putInt(name, newVal)
     editor.commit()
     newVal
   }
+
+  override def putLong(name: String, value: Long): Unit = {
+    val pref = context.getSharedPreferences(PreferenceFilename, Context.MODE_PRIVATE)
+    val editor = pref.edit
+    editor.putLong(name, value)
+    editor.commit()
+  }
+  override def getLong(name: String): Option[Long] = {
+    val pref = context.getSharedPreferences(PreferenceFilename, Context.MODE_PRIVATE)
+    if(pref.contains(name))
+      Some(pref.getLong(name, 0))
+    else
+      None
+  }
+  override def getLongOrElse(name: String, default: Long): Long = {
+    val pref = context.getSharedPreferences(PreferenceFilename, Context.MODE_PRIVATE)
+    pref.getLong(name, default)
+  }
+
 
   override def putBoolean(name: String, value: Boolean): Unit = {
     val pref = context.getSharedPreferences(PreferenceFilename, Context.MODE_PRIVATE)
