@@ -14,7 +14,9 @@ trait AndroidSystemProvider extends SystemProvider {
   }
 
   override def loadTextResource(path: String): Iterator[String] = {
-    ???
+    val am = mainActivity.getAssets()
+    val is = am.open(path)
+    scala.io.Source.fromInputStream(is).getLines
   }
 
   override def openWebpage(uri: URI): Unit = {
