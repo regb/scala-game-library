@@ -155,7 +155,7 @@ trait GoogleGamesServices extends DefaultGameActivity
     })
   }
 
-  def startDefaultLeaderboardActivity(): Unit = {
+  def startDefaultAchievementsActivity(): Unit = {
     runOnUiThread(new Runnable {
       override def run(): Unit = {
         if(googleApiClient != null && googleApiClient.isConnected()) {
