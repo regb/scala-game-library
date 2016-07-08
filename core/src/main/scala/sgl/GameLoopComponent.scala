@@ -13,7 +13,7 @@ package sgl
   * a pause, and restart it on a resume.
   */
 trait GameLoopComponent extends Lifecycle {
-  this: GraphicsProvider with InputProvider with GameScreensComponent =>
+  self: GraphicsProvider with InputProvider with GameScreensComponent =>
 
   /*
    * TODO: maybe this should be named GameState (should export transition
@@ -70,6 +70,13 @@ trait GameLoopComponent extends Lifecycle {
     */
   class GameLoop extends Runnable {
 
+    /*
+     * Should be careful with milliseconds and nanoseconds. At the game level,
+     * delta time for simulation should be at the millisecond step, but internally
+     * to the loop for measuring delta, we use System.nanoTime, which returns
+     * nanoseconds.
+     */
+
     /** Points to the thread currently running the game loop.
       *
       * when the GameLoop is running, the runningThread points
@@ -104,8 +111,8 @@ trait GameLoopComponent extends Lifecycle {
       running = false
     }
 
-    /** Updated by the loop to expose the fps */
-    var measuredFps: Int = 0
+    /** Updated by the loop to expose run statistics */
+    var statistics: GameLoopStatistics = new GameLoopStatistics
 
     /** Init the game loop
       *
@@ -132,8 +139,8 @@ trait GameLoopComponent extends Lifecycle {
         firstCall = false
       }
 
-      val FramePeriod: Option[Int] = Fps.map(fps => (1000.0 / fps.toDouble).toInt)
-      var ticks: Long = 0
+      //the frame period is in milliseconds
+      val FramePeriod: Option[Long] = Fps.map(fps => (1000.0 / fps.toDouble).toLong)
 
       running = true
 
@@ -142,20 +149,10 @@ trait GameLoopComponent extends Lifecycle {
        * the current update. It is used to properly control the speed of
        * transitions of sprites.
        */
-      var lastTime: Long = System.currentTimeMillis
-      var dt: Int = 0
-
-      /*
-       * These variables are used to measure (observe) the actual
-       * FPS.
-       */
-      var fpsSnapshotStart: Long = System.currentTimeMillis
-      var fpsSnapshotFrameCount: Int = 0
+      var lastTime: Long = System.nanoTime
 
       while(running) {
-        ticks += 1
-
-        val beginTime: Long = System.currentTimeMillis
+        val beginTime: Long = System.nanoTime
 
         val canvas = getScreenCanvas
 
@@ -165,8 +162,9 @@ trait GameLoopComponent extends Lifecycle {
             //canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
             canvas.clear()
 
-            val newTime = System.currentTimeMillis
-            dt = (newTime - lastTime).toInt
+            val newTime = System.nanoTime
+            //delta time, in ms (all time measures are in nano)
+            val dt = ((newTime - lastTime) / (1000*1000)).toLong
             lastTime = newTime
 
             /*
@@ -176,13 +174,23 @@ trait GameLoopComponent extends Lifecycle {
             val renderedScreens = screens.takeWhile(!_.isOpaque).reverse
             val lastOpaqueScreen = screens.find(_.isOpaque)
 
+            val startProcessInputs = System.nanoTime
             currentScreen.processInputs(inputBuffer)
             inputBuffer.clearEvents()
+            val processInputsTime = System.nanoTime - startProcessInputs
+            statistics.completeProcessInputsFrame(processInputsTime)
 
+            //TODO: should use nano time
+            val startUpdate = System.nanoTime
             currentScreen.update(dt)
+            val updateTime = System.nanoTime - startUpdate
+            statistics.completeUpdateFrame(updateTime)
 
+            val startRender = System.nanoTime
             lastOpaqueScreen.foreach(screen => screen.render(canvas))
             renderedScreens.foreach(screen => screen.render(canvas))
+            val renderTime = System.nanoTime - startRender
+            statistics.completeRenderFrame(renderTime)
 
           } finally {
             releaseScreenCanvas(canvas)
@@ -191,25 +199,120 @@ trait GameLoopComponent extends Lifecycle {
 
 
 
-        val endTime: Long = System.currentTimeMillis
+        val endTime: Long = System.nanoTime
         val elapsedTime: Long = endTime - beginTime
 
-        if(endTime - fpsSnapshotStart > 1000) {//full snapshot taken
-          measuredFps = fpsSnapshotFrameCount
-          fpsSnapshotFrameCount = 0
-          fpsSnapshotStart = endTime
-        } else {
-          fpsSnapshotFrameCount += 1
-        }
+        statistics.completeFrame(elapsedTime)
 
-        val sleepTime: Long = FramePeriod.map(fp => fp - elapsedTime).getOrElse(0)
-
+        val sleepTime: Long = FramePeriod.map(fp => fp - elapsedTime/(1000*1000)).getOrElse(0)
 
         if(sleepTime > 0) {
           Thread.sleep(sleepTime)
         } else if(sleepTime < 0) {
           //Log.w(LogTag, s"negative sleep time. frame period: $FramePeriod, elapsed time: $elapsedTime.")
         }
+      }
+    }
+
+  }
+
+  /** Provides statistics about the running game
+    *
+    * Is useful to undesrtand actual FPS, or the time taken
+    * by each part of the game loop (processing inputs, update, rendering).
+    *
+    * This is always computed (no option to disable it) as it is unlikely
+    * to be making any significant performence difference (a couple additions
+    * on each frame). It's simpler architecture-wide to simply have it all
+    * the time, although in the future we may want to separate it into a
+    * different GameLoopComponent (such as InstrumentedGameLoopComponent) and
+    * have the core game loop only used for production. But that does not seem
+    * necessary as of today. Note that simply wrapping the statistics collect
+    * into an if-then-else guarded by a debug flag is unlikely to help, as checking
+    * the condition is probably as expensive as collecting the data (unless the conditions
+    * can be removed at compile time).
+    *
+    * To avoid garbage collection, we use a mutable Statistics object, which
+    * means that on each frame the same instance is updated. From a client
+    * usage, you cannot store the statistics between frames to do some
+    * comparisons.
+    */
+  class GameLoopStatistics {
+
+    //all time measures are stored in nanoseconds, for precision.
+    //this might be necessary as some update step would take less
+    //than a full millisecond, and will thus lose precision. Values
+    //such as average, in Double, are expressed in milliseconds.
+
+    private var _totalTimeRunning: Long = 0
+    /** total time the game loop has been running
+      *
+      * Ignore the time spent sleeping, so should not
+      * be used to determine fps. Could be useful
+      * to understand time spent by the application still
+      * In nanoseconds.
+      */
+    def totalTimeRunning: Long = _totalTimeRunning
+
+    private var _totalFrames: Long = 0
+    def totalFrames: Long = _totalFrames
+
+    private var _totalUpdateTime: Long = 0
+    private var _totalRenderTime: Long = 0
+    private var _totalProcessInputs: Long = 0
+
+    //we compute current average using an exponential moving average.
+    //the goal is to eventually eliminate outliers that would have appear, while still computing
+    //some sort of average. We set alpha to 0.01, which should give results similar
+    //to an average over the last 100 values (about 2-3 seconds, depending on FPS). 
+    //Using this averaging technique, we don't need  to store any data points
+    private var _updateTimeAverage: Double = 0
+    private var _renderTimeAverage: Double = 0
+    private var _processInputsTimeAverage: Double = 0
+    private var _frameTimeAverage: Double = 0
+    private val AverageAlpha: Double = 0.01
+
+    def updateTimeAverage: Double = _updateTimeAverage/(1000*1000)
+    def renderTimeAverage: Double = _renderTimeAverage/(1000*1000)
+    def processInputsTimeAverage: Double = _processInputsTimeAverage/(1000*1000)
+    def frameTimeAverage: Double = _frameTimeAverage/(1000*1000)
+
+    private[GameLoopComponent] def completeUpdateFrame(dt: Long) = {
+      _totalUpdateTime += dt
+      _updateTimeAverage = AverageAlpha*dt + (1-AverageAlpha)*_updateTimeAverage
+    }
+    private[GameLoopComponent] def completeProcessInputsFrame(dt: Long) = {
+      _totalProcessInputs += dt
+      _processInputsTimeAverage = AverageAlpha*dt + (1-AverageAlpha)*_processInputsTimeAverage
+    }
+    private[GameLoopComponent] def completeRenderFrame(dt: Long) = {
+      _totalRenderTime += dt
+      _renderTimeAverage = AverageAlpha*dt + (1-AverageAlpha)*_renderTimeAverage
+    }
+
+    private var _measuredFps: Int = 0
+    def measuredFps: Int = _measuredFps
+
+    //interesting data such as FPS should be computed over the most recent
+    //data and not as an average over the long term, so we keep computing
+    //fps for the most recent snapshot. We store the real starting time and
+    //compare with current system time, which is different from the actual
+    //running time as it takes into account the sleeping time as well (runnin
+    private var currentSnapshotStartTime: Long = System.nanoTime
+    private var currentSnapshotFrameCount: Int = 0
+
+    //we make the mutability only visible to the local implementation,
+    //so that clients are not able to temper with the statistics
+    private[GameLoopComponent] def completeFrame(dt: Long) = {
+      _totalFrames += 1
+      _totalTimeRunning += dt
+      _frameTimeAverage = AverageAlpha*dt + (1-AverageAlpha)*_frameTimeAverage
+      currentSnapshotFrameCount += 1
+      val currentTime = System.nanoTime
+      if(currentTime - currentSnapshotStartTime > 1000*1000*1000) {//full snapshot taken
+        _measuredFps = currentSnapshotFrameCount
+        currentSnapshotFrameCount = 0
+        currentSnapshotStartTime = currentTime
       }
     }
 
