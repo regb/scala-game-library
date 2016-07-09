@@ -92,10 +92,10 @@ trait AndroidAudioProvider extends AudioProvider with Lifecycle {
   }
 
   override def loadMusicFromResource(path: String): Music = {
-    val filename = path.dropRight(4)
-    val resources = mainActivity.getResources
-    val rawId = resources.getIdentifier(filename, "raw", mainActivity.getPackageName())
-    val player = MediaPlayer.create(mainActivity, rawId)
+    val am = mainActivity.getAssets()
+    val afd = am.openFd(path)
+    val player = new MediaPlayer
+    player.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength())
     val music = new Music(player)
     addLoadedMusic(music)
     music

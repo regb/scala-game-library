@@ -2,6 +2,7 @@ package sgl
 package awt
 
 import javax.sound.sampled._
+import javax.sound.sampled.DataLine.Info
 import java.io.File
 
 trait AWTAudioProvider extends AudioProvider {
@@ -96,11 +97,17 @@ trait AWTAudioProvider extends AudioProvider {
 
   class Music(url: java.net.URL) extends AbstractMusic {
     private val audioStream: AudioInputStream = AudioSystem.getAudioInputStream(url)
+
+    //first we convert the input stream (that could be encoded such as vorbis) to a PCM
+    //based encoding, so that java can play it.
+    private val outFormat = convertOutFormat(audioStream.getFormat)
+    //private val info = new Info(classOf[SourceDataLine], outFormat)
+    //private val dataline = AudioSystem.getLine(info).asInstanceOf[SourceDataLine]
+
+    private val convertedStream = AudioSystem.getAudioInputStream(outFormat, audioStream)
+
     private val clip = AudioSystem.getClip
-    //TODO: seems like calling open automatically starts the Music
-    //      (at least for some audio files) Should figure out why...
-    clip.open(audioStream)
-    //clip.stop()
+    clip.open(convertedStream)
 
     private var isPlaying = false
     private var shouldLoop = false
@@ -133,9 +140,29 @@ trait AWTAudioProvider extends AudioProvider {
     override def dispose(): Unit = {}
   }
   override def loadMusicFromResource(path: String): Music = {
-    val url = getClass.getClassLoader.getResource(path)
-    new Music(url)
+    //if(path.endsWith("ogg")) {
+    //  import com.jcraft.jorbis.VorbisFile
+    //  val url = getClass.getClassLoader.getResource(path)
+    //  val is = new java.io.FileInputStream(new java.io.File(url.toURI))
+    //  val file = new VorbisFile(is, null, 0)
+    //  println(file.bitrate(0))
+
+    //  new Music(url)
+    //} else {
+      val url = getClass.getClassLoader.getResource(path)
+      new Music(url)
   }
 
+  private def convertOutFormat(inFormat: AudioFormat): AudioFormat = {
+    val ch = inFormat.getChannels()
+    val rate = inFormat.getSampleRate()
+    new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, rate, 16, ch, ch * 2, rate, false)
+  }
 
+  //TODO: wraps internal (javax.sound) exception with some interface (AudioProvider) exceptions
+  //      We should document that loading and playing can throw exception (if file missing, wrong
+  //      format, etc) so that people can still understand error in terms of interface without
+  //      having to delve into the backend implementations, and for consistent exception handling
+  //      accross platforms (still better to keep playing, even if no sound). As this is an exceptional
+  //      event, we probably prefer the usage of Exception over Option for the return types.
 }

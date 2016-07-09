@@ -75,6 +75,12 @@ trait GameLoopComponent extends Lifecycle {
      * delta time for simulation should be at the millisecond step, but internally
      * to the loop for measuring delta, we use System.nanoTime, which returns
      * nanoseconds.
+     *
+     * Not sure about the performence of measuring nanoseconds. I read a bit of
+     * everything online, but I have to think that taking a nanoTime measurement
+     * cannot seriously slow down the app. It also seems necessary to compute dt
+     * using System.nanoTime, as System.currentTimeMillis might have a huge jump
+     * of value due to the local clock getting updated concurrently.
      */
 
     /** Points to the thread currently running the game loop.
