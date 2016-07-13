@@ -1,0 +1,5 @@
+TODO
+====
+
+* Separate core into core and desktop backend
+    Seems like there could be several different kind of desktop, but they would share stuff like FileSystemSave. Alternatively there could be one Desktop, but with several provider of Sound (OpenAL, Java) and grahics (OpenGL, AWT). And let the user compose the cake as he wants.
