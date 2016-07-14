@@ -46,10 +46,9 @@ trait AndroidAudioProvider extends AudioProvider with Lifecycle {
     }
   }
   override def loadSoundFromResource(path: String): Sound = {
-    val filename = path.dropRight(4)
-    val resources = mainActivity.getResources
-    val rawId = resources.getIdentifier(filename, "raw", mainActivity.getPackageName())
-    val soundId = soundPool.load(mainActivity, rawId, 1)
+    val am = mainActivity.getAssets()
+    val afd = am.openFd(path)
+    val soundId = soundPool.load(afd, 1)
     new Sound(soundId)
   }
 
