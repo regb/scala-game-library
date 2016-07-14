@@ -43,7 +43,7 @@ trait GraphicsHelpersComponent {
       //first we draw all the full tiles
       for(i <- 0 until nbFullCols) {
         for(j <- 0 until nbFullRows) {
-          canvas.drawBitmap(bitmap, i*bitmapWidth, j*bitmapHeight)
+          canvas.drawBitmap(bitmap, x+i*bitmapWidth, y+j*bitmapHeight)
         }
       }
 
@@ -51,12 +51,12 @@ trait GraphicsHelpersComponent {
       val missingWidth = width - nbFullCols*bitmapWidth
       if(missingWidth > 0) {
         for(i <- 0 until nbFullRows)
-          canvas.drawBitmap(bitmap, nbFullCols*bitmapWidth, i*bitmapHeight, 0, 0, missingWidth, bitmapHeight)
+          canvas.drawBitmap(bitmap, x+nbFullCols*bitmapWidth, y+i*bitmapHeight, 0, 0, missingWidth, bitmapHeight)
       }
       val missingHeight = height - nbFullRows*bitmapHeight
       if(missingHeight > 0) {
         for(i <- 0 until nbFullCols)
-          canvas.drawBitmap(bitmap, i*bitmapWidth, nbFullRows*bitmapHeight, 0, 0, bitmapWidth, missingHeight)
+          canvas.drawBitmap(bitmap, x+i*bitmapWidth, y+nbFullRows*bitmapHeight, 0, 0, bitmapWidth, missingHeight)
       }
 
       //finally draw bottom right corner
