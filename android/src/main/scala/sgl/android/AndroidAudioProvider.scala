@@ -65,6 +65,7 @@ trait AndroidAudioProvider extends AudioProvider with Lifecycle {
   }
 
   class Music(val player: MediaPlayer) extends AbstractMusic {
+    player.prepare()
     var isPlaying: Boolean = false
     override def play(): Unit = {
       player.start()
