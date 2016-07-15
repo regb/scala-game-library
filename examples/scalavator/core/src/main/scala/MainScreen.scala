@@ -14,10 +14,10 @@ trait MainScreenComponent {
 
   class MainScreen extends GameScreen {
 
-    private val Gravity = Vec(0, dp2px(120))
+    private val Gravity = Vec(0, dp2px(200))
 
     private val PlatformHeight = dp2px(5)
-    class Platform(var x: Double, var y: Double, width: Int, var speed: Double) {
+    class Platform(var x: Double, var y: Double, val width: Int, var speed: Double) {
       def update(dt: Long): Unit = {
         x = x + speed*(dt/1000d)
         if(x+width > windowWidth) {
@@ -31,9 +31,12 @@ trait MainScreenComponent {
       def render(canvas: Canvas): Unit = {
         canvas.drawRect(x.toInt, y.toInt, width, PlatformHeight, defaultPaint.withColor(Color.Blue))
       }
+
+      override def toString = s"Platform($x, $y) with speed $speed"
     }
+    private val startingPlatform = new Platform(0, windowHeight-PlatformHeight, windowWidth, 0)
     private var platforms: List[Platform] = List(
-      new Platform(0, windowHeight-PlatformHeight, windowWidth, 0),
+      startingPlatform,
       new Platform(windowWidth/2, windowHeight-dp2px(100), dp2px(70), dp2px(90)),
       new Platform(windowWidth/2, windowHeight-dp2px(200), dp2px(70), dp2px(110)),
       new Platform(windowWidth/2, windowHeight-dp2px(300), dp2px(70), -dp2px(100)),
@@ -44,11 +47,12 @@ trait MainScreenComponent {
     private var characterPosition = Point(windowWidth/2, windowHeight - PlatformHeight)
     private val CharacterWidth = dp2px(30)
     private val CharacterHeight = dp2px(50)
+    private def characterHitBox = Rect(characterPosition.x.toInt, characterPosition.y.toInt - CharacterHeight, CharacterWidth, CharacterHeight)
 
     private var isJumping = false
     private var jumpingDuration: Long = 0
 
-    private var isStanding = true
+    private var standingPlatform: Option[Platform] = Some(startingPlatform)
 
     private var cameraHeight = windowHeight
 
@@ -56,24 +60,39 @@ trait MainScreenComponent {
     override def processInputs(inputs: InputBuffer): Unit = {
       val simpleInputs = new SimpleInputBuffer(inputs)
 
-      if(simpleInputs.pointingDevice.down.nonEmpty && !isJumping) {
+      if(simpleInputs.pointingDevice.down.nonEmpty && !isJumping && standingPlatform.nonEmpty) {
         isJumping = true
         jumpingDuration = 0
+        standingPlatform = None
       }
     }
 
     override def update(dt: Long): Unit = {
+      val originalCharacterFeet = characterPosition.y
       platforms.foreach(_.update(dt))
       if(isJumping) {
         characterPosition = characterPosition - Gravity*(dt/1000d)
         jumpingDuration += dt
-        if(jumpingDuration > 2000)
+        if(jumpingDuration > 1200)
           isJumping = false
-      } else if(!isStanding) {
-        characterPosition = characterPosition + Gravity*(dt/1000d)
       } else {
-        ()
+        
+        standingPlatform match {
+          case None =>
+            characterPosition = characterPosition + Gravity*(dt/1000d)
+          case Some(platform) => 
+            characterPosition = characterPosition + Vec(1,0)*platform.speed*(dt/1000d)
+        }
+
+        val newCharacterFeet = characterPosition.y
+        platforms.find(p => p.y+1 > originalCharacterFeet && p.y+1 <= newCharacterFeet && 
+                            p.x <= characterPosition.x + CharacterWidth && p.x + p.width >= characterPosition.x
+                      ).foreach(platform => {
+          standingPlatform = Some(platform)
+        })
       }
+
+      
     }
 
     override def render(canvas: Canvas): Unit = {
