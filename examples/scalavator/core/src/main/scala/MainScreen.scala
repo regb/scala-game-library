@@ -34,8 +34,11 @@ trait MainScreenComponent {
     }
     private var platforms: List[Platform] = List(
       new Platform(0, windowHeight-PlatformHeight, windowWidth, 0),
-      new Platform(windowWidth/2, windowHeight-dp2px(100), dp2px(70), 90),
-      new Platform(windowWidth/2, windowHeight-dp2px(200), dp2px(70), 110)
+      new Platform(windowWidth/2, windowHeight-dp2px(100), dp2px(70), dp2px(90)),
+      new Platform(windowWidth/2, windowHeight-dp2px(200), dp2px(70), dp2px(110)),
+      new Platform(windowWidth/2, windowHeight-dp2px(300), dp2px(70), -dp2px(100)),
+      new Platform(windowWidth/2, windowHeight-dp2px(400), dp2px(70), dp2px(80)),
+      new Platform(windowWidth/2, windowHeight-dp2px(500), dp2px(70), -dp2px(130))
     )
 
     private var characterPosition = Point(windowWidth/2, windowHeight - PlatformHeight)
@@ -46,6 +49,8 @@ trait MainScreenComponent {
     private var jumpingDuration: Long = 0
 
     private var isStanding = true
+
+    private var cameraHeight = windowHeight
 
 
     override def processInputs(inputs: InputBuffer): Unit = {
@@ -78,6 +83,20 @@ trait MainScreenComponent {
         CharacterWidth, CharacterHeight, 
         defaultPaint.withColor(Color.Green)
       )
+    }
+
+    /*
+     * When jumping passed half the screen, we scroll up to maintain the character
+     * in the middle. We never scroll down, as essentially everything outside of the
+     * screen disappeared.
+     */
+    private def scrollUp(distance: Int): Unit = {
+      platforms.foreach(plat => plat.y += distance)
+      characterPosition = characterPosition + Vec(0, distance.toDouble)
+
+      cameraHeight += distance
+      if(cameraHeight % 50 == 0)
+        platforms ::= new Platform(windowWidth/2, 0, dp2px(70), dp2px(50))
     }
 
   }
