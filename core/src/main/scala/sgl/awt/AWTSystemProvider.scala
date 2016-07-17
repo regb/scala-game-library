@@ -11,8 +11,8 @@ trait AWTSystemProvider extends SystemProvider {
   }
 
   override def loadTextResource(path: String): Iterator[String] = {
-    val url = getClass.getClassLoader.getResource(path)
-    scala.io.Source.fromFile(url.toURI).getLines
+    val is = getClass.getClassLoader.getResourceAsStream(path)
+    scala.io.Source.fromInputStream(is).getLines
   }
 
   override def openWebpage(uri: URI): Unit = {
