@@ -41,12 +41,16 @@ class FileSave(filename: String) extends AbstractSave {
     }
   }
   override def getString(name: String): Option[String] = {
-    Source.fromFile(filename).getLines().toList.flatMap(line => try {
-      val Array(id, value) = line.split(":")
-      if(id == name) Some(value) else None
-    } catch { 
+    try {
+      Source.fromFile(filename).getLines().toList.flatMap(line => try {
+        val Array(id, value) = line.split(":")
+        if(id == name) Some(value) else None
+      } catch { 
+        case (_: Exception) => None
+      }).headOption
+    } catch {
       case (_: Exception) => None
-    }).headOption
+    }
   }
 
   override def putInt(name: String, value: Int): Unit = {
