@@ -30,6 +30,7 @@ trait AWTAudioProvider extends AudioProvider {
     private var killIndex = 0
 
     private var pool: Array[Clip] = Array.fill(10)(null)
+    private var paused: Array[Boolean] = Array.fill(10)(false)
 
     def addClip(clip: Clip): Int = {
       var found: Option[Int] = None
@@ -37,7 +38,7 @@ trait AWTAudioProvider extends AudioProvider {
         if(pool(i) == null) {
           pool(i) = clip
           found = Some(i)
-        } else if(!pool(i).isRunning) {
+        } else if(!pool(i).isRunning && !paused(i)) {
           pool(i).close()
           pool(i) = clip
           found = Some(i)
@@ -52,6 +53,14 @@ trait AWTAudioProvider extends AudioProvider {
       }
     }
 
+    //we need this as we do not want to free a clip that
+    //was marked paused by the user, but the .running method
+    //of the clip will return false as Clip has no notion
+    //of being paused vs stopped
+    def setClipPaused(index: Int, isPaused: Boolean): Unit = {
+      paused(index) = isPaused
+    }
+
     def getClip(index: Int): Clip = {
       pool(index)
     }
@@ -59,32 +68,65 @@ trait AWTAudioProvider extends AudioProvider {
   }
   private val clipPool = new ClipPool
 
-  type PlayedSound = Int
 
   class Sound(url: java.net.URL) extends AbstractSound {
 
-    override def play(volume: Float): PlayedSound = synchronized {
-      val audioStream: AudioInputStream = AudioSystem.getAudioInputStream(url)
-      val clip = AudioSystem.getClip
+    private var clipLooping: Array[Boolean] = Array.fill(10)(false)
+    //kind of cheating on the size because we know the clip pool implementation,
+    //but hey, they are both private to this file so that's sort of okay
 
-      val clipIndex = clipPool.addClip(clip)
-      clip.open(audioStream)
+    type PlayedSound = Int
+
+    private def instantiateFreshClip(volume: Float): Clip = synchronized {
+      //TODO: could we do some stuff in constructor and only generate the clip each time?
+      val audioStream: AudioInputStream = AudioSystem.getAudioInputStream(url)
+      val outFormat = convertOutFormat(audioStream.getFormat)
+      val convertedStream = AudioSystem.getAudioInputStream(outFormat, audioStream)
+      val clip = AudioSystem.getClip
+      clip.open(convertedStream)
       setClipVolume(clip, volume)
+      clip
+    }
+
+    override def play(volume: Float): PlayedSound = synchronized {
+      val clip = instantiateFreshClip(volume)
+      val clipIndex = clipPool.addClip(clip)
       clip.start()
+      clipIndex
+    }
+    override def loop(volume: Float): PlayedSound = synchronized {
+      val clip = instantiateFreshClip(volume)
+      val clipIndex = clipPool.addClip(clip)
+      clipLooping(clipIndex) = true
+      clip.loop(Clip.LOOP_CONTINUOUSLY)
       clipIndex
     }
 
     override def stop(id: PlayedSound): Unit = {
+      clipLooping(id) = false
+      clipPool(id).stop()
+      clipPool(id).close()
+    }
+
+    override def pause(id: PlayedSound): Unit = {
+      clipPool.setClipPaused(id, true)
       clipPool(id).stop()
     }
-    
-    override def setLooping(id: PlayedSound, isLooping: Boolean): Unit = {
-      if(isLooping) {
+    override def resume(id: PlayedSound): Unit = {
+      if(clipLooping(id))
         clipPool(id).loop(Clip.LOOP_CONTINUOUSLY)
-      } else {
-        clipPool(id).loop(0)
-      }
+      else
+        clipPool(id).start()
+      clipPool.setClipPaused(id, false)
     }
+    
+    //override def setLooping(id: PlayedSound, isLooping: Boolean): Unit = {
+    //  if(isLooping) {
+    //    clipPool(id).loop(Clip.LOOP_CONTINUOUSLY)
+    //  } else {
+    //    clipPool(id).loop(0)
+    //  }
+    //}
 
     override def dispose(): Unit = {}
   }
