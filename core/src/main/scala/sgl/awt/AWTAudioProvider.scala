@@ -86,6 +86,24 @@ trait AWTAudioProvider extends AudioProvider {
       clip.open(convertedStream)
       setClipVolume(clip, volume)
       clip
+
+      //TODO: the following should be able to initialize one byte array, and then it should
+      //      be safe to read from it for each created clip. But we have issues with big audio,
+      //      files that lead to negative size (overflow).
+      //val audioStream: AudioInputStream = AudioSystem.getAudioInputStream(url)
+      //val outFormat = convertOutFormat(audioStream.getFormat)
+      //val convertedStream = AudioSystem.getAudioInputStream(outFormat, audioStream)
+
+      //val size = (outFormat.getFrameSize * convertedStream.getFrameLength).toInt
+      //val data = new Array[Byte](size)
+      //val info = new DataLine.Info(classOf[Clip], outFormat, size)
+      //convertedStream.read(data, 0, size)
+
+      ////val clip = AudioSystem.getClip
+      //val clip = AudioSystem.getLine(info).asInstanceOf[Clip]
+      //clip.open(outFormat, data, 0, size)
+      //setClipVolume(clip, volume)
+      //clip
     }
 
     override def play(volume: Float): PlayedSound = synchronized {

@@ -26,20 +26,32 @@ trait AndroidAudioProvider extends AudioProvider with Lifecycle {
   //                                     .setMaxStreams(10)
   //                                     .setAudioAttributes(attrs)
   //                                     .build()
-  type PlayedSound = Int
   class Sound(soundId: Int) extends AbstractSound {
     
+    type PlayedSound = Int
+
     override def play(volume: Float): PlayedSound = {
       soundPool.play(soundId, volume, volume, 1, 0, 1f)
+    }
+    override def loop(volume: Float): PlayedSound = {
+      val id = this.play(volume)
+      soundPool.setLoop(id, -1)
+      id
     }
 
     override def stop(id: PlayedSound): Unit = {
       soundPool.stop(id)
     }
-
-    override def setLooping(id: PlayedSound, isLooping: Boolean): Unit = {
-      soundPool.setLoop(id, if(isLooping) -1 else 0)
+    override def pause(id: PlayedSound): Unit = {
+      soundPool.pause(id)
     }
+    override def resume(id: PlayedSound): Unit = {
+      soundPool.resume(id)
+    }
+
+    //override def setLooping(id: PlayedSound, isLooping: Boolean): Unit = {
+    //  soundPool.setLoop(id, if(isLooping) -1 else 0)
+    //}
 
     override def dispose(): Unit = {
       soundPool.release()
