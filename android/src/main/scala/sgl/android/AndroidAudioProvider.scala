@@ -13,7 +13,27 @@ trait AndroidAudioProvider extends AudioProvider with Lifecycle {
    * TODO: could add runtime logic to release pool when some number of sounds
    *       are not used. Should be transparent and reallocate the pool with needed
    *       sound
+   *
+   *       Android doc advises to call SoundPool.release when a level with a bunch
+   *       of unique sound is completed, then to set the soundPool pointer to null to
+   *       let it garbage collect, and finally to re-create a new SoundPool for the
+   *       next levels with new sounds to be played. Maybe we could get a similar result
+   *       with a smart use of unload for sound that are no longer played?
    */
+
+   /*
+    * TODO: We had a bug with a game where the very first instance of a sound would not
+    *       be played, but the rest was fine. It was a bit difficult to debug, but eventually
+    *       we figured out it was due to some lazy loading of the loadSoundFromResource, and
+    *       thus the follow-up call to play did nothing. What I assume happened is that the
+    *       load was done asynchronously, and the play was called on a non-yet loaded stream id
+    *       which was then simply ignored. Maybe we should use the onLoadCompleted interface
+    *       that android provides when we first load, if any client does call play on a non
+    *       yet loaded sound, we could delay it and execute it once loaded. I think it's better
+    *       to actually play the sound, even if delayed, as this might make it clearer to the
+    *       client what is happening. Alternatively we could throw an exception, or have a Future
+    *       interface that would ensure play is only called on loaded resources.
+    */
 
   private val soundPool = new SoundPool(10, AudioManager.STREAM_MUSIC, 0)
   //constructor above is deprecated, but I don't want to require API 21 just for
@@ -54,7 +74,7 @@ trait AndroidAudioProvider extends AudioProvider with Lifecycle {
     //}
 
     override def dispose(): Unit = {
-      soundPool.release()
+      soundPool.unload(soundId)
     }
   }
   override def loadSoundFromResource(path: String): Sound = {
