@@ -10,7 +10,6 @@ trait AWTGraphicsProvider extends GraphicsProvider with Lifecycle {
   this: AWTWindowProvider =>
 
   abstract override def startup(): Unit = {
-    println("startup awt grahics provider")
     super.startup()
   }
   abstract override def shutdown(): Unit = {

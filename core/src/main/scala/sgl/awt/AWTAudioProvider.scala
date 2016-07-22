@@ -205,7 +205,6 @@ trait AWTAudioProvider extends AudioProvider {
     //  val url = getClass.getClassLoader.getResource(path)
     //  val is = new java.io.FileInputStream(new java.io.File(url.toURI))
     //  val file = new VorbisFile(is, null, 0)
-    //  println(file.bitrate(0))
 
     //  new Music(url)
     //} else {

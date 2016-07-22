@@ -7,8 +7,6 @@ trait AWTInputProvider extends InputProvider with Lifecycle {
   this: AWTWindowProvider =>
 
   abstract override def startup(): Unit = {
-    println("startup AWTInputProvider")
-  
     gamePanel.addMouseListener(new MouseAdapter() {
       override def mouseClicked(e: MouseEvent): Unit = {
         inputBuffer.mouseClick = Some((e.getX, e.getY))
@@ -55,7 +53,7 @@ trait AWTInputProvider extends InputProvider with Lifecycle {
     super.startup()
   }
   abstract override def shutdown(): Unit = {
-    println("shutdown down awt input provider")
+    super.shutdown()
   }
 
 }

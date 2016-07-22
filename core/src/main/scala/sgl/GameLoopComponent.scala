@@ -28,26 +28,22 @@ trait GameLoopComponent extends Lifecycle {
   def startingScreen: GameScreen
 
   abstract override def startup(): Unit = {
-    println("startup GameLoopProvider")
     super.startup()
   }
 
   abstract override def resume(): Unit = {
-    println("resuming game loop")
     val t = new Thread(gameLoop)
     gameLoop.runningThread = t
     t.start()
   }
 
   abstract override def pause(): Unit = {
-    println("pausing the game loop")
     gameLoop.stop()
     gameLoop.runningThread = null
     super.pause()
   }
 
   abstract override def shutdown(): Unit = {
-    println("shutdown down game loop")
     super.shutdown()
   }
 

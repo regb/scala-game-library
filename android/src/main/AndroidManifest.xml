@@ -7,8 +7,6 @@
         android:minSdkVersion="16"
         android:targetSdkVersion="23"/>
 
-    <uses-permission android:name="android.permission.INTERNET" />
-
     <application
         android:label="ScalaGameLibrary">
     </application>

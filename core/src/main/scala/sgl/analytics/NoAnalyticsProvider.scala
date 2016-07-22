@@ -1,8 +1,10 @@
 package sgl
 package analytics
 
+import util.LoggingProvider
+
 trait NoAnalyticsProvider extends AnalyticsProvider {
-  this: GameScreensComponent =>
+  this: GameScreensComponent with LoggingProvider =>
 
   case class Event(name: String, params: EventParams) extends AbstractEvent
 
@@ -23,12 +25,14 @@ trait NoAnalyticsProvider extends AnalyticsProvider {
 
   class Analytics extends AbstractAnalytics {
 
+    implicit val tag = Logger.Tag("NoAnalyticsProvider")
+
     override def logEvent(event: Event): Unit = {
-      println("Ignoring event to log: " + event)
+      logger.info("Ignoring event to log: " + event)
     }
 
     override def logGameScreen(gameScreen: GameScreen): Unit = {
-      println("Ignoring new game screen to log: " + gameScreen)
+      logger.info("Ignoring new game screen to log: " + gameScreen)
     }
 
   }
