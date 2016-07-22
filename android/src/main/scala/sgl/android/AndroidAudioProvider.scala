@@ -91,70 +91,120 @@ trait AndroidAudioProvider extends AudioProvider with Lifecycle {
     loadedMusics ::= music
   }
   def clearLoadedMusic(music: Music): Unit = synchronized {
-    println("clearing music: " + music)
     loadedMusics = loadedMusics.filterNot(_ == music)
-    println("loaded music state: " + loadedMusics)
   }
 
-  class Music(val player: MediaPlayer) extends AbstractMusic {
-    player.prepare()
-    var isPlaying: Boolean = false
+  class Music(path: String) extends AbstractMusic {
+
+    var player: MediaPlayer = null
+
+    def preparePlayer(): Unit = {
+      val am = mainActivity.getAssets()
+      val afd = am.openFd(path)
+      player = new MediaPlayer
+      player.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength())
+      player.prepare() //TODO: we should use async repareAsync with onPreparedListener
+    }
+
+    def prepareIfIdle(): Unit = {
+      if(state == Idle) {
+        preparePlayer()
+        state = Ready
+      }
+    }
+
+    sealed trait State
+    case object Idle extends State
+    case object Ready extends State
+    case object Playing extends State
+    case object Paused extends State
+    case object Stopped extends State
+    case object Released extends State
+
+    var state: State = Idle
+
     override def play(): Unit = {
+      prepareIfIdle()
+      if(state == Stopped)
+        player.prepare()
+
       player.start()
-      isPlaying = true
+      state = Playing
     }
     override def pause(): Unit = {
+      //TODO: check state
       player.pause()
-      isPlaying = false
+      state = Paused
     }
     override def stop(): Unit = {
+      //TODO: check state
       player.stop()
-      isPlaying = false
+      state = Stopped
     }
 
-    override def setLooping(isLooping: Boolean): Unit = player.setLooping(isLooping)
+    override def setLooping(isLooping: Boolean): Unit = {
+      prepareIfIdle()
 
-    override def setVolume(volume: Float): Unit = player.setVolume(volume, volume)
+      player.setLooping(isLooping)
+    }
+
+    override def setVolume(volume: Float): Unit = {
+      prepareIfIdle()
+      
+      player.setVolume(volume, volume)
+    }
 
     override def dispose(): Unit = {
       player.release()
+      player = null
       clearLoadedMusic(this)
-      isPlaying = false
+      state = Released
     }
   }
 
   override def loadMusicFromResource(path: String): Music = {
-    val am = mainActivity.getAssets()
-    val afd = am.openFd(path)
-    val player = new MediaPlayer
-    player.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength())
-    val music = new Music(player)
+    val music = new Music(path)
     addLoadedMusic(music)
     music
   }
 
   /*
-   * we need to stop the music on pause.
+   * we need to stop the music on pause and release the media players.
    */
   abstract override def pause(): Unit = {
     super.pause()
     loadedMusics.foreach(music => {
-      if(music.isPlaying)
-        music.player.pause()
+      if(music.player != null) {
+        //we directly set player, so that music keeps all the current state info
+        music.player.stop()
+        music.player.release()
+        music.player = null
+      }
     })
   }
   abstract override def resume(): Unit = {
     super.resume()
-    loadedMusics.foreach(music => {
-      if(music.isPlaying)
+    loadedMusics.foreach(music => music.state match {
+      case music.Idle => ()
+      case music.Ready =>
+        music.preparePlayer()
+      case music.Playing =>
+        music.preparePlayer()
         music.player.start()
+      case music.Paused =>
+        music.preparePlayer()
+      case music.Stopped => ()
+      case music.Released => ()
     })
   }
 
   abstract override def shutdown(): Unit = {
     super.shutdown()
     loadedMusics.foreach(music => {
-      music.player.release()
+      if(music.player != null) {
+        music.player.stop()
+        music.player.release()
+      }
     })
   }
 

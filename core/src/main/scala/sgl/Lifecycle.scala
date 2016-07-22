@@ -43,4 +43,7 @@ trait Lifecycle {
     */
   def shutdown(): Unit
 
+
+  //TODO: notify when the application window is being resized
+  //def resize(width: Int, height: Int)
 }
