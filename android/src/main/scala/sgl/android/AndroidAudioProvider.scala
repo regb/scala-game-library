@@ -97,13 +97,42 @@ trait AndroidAudioProvider extends AudioProvider with Lifecycle {
   class Music(path: String) extends AbstractMusic {
 
     var player: MediaPlayer = null
+    var backupPlayer: MediaPlayer = null
 
-    def preparePlayer(): Unit = {
+    private var shouldLoop = false
+
+    //load asset from path and prepare the mp
+    private def loadAndPrepare(mp: MediaPlayer): Unit = {
       val am = mainActivity.getAssets()
       val afd = am.openFd(path)
+      mp.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength())
+      mp.prepare() //TODO: we should use async repareAsync with onPreparedListener
+    }
+
+
+    def preparePlayer(): Unit = {
       player = new MediaPlayer
-      player.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength())
-      player.prepare() //TODO: we should use async repareAsync with onPreparedListener
+      loadAndPrepare(player)
+
+      if(shouldLoop)
+        prepareBackupPlayer()
+    }
+
+    def prepareBackupPlayer(): Unit = {
+      backupPlayer = new MediaPlayer
+      loadAndPrepare(backupPlayer)
+
+      player.setNextMediaPlayer(backupPlayer)
+      player.setOnCompletionListener(onCompletionListener)
+    }
+
+    private val onCompletionListener = new MediaPlayer.OnCompletionListener {
+      override def onCompletion(mp: MediaPlayer): Unit = {
+        mp.stop()
+        mp.release()
+        player = backupPlayer
+        prepareBackupPlayer();
+      }
     }
 
     def prepareIfIdle(): Unit = {
@@ -138,25 +167,33 @@ trait AndroidAudioProvider extends AudioProvider with Lifecycle {
     }
     override def stop(): Unit = {
       //TODO: check state
+      //TODO: what to do with backupPlayer?
       player.stop()
       state = Stopped
     }
 
     override def setLooping(isLooping: Boolean): Unit = {
-      prepareIfIdle()
+      shouldLoop = true
 
-      player.setLooping(isLooping)
+      if(state != Idle)
+        prepareBackupPlayer()
     }
 
     override def setVolume(volume: Float): Unit = {
       prepareIfIdle()
       
-      player.setVolume(volume, volume)
+      player.setVolume(volume, volume) //not sure, but seems like the volume is kept with nextMediaPlayers
     }
 
     override def dispose(): Unit = {
-      player.release()
-      player = null
+      if(player != null) {
+        player.release()
+        player = null
+      }
+      if(backupPlayer != null) {
+        backupPlayer.release()
+        backupPlayer = null
+      }
       clearLoadedMusic(this)
       state = Released
     }
@@ -179,6 +216,10 @@ trait AndroidAudioProvider extends AudioProvider with Lifecycle {
         music.player.stop()
         music.player.release()
         music.player = null
+      }
+      if(music.backupPlayer != null) {
+        music.backupPlayer.release()
+        music.backupPlayer = null
       }
     })
   }
