@@ -34,3 +34,31 @@ abstract class SceneElement {
 
   def addAction(action: Action): Unit
 }
+
+/*
+ * Should consider the z-order of elements of the group.
+ * Latest added elements would be drawn on top.
+ */
+class Group extends SceneElement {
+
+  private var elements: List[SceneElement] = List()
+
+  def addElement(el: SceneElement): Unit = {
+    elements ::= el
+  }
+
+  override def update(dt: Long): Unit = {
+    elements.foreach(_.update(dt))
+  }
+
+  override def render(/*canvas: Canvas*/): Unit = ???
+
+  override def addAction(action: Action): Unit = ???
+}
+object Group {
+  def apply(els: SceneElement*): Group = {
+    val gr = new Group
+    els.foreach(el => gr.addElement(el))
+    gr
+  }
+}
