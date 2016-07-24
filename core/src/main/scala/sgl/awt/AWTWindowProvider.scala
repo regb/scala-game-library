@@ -43,8 +43,8 @@ trait AWTWindowProvider extends WindowProvider with Lifecycle {
   lazy val gamePanel = new GamePanel
   lazy val applicationFrame = new ApplicationFrame(gamePanel)
 
-  override def width: Int = gamePanel.getWidth
-  override def height: Int = gamePanel.getHeight
+  override def WindowWidth: Int = gamePanel.getWidth
+  override def WindowHeight: Int = gamePanel.getHeight
 
   override def dpi: Int = 160
 

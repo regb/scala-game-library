@@ -9,8 +9,8 @@ trait AndroidWindowProvider extends WindowProvider {
 
   val mainActivity: DefaultGameActivity
 
-  override def height = mainActivity.gameView.getHeight
-  override def width = mainActivity.gameView.getWidth
+  override def WindowHeight = mainActivity.gameView.getHeight
+  override def WindowWidth = mainActivity.gameView.getWidth
 
   private val BaseDensity: Double = 160
   override def dpi: Int = mainActivity.gameView.getResources.getDisplayMetrics.densityDpi

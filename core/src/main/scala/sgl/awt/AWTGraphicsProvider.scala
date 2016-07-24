@@ -160,8 +160,8 @@ trait AWTGraphicsProvider extends GraphicsProvider with Lifecycle {
   def getScreenCanvas: Canvas = {
     //lazy initialization since width/height are not known during startup
     if(image1 == null) {
-      image1 = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
-      image2 = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
+      image1 = new BufferedImage(WindowWidth, WindowHeight, BufferedImage.TYPE_INT_RGB)
+      image2 = new BufferedImage(WindowWidth, WindowHeight, BufferedImage.TYPE_INT_RGB)
     }
 
     flip = !flip

@@ -13,12 +13,8 @@ package sgl
 trait WindowProvider {
 
   
-  def width: Int
-  def height: Int
-  //TODO: we should stop using the above, as global constant the name is
-  //      is too common
-  def WindowWidth: Int = width
-  def WindowHeight: Int = height
+  def WindowWidth: Int
+  def WindowHeight: Int
 
   /** the screen dots per inch */
   def dpi: Int
