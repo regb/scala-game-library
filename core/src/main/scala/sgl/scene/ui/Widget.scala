@@ -7,7 +7,7 @@ package ui
   * how to render widgets in a hierarchical user
   * interface.
   */
-abstract class Widget extends SceneElement {
+abstract class Widget(_x: Int, _y: Int) extends SceneElement(_x, _y) {
 
   def minWidth: Int
   def minHeight: Int
