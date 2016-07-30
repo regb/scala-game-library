@@ -5,8 +5,8 @@ import net.liftweb.json.{parse => jsonParse, _}
 
 object TmxJsonParser {
 
-  def parse(lines: Iterator[String]): TmxMap = parse(lines.toList.mkString("\n"))
-  def parse(rawJson: String): TmxMap = {
+  def parse(lines: Iterator[String]): TiledMap = parse(lines.toList.mkString("\n"))
+  def parse(rawJson: String): TiledMap = {
 
     val json = jsonParse(rawJson)
 
@@ -123,7 +123,7 @@ object TmxJsonParser {
           val width = jsonToDouble(obj \ "width").get
           val height = jsonToDouble(obj \ "height").get
 
-          TmxMapObject(name=objectName, x=x.toInt, y=y.toInt, width=width.toInt, height=height.toInt, Map())
+          TiledMapObject(name=objectName, x=x.toInt, y=y.toInt, width=width.toInt, height=height.toInt, Map())
         })
 
         ObjectLayer(name, parsedObjs, visible, opacity, offsetX.toInt, offsetY.toInt)
@@ -133,7 +133,7 @@ object TmxJsonParser {
 
     }
 
-    def parseTileset(tileset: JValue): Tileset = {
+    def parseTileSet(tileset: JValue): TileSet = {
       val JInt(firstGlobalId) = tileset \ "firstgid"
       val JString(name) = tileset \ "name"
       val JString(image) = tileset \ "image"
@@ -151,7 +151,7 @@ object TmxJsonParser {
       val JInt(margin) = tileset \ "margin"
       val JInt(spacing) = tileset \ "spacing"
 
-      Tileset(firstGlobalId=firstGlobalId.toInt, name=name,
+      TileSet(firstGlobalId=firstGlobalId.toInt, name=name,
               image=image,
               tileCount=tileCount.toInt, nbColumns=nbColumns.toInt,
               tileWidth=tileWidth.toInt, tileHeight=tileHeight.toInt,
@@ -172,9 +172,9 @@ object TmxJsonParser {
     println(color)
 
     val parsedLayers = layers map parseLayer
-    val parsedTilesets =  tilesets map parseTileset
+    val parsedTilesets =  tilesets map parseTileSet
 
-    TmxMap(parsedLayers.toVector, parsedTilesets.toVector, tileWidth=tileWidth.toInt, tileHeight=tileHeight.toInt,
+    TiledMap(parsedLayers.toVector, parsedTilesets.toVector, tileWidth=tileWidth.toInt, tileHeight=tileHeight.toInt,
            backgroundColor=color, orientation=orientation, nextObjectId=nextObjectId.toInt, renderOrder=renderOrder,
            stagger=stagger)
   }

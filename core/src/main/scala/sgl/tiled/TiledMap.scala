@@ -16,10 +16,10 @@ import geometry._
   * something that could be done with a Map interface somewhere else), but just
   * to provide a parser from textual representation to a Scala structure.
   */
-case class TmxMap(
+case class TiledMap(
   //layers are ordered with first layer as the bottom one
   layers: Vector[Layer],
-  tilesets: Vector[Tileset],
+  tileSets: Vector[TileSet],
   //width of a tile, in pixels
   tileWidth: Int,
   //height of a tile, in pixels
@@ -54,15 +54,17 @@ case class TmxMap(
   /** map total height in pixels */
   val totalHeight: Int = height*tileHeight
 
-
+  def getTileSetForTileId(gid: Int): TileSet = tileSets.find(ts =>
+    ts.firstGlobalId <= gid && gid < ts.firstGlobalId + ts.tileCount).get
+  
 
 
   //convert the tilemap (which is in device indepent pixels, into correct pixels coordinates
-  //should probably be independent of this TmxMap (tilemap is a pure pixel level information,
+  //should probably be independent of this TiledMap (tilemap is a pure pixel level information,
   //tied to a bitmap tileset). is assuming that the tileset has been scaled indepenndently in
   //the same way.
-  def toDp(dp2px: (Int) => Int): TmxMap = {
-    TmxMap(
+  def toDp(dp2px: (Int) => Int): TiledMap = {
+    TiledMap(
       layers.map(layer => layer match {
         case TileLayer(name, tiles, visible, opacity, offsetX, offsetY) => {
           val newTiles = tiles.map(row => row.map(tile => tile.copy(x = dp2px(tile.x), y = dp2px(tile.y), width = dp2px(tile.width), height = dp2px(tile.height))))
@@ -73,9 +75,9 @@ case class TmxMap(
           ObjectLayer(name, newObjects, visible, opacity, dp2px(offsetX), dp2px(offsetY))
         }
       }),
-      tilesets.map(tileset => 
-        tileset.copy(tileWidth = dp2px(tileset.tileWidth), tileHeight = dp2px(tileset.tileHeight),
-                     margin = dp2px(tileset.margin), spacing = dp2px(tileset.spacing))
+      tileSets.map(tileSet => 
+        tileSet.copy(tileWidth = dp2px(tileSet.tileWidth), tileHeight = dp2px(tileSet.tileHeight),
+                     margin = dp2px(tileSet.margin), spacing = dp2px(tileSet.spacing))
       ),
       tileWidth = dp2px(tileWidth), tileHeight = dp2px(tileHeight), backgroundColor = backgroundColor,
       stagger = stagger.copy(hexSideLength=dp2px(stagger.hexSideLength)),
@@ -85,9 +87,9 @@ case class TmxMap(
   }
 
 }
-object TmxMap {
-  def fromJson(lines: Iterator[String]): TmxMap = fromJson(lines.toList.mkString("\n"))
-  def fromJson(rawJson: String): TmxMap = TmxJsonParser.parse(rawJson)
+object TiledMap {
+  def fromJson(lines: Iterator[String]): TiledMap = fromJson(lines.toList.mkString("\n"))
+  def fromJson(rawJson: String): TiledMap = TmxJsonParser.parse(rawJson)
 }
 
 
@@ -114,13 +116,13 @@ case class TileLayer(
 }
 
 case class ObjectLayer(
-  name: String, objects: List[TmxMapObject],
+  name: String, objects: List[TiledMapObject],
   isVisible: Boolean, opacity: Double,
   offsetX: Int, offsetY: Int
 ) extends Layer {
 
-  val objectsMap: Map[String, TmxMapObject] = objects.map(o => (o.name, o)).toMap
-  def get(objectName: String): TmxMapObject = objectsMap(objectName)
+  val objectsMap: Map[String, TiledMapObject] = objects.map(o => (o.name, o)).toMap
+  def get(objectName: String): TiledMapObject = objectsMap(objectName)
 }
 
 
@@ -134,7 +136,7 @@ case class ObjectLayer(
 case class Tile(index: Option[Int], x: Int, y: Int, width: Int, height: Int) {
   def rect: Rect = Rect(x, y, width, height)
 }
-case class TmxMapObject(
+case class TiledMapObject(
   name: String,
   x: Int, y: Int, width: Int, height: Int,
   properties: Map[String, String])
@@ -150,7 +152,7 @@ case class TmxMapObject(
   * image is a path relative to the location of the level, so it is
   * predictable from a classpath.
   */
-case class Tileset(
+case class TileSet(
   firstGlobalId: Int, name: String,
   tileCount: Int, nbColumns: Int,
   tileHeight: Int, tileWidth: Int,
@@ -158,12 +160,24 @@ case class Tileset(
   image: String) {
 
 
-  def tileCoordinates(gId: Int): Point = {
-    val offset = gId - firstGlobalId
+  def tileCoordinates(gid: Int): (Int, Int) = {
+    require(gid >= firstGlobalId && gid < firstGlobalId+tileCount)
+    val offset = gid - firstGlobalId
     val row = offset / nbColumns
     val col = offset % nbColumns
-    Point(col*tileWidth, row*tileHeight)
+    (col*tileWidth, row*tileHeight)
   }
+
+  //we need to get the bottom-left coordinates, as drawing tiles
+  //should expand to the top-right
+  def tileBottomLeft(gid: Int): (Int, Int) = {
+    require(gid >= firstGlobalId && gid < firstGlobalId+tileCount)
+    val offset = gid - firstGlobalId
+    val row = offset / nbColumns
+    val col = offset % nbColumns
+    (col*tileWidth, row*tileHeight + tileHeight)
+  }
+
 }
 
 /** How the map is staggered
