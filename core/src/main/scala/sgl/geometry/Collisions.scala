@@ -5,7 +5,7 @@ object Collisions {
   def circleWithCircle(c1: Circle, c2: Circle): Boolean = {
     val dist = (c1.center - c2.center)
     val n2 = dist.x*dist.x + dist.y*dist.y
-    n2 >= (c1.radius+c2.radius)*(c1.radius+c2.radius)
+    n2 <= (c1.radius+c2.radius)*(c1.radius+c2.radius)
   }
 
   def aabbWithAabb(r1: Rect, r2: Rect): Boolean = {

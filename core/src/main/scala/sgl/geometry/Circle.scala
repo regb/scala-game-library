@@ -27,3 +27,7 @@ case class Circle(x: Int, y: Int, radius: Int) {
 
   def boundingRect: Rect = Rect(x - radius, y - radius, 2*radius, 2*radius)
 }
+
+object Circle {
+  def apply(center: Point, radius: Int): Circle = Circle(center.x.toInt, center.y.toInt, radius)
+}
