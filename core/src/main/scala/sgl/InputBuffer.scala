@@ -44,6 +44,7 @@ class InputBuffer {
     var down: Boolean = false
 
     var w: Boolean = false
+    var x: Boolean = false
   }
 
   var mouseClick: Option[(Int, Int)] = None

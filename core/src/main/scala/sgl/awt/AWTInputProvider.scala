@@ -38,6 +38,8 @@ trait AWTInputProvider extends InputProvider with Lifecycle {
           inputBuffer.Keyboard.right = true
         else if(e.getKeyCode == KeyEvent.VK_W)
           inputBuffer.Keyboard.w = true
+        else if(e.getKeyCode == KeyEvent.VK_X)
+          inputBuffer.Keyboard.x = true
       }
       override def keyReleased(e: KeyEvent): Unit = {
         if(e.getKeyCode == KeyEvent.VK_LEFT)
@@ -46,6 +48,8 @@ trait AWTInputProvider extends InputProvider with Lifecycle {
           inputBuffer.Keyboard.right = false
         else if(e.getKeyCode == KeyEvent.VK_W)
           inputBuffer.Keyboard.w = false
+        else if(e.getKeyCode == KeyEvent.VK_X)
+          inputBuffer.Keyboard.x = false
       }
       override def keyTyped(e: KeyEvent): Unit = {}
     })
