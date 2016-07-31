@@ -42,6 +42,7 @@ case class TiledMap(
     case (o: ObjectLayer) => o
   }
   val objectLayersMap: Map[String, ObjectLayer] = objectLayers.map(o => (o.name, o)).toMap
+  def getObjectLayer(name: String): Option[ObjectLayer] = objectLayersMap.get(name)
 
   /** the map height, in number of tiles */
   val height: Int = tileLayers.headOption.map(_.tiles.length).getOrElse(0)
@@ -122,7 +123,8 @@ case class ObjectLayer(
 ) extends Layer {
 
   val objectsMap: Map[String, TiledMapObject] = objects.map(o => (o.name, o)).toMap
-  def get(objectName: String): TiledMapObject = objectsMap(objectName)
+  def get(objectName: String): Option[TiledMapObject] = objectsMap.get(objectName)
+  def apply(objectName: String): TiledMapObject = objectsMap(objectName)
 }
 
 
