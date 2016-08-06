@@ -5,8 +5,6 @@ trait GameScreensComponent {
 
   trait GameScreen {
   
-    def processInputs(inputs: InputBuffer): Unit = {}
-  
     /** update the screen, with the delta time (in ms) since last update */
     def update(dt: Long): Unit = {}
   

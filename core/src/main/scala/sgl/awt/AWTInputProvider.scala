@@ -55,18 +55,12 @@ trait AWTInputProvider extends InputProvider with Lifecycle {
 
   abstract override def startup(): Unit = {
     gamePanel.addMouseListener(new MouseAdapter() {
-      override def mouseClicked(e: MouseEvent): Unit = {
-        inputBuffer.mouseClick = Some((e.getX, e.getY))
-      }
+      override def mouseClicked(e: MouseEvent): Unit = { }
       override def mousePressed(e: MouseEvent): Unit = {
         Input.newEvent(Input.MouseDownEvent(e.getX, e.getY, mouseEventButton(e)))
-        inputBuffer.mouseDown = Some((e.getX, e.getY))
-        inputBuffer.mousePressed = Some((e.getX, e.getY))
       }
       override def mouseReleased(e: MouseEvent): Unit = {
         Input.newEvent(Input.MouseUpEvent(e.getX, e.getY, mouseEventButton(e)))
-        inputBuffer.mouseUp = Some((e.getX, e.getY))
-        inputBuffer.mousePressed = None
       }
     })
     gamePanel.addMouseMotionListener(new MouseAdapter() {
@@ -76,11 +70,9 @@ trait AWTInputProvider extends InputProvider with Lifecycle {
       //before
       override def mouseDragged(e: MouseEvent): Unit = {
         Input.newEvent(Input.MouseMovedEvent(e.getX, e.getY))
-        inputBuffer.mousePressed = Some((e.getX, e.getY))
       }
       override def mouseMoved(e: MouseEvent): Unit = {
         Input.newEvent(Input.MouseMovedEvent(e.getX, e.getY))
-        inputBuffer.mousePosition = Some((e.getX, e.getY))
       }
     })
 
@@ -89,27 +81,11 @@ trait AWTInputProvider extends InputProvider with Lifecycle {
         keyEventKey(e).foreach(key => {
           Input.newEvent(Input.KeyDownEvent(key))
         })
-        if(e.getKeyCode == KeyEvent.VK_LEFT)
-          inputBuffer.Keyboard.left = true
-        else if(e.getKeyCode == KeyEvent.VK_RIGHT)
-          inputBuffer.Keyboard.right = true
-        else if(e.getKeyCode == KeyEvent.VK_W)
-          inputBuffer.Keyboard.w = true
-        else if(e.getKeyCode == KeyEvent.VK_X)
-          inputBuffer.Keyboard.x = true
       }
       override def keyReleased(e: KeyEvent): Unit = {
         keyEventKey(e).foreach(key => {
           Input.newEvent(Input.KeyUpEvent(key))
         })
-        if(e.getKeyCode == KeyEvent.VK_LEFT)
-          inputBuffer.Keyboard.left = false
-        else if(e.getKeyCode == KeyEvent.VK_RIGHT)
-          inputBuffer.Keyboard.right = false
-        else if(e.getKeyCode == KeyEvent.VK_W)
-          inputBuffer.Keyboard.w = false
-        else if(e.getKeyCode == KeyEvent.VK_X)
-          inputBuffer.Keyboard.x = false
       }
       override def keyTyped(e: KeyEvent): Unit = {}
     })

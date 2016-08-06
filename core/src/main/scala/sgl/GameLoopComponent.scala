@@ -176,13 +176,6 @@ trait GameLoopComponent extends Lifecycle {
             val renderedScreens = screens.takeWhile(!_.isOpaque).reverse
             val lastOpaqueScreen = screens.find(_.isOpaque)
 
-            val startProcessInputs = System.nanoTime
-            currentScreen.processInputs(inputBuffer)
-            inputBuffer.clearEvents()
-            val processInputsTime = System.nanoTime - startProcessInputs
-            statistics.completeProcessInputsFrame(processInputsTime)
-
-            //TODO: should use nano time
             val startUpdate = System.nanoTime
             currentScreen.update(dt)
             val updateTime = System.nanoTime - startUpdate
@@ -261,7 +254,6 @@ trait GameLoopComponent extends Lifecycle {
 
     private var _totalUpdateTime: Long = 0
     private var _totalRenderTime: Long = 0
-    private var _totalProcessInputs: Long = 0
 
     //we compute current average using an exponential moving average.
     //the goal is to eventually eliminate outliers that would have appear, while still computing
@@ -270,22 +262,16 @@ trait GameLoopComponent extends Lifecycle {
     //Using this averaging technique, we don't need  to store any data points
     private var _updateTimeAverage: Double = 0
     private var _renderTimeAverage: Double = 0
-    private var _processInputsTimeAverage: Double = 0
     private var _frameTimeAverage: Double = 0
     private val AverageAlpha: Double = 0.01
 
     def updateTimeAverage: Double = _updateTimeAverage/(1000*1000)
     def renderTimeAverage: Double = _renderTimeAverage/(1000*1000)
-    def processInputsTimeAverage: Double = _processInputsTimeAverage/(1000*1000)
     def frameTimeAverage: Double = _frameTimeAverage/(1000*1000)
 
     private[GameLoopComponent] def completeUpdateFrame(dt: Long) = {
       _totalUpdateTime += dt
       _updateTimeAverage = AverageAlpha*dt + (1-AverageAlpha)*_updateTimeAverage
-    }
-    private[GameLoopComponent] def completeProcessInputsFrame(dt: Long) = {
-      _totalProcessInputs += dt
-      _processInputsTimeAverage = AverageAlpha*dt + (1-AverageAlpha)*_processInputsTimeAverage
     }
     private[GameLoopComponent] def completeRenderFrame(dt: Long) = {
       _totalRenderTime += dt

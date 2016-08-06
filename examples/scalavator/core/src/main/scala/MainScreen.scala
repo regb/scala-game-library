@@ -5,12 +5,12 @@ import sgl._
 import geometry._
 
 trait MainScreenComponent {
-  this: GraphicsProvider with GameLoopComponent
+  this: GraphicsProvider with InputProvider with GameLoopComponent
   with GameScreensComponent with WindowProvider 
   with SystemProvider with AudioProvider =>
 
-  def windowWidth = width
-  def windowHeight = height
+  def windowWidth = WindowWidth
+  def windowHeight = WindowHeight
 
   class MainScreen extends GameScreen {
 
@@ -57,17 +57,26 @@ trait MainScreenComponent {
     private var cameraHeight = windowHeight
 
 
-    override def processInputs(inputs: InputBuffer): Unit = {
-      val simpleInputs = new SimpleInputBuffer(inputs)
-
-      if(simpleInputs.pointingDevice.down.nonEmpty && !isJumping && standingPlatform.nonEmpty) {
-        isJumping = true
-        jumpingDuration = 0
-        standingPlatform = None
+    def processInputs(): Unit = Input.pollEvent() match {
+      case None => ()
+      case Some(ev) => {
+        ev match {
+          case Input.TouchDownEvent(_, _, _) | Input.MouseDownEvent(_, _, _) =>
+            if(!isJumping && standingPlatform.nonEmpty) {
+              isJumping = true
+              jumpingDuration = 0
+              standingPlatform = None
+            }
+          case _ => ()
+        }
+        processInputs()
       }
     }
 
     override def update(dt: Long): Unit = {
+
+      processInputs()
+
       val originalCharacterFeet = characterPosition.y
       platforms.foreach(_.update(dt))
       if(isJumping) {

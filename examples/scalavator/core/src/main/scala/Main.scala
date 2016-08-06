@@ -6,7 +6,7 @@ import sgl.awt._
 import analytics._
 
 trait AbstractApp extends MainScreenComponent {
-  this: GraphicsProvider with WindowProvider with AudioProvider
+  this: GraphicsProvider with InputProvider with WindowProvider with AudioProvider
   with GameScreensComponent with SystemProvider
   with GameLoopComponent =>
 

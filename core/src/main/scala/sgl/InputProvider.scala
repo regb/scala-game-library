@@ -25,25 +25,45 @@ package sgl
  *
  */
 
-/** Provider for input handling */
+/** Provider for input handling 
+  *
+  * The core responsability of an InputProvider implementation is to collect
+  * system events {InputEvent}, and expose them in the eventQueue. The InputProvider
+  * only collects lowest level events, such as mouse down and up, and not derived
+  * event such as mouse pressed (down + up in a given interval). It also distinguishes
+  * each kind of device (mouse vs touch), and does not abstract one as the other. That
+  * job can be performed by a layer on top. The design principle here is to expose the
+  * real core of the events, and then build any simplification/abstraction as separate
+  * modules on top. That seeems like a cleaner design, and will simplify the implementation
+  * of input providers backends.
+  *
+  * The queue is not automatically cleaned, and events must be processed by invoking
+  * Input.pollEvent that returns the first event in the queue. This is the GameScreen
+  * responsability to collect and handle events on each update/frame, and if it does
+  * not call pollEvent, then events will keep accumulating in the queue, which could lead
+  * to delayed response to user input. That design seems better as, in case the game falls
+  * behind in term of updating/rendering, it's better to let it decide how to handle
+  * inputs that should have been handled a few frames ago (rather than just drop them from the
+  * queue).
+  *
+  */
 trait InputProvider {
-
-  val inputBuffer: InputBuffer = new InputBuffer
-
 
   object Input {
     import scala.collection.mutable.Queue
 
     private val eventQueue: Queue[InputEvent] = new Queue[InputEvent]()
 
-    def newEvent(event: InputEvent): Unit = eventQueue.enqueue(event)
+    def newEvent(event: InputEvent): Unit = synchronized { eventQueue.enqueue(event) }
 
     /** Poll for the oldest non processed event.
       *
       * check if any events is present, and return an Option of an event.
       * The event is removed from the event queue.
       */
-    def pollEvent(): Option[InputEvent] = if(eventQueue.isEmpty) None else Some(eventQueue.dequeue())
+    def pollEvent(): Option[InputEvent] = synchronized {
+      if(eventQueue.isEmpty) None else Some(eventQueue.dequeue())
+    }
 
     //TODO: with an Event based architecture with immutable case
     //      classes, one concern is going to be garbage collecting
@@ -126,106 +146,6 @@ trait InputProvider {
        */
       case object ButtonStart extends Key
       case object ButtonSelect extends Key
-    }
-
-  }
-
-  /** Provide current state of system Inputs
-    *
-    * This is an abstraction on top of the inputs provided by the
-    * system. It's a global (to the cake) object as we consider inputs
-    * are unique (you don't need to handle separate input providers) and
-    * should be accessible to any part of the system.
-    *
-    * This is a superset of possible inputs, including
-    * touch screen based (typically for mobile), mouse based, keyboards, etc.
-    * It's mutable, but (ideally) should only be mutated by the input provider
-    * backend implementation (TODO: try to enforce it with visibility declarations)
-    * and is always up to date during a call to update.
-    *
-    * It exposes distinctly mouse and touch state, so if one
-    * queries the state of the mouse like if it's down and its position, 
-    * and the underlying platform is a touch based without a mouse, the
-    * state of the mouse will not pretend to be a touch interface.
-    *
-    * The above design is to make sure to have perfect control, and to
-    * design the best possible interface on each platform. To simplify
-    * cross-platform programming, the Inputs also provides a PointingDevice
-    * abstraction, which will expose any pointing-based input (mouse or touch)
-    * as the same thing.
-    *
-    * Most state is expressed with the term "*Pressed". Pressed might be
-    * a bit confusing since in Java we usually have down, up, and pressed
-    * events, with pressed being fired only when up happens. But here, pressed
-    * means the state is currently pressed (or down). A button/key can
-    * be in a pressed state for many frames. Pressed was chosen as it sounded
-    * better with some terms such as Buttons.leftPressed (versus leftDown, which
-    * sounds like a direction).
-    */
-  object Inputs {
-    /* TODO: I'm not sure this should really be the lowest level
-     * abstraction on Inputs (along with events). Maybe it makes
-     * more sense to only expose events, and have a separate module
-     * processing events to maintain the Inputs state up-to-date?
-     * That would mean, an InputProvider backend would not have to
-     * worry about maintaining the current state, and we would just
-     * update it automatically by some component handled in the main loop.
-     * One question then is, if that component registers to events the
-     * same way any game screen could do, we need to be pretty sure the
-     * component has a chance to handle the events first, so that the
-     * game screens then see the correct version of the Inputs state.
-     */
-
-    /** System-specific buttons
-      *
-      * Some buttons are left/right/middle mouse buttons,
-      * back/menu button on Android, could also be controller
-      * button from a gamepad. Keyboard keys are not buttons
-      *
-      * Note that, as for other states, this will not masquerade
-      * stuff. So a leftPressed in only a mouse left button click,
-      * and we won't set it if a single touch on the screen is for
-      * example happening.
-      *
-      * Also, the fact that left is pressed means that the mouse pressed
-      * state should be currently set to some coordinates.
-      */
-    object Buttons {
-      var leftPressed: Boolean = false
-      var middlePressed: Boolean = false
-      var rightPressed: Boolean = false
-      var backPressed: Boolean = false
-      var menuPressed: Boolean = false
-    }
-
-    object Touch {
-      //TODO: expose multi-touch ?
-      var pressed: Option[(Int, Int)] = None
-    }
-
-    object Mouse {
-      var position: Option[(Int, Int)] = None
-
-      def pressed: Option[(Int, Int)] = leftPressed
-      def leftPressed: Option[(Int, Int)] = if(Buttons.leftPressed) position else None
-      def rightPressed: Option[(Int, Int)] = if(Buttons.rightPressed) position else None
-    }
-
-    object Keyboard {
-      var left: Boolean = false
-      var right: Boolean = false
-      var up: Boolean = false
-      var down: Boolean = false
-
-      var w: Boolean = false
-      var x: Boolean = false
-    }
-
-    /** abstraction over mouse, touch screen, stylus, and any other pointing device */
-    object PointingDevice {
-      /* TODO: probably need to have multiple pointing devices (like mouse + stylus, or multi-touch */
-
-      def pressed: Option[(Int, Int)] = Mouse.leftPressed.orElse(Touch.pressed)
     }
 
   }
