@@ -23,6 +23,6 @@ trait AbstractApp extends MainScreenComponent {
 /** Wire backend to the App here */
 object Main extends AbstractApp with AWTApp {
 
-  override val frameDimension = Some((400, 600))
+  override val frameDimension = Some((400, 650))
 
 }

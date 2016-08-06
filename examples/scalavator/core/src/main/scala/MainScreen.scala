@@ -9,19 +9,17 @@ trait MainScreenComponent {
   with GameScreensComponent with WindowProvider 
   with SystemProvider with AudioProvider =>
 
-  def windowWidth = WindowWidth
-  def windowHeight = WindowHeight
-
   class MainScreen extends GameScreen {
+    //println(s"window size: ($WindowWidth, $WindowHeight)")
 
-    private val Gravity = Vec(0, dp2px(200))
+    private val Gravity = Vec(0, dp2px(300))
 
     private val PlatformHeight = dp2px(5)
     class Platform(var x: Double, var y: Double, val width: Int, var speed: Double) {
       def update(dt: Long): Unit = {
         x = x + speed*(dt/1000d)
-        if(x+width > windowWidth) {
-          x = windowWidth-width
+        if(x+width > WindowWidth) {
+          x = WindowWidth-width
           speed = -speed
         } else if(x < 0) {
           x = 0
@@ -34,17 +32,26 @@ trait MainScreenComponent {
 
       override def toString = s"Platform($x, $y) with speed $speed"
     }
-    private val startingPlatform = new Platform(0, windowHeight-PlatformHeight, windowWidth, 0)
+    object Platform {
+      def random(y: Double): Platform = {
+        val width = dp2px(50 + scala.util.Random.nextInt(40))
+        val x = scala.util.Random.nextInt(WindowWidth - width)
+        val speed = dp2px(80 + scala.util.Random.nextInt(50))
+        new Platform(x, y, width, speed)
+      }
+    }
+
+    private val startingPlatform = new Platform(0, WindowHeight-PlatformHeight, WindowWidth, 0)
     private var platforms: List[Platform] = List(
-      startingPlatform,
-      new Platform(windowWidth/2, windowHeight-dp2px(100), dp2px(70), dp2px(90)),
-      new Platform(windowWidth/2, windowHeight-dp2px(200), dp2px(70), dp2px(110)),
-      new Platform(windowWidth/2, windowHeight-dp2px(300), dp2px(70), -dp2px(100)),
-      new Platform(windowWidth/2, windowHeight-dp2px(400), dp2px(70), dp2px(80)),
-      new Platform(windowWidth/2, windowHeight-dp2px(500), dp2px(70), -dp2px(130))
+      new Platform(WindowWidth/2, WindowHeight-dp2px(500), dp2px(70), -dp2px(130)),
+      new Platform(WindowWidth/2, WindowHeight-dp2px(400), dp2px(70), dp2px(80)),
+      new Platform(WindowWidth/2, WindowHeight-dp2px(300), dp2px(70), -dp2px(100)),
+      new Platform(WindowWidth/2, WindowHeight-dp2px(200), dp2px(70), dp2px(110)),
+      new Platform(WindowWidth/2, WindowHeight-dp2px(100), dp2px(70), dp2px(90)),
+      startingPlatform
     )
 
-    private var characterPosition = Point(windowWidth/2, windowHeight - PlatformHeight)
+    private var characterPosition = Point(WindowWidth/2, WindowHeight - PlatformHeight)
     private val CharacterWidth = dp2px(30)
     private val CharacterHeight = dp2px(50)
     private def characterHitBox = Rect(characterPosition.x.toInt, characterPosition.y.toInt - CharacterHeight, CharacterWidth, CharacterHeight)
@@ -54,7 +61,12 @@ trait MainScreenComponent {
 
     private var standingPlatform: Option[Platform] = Some(startingPlatform)
 
-    private var cameraHeight = windowHeight
+    //a score, derived from the highest platform landed on, to show in HUD
+    private var score = 0
+
+    private var randomNextPop: Int = generateRandomNextPop
+
+    private def generateRandomNextPop: Int = dp2px(60 + scala.util.Random.nextInt(30))
 
 
     def processInputs(): Unit = Input.pollEvent() match {
@@ -74,6 +86,7 @@ trait MainScreenComponent {
     }
 
     override def update(dt: Long): Unit = {
+      //println(s"update window size: ($WindowWidth, $WindowHeight)")
 
       processInputs()
 
@@ -82,8 +95,13 @@ trait MainScreenComponent {
       if(isJumping) {
         characterPosition = characterPosition - Gravity*(dt/1000d)
         jumpingDuration += dt
-        if(jumpingDuration > 1200)
+        if(jumpingDuration > 900)
           isJumping = false
+
+
+        if(characterPosition.y.toInt < WindowHeight/2)
+          scrollUp(WindowHeight/2 - characterPosition.y.toInt)
+
       } else {
         
         standingPlatform match {
@@ -99,6 +117,11 @@ trait MainScreenComponent {
                       ).foreach(platform => {
           standingPlatform = Some(platform)
         })
+
+        if(standingPlatform == None && characterPosition.y-CharacterHeight > WindowHeight) {
+          println("game over")
+          gameLoop.newScreen(new MainScreen)
+        }
       }
 
       
@@ -117,14 +140,20 @@ trait MainScreenComponent {
      * When jumping passed half the screen, we scroll up to maintain the character
      * in the middle. We never scroll down, as essentially everything outside of the
      * screen disappeared.
+     *
+     * We don't use a camera, we just shift everything down a bit, and drop the platform
+     * when it goes off screen.
      */
     private def scrollUp(distance: Int): Unit = {
       platforms.foreach(plat => plat.y += distance)
       characterPosition = characterPosition + Vec(0, distance.toDouble)
 
-      cameraHeight += distance
-      if(cameraHeight % 50 == 0)
-        platforms ::= new Platform(windowWidth/2, 0, dp2px(70), dp2px(50))
+      if(platforms.head.y >= randomNextPop) {
+        randomNextPop = generateRandomNextPop
+        platforms ::= Platform.random(0)
+      }
+
+      platforms.filterNot(p => p.y <= 0)
     }
 
   }
