@@ -1,7 +1,7 @@
 package sgl
 package awt
 
-import java.awt.{Image, Graphics, Color}
+import java.awt.{Image, Graphics, Graphics2D, Color}
 import java.awt.image.BufferedImage
 import javax.imageio.ImageIO
 import java.awt.FontMetrics
@@ -83,7 +83,18 @@ trait AWTGraphicsProvider extends GraphicsProvider with Lifecycle {
   type Paint = AWTPaint
   override def defaultPaint: Paint = AWTPaint(Font.Default, Color.Black, Alignments.Left)
 
-  case class AWTCanvas(graphics: Graphics, width: Int, height: Int) extends AbstractCanvas {
+  case class AWTCanvas(graphics: Graphics2D, var width: Int, var height: Int) extends AbstractCanvas {
+
+    override def translate(x: Int, y: Int): Unit = {
+      graphics.translate(x.toDouble, y.toDouble)
+    }
+
+    override def clipRect(x: Int, y: Int, width: Int, height: Int): Unit = {
+      graphics.setClip(x, y, width, height)
+      this.width = width
+      this.height = height
+    }
+
     override def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit = {
       graphics.drawImage(bitmap.img, x, y, null)
     }
@@ -116,7 +127,9 @@ trait AWTGraphicsProvider extends GraphicsProvider with Lifecycle {
       paint.alignment match {
         case Alignments.Center =>
           drawCenteredString(str, x, y, paint)
-        case _ =>
+        case Alignments.Right =>
+          drawRightAlignedString(str, x, y, paint)
+        case Alignments.Left =>
           graphics.drawString(str, x, y)
       }
     }
@@ -125,6 +138,11 @@ trait AWTGraphicsProvider extends GraphicsProvider with Lifecycle {
       val metrics = graphics.getFontMetrics
       val realX = x - metrics.stringWidth(str)/2
       //val y = ((rect.height - metrics.getHeight()) / 2) - metrics.getAscent();
+      graphics.drawString(str, realX, y)
+    }
+    private def drawRightAlignedString(str: String, x: Int, y: Int, paint: Paint) {
+      val metrics = graphics.getFontMetrics
+      val realX = x - metrics.stringWidth(str)
       graphics.drawString(str, realX, y)
     }
 
@@ -166,7 +184,7 @@ trait AWTGraphicsProvider extends GraphicsProvider with Lifecycle {
 
     flip = !flip
     val g = if(flip) image1.getGraphics else image2.getGraphics
-    AWTCanvas(g, gamePanel.getWidth, gamePanel.getHeight)
+    AWTCanvas(g.asInstanceOf[Graphics2D], gamePanel.getWidth, gamePanel.getHeight)
   }
   def releaseScreenCanvas(canvas: Canvas): Unit = {
     val imageToDraw = if(flip) image1 else image2
@@ -210,7 +228,7 @@ trait AWTGraphicsProvider extends GraphicsProvider with Lifecycle {
 
     override val height: Int = rows.size * lineHeight
 
-    def draw(g: Graphics, x: Int, y: Int): Unit = {
+    def draw(g: Graphics2D, x: Int, y: Int): Unit = {
       var startY = y
       rows.foreach(line => {
         g.drawString(line, x, startY)

@@ -1,5 +1,7 @@
 package sgl
 
+import util._
+
 /** Component to handle the main loop of the game
   *
   * The game main loop is handled in this component.
@@ -13,8 +15,10 @@ package sgl
   * a pause, and restart it on a resume.
   */
 trait GameLoopComponent extends Lifecycle {
-  self: GraphicsProvider with InputProvider with GameScreensComponent =>
+  self: GraphicsProvider with InputProvider
+    with GameScreensComponent with LoggingProvider =>
 
+  private implicit val Tag = Logger.Tag("game-loop")
   /*
    * TODO: maybe this should be named GameState (should export transition
    *       between GameScreen).
@@ -201,10 +205,12 @@ trait GameLoopComponent extends Lifecycle {
 
         val sleepTime: Long = FramePeriod.map(fp => fp - elapsedTime/(1000*1000)).getOrElse(0)
 
+        logger.debug(s"Measured FPS: ${statistics.measuredFps}")
+
         if(sleepTime > 0) {
           Thread.sleep(sleepTime)
         } else if(sleepTime < 0) {
-          //Log.w(LogTag, s"negative sleep time. frame period: $FramePeriod, elapsed time: $elapsedTime.")
+          logger.warning(s"negative sleep time. frame period: $FramePeriod, elapsed time: $elapsedTime.")
         }
       }
     }

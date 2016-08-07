@@ -3,11 +3,13 @@ package core
 
 import sgl._
 import geometry._
+import scene._
 
 trait MainScreenComponent {
   this: GraphicsProvider with InputProvider with GameLoopComponent
   with GameScreensComponent with WindowProvider 
-  with SystemProvider with AudioProvider =>
+  with SystemProvider with AudioProvider
+  with SceneComponent =>
 
   class MainScreen extends GameScreen {
     //println(s"window size: ($WindowWidth, $WindowHeight)")
@@ -68,6 +70,8 @@ trait MainScreenComponent {
 
     private def generateRandomNextPop: Int = dp2px(60 + scala.util.Random.nextInt(30))
 
+    private val hud = new Hud
+
 
     def processInputs(): Unit = Input.pollEvent() match {
       case None => ()
@@ -89,6 +93,8 @@ trait MainScreenComponent {
       //println(s"update window size: ($WindowWidth, $WindowHeight)")
 
       processInputs()
+
+      hud.sceneGraph.update(dt)
 
       val originalCharacterFeet = characterPosition.y
       platforms.foreach(_.update(dt))
@@ -128,12 +134,15 @@ trait MainScreenComponent {
     }
 
     override def render(canvas: Canvas): Unit = {
+
       platforms.foreach(_.render(canvas))
       canvas.drawRect(
         characterPosition.x.toInt, characterPosition.y.toInt-CharacterHeight,
         CharacterWidth, CharacterHeight, 
         defaultPaint.withColor(Color.Green)
       )
+
+      hud.sceneGraph.render(canvas)
     }
 
     /*
@@ -148,14 +157,50 @@ trait MainScreenComponent {
       platforms.foreach(plat => plat.y += distance)
       characterPosition = characterPosition + Vec(0, distance.toDouble)
 
+      hud.scoreLabel.score += distance
+
       if(platforms.head.y >= randomNextPop) {
         randomNextPop = generateRandomNextPop
         platforms ::= Platform.random(0)
       }
 
-      platforms.filterNot(p => p.y <= 0)
+      platforms.filterNot(p => p.y > WindowHeight)
     }
 
+  }
+
+  class Hud {
+
+    val sceneGraph = new SceneGraph(WindowWidth, WindowHeight)
+
+    private val group = new SceneGroup(0, 0, WindowWidth, dp2px(40))
+    private val groupBackground = new GroupBackground
+    private val titleLabel = new TitleLabel
+    val scoreLabel = new ScoreLabel
+    group.addNode(groupBackground)
+    group.addNode(titleLabel)
+    group.addNode(scoreLabel)
+    sceneGraph.addNode(group)
+    
+    class GroupBackground extends SceneNode(0, 0, 0, 0) {
+      override def update(dt: Long): Unit = {}
+      override def render(canvas: Canvas): Unit = {
+        canvas.drawColor(Color.Red)
+      }
+    }
+    class TitleLabel extends SceneNode(dp2px(15), dp2px(20), 0, 0) {
+      override def update(dt: Long): Unit = {}
+      override def render(canvas: Canvas): Unit = {
+        canvas.drawString("Scalavator", x.toInt, y.toInt, defaultPaint.withColor(Color.White))
+      }
+    }
+    class ScoreLabel extends SceneNode(WindowWidth-dp2px(25), dp2px(20), 0, 0) {
+      var score: Int = 0
+      override def update(dt: Long): Unit = {}
+      override def render(canvas: Canvas): Unit = {
+        canvas.drawString(score.toString, x.toInt, y.toInt, defaultPaint.withColor(Color.White).withAlignment(Alignments.Right))
+      }
+    }
   }
 
 }

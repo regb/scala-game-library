@@ -90,9 +90,17 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
   type TextLayout <: AbstractTextLayout
 
   trait AbstractCanvas {
+
+    //TODO: those don't make too much sense when we start translating the canvas
     def width: Int
     def height: Int
     
+    /** translate the origin of the canvas to (x, y) */
+    def translate(x: Int, y: Int): Unit
+
+    /** clip rendering area with the rectangle */
+    def clipRect(x: Int, y: Int, width: Int, height: Int): Unit
+
     /** draw the whole bitmap at x and y */
     def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit
 
