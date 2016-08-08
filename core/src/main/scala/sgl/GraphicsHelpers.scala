@@ -69,5 +69,26 @@ trait GraphicsHelpersComponent {
 
   }
 
+  /** Represents a rectangular region in a bitmap.
+    *
+    * It's a convenient class to wrap a fixed area of a bitmap.
+    * This would typically be used to extract individual tiles and
+    * sprites from a tileset/spritesheet.
+    */
+  class BitmapRegion(
+    val bitmap: Bitmap, val x: Int, val y: Int,
+    val width: Int, val height: Int) {
+
+    def this(bitmap: Bitmap) = this(bitmap, 0, 0, bitmap.width, bitmap.height)
+
+    //render could also be defined in RichCanvas as
+    //def drawRegion(region: BitmapRegion, x: Int, y: Int): Unit
+    //don't know which design would be best
+    def render(canvas: Canvas, x: Int, y: Int): Unit = {
+      canvas.drawBitmap(bitmap, x, y, this.x, this.y, width, height)
+    }
+
+  }
+
 
 }
