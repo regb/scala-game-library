@@ -90,5 +90,12 @@ trait GraphicsHelpersComponent {
 
   }
 
+  /** Animation helper class
+    *
+    */
+  //class Animation {
+
+  //}
+
 
 }
