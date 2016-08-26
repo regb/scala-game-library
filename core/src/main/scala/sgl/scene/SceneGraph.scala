@@ -4,6 +4,8 @@ package scene
 trait SceneGraphComponent {
   this: GraphicsProvider with InputProvider =>
 
+  import Input._
+
   /** The main container element to organize a scene
     *
     * Is somewhat similar to a GameScreen interface, but is meant to
@@ -32,13 +34,24 @@ trait SceneGraphComponent {
       * Each input you wish to handle in the Scene must be processed by the SceneGraph 
       * in order to dispatch it to the right node. The SceneGraph returns true if
       * the event was handled by some node, false if ignored. In most case, the
-      * caller will want to ignore an event if it was processed (typically if the
-      * caller organizes a HUD on top of its own game map, if the HUD intercepts one
-      * input event).
+      * caller will want to stop processing an event further if it was processed (typically if the
+      * caller organizes a HUD on top of its own game map, then processInput will return true if the HUD 
+      * intercepts the input event, and thus the caller should consider it as intercepted).
       */
     def processInput(input: Input.InputEvent): Boolean = {
+      val hitPosition: Option[(Int, Int)] = input match {
+        case MouseDownEvent(x, y, _) => Some((x, y))
+        case MouseUpEvent(x, y, _) => Some((x, y))
+        case TouchDownEvent(x, y, _) => Some((x, y))
+        case TouchUpEvent(x, y, _) => Some((x, y))
+        case _ => None
+      }
+
+      val hitNode: Option[SceneNode] = hitPosition.flatMap{case (x, y) => root.hit(x, y)}
+
       false
     }
+
   
     def update(dt: Long): Unit = root.update(dt)
   
@@ -123,6 +136,16 @@ trait SceneGraphComponent {
         None
     }
 
+    /* Essentially I don't know how to design the event system, so I just add
+     * the simplest thing that works for the current game I'm working on, which
+     * is that each actor can get notified of a click event (down + up) from
+     * either mouse or touch input. One can override to perform some action on
+     * the click, and the return value should be true if the click is handled
+     * else the event will be sent higher in the hierarchy.
+     * Coordinates are local to the node (this.x + x would be local to the parent).
+     */
+    def notifyClick(x: Int, y: Int): Boolean = false
+
   }
   
   /*
@@ -159,7 +182,7 @@ trait SceneGraphComponent {
     override def hit(x: Int, y: Int): Option[SceneNode] = {
       var found: Option[SceneNode] = None
       for(node <- nodes if found.isEmpty) {
-        found = node.hit(x,y)
+        found = node.hit(x - this.x.toInt,y - this.y.toInt)
       }
       found
     }

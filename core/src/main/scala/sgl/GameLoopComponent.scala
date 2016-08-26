@@ -205,7 +205,7 @@ trait GameLoopComponent extends Lifecycle {
 
         val sleepTime: Long = FramePeriod.map(fp => fp - elapsedTime/(1000*1000)).getOrElse(0)
 
-        logger.debug(s"Measured FPS: ${statistics.measuredFps}")
+        logger.trace(s"Measured FPS: ${statistics.measuredFps}")
 
         if(sleepTime > 0) {
           Thread.sleep(sleepTime)
