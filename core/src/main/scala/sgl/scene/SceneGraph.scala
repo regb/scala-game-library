@@ -49,7 +49,34 @@ trait SceneGraphComponent {
 
       val hitNode: Option[SceneNode] = hitPosition.flatMap{case (x, y) => root.hit(x, y)}
 
-      false
+      hitNode.foreach(node => {
+        input match {
+          case MouseDownEvent(x, y, _) =>
+            node.downEvent = Some(((x, y), System.currentTimeMillis))
+            node.notifyDown(x, y)
+          case TouchDownEvent(x, y, _) =>
+            node.downEvent = Some(((x, y), System.currentTimeMillis))
+            node.notifyDown(x, y)
+          case MouseUpEvent(x, y, _) =>
+            node.notifyUp(x, y)
+            node.downEvent.foreach{ case (_, t) =>
+              val age = System.currentTimeMillis - t
+              if(age < 2000)
+                node.notifyClick(x, y)
+            }
+            node.downEvent = None
+          case TouchUpEvent(x, y, _) =>
+            node.notifyUp(x, y)
+            node.downEvent.foreach{ case (_, t) =>
+              val age = System.currentTimeMillis - t
+              if(age > 100 && age < 2000)
+                node.notifyClick(x, y)
+            }
+            node.downEvent = None
+        }
+      })
+
+      true
     }
 
   
@@ -135,6 +162,11 @@ trait SceneGraphComponent {
       else
         None
     }
+
+    var downEvent: Option[((Int, Int), Long)] = None
+    def notifyDown(x: Int, y: Int): Boolean = false
+    def notifyUp(x: Int, y: Int): Boolean = false
+
 
     /* Essentially I don't know how to design the event system, so I just add
      * the simplest thing that works for the current game I'm working on, which
