@@ -50,6 +50,17 @@ trait AWTInputProvider extends InputProvider with Lifecycle {
     case KeyEvent.VK_Y => Some(Input.Keys.Y)
     case KeyEvent.VK_Z => Some(Input.Keys.Z)
 
+    case KeyEvent.VK_0 => Some(Input.Keys.Num0)
+    case KeyEvent.VK_1 => Some(Input.Keys.Num1)
+    case KeyEvent.VK_2 => Some(Input.Keys.Num2)
+    case KeyEvent.VK_3 => Some(Input.Keys.Num3)
+    case KeyEvent.VK_4 => Some(Input.Keys.Num4)
+    case KeyEvent.VK_5 => Some(Input.Keys.Num5)
+    case KeyEvent.VK_6 => Some(Input.Keys.Num6)
+    case KeyEvent.VK_7 => Some(Input.Keys.Num7)
+    case KeyEvent.VK_8 => Some(Input.Keys.Num8)
+    case KeyEvent.VK_9 => Some(Input.Keys.Num9)
+
     case _ => None
   }
 

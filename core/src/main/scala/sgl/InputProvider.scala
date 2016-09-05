@@ -154,6 +154,31 @@ trait InputProvider {
       case object Y extends Key
       case object Z extends Key
 
+      sealed trait NumKey extends Key {
+        def toInt = this match {
+          case Num0 => 0
+          case Num1 => 1
+          case Num2 => 2
+          case Num3 => 3
+          case Num4 => 4
+          case Num5 => 5
+          case Num6 => 6
+          case Num7 => 7
+          case Num8 => 8
+          case Num9 => 9
+        }
+      }
+      case object Num0 extends NumKey
+      case object Num1 extends NumKey
+      case object Num2 extends NumKey
+      case object Num3 extends NumKey
+      case object Num4 extends NumKey
+      case object Num5 extends NumKey
+      case object Num6 extends NumKey
+      case object Num7 extends NumKey
+      case object Num8 extends NumKey
+      case object Num9 extends NumKey
+
       case object Space extends Key
 
       case object Left extends Key
