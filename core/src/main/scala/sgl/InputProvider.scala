@@ -92,6 +92,26 @@ trait InputProvider {
     case class TouchDownEvent(x: Int, y: Int, pointer: Int) extends TouchInputEvent
     case class TouchUpEvent(x: Int, y: Int, pointer: Int) extends TouchInputEvent
 
+    /** Abstraction on top of mouse and touch
+      *
+      * Provide an extractor that can transparently handle mouse and touch
+      * events.
+      */
+    object PointerDownEvent {
+      def unapply(event: InputEvent): Option[(Int, Int, Int)] = event match {
+        case MouseDownEvent(x, y, _) => Some((x, y, 1))
+        case TouchDownEvent(x, y, p) => Some((x, y, p))
+        case _ => None
+      }
+    }
+    object PointerUpEvent {
+      def unapply(event: InputEvent): Option[(Int, Int, Int)] = event match {
+        case MouseUpEvent(x, y, _) => Some((x, y, 1))
+        case TouchUpEvent(x, y, p) => Some((x, y, p))
+        case _ => None
+      }
+    }
+
     object MouseButtons {
       sealed trait MouseButton
       case object Left extends MouseButton
@@ -146,6 +166,12 @@ trait InputProvider {
        */
       case object ButtonStart extends Key
       case object ButtonSelect extends Key
+
+      /*
+       * We also have system buttons like back/menu in Android
+       */
+      case object ButtonBack extends Key
+      case object ButtonMenu extends Key
     }
 
   }
