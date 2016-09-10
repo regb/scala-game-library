@@ -93,12 +93,23 @@ trait MainScreenComponent {
       }
     }
 
+    private var accumulatedDelta = 0l
+    private val FixedDelta = 5l
     override def update(dt: Long): Unit = {
       logger.debug("player velocity: " + characterVelocity)
       logger.debug("player position: " + characterPosition)
 
       processInputs()
 
+      accumulatedDelta += dt
+
+      while(accumulatedDelta / FixedDelta != 0) {
+        accumulatedDelta -= FixedDelta
+        fixedUpdate(FixedDelta)
+      }
+    }
+
+    def fixedUpdate(dt: Long): Unit = {
       hud.sceneGraph.update(dt)
 
       val originalCharacterFeet = characterPosition.y
