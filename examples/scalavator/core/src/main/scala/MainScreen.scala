@@ -4,17 +4,21 @@ package core
 import sgl._
 import geometry._
 import scene._
+import util._
 
 trait MainScreenComponent {
   this: GraphicsProvider with InputProvider with GameLoopComponent
   with GameScreensComponent with WindowProvider 
   with SystemProvider with AudioProvider
-  with SceneComponent =>
+  with SceneComponent with LoggingProvider =>
+
 
   class MainScreen extends GameScreen {
-    //println(s"window size: ($WindowWidth, $WindowHeight)")
 
-    private val Gravity = Vec(0, dp2px(300))
+    private implicit val Tag = Logger.Tag("main")
+
+    private val Gravity = Vec(0, dp2px(500))
+    private val JumpImpulsion = dp2px(600)
 
     private val PlatformHeight = dp2px(5)
     class Platform(var x: Double, var y: Double, val width: Int, var speed: Double) {
@@ -54,11 +58,12 @@ trait MainScreenComponent {
     )
 
     private var characterPosition = Point(WindowWidth/2, WindowHeight - PlatformHeight)
+    private var characterVelocity = Vec(0, 0)
+
     private val CharacterWidth = dp2px(30)
     private val CharacterHeight = dp2px(50)
     private def characterHitBox = Rect(characterPosition.x.toInt, characterPosition.y.toInt - CharacterHeight, CharacterWidth, CharacterHeight)
 
-    private var isJumping = false
     private var jumpingDuration: Long = 0
 
     private var standingPlatform: Option[Platform] = Some(startingPlatform)
@@ -78,10 +83,9 @@ trait MainScreenComponent {
       case Some(ev) => {
         ev match {
           case Input.TouchDownEvent(_, _, _) | Input.MouseDownEvent(_, _, _) =>
-            if(!isJumping && standingPlatform.nonEmpty) {
-              isJumping = true
-              jumpingDuration = 0
+            if(standingPlatform.nonEmpty) {
               standingPlatform = None
+              characterVelocity = Vec(0, -JumpImpulsion)
             }
           case _ => ()
         }
@@ -90,7 +94,8 @@ trait MainScreenComponent {
     }
 
     override def update(dt: Long): Unit = {
-      //println(s"update window size: ($WindowWidth, $WindowHeight)")
+      logger.debug("player velocity: " + characterVelocity)
+      logger.debug("player position: " + characterPosition)
 
       processInputs()
 
@@ -98,26 +103,20 @@ trait MainScreenComponent {
 
       val originalCharacterFeet = characterPosition.y
       platforms.foreach(_.update(dt))
-      if(isJumping) {
-        characterPosition = characterPosition - Gravity*(dt/1000d)
-        jumpingDuration += dt
-        if(jumpingDuration > 900)
-          isJumping = false
 
+      standingPlatform match {
+        case None => {
+          characterVelocity += Gravity*(dt/1000d)
+          characterPosition += characterVelocity*(dt/1000d)
 
-        if(characterPosition.y.toInt < WindowHeight/2)
-          scrollUp(WindowHeight/2 - characterPosition.y.toInt)
-
-      } else {
-        
-        standingPlatform match {
-          case None =>
-            characterPosition = characterPosition + Gravity*(dt/1000d)
-          case Some(platform) => 
-            characterPosition = characterPosition + Vec(1,0)*platform.speed*(dt/1000d)
+          if(characterPosition.y.toInt < WindowHeight/2)
+            scrollUp(WindowHeight/2 - characterPosition.y.toInt)
         }
-
-        val newCharacterFeet = characterPosition.y
+        case Some(platform) => 
+          characterPosition = characterPosition + Vec(1,0)*platform.speed*(dt/1000d)
+      }
+      val newCharacterFeet = characterPosition.y
+      if(newCharacterFeet > originalCharacterFeet) { //if falling
         platforms.find(p => p.y+1 > originalCharacterFeet && p.y+1 <= newCharacterFeet && 
                             p.x <= characterPosition.x + CharacterWidth && p.x + p.width >= characterPosition.x
                       ).foreach(platform => {
@@ -125,11 +124,10 @@ trait MainScreenComponent {
         })
 
         if(standingPlatform == None && characterPosition.y-CharacterHeight > WindowHeight) {
-          println("game over")
+          logger.info("Game Over")
           gameLoop.newScreen(new MainScreen)
         }
       }
-
       
     }
 
