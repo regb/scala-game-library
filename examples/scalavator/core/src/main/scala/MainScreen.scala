@@ -162,7 +162,8 @@ trait MainScreenComponent {
         platforms ::= Platform.random(0)
       }
 
-      platforms.filterNot(p => p.y > WindowHeight)
+      platforms = platforms.filterNot(p => p.y > WindowHeight)
+      logger.debug("Total platforms: " + platforms.size)
     }
 
   }
