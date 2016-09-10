@@ -112,8 +112,13 @@ trait MainScreenComponent {
           if(characterPosition.y.toInt < WindowHeight/2)
             scrollUp(WindowHeight/2 - characterPosition.y.toInt)
         }
-        case Some(platform) => 
+        case Some(platform) => {
           characterPosition = characterPosition + Vec(1,0)*platform.speed*(dt/1000d)
+          if(characterPosition.x < 0)
+            characterPosition = characterPosition.copy(x = 0)
+          if(characterPosition.x + CharacterWidth > WindowWidth)
+            characterPosition = characterPosition.copy(x = WindowWidth-CharacterWidth)
+        }
       }
       val newCharacterFeet = characterPosition.y
       if(newCharacterFeet > originalCharacterFeet) { //if falling
