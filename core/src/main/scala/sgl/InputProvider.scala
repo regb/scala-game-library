@@ -65,6 +65,21 @@ trait InputProvider {
       if(eventQueue.isEmpty) None else Some(eventQueue.dequeue())
     }
 
+    /**
+     * Functional approach to event handling. This method expects a partial function that handles
+     * the incoming input.
+     *
+     * It is possible to provide a filter function through overloading that will dequeue only the Input
+     * that satisfy the given condition, leaving the other into the queue.
+     * @param function
+     * @param filter
+     */
+    def processEvents(function:(InputEvent)=>Unit,filter:(InputEvent)=>Boolean): Unit= synchronized{
+      eventQueue.dequeueAll(filter).foreach(function)
+    }
+
+    def processEvents(function:(InputEvent)=>Unit): Unit = processEvents(function,(x:InputEvent)=>true)
+
     //TODO: with an Event based architecture with immutable case
     //      classes, one concern is going to be garbage collecting
     //      the events. Hopefully, not too many events happen (since
