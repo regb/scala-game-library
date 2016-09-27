@@ -60,6 +60,18 @@ trait MainScreenComponent {
     private var characterPosition = Point(WindowWidth/2, WindowHeight - PlatformHeight)
     private var characterVelocity = Vec(0, 0)
 
+    private val characterBitmap = loadImageFromResource("drawable/character.png")
+    private val characterFrames = Array(
+      BitmapRegion(characterBitmap, 0, 0, 30, 50),
+      BitmapRegion(characterBitmap, 30, 0, 30, 50),
+      BitmapRegion(characterBitmap, 60, 0, 30, 50),
+      BitmapRegion(characterBitmap, 90, 0, 30, 50),
+      BitmapRegion(characterBitmap, 120, 0, 30, 50),
+      BitmapRegion(characterBitmap, 150, 0, 30, 50))
+    private val characterAnimation = new Animation(650, characterFrames, Animation.LoopPingPong)
+
+    private var gameTotalTime: Long = 0
+
     private val CharacterWidth = dp2px(30)
     private val CharacterHeight = dp2px(50)
     private def characterHitBox = Rect(characterPosition.x.toInt, characterPosition.y.toInt - CharacterHeight, CharacterWidth, CharacterHeight)
@@ -96,6 +108,7 @@ trait MainScreenComponent {
     private var accumulatedDelta = 0l
     private val FixedDelta = 5l
     override def update(dt: Long): Unit = {
+      gameTotalTime += dt
       logger.debug("player velocity: " + characterVelocity)
       logger.debug("player position: " + characterPosition)
 
@@ -150,11 +163,14 @@ trait MainScreenComponent {
     override def render(canvas: Canvas): Unit = {
 
       platforms.foreach(_.render(canvas))
-      canvas.drawRect(
-        characterPosition.x.toInt, characterPosition.y.toInt-CharacterHeight,
-        CharacterWidth, CharacterHeight, 
-        defaultPaint.withColor(Color.Green)
-      )
+
+      //canvas.drawRect(
+      //  characterPosition.x.toInt, characterPosition.y.toInt-CharacterHeight,
+      //  CharacterWidth, CharacterHeight, 
+      //  defaultPaint.withColor(Color.Green)
+      //)
+      canvas.drawBitmap(characterAnimation.currentFrame(gameTotalTime),
+        characterPosition.x.toInt, characterPosition.y.toInt-CharacterHeight)
 
       hud.sceneGraph.render(canvas)
     }
