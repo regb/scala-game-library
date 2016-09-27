@@ -90,19 +90,13 @@ trait MainScreenComponent {
     private val hud = new Hud
 
 
-    def processInputs(): Unit = Input.pollEvent() match {
-      case None => ()
-      case Some(ev) => {
-        ev match {
-          case Input.TouchDownEvent(_, _, _) | Input.MouseDownEvent(_, _, _) =>
-            if(standingPlatform.nonEmpty) {
-              standingPlatform = None
-              characterVelocity = Vec(0, -JumpImpulsion)
-            }
-          case _ => ()
+    def handleInput(ev: Input.InputEvent): Unit = ev match {
+      case Input.TouchDownEvent(_, _, _) | Input.MouseDownEvent(_, _, _) =>
+        if(standingPlatform.nonEmpty) {
+          standingPlatform = None
+          characterVelocity = Vec(0, -JumpImpulsion)
         }
-        processInputs()
-      }
+      case _ => ()
     }
 
     private var accumulatedDelta = 0l
@@ -112,7 +106,7 @@ trait MainScreenComponent {
       logger.debug("player velocity: " + characterVelocity)
       logger.debug("player position: " + characterPosition)
 
-      processInputs()
+      Input.processEvents(handleInput)
 
       accumulatedDelta += dt
 
