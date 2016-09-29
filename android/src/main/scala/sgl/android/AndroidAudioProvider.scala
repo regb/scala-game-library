@@ -51,6 +51,9 @@ trait AndroidAudioProvider extends AudioProvider with Lifecycle {
     type PlayedSound = Int
 
     override def play(volume: Float): PlayedSound = {
+      //TODO: not clear if the volume needs to go through this logarithmic scaling
+      //      but it is needed for MediaPlayer at least
+      //val androidVolume = 1 - (math.log(100f-volume*100f)/math.log(100f)).toFloat
       soundPool.play(soundId, volume, volume, 1, 0, 1f)
     }
     override def loop(volume: Float): PlayedSound = {
@@ -99,6 +102,8 @@ trait AndroidAudioProvider extends AudioProvider with Lifecycle {
     var player: MediaPlayer = null
     var backupPlayer: MediaPlayer = null
 
+    private var androidVolume: Float = 1f
+
     private var shouldLoop = false
 
     //load asset from path and prepare the mp
@@ -131,6 +136,7 @@ trait AndroidAudioProvider extends AudioProvider with Lifecycle {
         mp.stop()
         mp.release()
         player = backupPlayer
+        player.setVolume(androidVolume, androidVolume)
         prepareBackupPlayer();
       }
     }
@@ -181,8 +187,13 @@ trait AndroidAudioProvider extends AudioProvider with Lifecycle {
 
     override def setVolume(volume: Float): Unit = {
       prepareIfIdle()
+
+      //Android API seems to use some log based scaling, one way to map the
+      //linear parameter of SGL is as follows
+      //androidVolume = 1 - (math.log(100f-volume*100f)/math.log(100f)).toFloat
+      androidVolume = volume
       
-      player.setVolume(volume, volume) //not sure, but seems like the volume is kept with nextMediaPlayers
+      player.setVolume(androidVolume, androidVolume)
     }
 
     override def dispose(): Unit = {

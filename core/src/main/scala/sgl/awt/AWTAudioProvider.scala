@@ -11,8 +11,11 @@ trait AWTAudioProvider extends AudioProvider {
   private def setClipVolume(clip: Clip, volume: Float): Unit = {
     val gainControl = clip.getControl(FloatControl.Type.MASTER_GAIN).asInstanceOf[FloatControl]
     val width: Float = gainControl.getMaximum-gainControl.getMinimum
-    val value = width*volume + gainControl.getMinimum
-    gainControl.setValue(value)
+
+    //TODO: figure out how to properly control the volume
+    val db: Float = 20f*math.log10(volume).toFloat
+    //val value = width*volume + gainControl.getMinimum
+    gainControl.setValue(db)
   }
 
   /*

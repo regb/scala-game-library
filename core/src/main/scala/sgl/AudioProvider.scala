@@ -141,6 +141,12 @@ trait AudioProvider {
       * The volume is between 0 and 1, with
       * 0 meaning the lowest available value, and 1 the
       * highest.
+      *
+      * The progression from 0 to 1 should be linear. It seems
+      * like some system use some sort of logarithmic scale, but
+      * I don't really know why, so this function will take the
+      * simpler approach to have a linear scale from 0 to 1, with
+      * 0.5 being 50% of max volume.
       */
     def setVolume(volume: Float): Unit
 
