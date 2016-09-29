@@ -47,9 +47,15 @@ trait InputHelpersComponent extends Lifecycle {
         }
       }
       case MouseScrolledEvent(amount) => ()
-      case TouchDraggedEvent(x, y, pointer) => ()
-      case TouchDownEvent(x, y, pointer) => ()
-      case TouchUpEvent(x, y, pointer) => ()
+      case TouchMovedEvent(x, y, pointer) => (
+        Inputs.Touch.pointerPressed += (pointer -> (x, y))
+      )
+      case TouchDownEvent(x, y, pointer) => (
+        Inputs.Touch.pointerPressed += (pointer -> (x, y))
+      )
+      case TouchUpEvent(x, y, pointer) => (
+        Inputs.Touch.pointerPressed -= pointer
+      )
     }
 
     private def setKeyboardState(key: Input.Keys.Key, down: Boolean): Unit = key match {
@@ -60,8 +66,11 @@ trait InputHelpersComponent extends Lifecycle {
 
       case Keys.Space => Inputs.Keyboard.space = down
 
-      case Keys.ButtonStart => ()
-      case Keys.ButtonSelect => ()
+      case Keys.ButtonStart => Inputs.Buttons.startPressed = down
+      case Keys.ButtonSelect => Inputs.Buttons.selectPressed = down
+
+      case Keys.ButtonBack => Inputs.Buttons.backPressed = down
+      case Keys.ButtonMenu => Inputs.Buttons.menuPressed = down
 
       case Keys.A => Inputs.Keyboard.a = down
       case Keys.B => Inputs.Keyboard.b = down
@@ -89,6 +98,17 @@ trait InputHelpersComponent extends Lifecycle {
       case Keys.X => Inputs.Keyboard.x = down
       case Keys.Y => Inputs.Keyboard.y = down
       case Keys.Z => Inputs.Keyboard.z = down
+
+      case Keys.Num0 => Inputs.Keyboard.num0 = down
+      case Keys.Num1 => Inputs.Keyboard.num1 = down
+      case Keys.Num2 => Inputs.Keyboard.num2 = down
+      case Keys.Num3 => Inputs.Keyboard.num3 = down
+      case Keys.Num4 => Inputs.Keyboard.num4 = down
+      case Keys.Num5 => Inputs.Keyboard.num5 = down
+      case Keys.Num6 => Inputs.Keyboard.num6 = down
+      case Keys.Num7 => Inputs.Keyboard.num7 = down
+      case Keys.Num8 => Inputs.Keyboard.num8 = down
+      case Keys.Num9 => Inputs.Keyboard.num9 = down
     }
 
   }
@@ -100,7 +120,7 @@ trait InputHelpersComponent extends Lifecycle {
     * are unique (you don't need to handle separate input providers) and
     * should be accessible to any part of the system.
     *
-    * It must be kept up-to-date by processing each event as they arise. This
+    * It must be kept up-to-date by processing each event as it arise. This
     * is the role of the InputHelpers.processEvent function. It is not called
     * automatically by the game loop, as we consider those helpers to be
     * optional to the system, but one way to ensure this is called is to collect
@@ -154,11 +174,17 @@ trait InputHelpersComponent extends Lifecycle {
       var rightPressed: Boolean = false
       var backPressed: Boolean = false
       var menuPressed: Boolean = false
+      var startPressed: Boolean = false
+      var selectPressed: Boolean = false
     }
 
     object Touch {
-      //TODO: expose multi-touch ?
-      var pressed: Option[(Int, Int)] = None
+      //for each currently pressed pointer id, store it in the map
+      var pointerPressed: Map[Int, (Int, Int)] = Map()
+
+      /** is defined if at least one pointer is pressed */
+      def pressed: Option[(Int, Int)] = pointerPressed.toSeq.headOption.map(_._2)
+      def pressed(pointer: Int): Option[(Int, Int)] = pointerPressed.get(pointer)
     }
 
     object Mouse {
@@ -204,6 +230,17 @@ trait InputHelpersComponent extends Lifecycle {
       var x: Boolean = false
       var y: Boolean = false
       var z: Boolean = false
+
+      var num0: Boolean = false
+      var num1: Boolean = false
+      var num2: Boolean = false
+      var num3: Boolean = false
+      var num4: Boolean = false
+      var num5: Boolean = false
+      var num6: Boolean = false
+      var num7: Boolean = false
+      var num8: Boolean = false
+      var num9: Boolean = false
     }
 
     /** abstraction over mouse, touch screen, stylus, and any other pointing device */

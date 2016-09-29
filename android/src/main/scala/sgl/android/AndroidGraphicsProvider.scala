@@ -146,6 +146,15 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
     override def renderText(text: String, width: Int, paint: Paint): TextLayout = {
       AndroidTextLayout(text, width, paint)
     }
+
+    def clipRect(x: Int, y: Int, width: Int, height: Int): Unit = {
+      canvas.clipRect(x, y, x+width, y+height)
+    }
+
+    def translate(x: Int, y: Int): Unit = {
+      canvas.translate(x.toFloat, y.toFloat)
+    }
+
   }
   type Canvas = AndroidCanvas
 

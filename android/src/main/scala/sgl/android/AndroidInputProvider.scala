@@ -11,7 +11,6 @@ trait AndroidInputProvider extends InputProvider with Lifecycle {
 
   abstract override def startup(): Unit = {
     super.startup()
-    println("init of AndroidInputProvider")
 
     val gestureDetector = new GestureDetector(mainActivity.gameView.getContext, new GameGestureListener)
     gestureDetector.setIsLongpressEnabled(false) //no long press, user can long press and then scroll
@@ -20,21 +19,32 @@ trait AndroidInputProvider extends InputProvider with Lifecycle {
       override def onTouch(view: View, event: MotionEvent): Boolean = {
         gestureDetector.onTouchEvent(event)
 
-        if(event.getAction == MotionEvent.ACTION_DOWN) {
-          val x = event.getX.toInt
-          val y = event.getY.toInt
-          inputBuffer.touchingDown = Some((x, y))
-          inputBuffer.touchDown = Some((x, y))
-        } else if(event.getAction == MotionEvent.ACTION_MOVE) {
-          val x = event.getX.toInt
-          val y = event.getY.toInt
-          inputBuffer.touchingDown = Some((x, y))
-        } else if(event.getAction == MotionEvent.ACTION_UP) {
-          val x = event.getX.toInt
-          val y = event.getY.toInt
-          inputBuffer.touchingDown = None
-          inputBuffer.touchUp = Some((x, y))
+        for(p <- 0 until event.getPointerCount()) {
+          if(event.getAction == MotionEvent.ACTION_DOWN) {
+            val x = event.getX(p).toInt
+            val y = event.getY(p).toInt
+            Input.newEvent(Input.TouchDownEvent(x, y, event.getPointerId(p)))
+          } else if(event.getAction == MotionEvent.ACTION_MOVE) {
+
+            //ACTION_MOVE is sometimes batched, meaning that we need to consume
+            //historical data from the event, that shows intermediate position
+            //before getting to the final getX/getY positions
+            for(h <- 0 until event.getHistorySize) {
+              val x = event.getHistoricalX(p, h).toInt
+              val y = event.getHistoricalY(p, h).toInt
+              Input.newEvent(Input.TouchMovedEvent(x, y, event.getPointerId(p)))
+            }
+
+            val x = event.getX(p).toInt
+            val y = event.getY(p).toInt
+            Input.newEvent(Input.TouchMovedEvent(x, y, event.getPointerId(p)))
+          } else if(event.getAction == MotionEvent.ACTION_UP) {
+            val x = event.getX(p).toInt
+            val y = event.getY(p).toInt
+            Input.newEvent(Input.TouchUpEvent(x, y, event.getPointerId(p)))
+          }
         }
+
         /*
          * if true is not returned then we do not get follow up events 
          * (like UP after DOWN) and the gesture detector is not working properly (missing some events)
@@ -43,27 +53,23 @@ trait AndroidInputProvider extends InputProvider with Lifecycle {
       }
     })
 
-    var backPressed = false
-    var menuPressed = false
     //TODO: clarify what is proper way to detect those events
     mainActivity.gameView.setOnKeyListener(new View.OnKeyListener {
       override def onKey(v: View, keyCode: Int, event: KeyEvent): Boolean = {
         if(keyCode == KeyEvent.KEYCODE_BACK) {
-          if(event.getAction == KeyEvent.ACTION_UP && backPressed) {
-            backPressed = false
-            inputBuffer.backPressed = true
+          if(event.getAction == KeyEvent.ACTION_UP) {
+            Input.newEvent(Input.KeyUpEvent(Input.Keys.ButtonBack))
             true
           } else if(event.getAction == KeyEvent.ACTION_DOWN) {
-            backPressed = true
+            Input.newEvent(Input.KeyDownEvent(Input.Keys.ButtonBack))
             true
           } else false
         } else if(keyCode == KeyEvent.KEYCODE_MENU) {
-          if(event.getAction == KeyEvent.ACTION_UP && backPressed) {
-            menuPressed = false
-            inputBuffer.menuPressed = true
+          if(event.getAction == KeyEvent.ACTION_UP) {
+            Input.newEvent(Input.KeyUpEvent(Input.Keys.ButtonMenu))
             true
           } else if(event.getAction == KeyEvent.ACTION_DOWN) {
-            menuPressed = true
+            Input.newEvent(Input.KeyDownEvent(Input.Keys.ButtonMenu))
             true
           } else false
         } else {
@@ -74,20 +80,21 @@ trait AndroidInputProvider extends InputProvider with Lifecycle {
 
   }
 
+  //TODO: must reintegrate these scrolling detection somewhere in the framework
   class GameGestureListener extends GestureDetector.SimpleOnGestureListener {
     override def onScroll(ev1: MotionEvent, ev2: MotionEvent, distanceX: Float, distanceY: Float): Boolean = {
-      inputBuffer.touchScrollVector match {
-        case None =>
-          inputBuffer.touchScrollVector = Some((distanceX, distanceY))
-        case Some((dx, dy)) =>
-          inputBuffer.touchScrollVector = Some((dx + distanceX, dy + distanceY))
-      }
+      //inputBuffer.touchScrollVector match {
+      //  case None =>
+      //    //inputBuffer.touchScrollVector = Some((distanceX, distanceY))
+      //  case Some((dx, dy)) =>
+      //    //inputBuffer.touchScrollVector = Some((dx + distanceX, dy + distanceY))
+      //}
       true
     }
     override def onSingleTapUp(event: MotionEvent): Boolean = {
       val x = event.getX.toInt
       val y = event.getY.toInt
-      inputBuffer.touchPoint =  Some((x, y))
+      //inputBuffer.touchPoint =  Some((x, y))
       true
     }
   }

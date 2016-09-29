@@ -54,6 +54,8 @@ trait InputProvider {
 
     private val eventQueue: Queue[InputEvent] = new Queue[InputEvent]()
 
+    //TODO: this should be private, only accessible to the backends implementing the input
+    //      provider
     def newEvent(event: InputEvent): Unit = synchronized { eventQueue.enqueue(event) }
 
     /** Poll for the oldest non processed event.
@@ -92,7 +94,7 @@ trait InputProvider {
     case class KeyDownEvent(key: Keys.Key) extends InputEvent
     case class KeyUpEvent(key: Keys.Key) extends InputEvent
 
-    //mouse events, no Dragged as it can be derived as a combination of Moved and Down
+    //mouse events, no Dragged event as it can be derived as a combination of Moved and Down
     sealed trait MouseInputEvent extends InputEvent
     case class MouseMovedEvent(x: Int, y: Int) extends MouseInputEvent
     case class MouseDownEvent(x: Int, y: Int, mouseButton: MouseButtons.MouseButton) extends MouseInputEvent
@@ -100,10 +102,11 @@ trait InputProvider {
     //middle button scrolled, amount +/- depending on direction
     case class MouseScrolledEvent(amount: Int) extends MouseInputEvent
 
-    //touch events, no Moved (as it would indicate a position, without a touch). The pointer is
+    //touch events, Moved means that the cursor is currently touching (different interpretation
+    //from the mouse, where it just means moving and not necessarly pressed). The pointer is
     //the id of the pointer that is touching, to support multi-touch
     sealed trait TouchInputEvent extends InputEvent
-    case class TouchDraggedEvent(x: Int, y: Int, pointer: Int) extends TouchInputEvent
+    case class TouchMovedEvent(x: Int, y: Int, pointer: Int) extends TouchInputEvent
     case class TouchDownEvent(x: Int, y: Int, pointer: Int) extends TouchInputEvent
     case class TouchUpEvent(x: Int, y: Int, pointer: Int) extends TouchInputEvent
 
