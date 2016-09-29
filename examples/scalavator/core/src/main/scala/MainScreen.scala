@@ -57,24 +57,25 @@ trait MainScreenComponent {
       startingPlatform
     )
 
-    private var characterPosition = Point(WindowWidth/2, WindowHeight - PlatformHeight)
+    private val CharacterWidth = dp2px(30)
+    private val CharacterHeight = dp2px(50)
+
+    private var characterPosition = Point(WindowWidth/2-CharacterWidth/2, WindowHeight - PlatformHeight)
     private var characterVelocity = Vec(0, 0)
+
+    private def characterHitBox = Rect(characterPosition.x.toInt, characterPosition.y.toInt - CharacterHeight, CharacterWidth, CharacterHeight)
 
     private val characterBitmap = loadImageFromResource("drawable/character.png")
     private val characterFrames = Array(
-      BitmapRegion(characterBitmap, 0, 0, 30, 50),
-      BitmapRegion(characterBitmap, 30, 0, 30, 50),
-      BitmapRegion(characterBitmap, 60, 0, 30, 50),
-      BitmapRegion(characterBitmap, 90, 0, 30, 50),
-      BitmapRegion(characterBitmap, 120, 0, 30, 50),
-      BitmapRegion(characterBitmap, 150, 0, 30, 50))
+      BitmapRegion(characterBitmap, 0, 0, dp2px(30), dp2px(50)),
+      BitmapRegion(characterBitmap, dp2px(30), 0, dp2px(30), dp2px(50)),
+      BitmapRegion(characterBitmap, dp2px(60), 0, dp2px(30), dp2px(50)),
+      BitmapRegion(characterBitmap, dp2px(90), 0, dp2px(30), dp2px(50)),
+      BitmapRegion(characterBitmap, dp2px(120), 0, dp2px(30), dp2px(50)),
+      BitmapRegion(characterBitmap, dp2px(150), 0, dp2px(30), dp2px(50)))
     private val characterAnimation = new Animation(650, characterFrames, Animation.LoopPingPong)
 
     private var gameTotalTime: Long = 0
-
-    private val CharacterWidth = dp2px(30)
-    private val CharacterHeight = dp2px(50)
-    private def characterHitBox = Rect(characterPosition.x.toInt, characterPosition.y.toInt - CharacterHeight, CharacterWidth, CharacterHeight)
 
     private var jumpingDuration: Long = 0
 
@@ -156,6 +157,8 @@ trait MainScreenComponent {
 
     override def render(canvas: Canvas): Unit = {
 
+      canvas.drawRect(0, 0, WindowWidth, WindowHeight, defaultPaint.withColor(Color.Black))
+
       platforms.foreach(_.render(canvas))
 
       //canvas.drawRect(
@@ -206,6 +209,8 @@ trait MainScreenComponent {
     group.addNode(titleLabel)
     group.addNode(scoreLabel)
     sceneGraph.addNode(group)
+
+    val textPaint = defaultPaint.withColor(Color.White).withFont(Font.Default.withSize(dp2px(18)))
     
     class GroupBackground extends SceneNode(0, 0, 0, 0) {
       override def update(dt: Long): Unit = {}
@@ -213,17 +218,17 @@ trait MainScreenComponent {
         canvas.drawColor(Color.Red)
       }
     }
-    class TitleLabel extends SceneNode(dp2px(15), dp2px(20), 0, 0) {
+    class TitleLabel extends SceneNode(dp2px(15), dp2px(25), 0, 0) {
       override def update(dt: Long): Unit = {}
       override def render(canvas: Canvas): Unit = {
-        canvas.drawString("Scalavator", x.toInt, y.toInt, defaultPaint.withColor(Color.White))
+        canvas.drawString("Scalavator", x.toInt, y.toInt, textPaint)
       }
     }
-    class ScoreLabel extends SceneNode(WindowWidth-dp2px(25), dp2px(20), 0, 0) {
+    class ScoreLabel extends SceneNode(WindowWidth-dp2px(25), dp2px(25), 0, 0) {
       var score: Int = 0
       override def update(dt: Long): Unit = {}
       override def render(canvas: Canvas): Unit = {
-        canvas.drawString(score.toString, x.toInt, y.toInt, defaultPaint.withColor(Color.White).withAlignment(Alignments.Right))
+        canvas.drawString(score.toString, x.toInt, y.toInt, textPaint.withAlignment(Alignments.Right))
       }
     }
   }
