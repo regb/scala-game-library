@@ -19,12 +19,26 @@ trait AndroidInputProvider extends InputProvider with Lifecycle {
       override def onTouch(view: View, event: MotionEvent): Boolean = {
         gestureDetector.onTouchEvent(event)
 
+        /*
+         * Multi-touch on android starts with a first ACTION_DOWN event for the
+         * very first pointer, then following down are ACTION_POINTER_DOWN, and 
+         * first up (as long as one finger is still left) is ACTION_POINTER_UP.
+         * Seems like we don't need that level of precision in the engine, so we
+         * only have the notion of Up and Down, relying on the pointer id if we
+         * need to track a multitouch gesture
+         */
+
+        val action = event.getActionMasked
         for(p <- 0 until event.getPointerCount()) {
-          if(event.getAction == MotionEvent.ACTION_DOWN) {
+          if(action == MotionEvent.ACTION_DOWN) {
             val x = event.getX(p).toInt
             val y = event.getY(p).toInt
             Input.newEvent(Input.TouchDownEvent(x, y, event.getPointerId(p)))
-          } else if(event.getAction == MotionEvent.ACTION_MOVE) {
+          } else if(action == MotionEvent.ACTION_POINTER_DOWN) {
+            val x = event.getX(p).toInt
+            val y = event.getY(p).toInt
+            Input.newEvent(Input.TouchDownEvent(x, y, event.getPointerId(p)))
+          } else if(action == MotionEvent.ACTION_MOVE) {
 
             //ACTION_MOVE is sometimes batched, meaning that we need to consume
             //historical data from the event, that shows intermediate position
@@ -38,7 +52,11 @@ trait AndroidInputProvider extends InputProvider with Lifecycle {
             val x = event.getX(p).toInt
             val y = event.getY(p).toInt
             Input.newEvent(Input.TouchMovedEvent(x, y, event.getPointerId(p)))
-          } else if(event.getAction == MotionEvent.ACTION_UP) {
+          } else if(action == MotionEvent.ACTION_POINTER_UP) {
+            val x = event.getX(p).toInt
+            val y = event.getY(p).toInt
+            Input.newEvent(Input.TouchUpEvent(x, y, event.getPointerId(p)))
+          } else if(action == MotionEvent.ACTION_UP) {
             val x = event.getX(p).toInt
             val y = event.getY(p).toInt
             Input.newEvent(Input.TouchUpEvent(x, y, event.getPointerId(p)))

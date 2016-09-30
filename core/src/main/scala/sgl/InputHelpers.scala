@@ -18,7 +18,17 @@ trait InputHelpersComponent extends Lifecycle {
       ev foreach processEvent
       ev
     }
+    def processEvents(function: (InputEvent) => Unit): Unit = {
+      var oev = Input.pollEvent()
+      while(!oev.isEmpty) {
+        val ev = oev.get
+        processEvent(ev)
+        function(ev)
+        oev = pollEvent()
+      }
+    }
 
+    //TODO: not a good name, confusing with processEvents 
     /** Process an input event to maintain state of inputs */
     def processEvent(event: InputEvent): Unit = event match {
       case KeyDownEvent(key) => setKeyboardState(key, true)
@@ -185,6 +195,8 @@ trait InputHelpersComponent extends Lifecycle {
       /** is defined if at least one pointer is pressed */
       def pressed: Option[(Int, Int)] = pointerPressed.toSeq.headOption.map(_._2)
       def pressed(pointer: Int): Option[(Int, Int)] = pointerPressed.get(pointer)
+
+      def allPressed: Seq[(Int, (Int, Int))] = pointerPressed.toSeq
     }
 
     object Mouse {
