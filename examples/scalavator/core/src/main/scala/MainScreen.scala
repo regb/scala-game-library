@@ -57,8 +57,12 @@ trait MainScreenComponent {
       startingPlatform
     )
 
+    //character real height varies from sprite to sprite, and the value
+    //refers to the sprite height (but when idle, it uses ony about half of
+    //that height). The width only refers to the inner part that is collidable
+    //and not the full sprite with the arms.
     private val CharacterWidth = dp2px(30)
-    private val CharacterHeight = dp2px(50)
+    private val CharacterHeight = dp2px(68)
 
     private var characterPosition = Point(WindowWidth/2-CharacterWidth/2, WindowHeight - PlatformHeight)
     private var characterVelocity = Vec(0, 0)
@@ -67,15 +71,39 @@ trait MainScreenComponent {
 
     private val characterBitmap = loadImageFromResource("drawable/character.png")
     private val characterFrames = Array(
-      BitmapRegion(characterBitmap, 0, 0, dp2px(30), dp2px(50)),
-      BitmapRegion(characterBitmap, dp2px(30), 0, dp2px(30), dp2px(50)),
-      BitmapRegion(characterBitmap, dp2px(60), 0, dp2px(30), dp2px(50)),
-      BitmapRegion(characterBitmap, dp2px(90), 0, dp2px(30), dp2px(50)),
-      BitmapRegion(characterBitmap, dp2px(120), 0, dp2px(30), dp2px(50)),
-      BitmapRegion(characterBitmap, dp2px(150), 0, dp2px(30), dp2px(50)))
-    private val characterAnimation = new Animation(650, characterFrames, Animation.LoopPingPong)
+      BitmapRegion(characterBitmap, 0, 0, dp2px(48), dp2px(68)),
+      BitmapRegion(characterBitmap, dp2px(48), 0, dp2px(48), dp2px(68)),
+      BitmapRegion(characterBitmap, dp2px(96), 0, dp2px(48), dp2px(68)),
+      BitmapRegion(characterBitmap, dp2px(144), 0, dp2px(48), dp2px(68)))
+    private val CharacterIdleAnimation = new Animation(200, Array(characterFrames.head), Animation.Loop)
+    private val CharacterStartJumpAnimation = new Animation(250, characterFrames, Animation.Normal)
+    private val CharacterEndJumpAnimation = new Animation(250, characterFrames, Animation.Reversed)
 
-    private var gameTotalTime: Long = 0
+    //this looks like a standard wrapper technique for a character/sprite
+    //that can have several state and thus several animation. It seems
+    //more convenient to have an internal shared elapsed time, that
+    //is reset each time the animation change, and properly updated 
+    //by a simple call to update, no matter what the current animation is.
+    //The alternative being to store global variables in the game logic,
+    //and tracking which current animation is going on to get the frame
+    //with the proper elapsed time.
+    //So maybe, this could be part of the library
+    class CharacterAnimation {
+      private var _currentAnimation: Animation = CharacterIdleAnimation
+      private var elapsed: Long = 0
+
+      def update(dt: Long) = elapsed += dt
+
+      def currentAnimation_=(animation: Animation): Unit = {
+        _currentAnimation = animation
+        elapsed = 0
+      }
+      def currentAnimation = _currentAnimation
+
+      def currentFrame = _currentAnimation.currentFrame(elapsed)
+    }
+
+    private var characterAnimation = new CharacterAnimation
 
     private var jumpingDuration: Long = 0
 
@@ -96,6 +124,7 @@ trait MainScreenComponent {
         if(standingPlatform.nonEmpty) {
           standingPlatform = None
           characterVelocity = Vec(0, -JumpImpulsion)
+          characterAnimation.currentAnimation = CharacterStartJumpAnimation
         }
       case _ => ()
     }
@@ -103,7 +132,6 @@ trait MainScreenComponent {
     private var accumulatedDelta = 0l
     private val FixedDelta = 5l
     override def update(dt: Long): Unit = {
-      gameTotalTime += dt
       logger.debug("player velocity: " + characterVelocity)
       logger.debug("player position: " + characterPosition)
 
@@ -115,6 +143,8 @@ trait MainScreenComponent {
         accumulatedDelta -= FixedDelta
         fixedUpdate(FixedDelta)
       }
+
+      characterAnimation.update(dt)
     }
 
     def fixedUpdate(dt: Long): Unit = {
@@ -125,8 +155,15 @@ trait MainScreenComponent {
 
       standingPlatform match {
         case None => {
+          val previousVelocity = characterVelocity
+
           characterVelocity += Gravity*(dt/1000d)
           characterPosition += characterVelocity*(dt/1000d)
+
+          if(previousVelocity.y <= 0 && characterVelocity.y >= 0) {
+            //if reached peak of the jump
+            characterAnimation.currentAnimation = CharacterEndJumpAnimation
+          }
 
           if(characterPosition.y.toInt < WindowHeight/2)
             scrollUp(WindowHeight/2 - characterPosition.y.toInt)
@@ -145,6 +182,7 @@ trait MainScreenComponent {
                             p.x <= characterPosition.x + CharacterWidth && p.x + p.width >= characterPosition.x
                       ).foreach(platform => {
           standingPlatform = Some(platform)
+          characterAnimation.currentAnimation = CharacterIdleAnimation
         })
 
         if(standingPlatform == None && characterPosition.y-CharacterHeight > WindowHeight) {
@@ -157,7 +195,7 @@ trait MainScreenComponent {
 
     override def render(canvas: Canvas): Unit = {
 
-      canvas.drawRect(0, 0, WindowWidth, WindowHeight, defaultPaint.withColor(Color.Black))
+      canvas.drawRect(0, 0, WindowWidth, WindowHeight, defaultPaint.withColor(Color.rgb(204, 242, 204)))
 
       platforms.foreach(_.render(canvas))
 
@@ -166,7 +204,7 @@ trait MainScreenComponent {
       //  CharacterWidth, CharacterHeight, 
       //  defaultPaint.withColor(Color.Green)
       //)
-      canvas.drawBitmap(characterAnimation.currentFrame(gameTotalTime),
+      canvas.drawBitmap(characterAnimation.currentFrame,
         characterPosition.x.toInt, characterPosition.y.toInt-CharacterHeight)
 
       hud.sceneGraph.render(canvas)
