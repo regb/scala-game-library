@@ -64,10 +64,11 @@ trait MainScreenComponent {
     private val CharacterWidth = dp2px(30)
     private val CharacterHeight = dp2px(68)
 
+    //character position is the bottom left corner of the hittable area. The actual visible sprite
+    //expands slightly more to the left and the right of the CharacterWidth (48dp total with 30dp in the
+    //middle for collision)
     private var characterPosition = Point(WindowWidth/2-CharacterWidth/2, WindowHeight - PlatformHeight)
     private var characterVelocity = Vec(0, 0)
-
-    private def characterHitBox = Rect(characterPosition.x.toInt, characterPosition.y.toInt - CharacterHeight, CharacterWidth, CharacterHeight)
 
     private val characterBitmap = loadImageFromResource("drawable/character.png")
     private val characterFrames = Array(
@@ -205,7 +206,7 @@ trait MainScreenComponent {
       //  defaultPaint.withColor(Color.Green)
       //)
       canvas.drawBitmap(characterAnimation.currentFrame,
-        characterPosition.x.toInt, characterPosition.y.toInt-CharacterHeight)
+        characterPosition.x.toInt-dp2px(9), characterPosition.y.toInt-CharacterHeight)
 
       hud.sceneGraph.render(canvas)
     }
