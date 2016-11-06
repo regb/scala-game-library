@@ -10,8 +10,8 @@ trait Html5WindowProvider extends WindowProvider with Lifecycle {
 
   val CanvasDimension: Option[(Int, Int)] = None
 
-  override def WindowWidth: Int = ???
-  override def WindowHeight: Int = ???
+  override def WindowWidth: Int = 500
+  override def WindowHeight: Int = 500
 
   override def dpi: Int = 160
 

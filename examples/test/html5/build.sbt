@@ -10,8 +10,6 @@ lazy val root = (project in file(".")).
 
 libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.0"
 
-lazy val gameEngine = RootProject(file("../../../core"))
+lazy val gameEngine = ProjectRef(file("../../../core"), "coreJS")
 
-lazy val core = RootProject(file("../core"))
-
-exportJars := true
+lazy val core = ProjectRef(file("../core"), "testCoreJS")

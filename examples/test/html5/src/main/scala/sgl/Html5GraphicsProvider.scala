@@ -24,12 +24,12 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
   override def loadImageFromResource(path: String): Bitmap = ???
 
 
-  case class Html5Font() extends AbstractFont {
-    override def withSize(s: Int): Font = ???
+  case class Html5Font(family: String, style: String, size: Int) extends AbstractFont {
+    override def withSize(s: Int): Font = copy(size = s)
     override def withStyle(s: Font.Style): Font = ???
 
-    override def isBold: Boolean = ???
-    override def isItalic: Boolean = ???
+    override def isBold: Boolean = style == "bold"
+    override def isItalic: Boolean = style == "italic"
   }
   type Font = Html5Font
 
@@ -51,19 +51,19 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
     //  case _ => Normal
     //}
 
-    override val Default: Font = ???
-    override val DefaultBold: Font = ???
-    override val Monospace: Font = ???
-    override val SansSerif: Font = ???
-    override val Serif: Font = ???
+    override lazy val Default: Font = Html5Font("sans-serif", "normal", 10)
+    override lazy val DefaultBold: Font = Html5Font("sans-serif", "normal", 10)
+    override lazy val Monospace: Font = Html5Font("sans-serif", "normal", 10)
+    override lazy val SansSerif: Font = Html5Font("sans-serif", "normal", 10)
+    override lazy val Serif: Font = Html5Font("serif", "normal", 10)
 
   }
   override val Font = Html5FontCompanion
 
-  type Color = Int
+  type Color = String
   object Html5ColorCompanion extends ColorCompanion {
-    override def rgb(r: Int, g: Int, b: Int): Color = ???
-    override def rgba(r: Int, g: Int, b: Int, a: Int): Color = ???
+    override def rgb(r: Int, g: Int, b: Int): Color = s"rgb($r,$g,$b)"
+    override def rgba(r: Int, g: Int, b: Int, a: Int): Color = s"rgba($r,$g,$b)"
   }
   override val Color = Html5ColorCompanion
 
@@ -93,11 +93,18 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
     override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int): Unit = ???
 
     override def drawRect(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {
+      context.fillStyle = "rgb(12,100, 200"
       context.strokeStyle = "black"
       context.fillRect(x, y, width, height)
     }
 
-    override def drawOval(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = ???
+    override def drawOval(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {
+      //TODO
+      context.fillStyle = "black"
+      context.strokeStyle = "black"
+      context.fillRect(x, y, width, height)
+    }
+
     override def drawLine(x1: Int, y1: Int, x2: Int, y2: Int, paint: Paint): Unit = ???
 
     override def drawString(str: String, x: Int, y: Int, paint: Paint): Unit = ???
@@ -106,7 +113,9 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
 
     override def drawColor(color: Color): Unit = ???
 
-    override def clearRect(x: Int, y: Int, width: Int, height: Int): Unit = ???
+    override def clearRect(x: Int, y: Int, width: Int, height: Int): Unit = {
+      context.clearRect(x, y, width, height)
+    }
 
     override def renderText(text: String, width: Int, paint: Paint): TextLayout = ???
   }

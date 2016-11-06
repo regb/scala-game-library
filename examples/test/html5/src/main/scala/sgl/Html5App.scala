@@ -22,6 +22,8 @@ trait Html5App extends GameApp
       canvas.height = height
     })
 
+    this.canvas = canvas
+
     this.startup()
     this.resume()
 

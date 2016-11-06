@@ -10,7 +10,11 @@ trait Html5GameLoopProvider extends GameLoopProvider {
   self: Html5GraphicsProvider with GameStateComponent with LoggingProvider =>
 
   abstract override def resume(): Unit = {
-    dom.window.setInterval(() => println("boo"), 1000)
+    dom.window.setInterval(() => {
+      val canvas = getScreenCanvas
+      gameLoopStep(30, canvas)
+      releaseScreenCanvas(getScreenCanvas)
+    }, 1000)
     super.resume()
   }
 
