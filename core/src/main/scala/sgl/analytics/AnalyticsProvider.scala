@@ -2,7 +2,7 @@ package sgl
 package analytics
 
 trait AnalyticsProvider {
-  this: GameScreensComponent =>
+  this: GameStateComponent =>
 
 
   /** Optional parameters to an Event

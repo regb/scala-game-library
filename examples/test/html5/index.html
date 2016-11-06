@@ -1,0 +1,14 @@
+<body>
+  <canvas id="my_canvas" style="border: red solid 1px"></canvas>
+
+  <!-- Include Scala.js compiled code -->
+  <script type="text/javascript" src="./target/scala-2.11/sgl-test-html5-fastopt.js"></script>
+
+  <script type="text/javascript">
+    var c = document.getElementById("my_canvas");
+    com.regblanc.sgl.test.html5.Main().main(c);
+  </script>
+
+</body>
+
+

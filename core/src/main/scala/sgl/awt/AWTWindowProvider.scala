@@ -7,7 +7,7 @@ import javax.swing.JPanel
 import java.awt.event._
 
 trait AWTWindowProvider extends WindowProvider with Lifecycle {
-  this: GameLoopComponent =>
+  this: GameStateComponent with ThreadBasedGameLoopProvider =>
 
   abstract override def startup(): Unit = {
     applicationFrame.setVisible(true)

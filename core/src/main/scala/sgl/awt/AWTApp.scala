@@ -5,8 +5,8 @@ import util._
 
 trait AWTApp extends GameApp 
                 with AWTGraphicsProvider with AWTInputProvider with AWTAudioProvider
-                with AWTWindowProvider with GameLoopComponent
-                with AWTSystemProvider with GameScreensComponent {
+                with AWTWindowProvider with ThreadBasedGameLoopProvider
+                with AWTSystemProvider with GameStateComponent {
 
   this: LoggingProvider =>
 

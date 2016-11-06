@@ -1,6 +1,6 @@
 package sgl
 
-trait GameScreensComponent {
+trait GameStateComponent {
   this: GraphicsProvider =>
 
   trait GameScreen {
@@ -26,6 +26,27 @@ trait GameScreensComponent {
       */
     def refresh(): Unit = {}
   
+  }
+
+  /** Override to define the game starting screen */
+  def startingScreen: GameScreen
+
+  val gameState: GameState = new GameState
+
+  class GameState {
+    private var screens: List[GameScreen] = List()
+
+    def screensStack: List[GameScreen] = screens
+
+    def pushScreen(screen: GameScreen): Unit = {
+      screens ::= screen
+    }
+    def popScreen(): Unit = {
+      screens = screens.tail
+    }
+    def newScreen(screen: GameScreen): Unit = {
+      screens = List(screen)
+    }
   }
 
 }

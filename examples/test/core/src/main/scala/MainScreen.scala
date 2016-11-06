@@ -7,9 +7,8 @@ import scene._
 import util._
 
 trait MainScreenComponent {
-  this: GraphicsProvider with InputProvider with GameLoopComponent
-  with GameScreensComponent with WindowProvider 
-  with SystemProvider with AudioProvider =>
+  this: GraphicsProvider with InputProvider with GameStateComponent
+  with WindowProvider with SystemProvider with AudioProvider =>
 
   class MainScreen extends GameScreen {
 

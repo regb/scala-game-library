@@ -6,9 +6,7 @@ import sgl.awt._
 import sgl.util._
 
 trait AbstractApp extends MainScreenComponent {
-  this: GraphicsProvider with InputProvider with WindowProvider with AudioProvider
-  with GameScreensComponent with SystemProvider
-  with GameLoopComponent =>
+  this: GameApp =>
 
   override def startup(): Unit = {}
   override def resume(): Unit = {}

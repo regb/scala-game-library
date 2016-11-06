@@ -10,9 +10,7 @@ import util._
   * thesse.
   */
 trait GameApp extends GraphicsProvider with InputProvider with AudioProvider
-                 with WindowProvider with GameLoopComponent
-                 with SystemProvider with GameScreensComponent with Lifecycle {
+                 with WindowProvider with GameLoopProvider with SystemProvider
+                 with LoggingProvider with GameStateComponent with Lifecycle {
 
-  this: LoggingProvider =>
-
-                 }
+}
