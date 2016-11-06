@@ -98,11 +98,73 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
       context.fillRect(x, y, width, height)
     }
 
+    def drawEllipse(x: Int, y: Int, w: Int, h: Int): Unit = {
+      val kappa = 0.5522848
+      val ox = (w / 2) * kappa // control point offset horizontal
+      val oy = (h / 2) * kappa // control point offset vertical
+      val xe = x + w           // x-end
+      val ye = y + h           // y-end
+      val xm = x + w / 2       // x-middle
+      val ym = y + h / 2       // y-middle
+
+      context.beginPath();
+      context.moveTo(x, ym);
+      context.bezierCurveTo(x, ym - oy, xm - ox, y, xm, y);
+      context.bezierCurveTo(xm + ox, y, xe, ym - oy, xe, ym);
+      context.bezierCurveTo(xe, ym + oy, xm + ox, ye, xm, ye);
+      context.bezierCurveTo(xm - ox, ye, x, ym + oy, x, ym);
+      //ctx.closePath(); // not used correctly, see comments (use to close off open path)
+      context.stroke();
+    }
+
     override def drawOval(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {
       //TODO
       context.fillStyle = "black"
       context.strokeStyle = "black"
-      context.fillRect(x, y, width, height)
+
+      val centerX = x
+      val centerY = y
+      drawEllipse(centerX, centerY, width, height)
+
+      //method 1
+      //context.beginPath();
+      //  
+      //context.moveTo(centerX, centerY - height/2); // A1
+
+      //context.bezierCurveTo(
+      //    centerX + width/2, centerY - height/2, // C1
+      //    centerX + width/2, centerY + height/2, // C2
+      //    centerX, centerY + height/2); // A2
+
+      //context.bezierCurveTo(
+      //    centerX - width/2, centerY + height/2, // C3
+      //    centerX - width/2, centerY - height/2, // C4
+      //    centerX, centerY - height/2); // A1
+
+      //context.fillStyle = "red";
+      //context.fill();
+      //context.closePath(); 
+
+      //method2
+      //context.save();
+
+
+      // scale context horizontally
+      //context.scale(2, 1);
+
+      //// draw circle which will be stretched into an oval
+      //context.beginPath();
+      //context.arc(x, y, 20, 0, 2 * Math.PI, false)
+
+      //// restore to original state
+      //context.restore();
+
+      //// apply styling
+      //context.fillStyle = "#8ED6FF"
+      //context.fill()
+      //context.lineWidth = 5
+      //context.strokeStyle = "black"
+      //context.stroke()
     }
 
     override def drawLine(x1: Int, y1: Int, x2: Int, y2: Int, paint: Paint): Unit = ???
