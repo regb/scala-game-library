@@ -6,7 +6,7 @@ import sgl.awt._
 import sgl.util._
 
 trait AbstractApp extends MainScreenComponent {
-  this: GameApp =>
+  this: GameApp with InputHelpersComponent =>
 
   override def startup(): Unit = {}
   override def resume(): Unit = {}
@@ -19,7 +19,7 @@ trait AbstractApp extends MainScreenComponent {
 
 
 /** Wire backend to the App here */
-object Main extends AbstractApp with AWTApp with VerboseStdErrLoggingProvider {
+object Main extends AbstractApp with AWTApp with InputHelpersComponent with VerboseStdErrLoggingProvider {
 
   override val Fps = Some(60)
 

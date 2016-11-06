@@ -96,6 +96,7 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
     def height: Int
     
     /** translate the origin of the canvas to (x, y) */
+    //TODO: is it TO or is it BY (x,y) ?
     def translate(x: Int, y: Int): Unit
 
     /** clip rendering area with the rectangle */

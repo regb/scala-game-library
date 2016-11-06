@@ -2,7 +2,7 @@ package sgl
 package html5
 
 trait Html5WindowProvider extends WindowProvider with Lifecycle {
-  this: GameStateComponent =>
+  this: GameStateComponent with Html5GraphicsProvider =>
 
   abstract override def startup(): Unit = {
     super.startup()
@@ -10,8 +10,8 @@ trait Html5WindowProvider extends WindowProvider with Lifecycle {
 
   val CanvasDimension: Option[(Int, Int)] = None
 
-  override def WindowWidth: Int = 500
-  override def WindowHeight: Int = 500
+  override def WindowWidth: Int = this.canvas.width
+  override def WindowHeight: Int = this.canvas.height
 
   override def dpi: Int = 160
 

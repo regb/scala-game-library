@@ -3,9 +3,10 @@ package html5
 
 import org.scalajs.dom
 import dom.html
+import dom.raw.HTMLImageElement
 
 trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
-  //this: AWTWindowProvider =>
+  this: Html5WindowProvider =>
 
   abstract override def startup(): Unit = {
     super.startup()
@@ -15,48 +16,54 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
   }
 
 
-  case class Html5Bitmap() extends AbstractBitmap {
-    override def height: Int = ???
-    override def width: Int = ???
+  //could wrap that into a LoaderProxy, that makes sure image is loaded before drawing it
+  case class Html5Bitmap(image: HTMLImageElement) extends AbstractBitmap {
+    override def height: Int = image.height
+    override def width: Int = image.width
   }
   type Bitmap = Html5Bitmap
 
-  override def loadImageFromResource(path: String): Bitmap = ???
+  override def loadImageFromResource(path: String): Bitmap = {
+    val img = dom.document.createElement("img").asInstanceOf[HTMLImageElement]
+    img.onload = (e: dom.Event) => {
+      println("image loaded")
+    }
+    img.src = s"static/$path"
+    Html5Bitmap(img)
+  }
 
 
-  case class Html5Font(family: String, style: String, size: Int) extends AbstractFont {
+  case class Html5Font(family: String, style: Font.Style, size: Int) extends AbstractFont {
     override def withSize(s: Int): Font = copy(size = s)
-    override def withStyle(s: Font.Style): Font = ???
+    override def withStyle(s: Font.Style): Font = copy(style = s)
 
-    override def isBold: Boolean = style == "bold"
-    override def isItalic: Boolean = style == "italic"
+    override def isBold: Boolean = style == Font.Bold || style == Font.BoldItalic
+    override def isItalic: Boolean = style == Font.Italic || style == Font.BoldItalic
+
+    def asCss: String = {
+      val scss = Font.toCssStyle(style)
+      s"$family $scss ${size}px"
+    }
   }
   type Font = Html5Font
 
   object Html5FontCompanion extends FontCompanion {
 
-    override def create(family: String, style: Style, size: Int): Font = ???
+    override def create(family: String, style: Style, size: Int): Font = Html5Font(family, style, size)
 
-    //def toAWTStyle(style: Style): Int = style match {
-    //  case Bold => BOLD
-    //  case Italic => ITALIC
-    //  case Normal => PLAIN
-    //  case BoldItalic => BOLD | ITALIC
-    //}
-    //private def convertAWTStyle(awtStyle: Int): Style = awtStyle match {
-    //  case BOLD => Bold
-    //  case ITALIC => Italic
-    //  case PLAIN => Normal
-    //  case x if x == BOLD | ITALIC => BoldItalic
-    //  case _ => Normal
-    //}
 
-    override lazy val Default: Font = Html5Font("sans-serif", "normal", 10)
-    override lazy val DefaultBold: Font = Html5Font("sans-serif", "normal", 10)
-    override lazy val Monospace: Font = Html5Font("sans-serif", "normal", 10)
-    override lazy val SansSerif: Font = Html5Font("sans-serif", "normal", 10)
-    override lazy val Serif: Font = Html5Font("serif", "normal", 10)
+    def toCssStyle(s: Font.Style): String = s match {
+      case Bold => "bold"
+      case Italic => "italic"
+      case Normal => "normal"
+      case BoldItalic => "bold italic"
+    }
 
+    override lazy val Default: Font = Html5Font("sans-serif", Normal, 10)
+    override lazy val DefaultBold: Font = Html5Font("sans-serif", Bold, 10)
+    override lazy val Monospace: Font = Html5Font("monospace", Normal, 10)
+    override lazy val SansSerif: Font = Html5Font("sans-serif", Normal, 10)
+    override lazy val Serif: Font = Html5Font("serif", Normal, 10)
   }
   override val Font = Html5FontCompanion
 
@@ -71,6 +78,12 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
     def withFont(f: Font) = copy(font = f)
     def withColor(c: Color) = copy(color = c)
     def withAlignment(a: Alignments.Alignment) = copy(alignment = a)
+
+    def prepareContext(ctx: Ctx2D): Unit = {
+      ctx.fillStyle = color
+      ctx.strokeStyle = color
+      ctx.font = font.asCss
+    }
   }
 
   type Paint = Html5Paint
@@ -85,20 +98,38 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
     override def height: Int = canvas.height
     override def width: Int = canvas.width
 
-    override def translate(x: Int, y: Int): Unit = ???
+    override def translate(x: Int, y: Int): Unit = {
+      context.translate(x, y)
+    }
 
-    override def clipRect(x: Int, y: Int, width: Int, height: Int): Unit = ???
+    //probably useful to add to the core abstraction at some point
+    def save(): Unit = {
+      context.save()
+    }
+    def restore(): Unit = {
+      context.restore()
+    }
 
-    override def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit = ???
-    override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int): Unit = ???
+    override def clipRect(x: Int, y: Int, width: Int, height: Int): Unit = {
+      context.rect(x, y, width, height)
+      context.stroke()
+      context.clip()
+    }
+
+    override def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit = {
+      context.drawImage(bitmap.image, x, y)
+    }
+
+    override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int): Unit = {
+      context.drawImage(bitmap.image, sx, sy, width, height, dx, dy, width, height)
+    }
 
     override def drawRect(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {
-      context.fillStyle = "rgb(12,100, 200"
-      context.strokeStyle = "black"
+      paint.prepareContext(context)
       context.fillRect(x, y, width, height)
     }
 
-    def drawEllipse(x: Int, y: Int, w: Int, h: Int): Unit = {
+    private def drawEllipse(x: Int, y: Int, w: Int, h: Int): Unit = {
       val kappa = 0.5522848
       val ox = (w / 2) * kappa // control point offset horizontal
       val oy = (h / 2) * kappa // control point offset vertical
@@ -114,66 +145,33 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
       context.bezierCurveTo(xe, ym + oy, xm + ox, ye, xm, ye);
       context.bezierCurveTo(xm - ox, ye, x, ym + oy, x, ym);
       //ctx.closePath(); // not used correctly, see comments (use to close off open path)
-      context.stroke();
+      context.fill();
     }
 
     override def drawOval(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {
-      //TODO
-      context.fillStyle = "black"
-      context.strokeStyle = "black"
-
-      val centerX = x
-      val centerY = y
-      drawEllipse(centerX, centerY, width, height)
-
-      //method 1
-      //context.beginPath();
-      //  
-      //context.moveTo(centerX, centerY - height/2); // A1
-
-      //context.bezierCurveTo(
-      //    centerX + width/2, centerY - height/2, // C1
-      //    centerX + width/2, centerY + height/2, // C2
-      //    centerX, centerY + height/2); // A2
-
-      //context.bezierCurveTo(
-      //    centerX - width/2, centerY + height/2, // C3
-      //    centerX - width/2, centerY - height/2, // C4
-      //    centerX, centerY - height/2); // A1
-
-      //context.fillStyle = "red";
-      //context.fill();
-      //context.closePath(); 
-
-      //method2
-      //context.save();
-
-
-      // scale context horizontally
-      //context.scale(2, 1);
-
-      //// draw circle which will be stretched into an oval
-      //context.beginPath();
-      //context.arc(x, y, 20, 0, 2 * Math.PI, false)
-
-      //// restore to original state
-      //context.restore();
-
-      //// apply styling
-      //context.fillStyle = "#8ED6FF"
-      //context.fill()
-      //context.lineWidth = 5
-      //context.strokeStyle = "black"
-      //context.stroke()
+      paint.prepareContext(context)
+      drawEllipse(x, y, width, height)
     }
 
-    override def drawLine(x1: Int, y1: Int, x2: Int, y2: Int, paint: Paint): Unit = ???
+    override def drawLine(x1: Int, y1: Int, x2: Int, y2: Int, paint: Paint): Unit = {
+      paint.prepareContext(context)
+      context.beginPath()
+      context.moveTo(x1, y1)
+      context.lineTo(x2, y2)
+      context.stroke()
+    }
 
-    override def drawString(str: String, x: Int, y: Int, paint: Paint): Unit = ???
+    override def drawString(str: String, x: Int, y: Int, paint: Paint): Unit = {
+      paint.prepareContext(context)
+      context.strokeText(str, x, y)
+    }
 
     override def drawText(text: TextLayout, x: Int, y: Int): Unit = ???
 
-    override def drawColor(color: Color): Unit = ???
+    override def drawColor(color: Color): Unit = {
+      context.fillStyle = color
+      context.fillRect(0, 0, WindowWidth, WindowHeight)
+    }
 
     override def clearRect(x: Int, y: Int, width: Int, height: Int): Unit = {
       context.clearRect(x, y, width, height)

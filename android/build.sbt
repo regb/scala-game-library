@@ -19,7 +19,7 @@ lazy val root = (project in file(".")).
   settings(
     name := "scala-game-library-android",
     version := "0.0.1",
-    scalaVersion := "2.11.7",
+    scalaVersion := "2.11.8",
     scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature"),
     libraryDependencies += "com.google.firebase" % "firebase-core" % "9.0.0",
     libraryDependencies += "com.google.android.gms"  % "play-services-ads" % "9.0.0",
