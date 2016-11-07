@@ -16,13 +16,3 @@ trait AbstractApp extends MainScreenComponent {
   override def startingScreen: GameScreen = new MainScreen
 
 }
-
-
-/** Wire backend to the App here */
-object Main extends AbstractApp with AWTApp with InputHelpersComponent with VerboseStdErrLoggingProvider {
-
-  override val Fps = Some(60)
-
-  override val frameDimension = Some((1200, 800))
-
-}
