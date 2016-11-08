@@ -6,8 +6,9 @@ lazy val commonSettings = Seq(
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 )
 
-lazy val sglCoreJVM = ProjectRef(file("../../core"), "coreJVM")
-lazy val sglCoreJS = ProjectRef(file("../../core"), "coreJS")
+lazy val sglCoreJVM = ProjectRef(file("../.."), "coreJVM")
+lazy val sglCoreJS = ProjectRef(file("../.."), "coreJS")
+lazy val sglHtml5 = ProjectRef(file("../.."), "html5")
 
 lazy val core = (crossProject.crossType(CrossType.Pure) in file("./core"))
   .settings(commonSettings: _*)
@@ -26,7 +27,7 @@ lazy val desktop = (project in file("./desktop"))
   .settings(
     name := "sgl-test-desktop"
   )
-  .dependsOn(coreJVM, sglCoreJVM)
+  .dependsOn(sglCoreJVM, coreJVM)
 
 lazy val html5 = (project in file("./html5"))
   .enablePlugins(ScalaJSPlugin)
@@ -35,4 +36,4 @@ lazy val html5 = (project in file("./html5"))
     name := "sgl-test-html5",
     libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.0"
   )
-  .dependsOn(sglCoreJS, coreJS)
+  .dependsOn(sglCoreJS, sglHtml5, coreJS)
