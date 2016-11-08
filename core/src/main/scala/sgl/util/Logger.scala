@@ -106,40 +106,55 @@ trait StdErrLoggingProvider extends LoggingProvider {
 }
 
 trait DefaultStdErrLoggingProvider extends StdErrLoggingProvider {
-
   val logger = DefaultStdErrLogger
-
   object DefaultStdErrLogger extends StdErrLogger {
-
-    import Logger._
-
-    override val logLevel: LogLevel = Warning
+    override val logLevel: Logger.LogLevel = Logger.Warning
   }
-
 }
 
 trait VerboseStdErrLoggingProvider extends StdErrLoggingProvider {
-
   val logger = VerboseStdErrLogger
-
   object VerboseStdErrLogger extends StdErrLogger {
-
     import Logger._
-
     override val logLevel: LogLevel = Debug
   }
-
 }
 
 trait TraceStdErrLoggingProvider extends StdErrLoggingProvider {
-
   val logger = TraceStdErrLogger
-
   object TraceStdErrLogger extends StdErrLogger {
-
     import Logger._
-
     override val logLevel: LogLevel = Trace
   }
+}
 
+
+
+trait StdOutLoggingProvider extends LoggingProvider {
+  abstract class StdOutLogger extends Logger {
+    override def output(msg: String): Unit = {
+      Console.out.println(msg)
+    }
+  }
+}
+
+trait DefaultStdOutLoggingProvider extends StdOutLoggingProvider {
+  val logger = DefaultStdOutLogger
+  object DefaultStdOutLogger extends StdOutLogger {
+    override val logLevel: Logger.LogLevel = Logger.Warning
+  }
+}
+
+trait VerboseStdOutLoggingProvider extends StdOutLoggingProvider {
+  val logger = VerboseStdOutLogger
+  object VerboseStdOutLogger extends StdOutLogger {
+    override val logLevel: Logger.LogLevel = Logger.Debug
+  }
+}
+
+trait TraceStdOutLoggingProvider extends StdOutLoggingProvider {
+  val logger = TraceStdOutLogger
+  object TraceStdOutLogger extends StdOutLogger {
+    override val logLevel: Logger.LogLevel = Logger.Trace
+  }
 }

@@ -99,7 +99,7 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
     override def width: Int = canvas.width
 
     override def translate(x: Int, y: Int): Unit = {
-      context.translate(x, y)
+      //context.translate(x, y)
     }
 
     //probably useful to add to the core abstraction at some point
@@ -111,9 +111,9 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
     }
 
     override def clipRect(x: Int, y: Int, width: Int, height: Int): Unit = {
-      context.rect(x, y, width, height)
-      context.stroke()
-      context.clip()
+      //context.rect(x, y, width, height)
+      //context.stroke()
+      //context.clip()
     }
 
     override def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit = {
@@ -169,8 +169,8 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
     override def drawText(text: TextLayout, x: Int, y: Int): Unit = ???
 
     override def drawColor(color: Color): Unit = {
-      context.fillStyle = color
-      context.fillRect(0, 0, WindowWidth, WindowHeight)
+      //context.fillStyle = color
+      //context.fillRect(0, 0, WindowWidth, WindowHeight)
     }
 
     override def clearRect(x: Int, y: Int, width: Int, height: Int): Unit = {

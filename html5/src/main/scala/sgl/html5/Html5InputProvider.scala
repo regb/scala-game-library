@@ -23,7 +23,7 @@ trait Html5InputProvider extends InputProvider with Lifecycle {
     this.canvas.onmousedown = (e: dom.MouseEvent) => {
       Input.newEvent(Input.MouseDownEvent(e.clientX.toInt, e.clientY.toInt, mouseEventButton(e)))
     }
-    this.canvas.onmousedown = (e: dom.MouseEvent) => {
+    this.canvas.onmouseup = (e: dom.MouseEvent) => {
       Input.newEvent(Input.MouseUpEvent(e.clientX.toInt, e.clientY.toInt, mouseEventButton(e)))
     }
     this.canvas.onmousemove = (e: dom.MouseEvent) => {

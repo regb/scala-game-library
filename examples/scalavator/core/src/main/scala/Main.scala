@@ -8,8 +8,8 @@ import util._
 
 trait AbstractApp extends MainScreenComponent {
   this: GraphicsProvider with InputProvider with WindowProvider with AudioProvider
-  with GameScreensComponent with SystemProvider
-  with GameLoopComponent with SceneComponent with LoggingProvider =>
+  with GameStateComponent with SystemProvider
+  with GameLoopProvider with SceneComponent with LoggingProvider =>
 
   override def startup(): Unit = {}
   override def resume(): Unit = {}
@@ -17,15 +17,5 @@ trait AbstractApp extends MainScreenComponent {
   override def shutdown(): Unit = {}
 
   override def startingScreen: GameScreen = new MainScreen
-
-}
-
-
-/** Wire backend to the App here */
-object Main extends AbstractApp with AWTApp with SceneComponent with VerboseStdErrLoggingProvider {
-
-  override val Fps = Some(60)
-
-  override val frameDimension = Some((400, 650))
 
 }
