@@ -1,4 +1,4 @@
-val scalaVer = "2.11.8"
+val scalaVer = "2.12.0"
 
 lazy val commonSettings = Seq(
   version        := "1.0",
@@ -34,6 +34,6 @@ lazy val html5 = (project in file("./html5"))
   .settings(commonSettings: _*)
   .settings(
     name := "scalavator-html5",
-    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.0"
+    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.1"
   )
   .dependsOn(sglCoreJS, sglHtml5, coreJS)

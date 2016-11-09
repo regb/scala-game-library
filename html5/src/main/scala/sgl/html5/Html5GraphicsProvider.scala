@@ -111,9 +111,9 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
     }
 
     override def clipRect(x: Int, y: Int, width: Int, height: Int): Unit = {
-      context.rect(x, y, width, height)
-      context.stroke()
-      context.clip()
+      //context.rect(x, y, width, height)
+      //context.stroke()
+      //context.clip()
     }
 
     override def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit = {

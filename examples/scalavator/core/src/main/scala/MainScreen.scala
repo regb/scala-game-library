@@ -240,28 +240,6 @@ trait MainScreenComponent {
   }
 
 
-  //If these are defined inside Hud, seems to crash scalajs?
-  class GroupBackground extends SceneNode(0, 0, 0, 0) {
-    override def update(dt: Long): Unit = {}
-    override def render(canvas: Canvas): Unit = {
-      canvas.drawColor(Color.Red)
-    }
-  }
-  class TitleLabel extends SceneNode(dp2px(15), dp2px(25), 0, 0) {
-    override def update(dt: Long): Unit = {}
-    override def render(canvas: Canvas): Unit = {
-      val textPaint = defaultPaint.withColor(Color.White).withFont(Font.Default.withSize(dp2px(18)))
-      canvas.drawString("Scalavator", x.toInt, y.toInt, textPaint)
-    }
-  }
-  class ScoreLabel extends SceneNode(WindowWidth-dp2px(25), dp2px(25), 0, 0) {
-    var score: Int = 0
-    override def update(dt: Long): Unit = {}
-    override def render(canvas: Canvas): Unit = {
-      val textPaint = defaultPaint.withColor(Color.White).withFont(Font.Default.withSize(dp2px(18)))
-      canvas.drawString(score.toString, x.toInt, y.toInt, textPaint.withAlignment(Alignments.Right))
-    }
-  }
   class Hud {
 
     val sceneGraph = new SceneGraph(WindowWidth, WindowHeight)
@@ -274,6 +252,28 @@ trait MainScreenComponent {
     group.addNode(titleLabel)
     group.addNode(scoreLabel)
     sceneGraph.addNode(group)
+
+    class GroupBackground extends SceneNode(0, 0, 0, 0) {
+      override def update(dt: Long): Unit = {}
+      override def render(canvas: Canvas): Unit = {
+        //canvas.drawColor(Color.Red)
+      }
+    }
+    class TitleLabel extends SceneNode(dp2px(15), dp2px(25), 0, 0) {
+      override def update(dt: Long): Unit = {}
+      override def render(canvas: Canvas): Unit = {
+        val textPaint = defaultPaint.withColor(Color.White).withFont(Font.Default.withSize(dp2px(18)))
+        canvas.drawString("Scalavator", x.toInt, y.toInt, textPaint)
+      }
+    }
+    class ScoreLabel extends SceneNode(WindowWidth-dp2px(25), dp2px(25), 0, 0) {
+      var score: Int = 0
+      override def update(dt: Long): Unit = {}
+      override def render(canvas: Canvas): Unit = {
+        val textPaint = defaultPaint.withColor(Color.White).withFont(Font.Default.withSize(dp2px(18)))
+        canvas.drawString(score.toString, x.toInt, y.toInt, textPaint.withAlignment(Alignments.Right))
+      }
+    }
     
   }
 
