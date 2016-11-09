@@ -179,7 +179,9 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
       context.fillText(str, x, y)
     }
 
-    override def drawText(text: TextLayout, x: Int, y: Int): Unit = ???
+    override def drawText(text: TextLayout, x: Int, y: Int): Unit = {
+      text.draw(context, x, y)
+    }
 
     override def drawColor(color: Color): Unit = {
       context.fillStyle = color
@@ -190,7 +192,9 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
       context.clearRect(x, y, width, height)
     }
 
-    override def renderText(text: String, width: Int, paint: Paint): TextLayout = ???
+    override def renderText(text: String, width: Int, paint: Paint): TextLayout = {
+      Html5TextLayout(text, width, context, paint)
+    }
   }
   type Canvas = Html5Canvas
 
@@ -203,7 +207,50 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
   }
 
   type TextLayout = Html5TextLayout
-  case class Html5TextLayout() extends AbstractTextLayout {
-    override def height: Int = ???
+  case class Html5TextLayout(text: String, width: Int, context: Ctx2D, paint: Paint) extends AbstractTextLayout {
+
+    paint.prepareContext(context)
+
+    /* 
+     * Split the text into rows, each row taking as 
+     * much space as available, ready to be drawn
+     */
+    val rows: List[String] = {
+      var res = new scala.collection.mutable.ListBuffer[String]()
+
+      val lines = text.split("\n")
+      for(line <- lines) {
+        val words = line.split(" ")
+
+        var nIndex = 0
+
+        while(nIndex < words.length) {
+          var currentLine = words(nIndex)
+          nIndex += 1
+          while(nIndex < words.length && context.measureText(currentLine + " " + words(nIndex)).width < width) {
+            currentLine = currentLine + " " + words(nIndex)
+            nIndex += 1
+          }
+          res.append(currentLine)
+        }
+      }
+
+      res.toList
+    }
+
+    private val lineHeight = 20 //TODO
+
+    override val height: Int = paint.font.size
+
+    def draw(ctx: Ctx2D, x: Int, y: Int): Unit = {
+      paint.prepareContext(ctx)
+      var startY = y
+      rows.foreach(line => {
+        ctx.fillText(line, x, startY)
+        startY += lineHeight
+      })
+    }
+
   }
+
 }

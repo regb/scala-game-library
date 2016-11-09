@@ -19,15 +19,25 @@ trait Html5InputProvider extends InputProvider with Lifecycle {
     }
   }
 
+  private def getCursorPosition(canvas: html.Canvas, e: dom.MouseEvent): (Int, Int) = {
+    val rect = canvas.getBoundingClientRect()
+    val x = (e.clientX - rect.left).toInt
+    val y = (e.clientY - rect.top).toInt
+    (x, y)
+  }
+
   abstract override def startup(): Unit = {
     this.canvas.onmousedown = (e: dom.MouseEvent) => {
-      Input.newEvent(Input.MouseDownEvent(e.clientX.toInt, e.clientY.toInt, mouseEventButton(e)))
+      val (x,y) = getCursorPosition(this.canvas, e)
+      Input.newEvent(Input.MouseDownEvent(x, y, mouseEventButton(e)))
     }
     this.canvas.onmouseup = (e: dom.MouseEvent) => {
-      Input.newEvent(Input.MouseUpEvent(e.clientX.toInt, e.clientY.toInt, mouseEventButton(e)))
+      val (x,y) = getCursorPosition(this.canvas, e)
+      Input.newEvent(Input.MouseUpEvent(x, y, mouseEventButton(e)))
     }
     this.canvas.onmousemove = (e: dom.MouseEvent) => {
-      Input.newEvent(Input.MouseMovedEvent(e.clientX.toInt, e.clientY.toInt))
+      val (x,y) = getCursorPosition(this.canvas, e)
+      Input.newEvent(Input.MouseMovedEvent(x, y))
     }
 
     dom.document.onkeydown = (e: dom.KeyboardEvent) => {
