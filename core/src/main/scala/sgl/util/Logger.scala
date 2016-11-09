@@ -41,51 +41,42 @@ trait LoggingProvider {
 
     import Logger._
 
-    private val errorPrefix = "[ Error ] "
-    private val warningPrefix = "[Warning] "
-    private val infoPrefix = "[ Info ] "
-    private val debugPrefix = "[ Debug ] "
-    private val tracePrefix = "[ Trace ] "
-
-    def output(msg: String): Unit
-
+    /** The log level this Logger displays
+      *
+      * The ordering is based on the importance, meaning
+      * that the Error level is always shown if a lower
+      * importance level is shown as well. As such, this is
+      * the most verbose level at which log should still
+      * be displayed
+      */
     def logLevel: LogLevel
 
-    protected def reline(prefix: String, tag: Tag, msg: String): String = {
-      val colorPrefix =
-        if(prefix == errorPrefix)
-          Console.RED
-        else if(prefix == warningPrefix)
-          Console.YELLOW
-        else if(prefix == debugPrefix)
-          Console.MAGENTA
-        else if(prefix == tracePrefix)
-          Console.GREEN
-        else //for INFO
-          Console.BLUE
-      val colorTag = Console.CYAN
-      "[" + colorPrefix + prefix.substring(1, prefix.length-2) + Console.RESET + "] " +
-      "[ " + colorTag + tag.name + Console.RESET + " ] " +
-      msg.trim.replaceAll("\n", "\n" + (" " * (prefix.size)))
-    }
+    /** Output the string with given level and tag
+      *
+      * The level is the importance of the message, and should never be 
+      * NoLogging. The level is always a visible level, so no need
+      * to check again the logLevel threashold
+      */
+    protected def log(level: LogLevel, tag: Tag, msg: String): Unit
 
-    def error(msg: => String)(implicit tag: Tag) = if(logLevel >= Error) output(reline(errorPrefix, tag, msg))
-    def warning(msg: => String)(implicit tag: Tag) = if(logLevel >= Warning) output(reline(warningPrefix, tag, msg))
-    def info(msg: => String)(implicit tag: Tag) = if(logLevel >= Info) output(reline(infoPrefix, tag, msg))
-    def debug(msg: => String)(implicit tag: Tag) = if(logLevel >= Debug) output(reline(debugPrefix, tag, msg))
-    def trace(msg: => String)(implicit tag: Tag) = if(logLevel >= Trace) output(reline(tracePrefix, tag, msg))
+    def error(msg: => String)(implicit tag: Tag) = if(logLevel >= Error) log(Error, tag, msg)
+    def warning(msg: => String)(implicit tag: Tag) = if(logLevel >= Warning) log(Warning, tag, msg)
+    def info(msg: => String)(implicit tag: Tag) = if(logLevel >= Info) log(Info, tag, msg)
+    def debug(msg: => String)(implicit tag: Tag) = if(logLevel >= Debug) log(Debug, tag, msg)
+    def trace(msg: => String)(implicit tag: Tag) = if(logLevel >= Trace) log(Trace, tag, msg)
 
   }
 
 }
 
 trait NoLoggingProvider extends LoggingProvider {
-  object NoLogger extends Logger {
+
+  object SilentLogger extends Logger {
     import Logger._
 
-    override def output(msg: String): Unit = {}
+    override def log(level: LogLevel, tag: Tag, msg: String): Unit = ()
 
-    override val logLevel = Error
+    override val logLevel = NoLogging
 
     override def error(msg: => String)(implicit tag: Tag) = {}
     override def warning(msg: => String)(implicit tag: Tag) = {}
@@ -94,67 +85,6 @@ trait NoLoggingProvider extends LoggingProvider {
     override def trace(msg: => String)(implicit tag: Tag) = {}
   }
 
-  override val logger = NoLogger
+  override val logger = SilentLogger
 }
 
-trait StdErrLoggingProvider extends LoggingProvider {
-  abstract class StdErrLogger extends Logger {
-    override def output(msg: String): Unit = {
-      Console.err.println(msg)
-    }
-  }
-}
-
-trait DefaultStdErrLoggingProvider extends StdErrLoggingProvider {
-  val logger = DefaultStdErrLogger
-  object DefaultStdErrLogger extends StdErrLogger {
-    override val logLevel: Logger.LogLevel = Logger.Warning
-  }
-}
-
-trait VerboseStdErrLoggingProvider extends StdErrLoggingProvider {
-  val logger = VerboseStdErrLogger
-  object VerboseStdErrLogger extends StdErrLogger {
-    import Logger._
-    override val logLevel: LogLevel = Debug
-  }
-}
-
-trait TraceStdErrLoggingProvider extends StdErrLoggingProvider {
-  val logger = TraceStdErrLogger
-  object TraceStdErrLogger extends StdErrLogger {
-    import Logger._
-    override val logLevel: LogLevel = Trace
-  }
-}
-
-
-
-trait StdOutLoggingProvider extends LoggingProvider {
-  abstract class StdOutLogger extends Logger {
-    override def output(msg: String): Unit = {
-      Console.out.println(msg)
-    }
-  }
-}
-
-trait DefaultStdOutLoggingProvider extends StdOutLoggingProvider {
-  val logger = DefaultStdOutLogger
-  object DefaultStdOutLogger extends StdOutLogger {
-    override val logLevel: Logger.LogLevel = Logger.Warning
-  }
-}
-
-trait VerboseStdOutLoggingProvider extends StdOutLoggingProvider {
-  val logger = VerboseStdOutLogger
-  object VerboseStdOutLogger extends StdOutLogger {
-    override val logLevel: Logger.LogLevel = Logger.Debug
-  }
-}
-
-trait TraceStdOutLoggingProvider extends StdOutLoggingProvider {
-  val logger = TraceStdOutLogger
-  object TraceStdOutLogger extends StdOutLogger {
-    override val logLevel: Logger.LogLevel = Logger.Trace
-  }
-}

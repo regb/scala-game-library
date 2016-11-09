@@ -5,7 +5,11 @@ import sgl.util._
 import org.scalajs.dom
 
 /*
- * TODO: can we do nice colors like in the desktop terminal?
+ * Note that it seems scala.js does nicely eliminate all overhead
+ * of logging call when using NoLoggingProvider (the empty logger).
+ * It is nice, as we pass everything by value, the string are not
+ * even constructed so the logging framework is basically free
+ * in production.
  */
 
 trait Html5ConsoleLoggingProvider extends LoggingProvider {
@@ -13,11 +17,20 @@ trait Html5ConsoleLoggingProvider extends LoggingProvider {
   import Logger._
 
   abstract class ConsoleLogger extends Logger {
-    override protected def reline(prefix: String, tag: Tag, msg: String): String = {
+    private def format(tag: Tag, msg: String): String = {
+      val prefix = s"[ ${tag.name} ]"
       val alignedMsg = msg.trim.replaceAll("\n", "\n" + (" " * prefix.length))
-      s"${prefix}[ ${tag.name} ] $alignedMsg"
+      s"${prefix} $alignedMsg"
     }
-    override def output(msg: String): Unit = dom.console.log(msg)
+
+    override protected def log(level: LogLevel, tag: Tag, msg: String): Unit = level match {
+      case NoLogging => ()
+      case Error => dom.console.error(format(tag, msg))
+      case Warning => dom.console.warn(format(tag, msg))
+      case Info => dom.console.info(format(tag, msg))
+      case Debug => dom.console.log(format(tag, msg))
+      case Trace => dom.console.log(format(tag, msg))
+    }
   }
 }
 
