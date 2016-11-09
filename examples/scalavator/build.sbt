@@ -9,6 +9,7 @@ lazy val commonSettings = Seq(
 lazy val sglCoreJVM = ProjectRef(file("../.."), "coreJVM")
 lazy val sglCoreJS = ProjectRef(file("../.."), "coreJS")
 lazy val sglHtml5 = ProjectRef(file("../.."), "html5")
+lazy val sglDesktop = ProjectRef(file("../.."), "desktopAWT")
 
 lazy val core = (crossProject.crossType(CrossType.Pure) in file("./core"))
   .settings(commonSettings: _*)
@@ -27,7 +28,7 @@ lazy val desktop = (project in file("./desktop"))
   .settings(
     name := "scalavator-desktop"
   )
-  .dependsOn(sglCoreJVM, coreJVM)
+  .dependsOn(sglCoreJVM, sglDesktop, coreJVM)
 
 lazy val html5 = (project in file("./html5"))
   .enablePlugins(ScalaJSPlugin)

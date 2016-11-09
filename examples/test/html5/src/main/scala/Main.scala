@@ -8,7 +8,8 @@ import sgl.util._
 import scala.scalajs.js.annotation.JSExport
 
 @JSExport
-object Main extends core.AbstractApp with Html5App with InputHelpersComponent with VerboseStdErrLoggingProvider {
+object Main extends core.AbstractApp with Html5App 
+  with InputHelpersComponent with Html5VerboseConsoleLoggingProvider {
 
   override val CanvasDimension = Some((800, 400))
 

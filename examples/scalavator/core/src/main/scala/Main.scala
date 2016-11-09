@@ -2,7 +2,6 @@ package com.regblanc.scalavator
 package core
 
 import sgl._
-import sgl.awt._
 import scene._
 import util._
 

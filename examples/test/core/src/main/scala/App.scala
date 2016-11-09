@@ -2,7 +2,6 @@ package com.regblanc.sgl.test
 package core
 
 import sgl._
-import sgl.awt._
 import sgl.util._
 
 trait AbstractApp extends MainScreenComponent {
