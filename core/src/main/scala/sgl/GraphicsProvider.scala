@@ -95,11 +95,21 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
     def width: Int
     def height: Int
     
-    /** translate the origin of the canvas to (x, y) */
-    //TODO: is it TO or is it BY (x,y) ?
+    /** translate the origin by (x, y)
+      *
+      * Mutliple translate are additive, meaning that to cancel a translation by (x,y)
+      * you must translate by (-x,-y). translate (x,y) does not simply move the origin
+      * to (x,y) but adds x and y to the current origin. If origin was (0,0) new origin
+      * will indeed be at (x,y)
+      */
     def translate(x: Int, y: Int): Unit
 
-    /** clip rendering area with the rectangle */
+    /** clip rendering area with the rectangle
+      *
+      * A call to clip is always relative to the whole canvas, so successive
+      * call to clips are not additive, but reset the clip to a different place
+      * of the canvas.
+      */
     def clipRect(x: Int, y: Int, width: Int, height: Int): Unit
 
     /** draw the whole bitmap at x and y */

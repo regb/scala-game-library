@@ -86,6 +86,8 @@ trait AWTGraphicsProvider extends GraphicsProvider with Lifecycle {
   case class AWTCanvas(graphics: Graphics2D, var width: Int, var height: Int) extends AbstractCanvas {
 
     override def translate(x: Int, y: Int): Unit = {
+      //using .toDouble is important as there is a Graphics2D method on Int, but it does not
+      //modify the current translation and instead set absolute x and y positions
       graphics.translate(x.toDouble, y.toDouble)
     }
 
