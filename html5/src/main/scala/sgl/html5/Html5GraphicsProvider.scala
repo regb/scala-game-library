@@ -41,8 +41,10 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
     override def isItalic: Boolean = style == Font.Italic || style == Font.BoldItalic
 
     def asCss: String = {
+      //not sure, but seems that the ordering of size/style/family is important.
+      //"20px normal sans-serif" seems to be the most reasonable
       val scss = Font.toCssStyle(style)
-      s"$family $scss ${size}px"
+      s"${size}px $scss $family"
     }
   }
   type Font = Html5Font
@@ -75,6 +77,11 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
   override val Color = Html5ColorCompanion
 
   case class Html5Paint(font: Font, color: Color, alignment: Alignments.Alignment) extends AbstractPaint {
+    val alignmentRaw = alignment match {
+      case Alignments.Left => "left"
+      case Alignments.Center => "center"
+      case Alignments.Right => "right"
+    }
     def withFont(f: Font) = copy(font = f)
     def withColor(c: Color) = copy(color = c)
     def withAlignment(a: Alignments.Alignment) = copy(alignment = a)
@@ -83,6 +90,7 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
       ctx.fillStyle = color
       ctx.strokeStyle = color
       ctx.font = font.asCss
+      ctx.textAlign = alignmentRaw
     }
   }
 
@@ -94,6 +102,7 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
   case class Html5Canvas(canvas: html.Canvas) extends AbstractCanvas {
     
     val context = canvas.getContext("2d").asInstanceOf[Ctx2D]
+    context.save()
 
     override def height: Int = canvas.height
     override def width: Int = canvas.width
@@ -103,6 +112,8 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
     }
 
     //probably useful to add to the core abstraction at some point
+    //can save current translation/rotation, usefull for stack style
+    //rendering
     def save(): Unit = {
       context.save()
     }
@@ -111,9 +122,11 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
     }
 
     override def clipRect(x: Int, y: Int, width: Int, height: Int): Unit = {
-      //context.rect(x, y, width, height)
-      //context.stroke()
-      //context.clip()
+      context.restore()
+      context.save()
+      context.beginPath()
+      context.rect(x, y, width, height)
+      context.clip()
     }
 
     override def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit = {
@@ -163,7 +176,7 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
 
     override def drawString(str: String, x: Int, y: Int, paint: Paint): Unit = {
       paint.prepareContext(context)
-      context.strokeText(str, x, y)
+      context.fillText(str, x, y)
     }
 
     override def drawText(text: TextLayout, x: Int, y: Int): Unit = ???
@@ -186,7 +199,7 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
 
   def getScreenCanvas: Canvas = Html5Canvas(canvas)
   def releaseScreenCanvas(canvas: Canvas): Unit = {
-    canvas.context.stroke()
+    //canvas.context.stroke()
   }
 
   type TextLayout = Html5TextLayout

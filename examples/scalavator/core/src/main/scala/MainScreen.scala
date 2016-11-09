@@ -122,7 +122,7 @@ trait MainScreenComponent {
 
     def handleInput(ev: Input.InputEvent): Unit = {
       ev match {
-        case Input.TouchDownEvent(_, _, _) | Input.MouseDownEvent(_, _, _) =>
+        case Input.TouchDownEvent(_, _, _) | Input.MouseDownEvent(_, _, Input.MouseButtons.Left) =>
           logger.info("Jump input from player detected")
           if(standingPlatform.nonEmpty) {
             standingPlatform = None
@@ -203,11 +203,6 @@ trait MainScreenComponent {
 
       platforms.foreach(_.render(canvas))
 
-      //canvas.drawRect(
-      //  characterPosition.x.toInt, characterPosition.y.toInt-CharacterHeight,
-      //  CharacterWidth, CharacterHeight, 
-      //  defaultPaint.withColor(Color.Green)
-      //)
       canvas.drawBitmap(characterAnimation.currentFrame,
         characterPosition.x.toInt-dp2px(9), characterPosition.y.toInt-CharacterHeight)
 
@@ -253,24 +248,24 @@ trait MainScreenComponent {
     group.addNode(scoreLabel)
     sceneGraph.addNode(group)
 
+    private val textPaint = defaultPaint.withColor(Color.White).withFont(Font.Default.withSize(dp2px(18)))
+
     class GroupBackground extends SceneNode(0, 0, 0, 0) {
       override def update(dt: Long): Unit = {}
       override def render(canvas: Canvas): Unit = {
-        //canvas.drawColor(Color.Red)
+        canvas.drawColor(Color.Red)
       }
     }
     class TitleLabel extends SceneNode(dp2px(15), dp2px(25), 0, 0) {
       override def update(dt: Long): Unit = {}
       override def render(canvas: Canvas): Unit = {
-        val textPaint = defaultPaint.withColor(Color.White).withFont(Font.Default.withSize(dp2px(18)))
         canvas.drawString("Scalavator", x.toInt, y.toInt, textPaint)
       }
     }
-    class ScoreLabel extends SceneNode(WindowWidth-dp2px(25), dp2px(25), 0, 0) {
+    class ScoreLabel extends SceneNode(WindowWidth-dp2px(15), dp2px(25), 0, 0) {
       var score: Int = 0
       override def update(dt: Long): Unit = {}
       override def render(canvas: Canvas): Unit = {
-        val textPaint = defaultPaint.withColor(Color.White).withFont(Font.Default.withSize(dp2px(18)))
         canvas.drawString(score.toString, x.toInt, y.toInt, textPaint.withAlignment(Alignments.Right))
       }
     }
