@@ -33,6 +33,12 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
   }
 
 
+  //TODO: seems like I could define Font.Style as an abstract type (not an enum) and
+  //      have it concretely implemented here as a string directly, that would optimize
+  //      a bit in the optimized js, as all indirect abstraction should be removed
+  //      and we will directly manipulate the string representing the font style
+  //
+  //      Btw, this likely applies to Alignment and a bunch of other stuff as well
   case class Html5Font(family: String, style: Font.Style, size: Int) extends AbstractFont {
     override def withSize(s: Int): Font = copy(size = s)
     override def withStyle(s: Font.Style): Font = copy(style = s)
@@ -42,9 +48,9 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
 
     def asCss: String = {
       //not sure, but seems that the ordering of size/style/family is important.
-      //"20px normal sans-serif" seems to be the most reasonable
+      //"normal 20px sans-serif" seems to be the most reasonable
       val scss = Font.toCssStyle(style)
-      s"${size}px $scss $family"
+      s"$scss ${size}px $family"
     }
   }
   type Font = Html5Font
@@ -58,7 +64,7 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
       case Bold => "bold"
       case Italic => "italic"
       case Normal => "normal"
-      case BoldItalic => "bold italic"
+      case BoldItalic => "italic bold"
     }
 
     override lazy val Default: Font = Html5Font("sans-serif", Normal, 10)
@@ -238,9 +244,12 @@ trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
       res.toList
     }
 
-    private val lineHeight = 20 //TODO
+    //TODO: maybe need to add a few extra px? Need to check exact specs of what is
+    //      the line height with respect to the font size
+    //      Also need to make sure we are consistent across all platforms
+    private val lineHeight = paint.font.size
 
-    override val height: Int = paint.font.size
+    override val height: Int = rows.size * lineHeight
 
     def draw(ctx: Ctx2D, x: Int, y: Int): Unit = {
       paint.prepareContext(ctx)
