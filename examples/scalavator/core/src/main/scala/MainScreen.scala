@@ -70,7 +70,7 @@ trait MainScreenComponent {
     private var characterPosition = Point(WindowWidth/2-CharacterWidth/2, WindowHeight - PlatformHeight)
     private var characterVelocity = Vec(0, 0)
 
-    private val characterBitmap = loadImageFromResource("character.png")
+    private val characterBitmap = loadImageFromResource("drawable/character.png")
     private val characterFrames = Array(
       BitmapRegion(characterBitmap, 0, 0, dp2px(48), dp2px(68)),
       BitmapRegion(characterBitmap, dp2px(48), 0, dp2px(48), dp2px(68)),

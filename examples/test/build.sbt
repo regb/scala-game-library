@@ -71,11 +71,6 @@ lazy val android = (project in file("./android"))
   .settings(commonAndroidSettings: _*)
   .settings(
     name := "sgl-test-android",
-    libraryDependencies += "com.google.firebase" % "firebase-core" % "9.0.0",
-    libraryDependencies += "com.google.android.gms"  % "play-services-ads" % "9.0.0",
-    libraryDependencies += "com.google.android.gms"  % "play-services-drive" % "9.0.0",
-    libraryDependencies += "com.google.android.gms"  % "play-services-games" % "9.0.0",
-    libraryDependencies += "com.google.android.gms"  % "play-services-plus" % "9.0.0",
     useProguard := true,
     proguardOptions ++= Seq(
         "-dontobfuscate",
