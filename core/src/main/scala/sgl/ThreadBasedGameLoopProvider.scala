@@ -13,6 +13,9 @@ import util._
   * The idea is that the game loop component should handle its lifecycle
   * via its Lifecycle methods, it would stop running the game loop during
   * a pause, and restart it on a resume.
+  *
+  * We should probably try to extract this code from the core package,
+  * since it will not work with some backend such as scalajs (no thread).
   */
 trait ThreadBasedGameLoopProvider extends GameLoopProvider with Lifecycle {
   self: GraphicsProvider with GameStateComponent with LoggingProvider =>

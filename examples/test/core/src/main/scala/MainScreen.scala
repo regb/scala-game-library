@@ -12,12 +12,12 @@ trait MainScreenComponent {
 
   class MainScreen extends GameScreen {
 
-    private val characterBitmap = loadImageFromResource("character.png")
+    private val characterBitmap = loadImageFromResource("drawable/character.png")
     private val characterFrames = Array(
-      BitmapRegion(characterBitmap, 0, 0, 48, 68),
-      BitmapRegion(characterBitmap, 48, 0, 48, 68),
-      BitmapRegion(characterBitmap, 96, 0, 48, 68),
-      BitmapRegion(characterBitmap, 144, 0, 48, 68)
+      BitmapRegion(characterBitmap, 0, 0, dp2px(48), dp2px(68)),
+      BitmapRegion(characterBitmap, dp2px(48), 0, dp2px(48), dp2px(68)),
+      BitmapRegion(characterBitmap, dp2px(96), 0, dp2px(48), dp2px(68)),
+      BitmapRegion(characterBitmap, dp2px(144), 0, dp2px(48), dp2px(68))
     )
     val characterAnimation = new Animation(200, characterFrames, Animation.Loop)
 
@@ -29,31 +29,35 @@ trait MainScreenComponent {
 
     var totalTime: Long = 0
     override def update(dt: Long): Unit = {
-      InputHelpers.processEvents(e => println("got event: " + e))
-
+      InputHelpers.processEvents(e => e match {
+        case Input.PointerDownEvent(x, y, _) =>
+          this.x = x
+          this.y = y
+        case _ => ()
+      })
       totalTime += dt
 
       if(Inputs.Keyboard.left) {
-        x -= 50*(dt/1000d)
+        x -= dp2px(50)*(dt/1000d)
       }
       if(Inputs.Keyboard.right) {
-        x += 50*(dt/1000d)
+        x += dp2px(50)*(dt/1000d)
       }
 
       if(Inputs.Keyboard.up) {
-        y -= 50*(dt/1000d)
+        y -= dp2px(50)*(dt/1000d)
       }
       if(Inputs.Keyboard.down) {
-        y += 50*(dt/1000d)
+        y += dp2px(50)*(dt/1000d)
       }
 
-      autoX += 50*(dt/1000d)
-      autoY += 50*(dt/1000d)
+      autoX += dp2px(50)*(dt/1000d)
+      autoY += dp2px(50)*(dt/1000d)
     }
 
     override def render(canvas: Canvas): Unit = {
       canvas.drawRect(0, 0, WindowWidth, WindowHeight, defaultPaint.withColor(Color.rgb(204, 242, 204)))
-      canvas.drawCircle(autoX.toInt, autoY.toInt, 50, defaultPaint.withColor(Color.Black))
+      canvas.drawCircle(autoX.toInt, autoY.toInt, dp2px(50), defaultPaint.withColor(Color.Black))
 
       canvas.drawBitmap(characterAnimation.currentFrame(totalTime), x.toInt, y.toInt)
     }

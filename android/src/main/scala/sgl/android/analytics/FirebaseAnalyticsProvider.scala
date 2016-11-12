@@ -9,7 +9,7 @@ import com.google.firebase.analytics._
 import _root_.android.os.Bundle
 
 trait FirebaseAnalyticsProvider extends AnalyticsProvider with Lifecycle {
-  this: GameScreensComponent with AndroidWindowProvider =>
+  this: GameStateComponent with AndroidWindowProvider =>
 
   private var firebaseAnalytics: FirebaseAnalytics = null
 

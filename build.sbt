@@ -1,23 +1,23 @@
 val scalaVer = "2.12.0"
 
-lazy val root = (project in file("."))
-  .settings(name := "sgl")
-  .aggregate(coreJVM, coreJS, desktopAWT, html5)
-
 lazy val commonSettings = Seq(
   version      := "0.0.1",
   scalaVersion := scalaVer,
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 )
 
-lazy val jvmSettings = Seq(
-  exportJars := true
-)
+lazy val root = (project in file("."))
+  .settings(
+    name := "sgl",
+    sourcesInBase := false
+  )
+  .settings(commonSettings: _*)
+  .aggregate(coreJVM, coreJS, coreAndroid, desktopAWT, html5, android)
+
 
 lazy val core = (crossProject.crossType(CrossType.Pure) in file("./core"))
   .settings(commonSettings: _*)
   .settings(name := "sgl-core")
-  .jvmSettings(jvmSettings: _*)
 
 lazy val coreJVM = core.jvm
 lazy val coreJS = core.js
@@ -40,3 +40,51 @@ lazy val html5 = (project in file("./html5"))
     libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.1"
   )
   .dependsOn(coreJS)
+
+
+//Android cannot run on Java8 so we stick with 2.11. We
+//need to build core separately for the right version
+
+val scalaAndroidVer = "2.11.8"
+
+val commonAndroidSettings = Seq(
+  scalaVersion  := scalaAndroidVer,
+  scalacOptions += "-target:jvm-1.7",
+  javacOptions ++= Seq("-source", "1.7", "-target", "1.7"),
+  exportJars    := true
+)
+
+lazy val coreAndroid = (project in file("./core"))
+  .settings(commonSettings: _*)
+  .settings(commonAndroidSettings: _*)
+  .settings(
+    name         := "sgl-core",
+    target       := baseDirectory.value / ".android" / "target"
+  )
+
+
+lazy val android = (project in file("./android"))
+  .enablePlugins(AndroidLib)
+  .settings(commonSettings: _*)
+  .settings(commonAndroidSettings: _*)
+  .settings(
+    name := "sgl-android",
+    libraryDependencies += "com.google.firebase" % "firebase-core" % "9.0.0",
+    libraryDependencies += "com.google.android.gms"  % "play-services-ads" % "9.0.0",
+    libraryDependencies += "com.google.android.gms"  % "play-services-drive" % "9.0.0",
+    libraryDependencies += "com.google.android.gms"  % "play-services-games" % "9.0.0",
+    libraryDependencies += "com.google.android.gms"  % "play-services-plus" % "9.0.0",
+    useProguard := true,
+    proguardOptions ++= Seq(
+        "-dontobfuscate",
+        "-dontoptimize",
+        "-keepattributes Signature",
+        "-dontwarn scala.collection.**", // required from Scala 2.11.3
+        "-dontwarn scala.collection.mutable.**", // required from Scala 2.11.0
+        "-ignorewarnings",
+        "-keep class scala.Dynamic",
+        "-keep class test.**"
+    ),
+    platformTarget := "android-23"
+  )
+  .dependsOn(coreAndroid)
