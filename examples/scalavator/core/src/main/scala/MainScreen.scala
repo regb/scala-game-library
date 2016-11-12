@@ -136,6 +136,7 @@ trait MainScreenComponent {
     private var accumulatedDelta = 0l
     private val FixedDelta = 5l
     override def update(dt: Long): Unit = {
+      println("frame: " + WindowWidth + " x " + WindowHeight)
       logger.debug("player velocity: " + characterVelocity)
       logger.debug("player position: " + characterPosition)
 

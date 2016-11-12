@@ -11,6 +11,10 @@ trait AWTApp extends GameApp
   this: LoggingProvider =>
 
   def main(args: Array[String]): Unit = {
+
+    this.gamePanel = new GamePanel
+    this.applicationFrame = new ApplicationFrame(gamePanel)
+
     this.startup()
     this.resume()
   }
