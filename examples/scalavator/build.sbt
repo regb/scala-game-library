@@ -25,10 +25,27 @@ lazy val core = (crossProject.crossType(CrossType.Pure) in file("./core"))
 lazy val coreJVM = core.jvm
 lazy val coreJS = core.js
 
+
+lazy val script = taskKey[File]("Create the desktop runner script")
+
+lazy val runnerScriptTemplate = 
+"""#!/bin/sh
+java -classpath "%s" %s "$@"
+"""
+
 lazy val desktop = (project in file("./desktop"))
   .settings(commonSettings: _*)
   .settings(
-    name := "scalavator-desktop"
+    name := "scalavator-desktop",
+    script := {
+      val cp = (fullClasspath in Runtime).value
+      val mainClass = "com.regblanc.scalavator.desktop.Main"
+      val contents = runnerScriptTemplate.format(cp.files.absString, mainClass)
+      val out = target.value / "scalavator"
+      IO.write(out, contents)
+      out.setExecutable(true)
+      out
+    }
   )
   .dependsOn(sglCoreJVM, sglDesktop, coreJVM)
 
