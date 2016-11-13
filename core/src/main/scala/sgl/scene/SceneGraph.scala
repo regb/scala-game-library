@@ -73,6 +73,8 @@ trait SceneGraphComponent {
                 node.notifyClick(x, y)
             }
             node.downEvent = None
+          case _ =>
+            throw new Exception("Should never reach that point")
         }
       })
 

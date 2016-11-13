@@ -1,38 +1,41 @@
-The Scala Game Library
-======================
+SGL: Scala Game Library
+=======================
 
-Scala Game Library (tentatively abbreviated as SGL) is a cross-platform library
-for developing 2D video games in Scala. It provides a high-level API for
-building 2D games, and can deploy for the Desktop, Android, and (soonish)
-HTML5.
+Scala Game Library (tentatively abbreviated as SGL) is a library for developing
+cross-platform 2D video games in Scala. It provides a high-level API for
+building 2D games, and can deploy for Desktop, Android, and HTML5, while iOS
+and console platforms are on the roadmap.
 
-SGL is still in development, but is planning to provide an extensive toolkit to
-build games, with many common features such as physics, collision detection,
-tilemaps, and scenes management out of the box. 
+SGL is still in development, but is intended to provide an extensive toolkit to
+build games, with a core abstraction of platform-specific elements, as well
+as offering an implementation for many common features needed in games, such as physics,
+collision detection, tilemaps, and scenes management out of the box.
+
 
 Work in Progress
 ----------------
 
-This is a work in progress, so please don't hesitate to use the issue system to
-request any features. This is in no case production ready, but I'm putting
-this project out there as I think it has the potential of being very useful,
-and I'm looking for feedback from people interested in such a library.
+This is a work in progress, so please don't hesitate to get in touch if you are
+interested in writing a game in Scala.  This is in no case production ready,
+but I'm putting this project out there as I think it has the potential of being
+very useful, and I'm looking for feedback from people interested in such a
+library.
 
 I'm developing new features on a need basis. I'm working on some Android games,
 and I started to use this library as it was much nicer to build and test the
-game on the Desktop, and only deploy on the phone later. I'm constantly adding
-features to the library based on my needs for my games, but if you miss some
-other features, please let me know and I will add them! You're also very welcome
-to contribute :)
+game on my Desktop, and only deploy on the phone for the final tests. I'm
+constantly adding new features to the library based on my needs for my games,
+but if you miss some other features, please let me know and I will add them!
+You're also very welcome to contribute :)
 
-If you checkout the latest master, and find out that some stuff is not working as
-expected, please understand that the project is evolving rapidly and I'm likely
-just breaking existing stuff to try to improve the overall design. The library does
-truly help in building actual games, and I successfully developed one Android game
-available on
-[Google Play](https://play.google.com/store/apps/details?id=com.regblanc.winsmash)
-using this library. The library helped tremendously, by being fully Scala and allowing
-for transparent port from the Desktop to the Android platform.
+If you checkout the latest master, and find out that some stuff is not working
+as expected, please understand that the project is evolving rapidly and I'm
+likely just breaking existing stuff to try to improve the overall design. The
+library does truly help in building actual games, and I successfully developed
+one published 
+[Android game](https://play.google.com/store/apps/details?id=com.regblanc.winsmash)
+with it. The library helped tremendously, by being fully Scala and allowing for
+transparent port from the Desktop to the Android platform.
 
 Design Principles
 -----------------
@@ -40,11 +43,12 @@ Design Principles
 * Games and only games. This is not a general media toolkit. The only things that
 should be build with this library are games.
 
-* True Scala library. We want to expose a Scala-like library a much as possible. That means a
-very clean and elegant design with type-safety.
+* True Scala library. We want to expose a Scala-like library a much as possible. That means
+very clean and elegant design with type-safety. We are not going to compromise for compatibility
+with Java.
 
 * Entirely cross-platform, no cheating. The core library should abstract everything and only
-expose features that are truly cross-platform. Any platform-specific extensions should be
+exposes features that are truly cross-platform. Any platform-specific extensions should be
 provided in a type-safe way.
 
 * Generic but pragmatic. We try to remain as generic as possible, in the sense
@@ -67,7 +71,7 @@ Gallery
 -------
 
 This section is intended to list some actual published and commercial games, as
-well as games currently inproduction that are using the SGL.  The list is quite
+well as games currently in production that are using the SGL. The list is quite
 short, but I'm hopeful that it will grow over time.
 
 ###Published

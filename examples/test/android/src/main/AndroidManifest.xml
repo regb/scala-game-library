@@ -1,0 +1,55 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.regblanc.sgl.test.android"
+    android:versionCode="1"
+    android:versionName="0.1">
+
+    <uses-sdk
+        android:minSdkVersion="16"
+        android:targetSdkVersion="23" />
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <application
+        android:label="SGL-Test"
+        android:isGame="true"
+        android:hardwareAccelerated="true">
+
+        <!--This meta-data tag is required to use Google Play Services.-->
+        <!--
+        <meta-data android:name="com.google.android.gms.version"
+                   android:value="@integer/google_play_services_version" />
+
+        <meta-data android:name="com.google.android.gms.games.APP_ID"
+                   android:value="@string/app_id" />
+                   -->
+
+        <activity
+          android:configChanges="keyboardHidden|orientation|screenSize"
+          android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+          android:label="SGL-Test"
+          android:screenOrientation="portrait"
+          android:name=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+
+    <!--
+        <activity android:name="com.jirbo.adcolony.AdColonyOverlay"
+                  android:configChanges="keyboardHidden|orientation|screenSize"
+                  android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen" />
+
+        <activity android:name="com.jirbo.adcolony.AdColonyFullscreen"
+                  android:configChanges="keyboardHidden|orientation|screenSize"
+                  android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
+
+        <activity android:name="com.jirbo.adcolony.AdColonyBrowser"
+                  android:configChanges="keyboardHidden|orientation|screenSize"
+                  android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
+    -->
+
+    </application>
+
+</manifest>

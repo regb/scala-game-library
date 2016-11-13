@@ -6,14 +6,13 @@ import _root_.android.view.SurfaceView
 
 trait AndroidWindowProvider extends WindowProvider {
 
+  var gameView: GameView = null
 
-  val mainActivity: DefaultGameActivity
-
-  override def WindowHeight = mainActivity.gameView.getHeight
-  override def WindowWidth = mainActivity.gameView.getWidth
+  override def WindowHeight = gameView.getHeight
+  override def WindowWidth = gameView.getWidth
 
   private val BaseDensity: Double = 160
-  override def dpi: Int = mainActivity.gameView.getResources.getDisplayMetrics.densityDpi
-  override def density: Float = mainActivity.gameView.getResources.getDisplayMetrics.density
+  override def dpi: Int = gameView.getResources.getDisplayMetrics.densityDpi
+  override def density: Float = gameView.getResources.getDisplayMetrics.density
 
 }

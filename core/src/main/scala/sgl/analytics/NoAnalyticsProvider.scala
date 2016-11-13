@@ -4,7 +4,7 @@ package analytics
 import util.LoggingProvider
 
 trait NoAnalyticsProvider extends AnalyticsProvider {
-  this: GameScreensComponent with LoggingProvider =>
+  this: GameStateComponent with LoggingProvider =>
 
   case class Event(name: String, params: EventParams) extends AbstractEvent
 

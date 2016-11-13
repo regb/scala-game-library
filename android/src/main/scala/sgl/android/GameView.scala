@@ -22,7 +22,7 @@ import _root_.android.app.AlertDialog
 import _root_.android.content.DialogInterface
 
 class GameView(
-  val gameActivity: DefaultGameActivity, 
+  val gameActivity: AndroidApp, 
   attributeSet: AttributeSet
 ) extends SurfaceView(gameActivity) with SurfaceHolder.Callback { self =>
 
@@ -41,18 +41,18 @@ class GameView(
     Log.d(LogTag, "SurfaceCreated called")
     surfaceValid = true
     if(gameActivity.isRunning)
-      gameActivity.gameApp.resume()
+      gameActivity.resume()
   }
 
   override def surfaceDestroyed(holder: SurfaceHolder): Unit = {
     Log.d(LogTag, "SurfaceDestroyed called")
     surfaceValid = false
     if(gameActivity.isRunning) {
-      gameActivity.gameApp.pause()
-      gameActivity.gameApp.gameLoop.runningThread.join
+      gameActivity.pause()
+      gameActivity.gameLoop.runningThread.join
     }
   }
 
-  def this(gameActivity: DefaultGameActivity) = this(gameActivity, null)
+  def this(gameActivity: AndroidApp) = this(gameActivity, null)
 
 }

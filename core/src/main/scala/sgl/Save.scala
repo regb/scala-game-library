@@ -60,3 +60,29 @@ trait SaveComponent {
 
   val save: Save
 }
+
+
+/** A placeholder implementation that does not save
+  *
+  * Useful if you need quick testing, developing for an
+  * esoteric platform where you cannot persist anything, or
+  * for unit testing and you need to wire dependencies.
+  */
+trait NoSaveComponent extends SaveComponent {
+
+  class NoSave extends AbstractSave {
+    override def putInt(name: String, value: Int): Unit = {}
+    override def getInt(name: String): Option[Int] = None
+  
+    override def putLong(name: String, value: Long): Unit = {}
+    override def getLong(name: String): Option[Long] = None
+  
+    override def putBoolean(name: String, value: Boolean): Unit = {}
+    override def getBoolean(name: String): Option[Boolean] = None
+  
+    override def putString(name: String, value: String): Unit = {}
+    override def getString(name: String): Option[String] = None
+  }
+  type Save = NoSave
+  override val save = new NoSave
+}
