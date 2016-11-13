@@ -13,6 +13,6 @@ object Main extends AbstractApp with AWTApp with InputHelpersComponent with Verb
 
   override val Fps = Some(60)
 
-  override val frameDimension = Some((1200, 800))
+  override val frameDimension = (1200, 800)
 
 }

@@ -5,7 +5,7 @@ import sgl._
 import scene._
 import util._
 
-trait AbstractApp extends MainScreenComponent {
+trait AbstractApp extends MainScreenComponent with Lifecycle {
   this: GraphicsProvider with InputProvider with WindowProvider with AudioProvider
   with GameStateComponent with SystemProvider
   with GameLoopProvider with SceneComponent with LoggingProvider =>

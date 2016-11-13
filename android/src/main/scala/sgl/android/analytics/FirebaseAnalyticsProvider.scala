@@ -6,16 +6,17 @@ import sgl.analytics._
 
 import com.google.firebase.analytics._
 
+import _root_.android.app.Activity
 import _root_.android.os.Bundle
 
 trait FirebaseAnalyticsProvider extends AnalyticsProvider with Lifecycle {
-  this: GameStateComponent with AndroidWindowProvider =>
+  this: GameStateComponent with AndroidWindowProvider with Activity =>
 
   private var firebaseAnalytics: FirebaseAnalytics = null
 
   abstract override def startup(): Unit = {
     super.startup()
-    firebaseAnalytics = FirebaseAnalytics.getInstance(mainActivity)
+    firebaseAnalytics = FirebaseAnalytics.getInstance(this)
   }
 
   case class Event(name: String, params: EventParams) extends AbstractEvent

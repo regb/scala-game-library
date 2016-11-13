@@ -29,7 +29,7 @@ import com.google.android.gms.drive.Drive
   * features you need for your game. It also provides an auto-login
   * management implementation.
   */
-trait GoogleGamesServices extends DefaultGameActivity
+trait GoogleGamesServices extends Activity
                           with ConnectionCallbacks with OnConnectionFailedListener {
 
   private val LogTag: String = "SGL-GoogleGamesServices"

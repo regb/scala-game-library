@@ -1,13 +1,15 @@
 package sgl
 package android
 
+import _root_.android.app.Activity
+
 import _root_.android.media.MediaPlayer
 import _root_.android.media.SoundPool
 import _root_.android.media.AudioManager
 import _root_.android.media.AudioAttributes
 
 trait AndroidAudioProvider extends AudioProvider with Lifecycle {
-  this: AndroidWindowProvider =>
+  self: AndroidWindowProvider with Activity =>
 
   /*
    * TODO: could add runtime logic to release pool when some number of sounds
@@ -81,7 +83,7 @@ trait AndroidAudioProvider extends AudioProvider with Lifecycle {
     }
   }
   override def loadSoundFromResource(path: String): Sound = {
-    val am = mainActivity.getAssets()
+    val am = self.getAssets()
     val afd = am.openFd(path)
     val soundId = soundPool.load(afd, 1)
     new Sound(soundId)
@@ -108,7 +110,7 @@ trait AndroidAudioProvider extends AudioProvider with Lifecycle {
 
     //load asset from path and prepare the mp
     private def loadAndPrepare(mp: MediaPlayer): Unit = {
-      val am = mainActivity.getAssets()
+      val am = self.getAssets()
       val afd = am.openFd(path)
       mp.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength())
       mp.prepare() //TODO: we should use async repareAsync with onPreparedListener

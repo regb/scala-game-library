@@ -99,7 +99,7 @@ trait ThreadBasedGameLoopProvider extends GameLoopProvider with Lifecycle {
       //initialized stuff (GameLoop is constructed during cake initialization phase)
       //TODO: we might remove this need by creating factories for GameScreen instead of
       //      passing instances. Need to think of a system.
-      //newScreen(startingScreen)
+      gameState.newScreen(startingScreen)
     }
 
     private var firstCall = true

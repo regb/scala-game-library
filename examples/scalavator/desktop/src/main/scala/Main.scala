@@ -13,6 +13,6 @@ object Main extends AbstractApp with AWTApp with SceneComponent with VerboseStdO
 
   override val Fps = Some(60)
 
-  override val frameDimension = Some((400, 650))
+  override val frameDimension = (400, 650)
 
 }

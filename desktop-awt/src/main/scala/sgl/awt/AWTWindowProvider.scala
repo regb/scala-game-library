@@ -10,8 +10,19 @@ import java.awt.Dimension
 trait AWTWindowProvider extends WindowProvider with Lifecycle {
   this: GameStateComponent with ThreadBasedGameLoopProvider =>
 
+  /** The title of the frame */
   val frameTitle: String = "Default App"
-  val frameDimension: Option[(Int, Int)] = None
+
+  /** The dimension of the game window
+    *
+    * This is the exact dimension of the rendering canvas area.
+    * The full frame will contain a header with some cross button
+    * and its size will depend on the system (linux mac windows), and
+    * so it will be slighlty higher than the dimension specified here
+    * and will vary from system to system. But the playable area is going
+    * to have a consistent size.
+    */
+  val frameDimension: (Int, Int)
 
   class ApplicationFrame(gamePanel: GamePanel) extends JFrame {
     
@@ -20,8 +31,7 @@ trait AWTWindowProvider extends WindowProvider with Lifecycle {
     this.add(gamePanel)
     gamePanel.setFocusable(true)
 
-    val (w, h) = frameDimension.getOrElse((400, 600))
-    //this.setSize(w, h)
+    val (w, h) = frameDimension
     this.getContentPane().setPreferredSize(new Dimension(w, h))
     gamePanel.setSize(w, h)
     this.pack()

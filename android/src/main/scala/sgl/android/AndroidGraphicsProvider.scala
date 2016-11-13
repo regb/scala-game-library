@@ -1,6 +1,8 @@
 package sgl
 package android
 
+import _root_.android.app.Activity
+
 import _root_.android.content.Context
 import _root_.android.content.res.Resources
 import _root_.android.graphics.{Canvas => NativeCanvas, Color => NativeColor, Paint => NativePaint}
@@ -12,7 +14,7 @@ import _root_.android.graphics.PorterDuff
 import _root_.android.graphics.{Rect => AndroidRect, RectF}
 
 trait AndroidGraphicsProvider extends GraphicsProvider {
-  this: AndroidWindowProvider =>
+  this: AndroidWindowProvider with Activity =>
 
   case class AndroidBitmap(bitmap: NativeBitmap) extends AbstractBitmap {
     override def height: Int = bitmap.getHeight
@@ -22,8 +24,8 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
 
   override def loadImageFromResource(path: String): Bitmap = {
     val filename = path.split("/")(1).dropRight(4)
-    val resources = mainActivity.getResources
-    val drawableId = resources.getIdentifier(filename, "drawable", mainActivity.getPackageName())
+    val resources = this.getResources
+    val drawableId = resources.getIdentifier(filename, "drawable", this.getPackageName())
     val bitmap = BitmapFactory.decodeResource(resources, drawableId)
     AndroidBitmap(bitmap)
   }
@@ -180,8 +182,8 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
   }
 
   def getScreenCanvas: Canvas = {
-    if(mainActivity.gameView.surfaceValid) {
-      val holder = mainActivity.gameView.getHolder
+    if(gameView.surfaceValid) {
+      val holder = gameView.getHolder
       val canvas = holder.lockCanvas
       AndroidCanvas(canvas)
     } else {
@@ -189,8 +191,8 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
     }
   }
   def releaseScreenCanvas(canvas: Canvas): Unit = {
-    if(mainActivity.gameView.surfaceValid)
-      mainActivity.gameView.getHolder.unlockCanvasAndPost(canvas.canvas)
+    if(gameView.surfaceValid)
+      gameView.getHolder.unlockCanvasAndPost(canvas.canvas)
   }
 
 }

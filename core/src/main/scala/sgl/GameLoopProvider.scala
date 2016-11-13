@@ -24,7 +24,7 @@ trait GameLoopProvider extends Lifecycle {
 
   abstract override def startup(): Unit = {
     super.startup()
-    gameState.newScreen(startingScreen)
+    //gameState.newScreen(startingScreen)
   }
 
 

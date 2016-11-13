@@ -6,16 +6,16 @@ import _root_.android.view.GestureDetector
 import _root_.android.view.MotionEvent
 import _root_.android.view.KeyEvent
 
-trait AndroidInputProvider extends InputProvider with Lifecycle {
-  this: AndroidWindowProvider =>
+trait AndroidInputProvider extends InputProvider {
+  this: AndroidWindowProvider with Lifecycle =>
 
   abstract override def startup(): Unit = {
-    super.startup()
+    //super.startup()
 
-    val gestureDetector = new GestureDetector(mainActivity.gameView.getContext, new GameGestureListener)
+    val gestureDetector = new GestureDetector(gameView.getContext, new GameGestureListener)
     gestureDetector.setIsLongpressEnabled(false) //no long press, user can long press and then scroll
 
-    mainActivity.gameView.setOnTouchListener(new View.OnTouchListener {
+    gameView.setOnTouchListener(new View.OnTouchListener {
       override def onTouch(view: View, event: MotionEvent): Boolean = {
         gestureDetector.onTouchEvent(event)
 
@@ -72,7 +72,7 @@ trait AndroidInputProvider extends InputProvider with Lifecycle {
     })
 
     //TODO: clarify what is proper way to detect those events
-    mainActivity.gameView.setOnKeyListener(new View.OnKeyListener {
+    gameView.setOnKeyListener(new View.OnKeyListener {
       override def onKey(v: View, keyCode: Int, event: KeyEvent): Boolean = {
         if(keyCode == KeyEvent.KEYCODE_BACK) {
           if(event.getAction == KeyEvent.ACTION_UP) {
