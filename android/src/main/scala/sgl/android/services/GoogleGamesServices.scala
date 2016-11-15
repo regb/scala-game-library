@@ -1,10 +1,11 @@
 package sgl.android
 package services
 
+import sgl.util._
+
 import android.app.Activity
 import android.os.Bundle
 import android.content.Intent
-import android.util.Log
 
 import com.google.android.gms.common.api.GoogleApiClient
 import GoogleApiClient.{ConnectionCallbacks, OnConnectionFailedListener}
@@ -14,7 +15,6 @@ import com.google.android.gms.games.snapshot.Snapshot
 import com.google.android.gms.games.snapshot.SnapshotMetadataChange
 import com.google.android.gms.games.GamesStatusCodes
 import com.google.android.gms.drive.Drive
-
 
 /** Provide google games services for the main activity
   * 
@@ -32,7 +32,9 @@ import com.google.android.gms.drive.Drive
 trait GoogleGamesServices extends Activity
                           with ConnectionCallbacks with OnConnectionFailedListener {
 
-  private val LogTag: String = "SGL-GoogleGamesServices"
+  this: LoggingProvider =>
+
+  private implicit val LogTag = Logger.Tag("sgl-google-games-services")
 
   private val sglConfigSave: AndroidSave = new AndroidSave("sgl-google-games-services-config", this)
   private def setAutoLogin(b: Boolean): Unit = sglConfigSave.putBoolean("google-play-auto-login", b)
@@ -78,7 +80,7 @@ trait GoogleGamesServices extends Activity
   override def onStart(): Unit = {
     super.onStart()
     if(googleApiClient != null && autoLogin) {
-      Log.v(LogTag, "Connecting to google api")
+      logger.trace("Connecting to google api")
       googleApiClient.connect()
     }
   }
@@ -91,12 +93,12 @@ trait GoogleGamesServices extends Activity
 
 
   override def onConnected(bundle: Bundle): Unit = {
-    Log.v(LogTag, "onConnected from google play")
+    logger.trace("onConnected from google play")
     setAutoLogin(true)
   }
 
   override def onConnectionSuspended(cause: Int): Unit = {
-    Log.v(LogTag, "onConnectedSuspend from google play")
+    logger.trace("onConnectedSuspend from google play")
     if(googleApiClient != null && autoLogin) {
       googleApiClient.connect()
     }
@@ -109,10 +111,10 @@ trait GoogleGamesServices extends Activity
   private var resolvingError = false;
 
   override def onConnectionFailed(result: ConnectionResult): Unit = {
-    Log.v(LogTag, "onConnectionFailed from google play: " + result)
-    Log.v(LogTag, "has resolution: " + result.hasResolution())
+    logger.trace("onConnectionFailed from google play: " + result)
+    logger.trace("has resolution: " + result.hasResolution())
     if(resolvingError) {
-      Log.v(LogTag, "Ignoring connection failed because already resolving")
+      logger.trace("Ignoring connection failed because already resolving")
     } else if(result.hasResolution()) {
       try {
         resolvingError = true
@@ -130,11 +132,11 @@ trait GoogleGamesServices extends Activity
   }
 
   override protected def onActivityResult(requestCode: Int, resultCode: Int, intent: Intent): Unit = {
-    Log.v(LogTag, "onActivityResult called")
+    logger.trace("onActivityResult called")
     if(requestCode == RequestResolveError) {
       resolvingError = false
       if(resultCode == Activity.RESULT_OK) {
-        Log.v(LogTag, "RESULT_OK, trying to connect again")
+        logger.trace("RESULT_OK, trying to connect again")
         googleApiClient.connect()
       } else {
         //just give up

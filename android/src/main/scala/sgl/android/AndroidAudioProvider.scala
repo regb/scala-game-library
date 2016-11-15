@@ -8,8 +8,12 @@ import _root_.android.media.SoundPool
 import _root_.android.media.AudioManager
 import _root_.android.media.AudioAttributes
 
-trait AndroidAudioProvider extends AudioProvider with Lifecycle {
-  self: AndroidWindowProvider with Activity =>
+import sgl.util._
+
+trait AndroidAudioProvider extends Activity with AudioProvider {
+  self: AndroidWindowProvider with LoggingProvider =>
+
+  private implicit val LogTag = Logger.Tag("sgl-audio-provider")
 
   /*
    * TODO: could add runtime logic to release pool when some number of sounds
@@ -169,14 +173,16 @@ trait AndroidAudioProvider extends AudioProvider with Lifecycle {
       state = Playing
     }
     override def pause(): Unit = {
-      //TODO: check state
-      player.pause()
+      prepareIfIdle()
+      if(state == Playing)
+        player.pause()
       state = Paused
     }
     override def stop(): Unit = {
-      //TODO: check state
       //TODO: what to do with backupPlayer?
-      player.stop()
+      prepareIfIdle()
+      if(state == Playing || state == Paused)
+        player.stop()
       state = Stopped
     }
 
@@ -221,8 +227,8 @@ trait AndroidAudioProvider extends AudioProvider with Lifecycle {
   /*
    * we need to stop the music on pause and release the media players.
    */
-  abstract override def pause(): Unit = {
-    super.pause()
+  override def onPause(): Unit = {
+    super.onPause()
     loadedMusics.foreach(music => {
       if(music.player != null) {
         //we directly set player, so that music keeps all the current state info
@@ -236,8 +242,10 @@ trait AndroidAudioProvider extends AudioProvider with Lifecycle {
       }
     })
   }
-  abstract override def resume(): Unit = {
-    super.resume()
+  override def onResume(): Unit = {
+    super.onResume()
+    logger.info("resume called")
+
     loadedMusics.foreach(music => music.state match {
       case music.Idle => ()
       case music.Ready =>
@@ -252,8 +260,8 @@ trait AndroidAudioProvider extends AudioProvider with Lifecycle {
     })
   }
 
-  abstract override def shutdown(): Unit = {
-    super.shutdown()
+  override def onDestroy(): Unit = {
+    super.onDestroy()
     loadedMusics.foreach(music => {
       if(music.player != null) {
         music.player.stop()

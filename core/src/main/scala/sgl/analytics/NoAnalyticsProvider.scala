@@ -6,37 +6,39 @@ import util.LoggingProvider
 trait NoAnalyticsProvider extends AnalyticsProvider {
   this: GameStateComponent with LoggingProvider =>
 
-  case class Event(name: String, params: EventParams) extends AbstractEvent
 
-  object Event extends EventCompanion {
-    override def createEvent(name: String, params: EventParams): Event = Event(name, params)
-    
-    override def levelUpEvent(level: Option[Long]): Event = Event("level_up", EventParams(level=level))
-    override def shareEvent(itemId: Option[String]): Event = Event("share", EventParams(itemId=itemId))
-    override def gameOverEvent(score: Option[Long], map: Option[String]): Event =
-      Event("game_over", EventParams(score=score, map=map))
-    override def beginTutorialEvent(): Event = Event("begin_tutorial", EventParams())
-    override def completeTutorialEvent(): Event =
-      Event("complete_tutorial", EventParams())
-    override def postScore(score: Long, level: Option[Long], character: Option[String]): Event =
-      Event("post_score", EventParams(score=Some(score), level=level, character=character))
-  }
-
-
-  class Analytics extends AbstractAnalytics {
+  class NoAnalytics extends Analytics {
 
     implicit val tag = Logger.Tag("NoAnalyticsProvider")
 
-    override def logEvent(event: Event): Unit = {
-      logger.info("Ignoring event to log: " + event)
+    override def logCustomEvent(name: String, params: EventParams): Unit = {
+      logger.info("Ignoring event to log: " + name)
+    }
+
+    override def logLevelUpEvent(level: Option[Long]): Unit = {
+      logger.info("Ignoring event to log: Level Up")
+    }
+    override def logShareEvent(itemId: Option[String]): Unit = {
+      logger.info("Ignoring event to log: Share")
+    }
+    override def logGameOverEvent(score: Option[Long], map: Option[String]): Unit = {
+      logger.info("Ignoring event to log: Game Over")
+    }
+    override def logBeginTutorialEvent(): Unit = {
+      logger.info("Ignoring event to log: Begin Tutorial")
+    }
+    override def logCompleteTutorialEvent(): Unit = {
+      logger.info("Ignoring event to log: Complete Tutorial")
+    }
+    override def logPostScoreEvent(score: Long, level: Option[Long], character: Option[String]): Unit = {
+      logger.info("Ignoring event to log: Post Score")
     }
 
     override def logGameScreen(gameScreen: GameScreen): Unit = {
       logger.info("Ignoring new game screen to log: " + gameScreen)
     }
-
   }
 
-  override val Analytics: Analytics = new Analytics
+  override val Analytics: Analytics = new NoAnalytics
 
 }

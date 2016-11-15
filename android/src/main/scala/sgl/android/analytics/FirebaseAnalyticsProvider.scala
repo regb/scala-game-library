@@ -4,58 +4,78 @@ package analytics
 
 import sgl.analytics._
 
-import com.google.firebase.analytics._
+import com.google.firebase.analytics.{FirebaseAnalytics => UFirebaseAnalytics, _}
 
 import _root_.android.app.Activity
 import _root_.android.os.Bundle
 
-trait FirebaseAnalyticsProvider extends AnalyticsProvider with Lifecycle {
-  this: GameStateComponent with AndroidWindowProvider with Activity =>
+trait AndroidFirebaseAnalyticsProvider extends Activity with AnalyticsProvider {
+  this: GameStateComponent =>
 
-  private var firebaseAnalytics: FirebaseAnalytics = null
+  private var firebaseAnalytics: UFirebaseAnalytics = null
 
-  abstract override def startup(): Unit = {
-    super.startup()
-    firebaseAnalytics = FirebaseAnalytics.getInstance(this)
+  override def onCreate(bundle: Bundle): Unit = {
+    super.onCreate(bundle)
+    firebaseAnalytics = UFirebaseAnalytics.getInstance(this)
   }
 
-  case class Event(name: String, params: EventParams) extends AbstractEvent
-  object Event extends EventCompanion {
-    override def createEvent(name: String, params: EventParams) = Event(name, params)
-
-    override def levelUpEvent(level: Option[Long]): Event = 
-      Event(FirebaseAnalytics.Event.LEVEL_UP, EventParams(level=level))
-    override def shareEvent(itemId: Option[String]): Event =
-      Event(FirebaseAnalytics.Event.SHARE, EventParams(itemId=itemId))
-    override def gameOverEvent(score: Option[Long], map: Option[String]): Event =
-      Event("game_over", EventParams(score=score,map=map))
-    override def beginTutorialEvent(): Event =
-      Event(FirebaseAnalytics.Event.TUTORIAL_BEGIN, EventParams())
-    override def completeTutorialEvent(): Event =
-      Event(FirebaseAnalytics.Event.TUTORIAL_COMPLETE, EventParams())
-    override def postScore(score: Long, level: Option[Long], character: Option[String]): Event =
-      Event(FirebaseAnalytics.Event.POST_SCORE, EventParams(score=Some(score), level=level, character=character))
-  }
-
-  class Analytics extends AbstractAnalytics {
+  //TODO: the name choice conflicts with firebase API (see import) so maybe
+  //      we should sacrifice our name to avoid confusion? But in the end
+  //      clients only see that class, so having this name as clean as possible
+  //      make sense as well
+  object FirebaseAnalytics extends Analytics {
 
     private def paramsToBundle(params: EventParams): Bundle = {
       val bundle = new Bundle
-      params.level.foreach(lvl => bundle.putLong(FirebaseAnalytics.Param.LEVEL, lvl))
-      params.value.foreach(v => bundle.putDouble(FirebaseAnalytics.Param.VALUE, v))
-      params.itemId.foreach(id => bundle.putString(FirebaseAnalytics.Param.ITEM_ID, id))
-      params.score.foreach(s => bundle.putLong(FirebaseAnalytics.Param.SCORE, s))
+      params.level.foreach(lvl => bundle.putLong(UFirebaseAnalytics.Param.LEVEL, lvl))
+      params.value.foreach(v => bundle.putDouble(UFirebaseAnalytics.Param.VALUE, v))
+      params.itemId.foreach(id => bundle.putString(UFirebaseAnalytics.Param.ITEM_ID, id))
+      params.score.foreach(s => bundle.putLong(UFirebaseAnalytics.Param.SCORE, s))
       params.map.foreach(m => bundle.putString("level_map", m))
-      params.character.foreach(c => bundle.putString(FirebaseAnalytics.Param.CHARACTER, c))
+      params.character.foreach(c => bundle.putString(UFirebaseAnalytics.Param.CHARACTER, c))
       bundle
     }
 
-    override def logEvent(event: Event): Unit = {
-      firebaseAnalytics.logEvent(event.name, paramsToBundle(event.params))
+    override def logCustomEvent(name: String, params: EventParams): Unit = {
+      firebaseAnalytics.logEvent(name, paramsToBundle(params))
     }
 
-    override def logGameScreen(gameScreen: GameScreen): Unit = ???
+    override def logLevelUpEvent(level: Option[Long]): Unit = {
+      val bundle = new Bundle
+      level.foreach(lvl => bundle.putLong(UFirebaseAnalytics.Param.LEVEL, lvl))
+      firebaseAnalytics.logEvent(UFirebaseAnalytics.Event.LEVEL_UP, bundle)
+    }
+    override def logShareEvent(itemId: Option[String]): Unit = {
+      val bundle = new Bundle
+      itemId.foreach(id => bundle.putString(UFirebaseAnalytics.Param.ITEM_ID, id))
+      firebaseAnalytics.logEvent(UFirebaseAnalytics.Event.SHARE, bundle)
+    }
+    override def logGameOverEvent(score: Option[Long], map: Option[String]): Unit = {
+      val bundle = new Bundle
+      score.foreach(s => bundle.putLong(UFirebaseAnalytics.Param.SCORE, s))
+      map.foreach(m => bundle.putString("level_map", m))
+      firebaseAnalytics.logEvent("game_over", bundle)
+    }
+    override def logBeginTutorialEvent(): Unit = {
+      firebaseAnalytics.logEvent(UFirebaseAnalytics.Event.TUTORIAL_BEGIN, new Bundle)
+    }
+    override def logCompleteTutorialEvent(): Unit = {
+      firebaseAnalytics.logEvent(UFirebaseAnalytics.Event.TUTORIAL_COMPLETE, new Bundle)
+    }
+
+    override def logPostScoreEvent(score: Long, level: Option[Long], character: Option[String]): Unit = {
+      val bundle = new Bundle
+      level.foreach(lvl => bundle.putLong(UFirebaseAnalytics.Param.LEVEL, lvl))
+      bundle.putLong(UFirebaseAnalytics.Param.SCORE, score)
+      character.foreach(c => bundle.putString(UFirebaseAnalytics.Param.CHARACTER, c))
+      firebaseAnalytics.logEvent(UFirebaseAnalytics.Event.POST_SCORE, bundle)
+    }
+
+    override def logGameScreen(gameScreen: GameScreen): Unit = {
+      //TODO: maybe just log an event?
+    }
   }
-  override val Analytics: Analytics = new Analytics
+
+  override val Analytics: Analytics = FirebaseAnalytics
 
 }

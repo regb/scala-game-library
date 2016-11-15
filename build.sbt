@@ -74,6 +74,7 @@ lazy val android = (project in file("./android"))
     libraryDependencies += "com.google.android.gms"  % "play-services-drive" % "9.0.0",
     libraryDependencies += "com.google.android.gms"  % "play-services-games" % "9.0.0",
     libraryDependencies += "com.google.android.gms"  % "play-services-plus" % "9.0.0",
+    libraryDependencies += "com.google.android.gms"  % "play-services-analytics" % "9.0.0",
     useProguard := true,
     proguardOptions ++= Seq(
         "-dontobfuscate",

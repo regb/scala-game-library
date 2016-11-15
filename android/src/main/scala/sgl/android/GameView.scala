@@ -9,7 +9,6 @@ import _root_.android.graphics.Color
 import _root_.android.graphics.Paint
 import _root_.android.graphics.Paint.Style
 import _root_.android.util.AttributeSet
-import _root_.android.util.Log
 import _root_.android.view.View
 import _root_.android.view.SurfaceView
 import _root_.android.view.SurfaceHolder;
@@ -26,7 +25,7 @@ class GameView(
   attributeSet: AttributeSet
 ) extends SurfaceView(gameActivity) with SurfaceHolder.Callback { self =>
 
-  private val LogTag = "SGL-GameView"
+  private implicit val LogTag = gameActivity.Logger.Tag("sgl-gameview")
 
   getHolder.addCallback(this)
   setFocusable(true)
@@ -34,18 +33,18 @@ class GameView(
   var surfaceValid: Boolean = false
 
   override def surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int): Unit = {
-    Log.d(LogTag, "SurfaceChanged called")
+    gameActivity.logger.debug("SurfaceChanged called")
   }
 
   override def surfaceCreated(holder: SurfaceHolder): Unit = {
-    Log.d(LogTag, "SurfaceCreated called")
+    gameActivity.logger.debug("SurfaceCreated called")
     surfaceValid = true
     if(gameActivity.isRunning)
       gameActivity.resume()
   }
 
   override def surfaceDestroyed(holder: SurfaceHolder): Unit = {
-    Log.d(LogTag, "SurfaceDestroyed called")
+    gameActivity.logger.debug("SurfaceDestroyed called")
     surfaceValid = false
     if(gameActivity.isRunning) {
       gameActivity.pause()

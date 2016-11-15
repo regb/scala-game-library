@@ -1,17 +1,22 @@
 package sgl
 package android
 
+import _root_.android.app.Activity
+import _root_.android.os.Bundle
+
 import _root_.android.view.View
 import _root_.android.view.GestureDetector
 import _root_.android.view.MotionEvent
 import _root_.android.view.KeyEvent
 
-trait AndroidInputProvider extends InputProvider {
-  this: AndroidWindowProvider with Lifecycle =>
+//TODO: not clear why we need an InputProvider? Only thing
+//      that we need is to register the event, which is not
+//      something that needs to be visible at the type level
+//      for the clients.
+trait AndroidInputProvider extends Activity with InputProvider {
+  this: AndroidWindowProvider =>
 
-  abstract override def startup(): Unit = {
-    //super.startup()
-
+  def registerInputsListeners(): Unit = {
     val gestureDetector = new GestureDetector(gameView.getContext, new GameGestureListener)
     gestureDetector.setIsLongpressEnabled(false) //no long press, user can long press and then scroll
 

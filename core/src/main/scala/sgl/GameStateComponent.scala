@@ -4,6 +4,14 @@ trait GameStateComponent {
   this: GraphicsProvider =>
 
   trait GameScreen {
+
+    /** A title that summarizes the screen
+      *
+      * Used for analytics and debugging purposes.
+      * It could vary from screen instance to screen instance,
+      * for example by including a level.
+      */
+    def name: String
   
     /** update the screen, with the delta time (in ms) since last update */
     def update(dt: Long): Unit = {}

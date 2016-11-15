@@ -2,6 +2,22 @@ package sgl
 
 trait Lifecycle {
 
+  /*
+   * Not sure how to best integrate this into the framework.
+   * I started with using it in the different backend (as abstract override) to
+   * add initialization code for the different provider (music provider, input provider, etc).
+   * Since the exact ordering of initialization (which startup of which provider is invoked first)
+   * depended on the order of mixins, it seems to not be the cleanest way to initialize the
+   * framework.
+   *
+   * So the current design for intialization code of the framework (main class, starting the game loop,
+   * listening to inputs, auto-pausing music when the underlying system pauses) is to do it
+   * in the driver class (main activity in android, the main function is classical JVM app) and
+   * initialize all the modules that need initialization from there, without relying on the Lifecycle.
+   *
+   * Lifecycle can still be used by client apps.
+   */
+
   /** Called at startup of the game application.
     * 
     * Cake mixin has a somewhate fishy initialization order for
