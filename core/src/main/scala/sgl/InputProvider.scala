@@ -129,6 +129,13 @@ trait InputProvider {
         case _ => None
       }
     }
+    object PointerMovedEvent {
+      def unapply(event: InputEvent): Option[(Int, Int, Int)] = event match {
+        case MouseMovedEvent(x, y) => Some((x, y, 1))
+        case TouchMovedEvent(x, y, p) => Some((x, y, p))
+        case _ => None
+      }
+    }
 
     object MouseButtons {
       sealed trait MouseButton
