@@ -20,6 +20,7 @@ case class Point(x: Double, y: Double) {
   /* trying to find a nice way to create a vector from this to that */
   def -->(that: Point): Vec = that - this
 
+  def toVec: Vec = Vec(x, y)
 }
 
 object Point {

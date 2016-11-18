@@ -40,4 +40,5 @@ case class Vec(x: Double, y: Double) {
   //so might be reversed in the game engine world
   def clockwisePerpendicular: Vec = Vec(-y, x)
 
+  def toPoint: Point = Point(x, y)
 }
