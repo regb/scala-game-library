@@ -12,6 +12,8 @@ trait MainScreenComponent {
 
   class MainScreen extends GameScreen {
 
+    override def name: String = "TestScreen"
+
     private val characterBitmap = loadImageFromResource("drawable/character.png")
     private val characterFrames = Array(
       BitmapRegion(characterBitmap, 0, 0, dp2px(48), dp2px(68)),

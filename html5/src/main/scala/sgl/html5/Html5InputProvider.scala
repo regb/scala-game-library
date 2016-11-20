@@ -4,7 +4,7 @@ package html5
 import org.scalajs.dom
 import dom.html
 
-trait Html5InputProvider extends InputProvider with Lifecycle {
+trait Html5InputProvider extends InputProvider {
   this: Html5WindowProvider with Html5GraphicsProvider =>
 
   import Input._
@@ -26,7 +26,7 @@ trait Html5InputProvider extends InputProvider with Lifecycle {
     (x, y)
   }
 
-  abstract override def startup(): Unit = {
+  def registerInputListeners(): Unit = {
     this.canvas.onmousedown = (e: dom.MouseEvent) => {
       val (x,y) = getCursorPosition(this.canvas, e)
       Input.newEvent(Input.MouseDownEvent(x, y, mouseEventButton(e)))
@@ -51,10 +51,6 @@ trait Html5InputProvider extends InputProvider with Lifecycle {
       )
     }
 
-    super.startup()
-  }
-  abstract override def shutdown(): Unit = {
-    super.shutdown()
   }
 
   //TODO: will need to make it more cross browser compatible

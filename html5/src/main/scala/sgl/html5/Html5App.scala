@@ -24,9 +24,11 @@ trait Html5App extends GameApp
 
     this.canvas = canvas
 
+    this.registerInputListeners()
+    this.startGameLoop()
+
     this.startup()
     this.resume()
-
 
     //val ctx = canvas.getContext("2d").asInstanceOf[Ctx2D]
     //ctx.clearRect(0, 0, 800, 800)

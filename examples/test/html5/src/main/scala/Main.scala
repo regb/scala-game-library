@@ -2,8 +2,8 @@ package com.regblanc.sgl.test
 package html5
 
 import sgl.html5._
+import sgl.html5.util._
 import sgl._
-import sgl.util._
 
 import scala.scalajs.js.annotation.JSExport
 

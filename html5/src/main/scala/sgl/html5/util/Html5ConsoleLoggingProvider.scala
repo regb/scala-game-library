@@ -1,4 +1,5 @@
 package sgl.html5
+package util
 
 import sgl.util._
 

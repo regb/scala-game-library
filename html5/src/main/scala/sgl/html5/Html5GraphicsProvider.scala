@@ -5,15 +5,8 @@ import org.scalajs.dom
 import dom.html
 import dom.raw.HTMLImageElement
 
-trait Html5GraphicsProvider extends GraphicsProvider with Lifecycle {
+trait Html5GraphicsProvider extends GraphicsProvider {
   this: Html5WindowProvider =>
-
-  abstract override def startup(): Unit = {
-    super.startup()
-  }
-  abstract override def shutdown(): Unit = {
-    super.shutdown()
-  }
 
 
   //could wrap that into a LoaderProxy, that makes sure image is loaded before drawing it

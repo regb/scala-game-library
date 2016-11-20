@@ -11,9 +11,8 @@ import util._
   * while on the desktop it will likely uses local thread to handle
   * the game loop itself.
   */
-trait GameLoopProvider extends Lifecycle {
+trait GameLoopProvider {
   self: GameStateComponent with GraphicsProvider =>
-
 
   /** Override if you want to target a different FPS.
       None means that the game will run at max FPS */
@@ -21,11 +20,6 @@ trait GameLoopProvider extends Lifecycle {
 
   //the frame period is in milliseconds
   lazy val FramePeriod: Option[Long] = Fps.map(fps => (1000.0 / fps.toDouble).toLong)
-
-  abstract override def startup(): Unit = {
-    super.startup()
-    //gameState.newScreen(startingScreen)
-  }
 
 
   /** Interface to hook into the game loop
