@@ -96,6 +96,33 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
     override def width: Int = canvas.getWidth
     override def height: Int = canvas.getHeight
 
+    override def withSave[A](body: => A): A = {
+      canvas.save()
+      val res = body
+      canvas.restore()
+      res
+    }
+
+    def translate(x: Int, y: Int): Unit = {
+      canvas.translate(x.toFloat, y.toFloat)
+    }
+
+    override def rotate(theta: Double): Unit = {
+      //not documentaed, but will assume that rotate on Android follows the same direction
+      //as AWT
+      val degrees = scala.math.toDegrees(theta)
+      canvas.rotate(degrees.toFloat)
+    }
+
+    override def scale(sx: Double, sy: Double): Unit = {
+      canvas.scale(sx.toFloat, sy.toFloat)
+    }
+
+    def clipRect(x: Int, y: Int, width: Int, height: Int): Unit = {
+      canvas.clipRect(x, y, x+width, y+height)
+    }
+
+
     override def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit = {
       canvas.drawBitmap(bitmap.bitmap, x, y, new NativePaint)
     }
@@ -147,14 +174,6 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
 
     override def renderText(text: String, width: Int, paint: Paint): TextLayout = {
       AndroidTextLayout(text, width, paint)
-    }
-
-    def clipRect(x: Int, y: Int, width: Int, height: Int): Unit = {
-      canvas.clipRect(x, y, x+width, y+height)
-    }
-
-    def translate(x: Int, y: Int): Unit = {
-      canvas.translate(x.toFloat, y.toFloat)
     }
 
   }

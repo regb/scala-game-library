@@ -71,7 +71,10 @@ trait Html5GraphicsProvider extends GraphicsProvider {
   type Color = String
   object Html5ColorCompanion extends ColorCompanion {
     override def rgb(r: Int, g: Int, b: Int): Color = s"rgb($r,$g,$b)"
-    override def rgba(r: Int, g: Int, b: Int, a: Int): Color = s"rgba($r,$g,$b)"
+    override def rgba(r: Int, g: Int, b: Int, a: Int): Color = {
+      val alpha = a/255d
+      s"rgba($r,$g,$b,$alpha)"
+    }
   }
   override val Color = Html5ColorCompanion
 
@@ -101,28 +104,35 @@ trait Html5GraphicsProvider extends GraphicsProvider {
   case class Html5Canvas(canvas: html.Canvas) extends AbstractCanvas {
     
     val context = canvas.getContext("2d").asInstanceOf[Ctx2D]
-    context.save()
 
     override def height: Int = canvas.height
     override def width: Int = canvas.width
+
+    //note that the scala.js compiler is able to inline the body, so
+    //you don't pay any performance cost for using the nice auto wrapping
+    //syntax
+    override def withSave[A](body: => A): A = {
+      context.save()
+      val res = body
+      context.restore()
+      res
+    }
 
     override def translate(x: Int, y: Int): Unit = {
       context.translate(x, y)
     }
 
-    //probably useful to add to the core abstraction at some point
-    //can save current translation/rotation, usefull for stack style
-    //rendering
-    def save(): Unit = {
-      context.save()
-    }
-    def restore(): Unit = {
-      context.restore()
+    override def rotate(theta: Double): Unit = {
+      //rotate towards positive x/y (so, visually clockwise)
+      context.rotate(theta)
     }
 
+    override def scale(sx: Double, sy: Double): Unit = {
+      context.scale(sx, sy)
+    }
+
+
     override def clipRect(x: Int, y: Int, width: Int, height: Int): Unit = {
-      context.restore()
-      context.save()
       context.beginPath()
       context.rect(x, y, width, height)
       context.clip()
@@ -141,6 +151,7 @@ trait Html5GraphicsProvider extends GraphicsProvider {
       context.fillRect(x, y, width, height)
     }
 
+    //drawing an ellipsis, with x,y top-left
     private def drawEllipse(x: Int, y: Int, w: Int, h: Int): Unit = {
       val kappa = 0.5522848
       val ox = (w / 2) * kappa // control point offset horizontal
@@ -162,7 +173,7 @@ trait Html5GraphicsProvider extends GraphicsProvider {
 
     override def drawOval(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {
       paint.prepareContext(context)
-      drawEllipse(x, y, width, height)
+      drawEllipse(x-width/2, y-height/2, width, height)
     }
 
     override def drawLine(x1: Int, y1: Int, x2: Int, y2: Int, paint: Paint): Unit = {

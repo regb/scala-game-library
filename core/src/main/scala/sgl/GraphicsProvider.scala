@@ -45,7 +45,15 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
 
   type Color
   abstract class ColorCompanion {
+
+    /** RGB color code, each value from 0 to 255 */
     def rgb(r: Int, g: Int, b: Int): Color
+
+    /** RGBA color code, each value from 0 to 255
+      *
+      * Alpha is also in the range 0-255, with 0 being fully
+      * transparent, and 255 fully opaque
+      */
     def rgba(r: Int, g: Int, b: Int, a: Int): Color
 
     def Black: Color = rgb(0, 0, 0)
@@ -95,6 +103,42 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
     def width: Int
     def height: Int
     
+    /*
+     * The canvas contains a concept of current transformation matrix, and provide
+     * methods to modify it. Each draw methods are done in the context of that
+     * transformation matrix, which result in translation/rotation/scaling. All 
+     * of the transformation methods are relative to
+     * the current transformation, so they stack well, and enables to setup a
+     * canvas before invoking a render procedure that can then draw without any
+     * concern of the current transformation.
+     *
+     * To cancel a transformation, it's always possible to apply the opposing
+     * transformation, however it is often simpler to use the save()/restore()
+     * state from the canvas, that lets you manage a stack of transformation.
+     *
+     * There is also a current clipping area, which is part of that state. Successive
+     * clipping always refine the current one, and the only way to cancel a clip is
+     * to use the save/restore.
+     * TODO: not clear this is the best choice. Seems like being able to arbitrary clip
+     *       some area could make sense.
+     *
+     * TODO: should we only export a withSave { => Unit } method that automatically
+     * wraps the body with save()/restore() and never let the user rely on calling
+     * save()/restore() on its own. This would force always having a matching restore(),
+     * but maybe there are usecases where we need more flexibility?
+     */
+
+    //For now, we only provide withSave abstraction to save and restore canvas
+    //as it seems to cover all cases that make sense, and it's easier to add later
+    //if we need access to save/restore, than remove them later if we figure out it's not necessary
+    //as usual, I follow the design to not add something until I need it
+    /** Execute body on a local canvas
+      *
+      * Save the current canvas state (transformation), execute
+      * the body, then restore the previous canvas.
+      */
+    def withSave[A](body: => A): A
+
     /** translate the origin by (x, y)
       *
       * Mutliple translate are additive, meaning that to cancel a translation by (x,y)
@@ -104,20 +148,37 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
       */
     def translate(x: Int, y: Int): Unit
 
+    /** rotate around center of canvas
+      *
+      * The angle theta is in radian. TODO: specify direction
+      */
+    def rotate(theta: Double): Unit
+
+    def scale(sx: Double, sy: Double): Unit
+
+    //one reason to have the clipRect additive, is that this seems to be a feature mostly
+    //relevant when recursively setting up sub element in their own local coordinates, and
+    //in that case it makes sense anyway to wrap everything in a save/restore cycle
     /** clip rendering area with the rectangle
       *
-      * A call to clip is always relative to the whole canvas, so successive
-      * call to clips are not additive, but reset the clip to a different place
-      * of the canvas.
+      * A call to clip is always additive with previous clips, and part of the current
+      * canvas state. Only way to undo a clip is to restore the previous state.
       */
     def clipRect(x: Int, y: Int, width: Int, height: Int): Unit
+
+
+    /*
+     * Then the canvas provide standard drawing methods
+     */
 
     /** draw the whole bitmap at x and y */
     def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit
 
     /** draw a selected rectangle in the bitmap at x and y.
-        No scaling supported, and can only draw aligned rectangle,
-        hence why the function only takes one width and height */
+      *
+      * No scaling supported, and can only draw aligned rectangle,
+      * hence why the function only takes one width and height
+      */
     def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int): Unit
 
     def drawRect(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit
@@ -129,7 +190,9 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
     //maybe look at implicit parameters with some sort of capabilities ?
     //def drawRoundRect(x: Int, y: Int, width: Int, height: Int, rx: Float, ry: Float, paint: Paint): Unit
 
-    /** x and y are the center coordinates.
+    /** draw an oval at center (x,y)
+      *
+      * x and y are the center coordinates.
       * width is the full width of the oval to be drawn
       */
     def drawOval(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit

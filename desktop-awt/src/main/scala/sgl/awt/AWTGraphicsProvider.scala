@@ -83,7 +83,16 @@ trait AWTGraphicsProvider extends GraphicsProvider with Lifecycle {
   type Paint = AWTPaint
   override def defaultPaint: Paint = AWTPaint(Font.Default, Color.Black, Alignments.Left)
 
-  case class AWTCanvas(graphics: Graphics2D, var width: Int, var height: Int) extends AbstractCanvas {
+  case class AWTCanvas(var graphics: Graphics2D, var width: Int, var height: Int) extends AbstractCanvas {
+
+    override def withSave[A](body: => A): A = {
+      val oldGraphics: Graphics2D = graphics.create().asInstanceOf[Graphics2D]
+      //val transform = graphics.getTransform()
+      val res = body
+      //graphics.setTransform(transform)
+      graphics = oldGraphics
+      res
+    }
 
     override def translate(x: Int, y: Int): Unit = {
       //using .toDouble is important as there is a Graphics2D method on Int, but it does not
@@ -91,10 +100,21 @@ trait AWTGraphicsProvider extends GraphicsProvider with Lifecycle {
       graphics.translate(x.toDouble, y.toDouble)
     }
 
+    override def rotate(theta: Double): Unit = {
+      //graphics.rotate states that rotating with a positive angle theta rotates points
+      //on the positive x axis toward the positive y axis
+      graphics.rotate(theta)
+    }
+
+    override def scale(sx: Double, sy: Double): Unit = {
+      graphics.scale(sx, sy)
+    }
+
     override def clipRect(x: Int, y: Int, width: Int, height: Int): Unit = {
-      graphics.setClip(x, y, width, height)
-      this.width = width
-      this.height = height
+      graphics.clipRect(x, y, width, height)
+      //I don't think we want to change the width/height on clipping
+      //this.width = width
+      //this.height = height
     }
 
     override def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit = {
