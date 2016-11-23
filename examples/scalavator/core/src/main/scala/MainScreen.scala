@@ -15,6 +15,8 @@ trait MainScreenComponent {
 
   class MainScreen extends GameScreen {
 
+    override def name = "Scalavator Screen"
+
     private implicit val Tag = Logger.Tag("main")
 
     private val Gravity = Vec(0, dp2px(500))
