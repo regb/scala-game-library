@@ -2,6 +2,7 @@ package sgl
 package html5
 
 import util._
+import themes._
 
 import scala.scalajs.js.annotation.JSExport
 import org.scalajs.dom
@@ -11,18 +12,14 @@ trait Html5App extends GameApp
                   with Html5GraphicsProvider with Html5InputProvider with Html5AudioProvider
                   with Html5WindowProvider with Html5GameLoopProvider with Html5SystemProvider {
 
+  val theme: Theme
+
   @JSExport
   def main(canvas: html.Canvas): Unit = {
-    println("Hello world!")
-
-    CanvasDimension.foreach(p => {
-      val width = p._1
-      val height = p._2
-      canvas.width  = width
-      canvas.height = height
-    })
 
     this.canvas = canvas
+
+    theme.init(canvas)
 
     this.registerInputListeners()
     this.startGameLoop()
@@ -38,5 +35,4 @@ trait Html5App extends GameApp
     //ctx.fillRect(100, 100, 50, 50)
     //ctx.stroke()
   }
-
 }
