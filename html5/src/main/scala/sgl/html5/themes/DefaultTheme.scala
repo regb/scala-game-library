@@ -4,12 +4,18 @@ package themes
 import org.scalajs.dom
 import dom.html
 
-abstract class Theme {
-
-  def init(canvas: html.Canvas): Unit
-
-}
-
+/** The default theme for a website with a canvas game
+  *
+  * The website should be mobile friendly, adapting full screen
+  * to the device. On the desktop,
+  * we set the canvas dimensions to match the maxFrame property, and
+  * centered in the middle of the page. If there is not enough screen
+  * estate, but we are still not on mobile, we will maintain the aspect ratio
+  * while stretching in one direction as much as possible.
+  *
+  * The rest of the body, if visible, has a background color that can be
+  * overriden as well.
+  */
 class DefaultTheme extends Theme {
 
   /** Override the background color behind the canvas game */
@@ -68,13 +74,6 @@ class DefaultTheme extends Theme {
       canvas.style.left = left + "px"
       canvas.style.top = top + "px"
     }
-
-    //CanvasDimension.foreach(p => {
-    //  val width = p._1
-    //  val height = p._2
-    //  canvas.style.maxWidth  = width + "px"
-    //  canvas.style.maxHeight = height + "px"
-    //})
 
   }
 }

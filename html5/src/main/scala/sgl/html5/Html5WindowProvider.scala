@@ -8,8 +8,6 @@ trait Html5WindowProvider extends WindowProvider with Lifecycle {
     super.startup()
   }
 
-  val CanvasDimension: Option[(Int, Int)] = None
-
   override def WindowWidth: Int = this.canvas.width
   override def WindowHeight: Int = this.canvas.height
 
