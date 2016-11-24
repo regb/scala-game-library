@@ -30,6 +30,9 @@ class DefaultTheme extends Theme {
     dom.document.body.style.margin = "0"
     dom.document.body.style.padding = "0"
 
+    //prevent highlight on click on canvas
+    dom.document.onselectstart = (e: dom.Event) => false
+
     canvas.style.margin = "0"
     canvas.style.padding = "0"
     canvas.style.display = "block"
