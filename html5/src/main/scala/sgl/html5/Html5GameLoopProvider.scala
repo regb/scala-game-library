@@ -29,7 +29,11 @@ trait Html5GameLoopProvider extends GameLoopProvider {
     var lastTime: Long = js.Date.now.toLong
     def frameCode(): Unit = {
       val now = js.Date.now.toLong
-      val dt: Long = now - lastTime
+      //we cap at 1 sec, because requestAnimationFrame stops callback when
+      //switching tabs, essentially pausing the game. Also in general, doing
+      //giant update steps is extremely dangerous, but it would be nice to
+      //control this in a better way
+      val dt: Long = (now - lastTime) min 1000
 
       if(FramePeriod.forall(delta => dt >= delta)) {
         lastTime = now

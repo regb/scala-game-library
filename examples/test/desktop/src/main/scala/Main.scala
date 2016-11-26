@@ -3,13 +3,14 @@ package desktop
 
 import core._
 
-import sgl.InputHelpersComponent
+import sgl.{InputHelpersComponent, GameLoopStatisticsComponent}
 import sgl.awt._
 import sgl.util._
 
 
 /** Wire backend to the App here */
-object Main extends AbstractApp with AWTApp with InputHelpersComponent with VerboseStdErrLoggingProvider {
+object Main extends AbstractApp with AWTApp
+  with InputHelpersComponent with VerboseStdErrLoggingProvider with GameLoopStatisticsComponent {
 
   override val Fps = Some(60)
 

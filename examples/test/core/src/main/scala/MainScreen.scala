@@ -8,7 +8,10 @@ import util._
 
 trait MainScreenComponent {
   this: GraphicsProvider with InputProvider with GameStateComponent
-  with WindowProvider with SystemProvider with AudioProvider with InputHelpersComponent =>
+  with WindowProvider with InputHelpersComponent with GameLoopStatisticsComponent
+  with LoggingProvider =>
+
+  private implicit val LogTag = Logger.Tag("main-screen")
 
   class MainScreen extends GameScreen {
 
@@ -55,6 +58,8 @@ trait MainScreenComponent {
 
       autoX += dp2px(50)*(dt/1000d)
       autoY += dp2px(50)*(dt/1000d)
+
+      logger.debug("Fps: " + statistics.measuredFps)
     }
 
     override def render(canvas: Canvas): Unit = {

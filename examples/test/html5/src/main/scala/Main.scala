@@ -10,7 +10,7 @@ import scala.scalajs.js.annotation.JSExport
 
 @JSExport
 object Main extends core.AbstractApp with Html5App 
-  with InputHelpersComponent with Html5VerboseConsoleLoggingProvider {
+  with InputHelpersComponent with Html5VerboseConsoleLoggingProvider with GameLoopStatisticsComponent {
 
   override val Fps = None
 
