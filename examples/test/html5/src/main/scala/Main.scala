@@ -12,6 +12,8 @@ import scala.scalajs.js.annotation.JSExport
 object Main extends core.AbstractApp with Html5App 
   with InputHelpersComponent with Html5VerboseConsoleLoggingProvider {
 
+  override val Fps = None
+
   override val theme = new DefaultTheme {
     override val maxFrame = (800, 400)
   }

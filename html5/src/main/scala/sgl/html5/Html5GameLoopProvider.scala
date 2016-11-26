@@ -20,7 +20,8 @@ trait Html5GameLoopProvider extends GameLoopProvider {
 
 
   def startGameLoop(): Unit = {
-    //TODO: use requestAnimationFrame
+
+    val requestAnimationFrameSupported = !js.isUndefined(js.Dynamic.global.requestAnimationFrame)
     
     //only at startup, we add the starting screen to the game state
     gameState.newScreen(startingScreen)
@@ -29,23 +30,37 @@ trait Html5GameLoopProvider extends GameLoopProvider {
     def frameCode(): Unit = {
       val now = js.Date.now.toLong
       val dt: Long = now - lastTime
-      lastTime = now
 
-      val canvas = getScreenCanvas
-      gameLoopStep(dt, canvas)
-      releaseScreenCanvas(getScreenCanvas)
-      
-      FramePeriod.foreach(framePeriod => {
-        //we check the time from the begininning of the frame until the end. The exact
-        //dt sent to the update function will be different, as it depends on when the
-        //setInterval fires the code, and might slightly overflow the target FPS
-        val frameTime = js.Date.now.toLong - now
-        if(frameTime > framePeriod)
-          logger.warning("Frame took too long to execute. Losing FPS. Frame time: " + frameTime)
-      })
+      if(FramePeriod.forall(delta => dt >= delta)) {
+        lastTime = now
+
+        val canvas = getScreenCanvas
+        gameLoopStep(dt, canvas)
+        releaseScreenCanvas(getScreenCanvas)
+        
+        FramePeriod.foreach(framePeriod => {
+          //we check the time from the begininning of the frame until the end. The exact
+          //dt sent to the update function will be different, as it depends on when the
+          //setInterval fires the code, and might slightly overflow the target FPS
+          val frameTime = js.Date.now.toLong - now
+          if(frameTime > framePeriod)
+            logger.warning("Frame took too long to execute. Losing FPS. Frame time: " + frameTime)
+        })
+      } else {
+        logger.debug("Callback too early for Fps, skipping a frame")
+      }
+
+      if(requestAnimationFrameSupported)
+        dom.window.requestAnimationFrame(dt => frameCode())
     }
 
-    dom.window.setInterval(() => frameCode(), FramePeriod.map(_.toDouble).getOrElse(10d))
+    if(requestAnimationFrameSupported) {
+      dom.window.requestAnimationFrame(dt => frameCode())
+    } else {
+      logger.warning("window.requestAnimationFrame not supported, fallback to setInterval for the game loop")
+      dom.window.setInterval(() => frameCode(), FramePeriod.map(_.toDouble).getOrElse(10d))
+    }
+
   }
 
 
