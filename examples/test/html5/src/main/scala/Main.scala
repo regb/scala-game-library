@@ -3,6 +3,7 @@ package html5
 
 import sgl.html5._
 import sgl.html5.util._
+import sgl.html5.themes._
 import sgl._
 
 import scala.scalajs.js.annotation.JSExport
@@ -11,6 +12,8 @@ import scala.scalajs.js.annotation.JSExport
 object Main extends core.AbstractApp with Html5App 
   with InputHelpersComponent with Html5VerboseConsoleLoggingProvider {
 
-  override val CanvasDimension = Some((800, 400))
+  override val theme = new DefaultTheme {
+    override val maxFrame = (800, 400)
+  }
 
 }
