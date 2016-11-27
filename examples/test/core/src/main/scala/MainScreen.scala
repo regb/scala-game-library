@@ -21,7 +21,6 @@ trait MainScreenComponent {
     private var characterBitmapLoader: Loader[Bitmap] = null
 
     override def update(dt: Long): Unit = {
-      println("loading")
       if(characterBitmapLoader == null) {
         characterBitmapLoader = Graphics.loadImage(System.ResourcesPrefix / "drawable" / "character.png")
       }

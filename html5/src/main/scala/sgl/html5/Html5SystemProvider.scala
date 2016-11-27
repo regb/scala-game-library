@@ -38,7 +38,7 @@ trait Html5SystemProvider extends SystemProvider {
   object Html5System extends System {
 
     case class StringPath(path: String) extends AbstractResourcePath {
-      override def / (filename: String): Path = StringPath(path + "/" + filename)
+      override def / (filename: String): ResourcePath = StringPath(path + "/" + filename)
     }
     type ResourcePath = StringPath
     val ResourcesPrefix: ResourcePath = StringPath("")

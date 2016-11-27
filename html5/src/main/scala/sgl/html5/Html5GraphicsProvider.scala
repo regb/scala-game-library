@@ -12,7 +12,7 @@ trait Html5GraphicsProvider extends GraphicsProvider {
 
   object Html5Graphics extends Graphics {
 
-    override def loadImage(path: System.Path): Loader[Bitmap] = {
+    override def loadImage(path: System.ResourcePath): Loader[Bitmap] = {
       val p = new DefaultLoader[Bitmap]()
       val img = dom.document.createElement("img").asInstanceOf[HTMLImageElement]
       img.onload = (e: dom.Event) => {
