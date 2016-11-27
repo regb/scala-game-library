@@ -24,10 +24,9 @@ trait AWTGraphicsProvider extends GraphicsProvider with Lifecycle {
     //TODO: make it asynchronous, but for that, we need to clarify
     //      threading model (we dont want to use thread and having callbacks
     //      invoked in a concurent manner)
-    override def loadImage(path: System.Path): Loader[Bitmap] = {
-      println(path.path)
+    override def loadImage(path: System.ResourcePath): Loader[Bitmap] = {
+      //TODO: understand and explain why getResource on getClassLoader needs relative path
       val url = getClass.getClassLoader.getResource(path.path)
-      println(url)
       val bi = ImageIO.read(url)
       val img = AWTBitmap(bi)
       Loader.successful(img)

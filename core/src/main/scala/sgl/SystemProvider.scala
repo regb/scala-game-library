@@ -48,14 +48,21 @@ trait SystemProvider {
 
   trait System {
 
-    trait AbstractPath {
+    trait AbstractResourcePath {
 
       /** compose the path with a file
         *
         * The argument can be either a directory or a file. Chain
         * multiple / together to build a complete path.
+        *
+        * This is supposed to be the only way to build a path, ensuring
+        * that the final path is build appropriately for the current
+        * platform. You should not include '/' character in your filename,
+        * as it is quite risky and will depend on the exact implementation
+        * of the path. Never do {{{ path / "foo/bar" }}} but instead do
+        * {{{ path / "foo" / "bar" }}}.
         */
-      def / (filename: String): Path
+      def / (filename: String): ResourcePath
 
     }
 
@@ -67,11 +74,31 @@ trait SystemProvider {
       * hierarchy-based, with a succession of directory and a final filename.
       * The root refers to the starting point in the resource system of the
       * platform, which usually means the root of the resources in the jar
-      * or the server endpoint. We do not support relative path.
+      * or the server endpoint.
+      *
+      * To simplify the current design, we decide that all path to resource should
+      * be absolute, starting from the ResourcesPrefix path. It means that
+      * We do not support relative path. It seems that relative path are not
+      * too important in the typical game application, where all the resources
+      * comme bundled in some predictable way.
+      *
+      * We try to provide just the minimal set of tools for building cross-platform
+      * games, and having a way to identify resource file, and then a few different
+      * methods to load each kind of resource into an appropriate asset representation,
+      * should be enough for the domain of games. We certainly don't need a full
+      * file-system abstraction, as such a concept does not exist in the browser and
+      * is rather suspect on mobile. Besides, it's not truly needed, as we just need
+      * to be able to extract a few resources packaged with the with the game.
+      *
+      * In particular, although the ResourcePath could point to a directory, we do not
+      * provide a way to list content of directory. There is also no delete operation.
+      * All these kind of operations seem unnecessary.
       */
-    type Path <: AbstractPath
-    //TODO: should be ResourcePath and ResourcesRoot
-    val root: Path
+    type ResourcePath <: AbstractResourcePath
+
+    //indeed, ResourcePath without a 's' as this is the path to ONE resource. But
+    //the root prefix is ResourcesPrefix, as it is the prefix of ALL resources.
+    val ResourcesPrefix: ResourcePath
 
   }
   val System: System

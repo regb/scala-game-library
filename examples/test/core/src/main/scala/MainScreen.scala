@@ -22,7 +22,7 @@ trait MainScreenComponent {
 
     override def update(dt: Long): Unit = {
       if(characterBitmapLoader == null) {
-        characterBitmapLoader = Graphics.loadImage(System.root / "drawable" / "character.png")
+        characterBitmapLoader = Graphics.loadImage(System.ResourcesPrefix / "drawable" / "character.png")
       }
       if(characterBitmapLoader.isLoaded) {
         characterBitmap = Some(characterBitmapLoader.value.get.get)

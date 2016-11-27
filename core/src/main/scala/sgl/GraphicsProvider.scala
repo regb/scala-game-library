@@ -16,7 +16,7 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
    */
   trait Graphics {
 
-    def loadImage(path: System.Path): Loader[Bitmap]
+    def loadImage(path: System.ResourcePath): Loader[Bitmap]
 
   }
   val Graphics: Graphics

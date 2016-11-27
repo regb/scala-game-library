@@ -37,11 +37,11 @@ trait Html5SystemProvider extends SystemProvider {
 
   object Html5System extends System {
 
-    case class StringPath(path: String) extends AbstractPath {
+    case class StringPath(path: String) extends AbstractResourcePath {
       override def / (filename: String): Path = StringPath(path + "/" + filename)
     }
-    type Path = StringPath
-    val root: Path = StringPath("")
+    type ResourcePath = StringPath
+    val ResourcesPrefix: ResourcePath = StringPath("")
   }
   val System = Html5System
 }

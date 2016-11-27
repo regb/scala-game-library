@@ -29,12 +29,14 @@ trait AWTSystemProvider extends SystemProvider {
 
   object AWT5System extends System {
 
-    case class StringPath(path: String) extends AbstractPath {
-      override def / (filename: String): Path =
-        if(this == root) StringPath(filename) else StringPath(path + "/" + filename)
+    case class StringPath(path: String) extends AbstractResourcePath {
+      //We don't use java.io.File.separator for the "/" separator, as
+      //resource path must always use "/", even on Windows
+      override def / (filename: String): ResourcePath =
+        if(this == ResourcesPrefix) StringPath(filename) else StringPath(path + "/" + filename)
     }
-    type Path = StringPath
-    val root: Path = StringPath("")
+    type ResourcePath = StringPath
+    val ResourcesPrefix: ResourcePath = StringPath("")
   }
   val System = AWT5System
 }
