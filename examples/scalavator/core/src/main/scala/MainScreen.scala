@@ -124,7 +124,6 @@ trait MainScreenComponent {
 
 
     def handleInput(ev: Input.InputEvent): Unit = {
-      logger.info("event: " + ev)
       ev match {
         case Input.TouchDownEvent(_, _, _) | Input.MouseDownEvent(_, _, Input.MouseButtons.Left) =>
           logger.info("Jump input from player detected")

@@ -16,6 +16,10 @@ object Main extends core.AbstractApp with Html5App
   //with NoLoggingProvider
   with SceneComponent with InputHelpersComponent {
 
+  //We should not force the fps on Html5 and just let
+  //requestAnimationFrame do its best
+  override val Fps: Option[Int] = None
+
   override val theme = new DefaultTheme {
     override val maxFrame = (400, 650)
   }
