@@ -12,12 +12,14 @@ trait MainScreenComponent {
   with SystemProvider with AudioProvider
   with SceneComponent with LoggingProvider =>
 
+  private implicit val Tag = Logger.Tag("main")
 
-  class MainScreen extends GameScreen {
+  class MainScreen(
+    characterBitmap: Bitmap,
+    cloudsBitmap: Bitmap
+  ) extends GameScreen {
 
     override def name = "Scalavator Screen"
-
-    private implicit val Tag = Logger.Tag("main")
 
     private val Gravity = Vec(0, dp2px(500))
     private val JumpImpulsion = dp2px(600)
@@ -72,7 +74,6 @@ trait MainScreenComponent {
     private var characterPosition = Point(WindowWidth/2-CharacterWidth/2, WindowHeight - PlatformHeight)
     private var characterVelocity = Vec(0, 0)
 
-    private val characterBitmap = loadImageFromResource("drawable/character.png")
     private val characterFrames = Array(
       BitmapRegion(characterBitmap, 0, 0, dp2px(48), dp2px(68)),
       BitmapRegion(characterBitmap, dp2px(48), 0, dp2px(48), dp2px(68)),
@@ -135,6 +136,8 @@ trait MainScreenComponent {
       }
     }
 
+    private val background = new Background(cloudsBitmap)
+
     private var accumulatedDelta = 0l
     private val FixedDelta = 5l
     override def update(dt: Long): Unit = {
@@ -193,15 +196,19 @@ trait MainScreenComponent {
 
         if(standingPlatform == None && characterPosition.y-CharacterHeight > WindowHeight) {
           logger.info("Game Over")
-          gameState.newScreen(new MainScreen)
+          restart()
         }
       }
       
     }
 
+    def restart(): Unit = {
+      gameState.newScreen(new MainScreen(characterBitmap, cloudsBitmap))
+    }
+
     override def render(canvas: Canvas): Unit = {
 
-      canvas.drawRect(0, 0, WindowWidth, WindowHeight, defaultPaint.withColor(Color.rgb(204, 242, 204)))
+      background.render(canvas)
 
       platforms.foreach(_.render(canvas))
 
@@ -232,6 +239,103 @@ trait MainScreenComponent {
 
       platforms = platforms.filterNot(p => p.y > WindowHeight)
       logger.debug("Total platforms: " + platforms.size)
+
+      //paralax scrolling with background
+      background.scrollUp(distance/3d)
+    }
+
+  }
+
+  /*
+   * The background is an infinite sky with clouds. We handle
+   * scrolling position and try to simulate a paralax scrolling
+   * effect, so that the sky goes up slower than the foreground.
+   */
+  class Background(cloudsBitmap: Bitmap) {
+
+    /*
+     * The current height, in terms of the background.
+     * This is updated by the scrolling mecanism, that
+     * makes sure to move pixel up slower that the
+     * foreground.
+     */
+    private var currentHeight: Double = 0
+
+    //whenever the player moves up, you should call scroll up
+    //with the corresponding delta.
+    def scrollUp(delta: Double): Unit = {
+      currentHeight += delta
+      popNewClouds()
+    }
+
+    private val cloudsRegions = Array(
+      BitmapRegion(cloudsBitmap, 0, 0         , dp2px(152), dp2px(100)),
+      BitmapRegion(cloudsBitmap, 0, dp2px(100), dp2px(152), dp2px(100)),
+      BitmapRegion(cloudsBitmap, 0, dp2px(200), dp2px(152), dp2px(100)),
+      BitmapRegion(cloudsBitmap, 0, dp2px(300), dp2px(152), dp2px(100)),
+      BitmapRegion(cloudsBitmap, 0, dp2px(400), dp2px(152), dp2px(100)))
+
+
+    //we use a hardcoded, repeating pattern of 50 spaces, storing all spaces
+    //first cloud starts high enough to not overlap with the character
+    private val spaces: Array[Int] = Array(
+      dp2px(250), dp2px(165), dp2px(155), dp2px(150), dp2px(165),
+      dp2px(150), dp2px(165), dp2px(155), dp2px(150), dp2px(165),
+      dp2px(150), dp2px(165), dp2px(155), dp2px(150), dp2px(165),
+      dp2px(150), dp2px(165), dp2px(155), dp2px(150), dp2px(165),
+      dp2px(150), dp2px(165), dp2px(155), dp2px(150), dp2px(165),
+      dp2px(150), dp2px(165), dp2px(155), dp2px(150), dp2px(165),
+      dp2px(150), dp2px(165), dp2px(155), dp2px(150), dp2px(165),
+      dp2px(150), dp2px(165), dp2px(155), dp2px(150), dp2px(165),
+      dp2px(150), dp2px(165), dp2px(155), dp2px(150), dp2px(165),
+      dp2px(150), dp2px(165), dp2px(155), dp2px(150), dp2px(165)
+    )
+
+    private val maxX = WindowWidth - dp2px(152)
+
+    private def randomPosition(): Int = scala.util.Random.nextInt(maxX)
+
+    //generate random positions for each of the 50 possible repeating offset
+    private val positions: Array[Int] = Array.fill(50)(randomPosition())
+
+    //the current list of clouds, (x, y, cloud), with y pointing upwards to
+    //the sky, meaning that it is reversed with regular coordinate system
+    private var currentClouds: List[(Int, Int, Int)] = Nil
+
+    private var cloudFrame = 0
+    private var cloudIndex = 0
+    private var cloudHeight = spaces(cloudIndex)
+
+    private def popNewClouds(): Unit = {
+      while(currentHeight + WindowHeight + dp2px(100) > cloudHeight) {
+        currentClouds ::= ((positions(cloudIndex), cloudHeight, cloudFrame))
+        cloudIndex = (cloudIndex + 1) % spaces.length
+        cloudHeight += spaces(cloudIndex)
+        cloudFrame = (cloudFrame+1)%5
+      }
+
+      currentClouds = currentClouds.filter(c => c._2 >= currentHeight)
+    }
+
+    popNewClouds()
+
+    private val skyPaint = defaultPaint.withColor(Color.rgb(181, 242, 251))
+  
+    def render(canvas: Canvas): Unit = {
+      canvas.drawRect(0, 0, WindowWidth, WindowHeight, skyPaint)
+
+      //var cloudHeight = 0
+      //var cloudIndex = 0
+      //while(cloudIndex < spaces.length) {
+      //  cloudHeight += spaces(i)
+      //  if(cloudHeight > currentHeight && cloudHeight < 
+      //for(space
+
+      for((x, y, cloudBitmap) <- currentClouds) {
+        canvas.drawBitmap(cloudsRegions(cloudBitmap), x, WindowHeight - y + currentHeight.toInt)
+      }
+
+      logger.debug("number of active clouds: " + currentClouds.size)
     }
 
   }
