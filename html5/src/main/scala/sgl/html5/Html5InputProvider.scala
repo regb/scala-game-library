@@ -19,11 +19,14 @@ trait Html5InputProvider extends InputProvider {
     }
   }
 
-  private def getCursorPosition(canvas: html.Canvas, e: dom.MouseEvent): (Int, Int) = {
+  private def getCursorPosition(canvas: html.Canvas, clientX: Int, clientY: Int): (Int, Int) = {
     val rect = canvas.getBoundingClientRect()
-    val x = (e.clientX - rect.left).toInt
-    val y = (e.clientY - rect.top).toInt
+    val x = (clientX - rect.left).toInt
+    val y = (clientY - rect.top).toInt
     (x, y)
+  }
+  private def getCursorPosition(canvas: html.Canvas, e: dom.MouseEvent): (Int, Int) = {
+    getCursorPosition(canvas, e.clientX.toInt, e.clientY.toInt)
   }
 
   def registerInputListeners(): Unit = {
@@ -39,6 +42,67 @@ trait Html5InputProvider extends InputProvider {
       val (x,y) = getCursorPosition(this.canvas, e)
       Input.newEvent(Input.MouseMovedEvent(x, y))
     }
+
+    /*
+     * for touch events, we use evt.preventDefault to
+     * try to avoid the trigger of emulated mouse events that
+     * mobile browsers tend to send, we want to capture only
+     * the touch event, and not a duplicated mouse event since
+     * we assume our game handles both correctly.
+     *
+     * It seems that preventDefault in the touchstart event will
+     * also prevent the user from scrolling. This is fine, as long
+     * as we assume scrolling is handled entirely by the game input
+     * management. Since we only cancel a touchstart on the canvas
+     * itself, the user could still scroll or zoom the rest of the
+     * page if the canvas app is part of a bigger page, and otherwise
+     * we are supposed to handle precisely the touch behaviour, so
+     * either we scroll the canvas content itself, or make sure it always
+     * fits the whole viewport.
+     */
+
+    this.canvas.addEventListener("touchstart", (e: dom.Event) => {
+      val touchEvent = e.asInstanceOf[dom.raw.TouchEvent]
+      touchEvent.preventDefault()
+      val touches = touchEvent.changedTouches
+
+      var i = 0
+      while(i < touches.length) {
+        val touch = touches(i)
+        i += 1
+        val (x,y) = getCursorPosition(this.canvas, touch.clientX.toInt, touch.clientY.toInt)
+        val id = touch.identifier.toInt
+        Input.newEvent(Input.TouchDownEvent(x, y, id))
+      }
+    })
+    this.canvas.addEventListener("touchend", (e: dom.Event) => {
+      val touchEvent = e.asInstanceOf[dom.raw.TouchEvent]
+      touchEvent.preventDefault()
+      val touches = touchEvent.changedTouches
+
+      var i = 0
+      while(i < touches.length) {
+        val touch = touches(i)
+        i += 1
+        val (x,y) = getCursorPosition(this.canvas, touch.clientX.toInt, touch.clientY.toInt)
+        val id = touch.identifier.toInt
+        Input.newEvent(Input.TouchUpEvent(x, y, id))
+      }
+    })
+    this.canvas.addEventListener("touchmove", (e: dom.Event) => {
+      val touchEvent = e.asInstanceOf[dom.raw.TouchEvent]
+      touchEvent.preventDefault()
+      val touches = touchEvent.changedTouches
+
+      var i = 0
+      while(i < touches.length) {
+        val touch = touches(i)
+        i += 1
+        val (x,y) = getCursorPosition(this.canvas, touch.clientX.toInt, touch.clientY.toInt)
+        val id = touch.identifier.toInt
+        Input.newEvent(Input.TouchMovedEvent(x, y, id))
+      }
+    })
 
     dom.document.onkeydown = (e: dom.KeyboardEvent) => {
       domEventToKey(e).foreach(key =>

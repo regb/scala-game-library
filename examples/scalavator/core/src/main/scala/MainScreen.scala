@@ -21,8 +21,8 @@ trait MainScreenComponent {
 
     override def name = "Scalavator Screen"
 
-    private val Gravity = Vec(0, dp2px(500))
-    private val JumpImpulsion = dp2px(600)
+    private val Gravity = Vec(0, dp2px(550))
+    private val JumpImpulsion = dp2px(550)
 
     private val PlatformHeight = dp2px(5)
     class Platform(var x: Double, var y: Double, val width: Int, var speed: Double) {
@@ -124,6 +124,7 @@ trait MainScreenComponent {
 
 
     def handleInput(ev: Input.InputEvent): Unit = {
+      logger.info("event: " + ev)
       ev match {
         case Input.TouchDownEvent(_, _, _) | Input.MouseDownEvent(_, _, Input.MouseButtons.Left) =>
           logger.info("Jump input from player detected")
@@ -141,9 +142,6 @@ trait MainScreenComponent {
     private var accumulatedDelta = 0l
     private val FixedDelta = 5l
     override def update(dt: Long): Unit = {
-      logger.debug("player velocity: " + characterVelocity)
-      logger.debug("player position: " + characterPosition)
-
       Input.processEvents(handleInput)
 
       accumulatedDelta += dt
@@ -238,7 +236,6 @@ trait MainScreenComponent {
       }
 
       platforms = platforms.filterNot(p => p.y > WindowHeight)
-      logger.debug("Total platforms: " + platforms.size)
 
       //paralax scrolling with background
       background.scrollUp(distance/3d)
@@ -279,8 +276,8 @@ trait MainScreenComponent {
     //we use a hardcoded, repeating pattern of 50 spaces, storing all spaces
     //first cloud starts high enough to not overlap with the character
     private val spaces: Array[Int] = Array(
-      dp2px(250), dp2px(165), dp2px(155), dp2px(150), dp2px(165),
-      dp2px(150), dp2px(165), dp2px(155), dp2px(150), dp2px(165),
+      dp2px(250), dp2px(175), dp2px(150), dp2px(140), dp2px(165),
+      dp2px(180), dp2px(205), dp2px(155), dp2px(120), dp2px(175),
       dp2px(150), dp2px(165), dp2px(155), dp2px(150), dp2px(165),
       dp2px(150), dp2px(165), dp2px(155), dp2px(150), dp2px(165),
       dp2px(150), dp2px(165), dp2px(155), dp2px(150), dp2px(165),
@@ -335,7 +332,6 @@ trait MainScreenComponent {
         canvas.drawBitmap(cloudsRegions(cloudBitmap), x, WindowHeight - y + currentHeight.toInt)
       }
 
-      logger.debug("number of active clouds: " + currentClouds.size)
     }
 
   }
