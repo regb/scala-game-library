@@ -15,6 +15,8 @@ trait AWTApp extends GameApp
     this.gamePanel = new GamePanel
     this.applicationFrame = new ApplicationFrame(gamePanel)
 
+    this.registerInputListeners()
+
     this.startup()
     this.resume()
   }

@@ -3,7 +3,7 @@ package awt
 
 import java.awt.event._
 
-trait AWTInputProvider extends InputProvider with Lifecycle {
+trait AWTInputProvider extends InputProvider {
   this: AWTWindowProvider =>
 
   private def mouseEventButton(e: MouseEvent): Input.MouseButtons.MouseButton = {
@@ -64,7 +64,7 @@ trait AWTInputProvider extends InputProvider with Lifecycle {
     case _ => None
   }
 
-  abstract override def startup(): Unit = {
+  def registerInputListeners(): Unit = {
     gamePanel.addMouseListener(new MouseAdapter() {
       override def mouseClicked(e: MouseEvent): Unit = { }
       override def mousePressed(e: MouseEvent): Unit = {
@@ -101,10 +101,6 @@ trait AWTInputProvider extends InputProvider with Lifecycle {
       override def keyTyped(e: KeyEvent): Unit = {}
     })
 
-    super.startup()
-  }
-  abstract override def shutdown(): Unit = {
-    super.shutdown()
   }
 
 }

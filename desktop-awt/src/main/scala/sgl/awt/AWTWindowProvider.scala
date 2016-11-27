@@ -7,7 +7,7 @@ import javax.swing.JPanel
 import java.awt.event._
 import java.awt.Dimension
 
-trait AWTWindowProvider extends WindowProvider with Lifecycle {
+trait AWTWindowProvider extends WindowProvider {
   this: GameStateComponent with ThreadBasedGameLoopProvider =>
 
   /** The title of the frame */
