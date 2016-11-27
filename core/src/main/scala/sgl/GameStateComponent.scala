@@ -1,5 +1,7 @@
 package sgl
 
+import util._
+
 trait GameStateComponent {
   this: GraphicsProvider =>
 
@@ -87,6 +89,57 @@ trait GameStateComponent {
 
     //no dt parameter, as it is always the fixedDelta value
     def fixedUpdate(): Unit
+
+  }
+
+  abstract class LoadingScreen[A](val loaders: Seq[Loader[A]]) extends GameScreen {
+    import scala.collection.mutable.HashSet
+
+    /** Indicate whether a loading error happened
+      *
+      * You can display an error message in the render method
+      * based on that property
+      */
+    var loadingError: Boolean = false
+    private var loadingErrors: HashSet[Loader[A]] = new HashSet()
+
+    private var remaining: HashSet[Loader[A]] = new HashSet()
+    remaining ++= loaders
+
+    override def name: String = "Loading Screen"
+
+    //we override and hide update method
+    //The assumption is that a loading screen will not need any update
+    //if we want to show a loading bar, we could have the logic built-in
+    //into this loading screen, and the client only needs to override
+    //the render method to display the progress.
+    final override def update(dt: Long): Unit = {
+      for(loader <- remaining.toSet[Loader[A]]) {
+        if(loader.isLoaded) {
+          remaining.remove(loader)
+          if(loader.value.get.isFailure) {
+            loadingError = true
+            loadingErrors += loader
+          }
+        }
+      }
+      if(remaining.isEmpty && !loadingError) {
+        gameState.newScreen(nextScreen)
+      }
+    }
+
+    /** The screen to instantiate and set in the game state
+      *
+      * The function acts as a factory, that will be invoked only
+      * once and only when all the Loaders are fully loaded.
+      * This means that if the function creates an instance of the
+      * GameScreen, the constructor can rely on the fact that
+      * loading is completed.
+      *
+      * The Screen will automatically invoke GameState.newScreen
+      * with the nextScreen when all resources are loaded.
+      */
+    def nextScreen: GameScreen
 
   }
 

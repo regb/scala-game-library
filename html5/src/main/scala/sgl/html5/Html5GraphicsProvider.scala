@@ -13,11 +13,15 @@ trait Html5GraphicsProvider extends GraphicsProvider {
   object Html5Graphics extends Graphics {
 
     override def loadImage(path: System.ResourcePath): Loader[Bitmap] = {
+      println("image loading!")
       val p = new DefaultLoader[Bitmap]()
       val img = dom.document.createElement("img").asInstanceOf[HTMLImageElement]
       img.onload = (e: dom.Event) => {
         p.success(Html5Bitmap(img))
       }
+      img.addEventListener("error", (e: dom.Event) => {
+        p.failure(new RuntimeException("image failed to load"))
+      })
       img.src = s"static${path.path}"
       p.loader
     }

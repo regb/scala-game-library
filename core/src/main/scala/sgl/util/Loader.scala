@@ -90,6 +90,14 @@ trait Loader[A] {
     }
   }
 
+  /** Whether the loader has completed loading
+    *
+    * Note that it doesn't mean that the loading was
+    * successful, just that the operation completed.
+    * The actual value could still be a failure to load
+    * TODO: maybe we are being too general here, and we should
+    *       have a simplified API.
+    */
   def isLoaded: Boolean
 
   /** The current value
