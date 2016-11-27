@@ -1,7 +1,7 @@
 package sgl
 package awt
 
-import util._
+import sgl.util._
 
 trait AWTApp extends GameApp 
                 with AWTGraphicsProvider with AWTInputProvider with AWTAudioProvider

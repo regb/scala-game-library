@@ -21,6 +21,7 @@ trait MainScreenComponent {
     private var characterBitmapLoader: Loader[Bitmap] = null
 
     override def update(dt: Long): Unit = {
+      println("loading")
       if(characterBitmapLoader == null) {
         characterBitmapLoader = Graphics.loadImage(System.ResourcesPrefix / "drawable" / "character.png")
       }
@@ -78,7 +79,7 @@ trait MainScreenComponent {
       autoX += dp2px(50)*(dt/1000d)
       autoY += dp2px(50)*(dt/1000d)
 
-      logger.debug("Fps: " + statistics.measuredFps)
+      //logger.debug("Fps: " + statistics.measuredFps)
     }
 
     override def render(canvas: Canvas): Unit = {

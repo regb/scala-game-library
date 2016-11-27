@@ -47,6 +47,11 @@ trait Loader[A] {
     *
     * If called on an already loaded Loader, the function will be fired
     * immediately. TODO: check that, maybe it will be fired asynchronously
+    *
+    * TODO: decide whether or not a callback is always called on the same thread
+    * as the game loop, or whether it is potentially concurrent. With current
+    * Future based implementation on Desktop, we get concurrency with callbacks
+    * potentially firing while game loop running.
     */
   def onLoad[U](f: (Try[A]) => U): Unit
 

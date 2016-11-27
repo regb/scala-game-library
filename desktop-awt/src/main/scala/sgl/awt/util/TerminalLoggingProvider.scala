@@ -1,7 +1,8 @@
 package sgl
 package awt
+package util
 
-import util._
+import sgl.util._
 
 /*
  * These are default loggers that make sense in the JVM/Desktop

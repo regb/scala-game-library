@@ -5,7 +5,7 @@ import core._
 
 import sgl.{InputHelpersComponent, GameLoopStatisticsComponent}
 import sgl.awt._
-import sgl.util._
+import sgl.awt.util._
 
 
 /** Wire backend to the App here */

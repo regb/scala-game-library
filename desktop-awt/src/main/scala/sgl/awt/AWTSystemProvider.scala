@@ -4,6 +4,8 @@ package awt
 import java.net.URI
 import java.awt.Desktop
 
+import scala.concurrent.ExecutionContext
+
 trait AWTSystemProvider extends SystemProvider {
 
   override def exit(): Unit = {
@@ -39,4 +41,8 @@ trait AWTSystemProvider extends SystemProvider {
     val ResourcesPrefix: ResourcePath = StringPath("")
   }
   val System = AWT5System
+
+  //Centralize the execution context used for asynchronous tasks in the Desktop backend
+  //Could be overriden at wiring time
+  implicit val executionContext: ExecutionContext = ExecutionContext.Implicits.global
 }

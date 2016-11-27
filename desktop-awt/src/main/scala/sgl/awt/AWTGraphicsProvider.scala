@@ -1,7 +1,8 @@
 package sgl
 package awt
 
-import util._
+import sgl.util._
+import awt.util._
 
 import java.awt.{Image, Graphics, Graphics2D, Color}
 import java.awt.image.BufferedImage
@@ -18,18 +19,19 @@ trait AWTGraphicsProvider extends GraphicsProvider with Lifecycle {
     super.shutdown()
   }
 
-
   object AWTGraphics extends Graphics {
 
-    //TODO: make it asynchronous, but for that, we need to clarify
-    //      threading model (we dont want to use thread and having callbacks
-    //      invoked in a concurent manner)
+    //We use Future infrastructure to perform the asynchronous loading on
+    //desktop. This is not used on other platforms, as we want to have
+    //a better integration in the system, but it seems like a good choice
+    //on the desktop
     override def loadImage(path: System.ResourcePath): Loader[Bitmap] = {
-      //TODO: understand and explain why getResource on getClassLoader needs relative path
-      val url = getClass.getClassLoader.getResource(path.path)
-      val bi = ImageIO.read(url)
-      val img = AWTBitmap(bi)
-      Loader.successful(img)
+      FutureLoader {
+        //TODO: understand and explain why getResource on getClassLoader needs relative path
+        val url = getClass.getClassLoader.getResource(path.path)
+        val bi = ImageIO.read(url)
+        AWTBitmap(bi)
+      }
     }
 
   }
