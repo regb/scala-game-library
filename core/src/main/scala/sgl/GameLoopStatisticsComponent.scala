@@ -14,10 +14,6 @@ trait GameLoopStatisticsComponent extends Lifecycle {
 
   override val gameLoopListener = new StatisticsGameLoopListener
 
-  //override def startup(): Unit = {
-  //  registerGameLoopListener(new StatisticsGameLoopListener)
-  //}
-
   class StatisticsGameLoopListener extends GameLoopListener {
 
     private var beginTime = System.nanoTime

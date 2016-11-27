@@ -71,6 +71,10 @@ trait GameStateComponent {
   abstract class FixedTimestepGameScreen(val fixedDelta: Long) extends GameScreen {
     require(fixedDelta > 0)
 
+    //TODO: handle the "spiral of death" problem in that class maybe?
+    //      could provide a "def panic(): Unit" function that gets called
+    //      when we need to call fixedUpdate more than a configurable maxUpdateSteps
+
     private var accumulatedDelta = 0l
     final override def update(dt: Long): Unit = {
       accumulatedDelta += dt

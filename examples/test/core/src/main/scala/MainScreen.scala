@@ -9,15 +9,34 @@ import util._
 trait MainScreenComponent {
   this: GraphicsProvider with InputProvider with GameStateComponent
   with WindowProvider with InputHelpersComponent with GameLoopStatisticsComponent
-  with LoggingProvider =>
+  with LoggingProvider with SystemProvider =>
 
   private implicit val LogTag = Logger.Tag("main-screen")
+
+  object LoadingScreen extends GameScreen {
+    override def name: String = "Loading Screen"
+
+    var characterBitmap: Option[Bitmap] = None
+
+    private var characterBitmapLoader: Loader[Bitmap] = null
+
+    override def update(dt: Long): Unit = {
+      if(characterBitmapLoader == null) {
+        characterBitmapLoader = Graphics.loadImage(System.root / "drawable" / "character.png")
+      }
+      if(characterBitmapLoader.isLoaded) {
+        characterBitmap = Some(characterBitmapLoader.value.get.get)
+        gameState.newScreen(new MainScreen)
+      }
+    }
+    override def render(canvas: Canvas): Unit = {}
+  }
 
   class MainScreen extends GameScreen {
 
     override def name: String = "TestScreen"
 
-    private val characterBitmap = loadImageFromResource("drawable/character.png")
+    private val characterBitmap = LoadingScreen.characterBitmap.get
     private val characterFrames = Array(
       BitmapRegion(characterBitmap, 0, 0, dp2px(48), dp2px(68)),
       BitmapRegion(characterBitmap, dp2px(48), 0, dp2px(48), dp2px(68)),

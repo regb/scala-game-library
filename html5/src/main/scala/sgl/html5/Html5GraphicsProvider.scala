@@ -1,13 +1,29 @@
 package sgl
 package html5
 
+import sgl.util._
+
 import org.scalajs.dom
 import dom.html
 import dom.raw.HTMLImageElement
 
 trait Html5GraphicsProvider extends GraphicsProvider {
-  this: Html5WindowProvider =>
+  this: Html5WindowProvider with Html5SystemProvider =>
 
+  object Html5Graphics extends Graphics {
+
+    override def loadImage(path: System.Path): Loader[Bitmap] = {
+      val p = new DefaultLoader[Bitmap]()
+      val img = dom.document.createElement("img").asInstanceOf[HTMLImageElement]
+      img.onload = (e: dom.Event) => {
+        p.success(Html5Bitmap(img))
+      }
+      img.src = s"static${path.path}"
+      p.loader
+    }
+
+  }
+  val Graphics: Graphics = Html5Graphics
 
   //could wrap that into a LoaderProxy, that makes sure image is loaded before drawing it
   case class Html5Bitmap(image: HTMLImageElement) extends AbstractBitmap {

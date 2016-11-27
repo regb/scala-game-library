@@ -12,6 +12,6 @@ trait AbstractApp extends MainScreenComponent {
   override def pause(): Unit = {}
   override def shutdown(): Unit = {}
 
-  override def startingScreen: GameScreen = new MainScreen
+  override def startingScreen: GameScreen = LoadingScreen
 
 }

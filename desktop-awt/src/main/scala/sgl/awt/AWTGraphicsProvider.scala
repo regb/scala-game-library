@@ -1,13 +1,15 @@
 package sgl
 package awt
 
+import util._
+
 import java.awt.{Image, Graphics, Graphics2D, Color}
 import java.awt.image.BufferedImage
 import javax.imageio.ImageIO
 import java.awt.FontMetrics
 
 trait AWTGraphicsProvider extends GraphicsProvider with Lifecycle {
-  this: AWTWindowProvider =>
+  this: AWTWindowProvider with AWTSystemProvider =>
 
   abstract override def startup(): Unit = {
     super.startup()
@@ -15,6 +17,24 @@ trait AWTGraphicsProvider extends GraphicsProvider with Lifecycle {
   abstract override def shutdown(): Unit = {
     super.shutdown()
   }
+
+
+  object AWTGraphics extends Graphics {
+
+    //TODO: make it asynchronous, but for that, we need to clarify
+    //      threading model (we dont want to use thread and having callbacks
+    //      invoked in a concurent manner)
+    override def loadImage(path: System.Path): Loader[Bitmap] = {
+      println(path.path)
+      val url = getClass.getClassLoader.getResource(path.path)
+      println(url)
+      val bi = ImageIO.read(url)
+      val img = AWTBitmap(bi)
+      Loader.successful(img)
+    }
+
+  }
+  val Graphics: Graphics = AWTGraphics
 
 
   case class AWTBitmap(img: Image) extends AbstractBitmap {

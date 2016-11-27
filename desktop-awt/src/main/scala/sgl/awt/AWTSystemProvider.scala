@@ -26,4 +26,15 @@ trait AWTSystemProvider extends SystemProvider {
       }
     }
   }
+
+  object AWT5System extends System {
+
+    case class StringPath(path: String) extends AbstractPath {
+      override def / (filename: String): Path =
+        if(this == root) StringPath(filename) else StringPath(path + "/" + filename)
+    }
+    type Path = StringPath
+    val root: Path = StringPath("")
+  }
+  val System = AWT5System
 }

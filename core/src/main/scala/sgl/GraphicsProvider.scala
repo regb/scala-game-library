@@ -1,6 +1,25 @@
 package sgl
 
+import util.Loader
+
 trait GraphicsProvider extends GraphicsHelpersComponent {
+  this: SystemProvider =>
+
+  /*
+   * We would like to defined everything within
+   * the Graphics type, so that we get proper namespacing
+   * by Graphics package/object when mixing in all the components.
+   * if we would be to defined everything at the toplevel (in the body of
+   * GraphicsProvider), then we are risking some name clashing, and generally
+   * it might make things more confusing on a component that mix-in a lot
+   * of the base components.
+   */
+  trait Graphics {
+
+    def loadImage(path: System.Path): Loader[Bitmap]
+
+  }
+  val Graphics: Graphics
 
   abstract class AbstractBitmap {
     def height: Int

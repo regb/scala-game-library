@@ -35,4 +35,13 @@ trait Html5SystemProvider extends SystemProvider {
     dom.window.open(uri.toString)
   }
 
+  object Html5System extends System {
+
+    case class StringPath(path: String) extends AbstractPath {
+      override def / (filename: String): Path = StringPath(path + "/" + filename)
+    }
+    type Path = StringPath
+    val root: Path = StringPath("")
+  }
+  val System = Html5System
 }
