@@ -106,6 +106,14 @@ trait Loader[A] {
     * it becomes Some of the value.
     */
   def value: Option[Try[A]]
+
+
+  //just some cool design idea for the future,
+  //would be nice to have a get method that returns the
+  //Try knowing that it has been loaded by something (like a loadingScreen)
+  //The LoadingEvidence value should be only provided once loading has been completed
+  //type LoadingEvidence
+  //def get(implicit ev: LoadingEvidence): Try[A]
 }
 
 object Loader {

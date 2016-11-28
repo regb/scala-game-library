@@ -3,8 +3,9 @@ package desktop
 
 import core._
 
-import sgl.awt._
 import sgl.util._
+import sgl.awt._
+import sgl.awt.util._
 import sgl.scene._
 
 

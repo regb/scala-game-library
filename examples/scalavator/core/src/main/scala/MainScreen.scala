@@ -126,6 +126,9 @@ trait MainScreenComponent {
     def handleInput(ev: Input.InputEvent): Unit = {
       ev match {
         case Input.TouchDownEvent(_, _, _) | Input.MouseDownEvent(_, _, Input.MouseButtons.Left) =>
+          //we should start an animation where the scalaguy "compresses" preparing the jump
+          ()
+        case Input.TouchUpEvent(_, _, _) | Input.MouseUpEvent(_, _, Input.MouseButtons.Left) =>
           logger.info("Jump input from player detected")
           if(standingPlatform.nonEmpty) {
             standingPlatform = None
@@ -151,6 +154,8 @@ trait MainScreenComponent {
       }
 
       characterAnimation.update(dt)
+
+      background.update(dt)
     }
 
     def fixedUpdate(dt: Long): Unit = {
@@ -264,6 +269,14 @@ trait MainScreenComponent {
       popNewClouds()
     }
 
+    private case class Cloud(var x: Double, y: Int, cloudFrame: Int) {
+      val velocity = randomCloudVelocity
+    }
+
+    private val CloudBaseVelocity: Double = dp2px(10)
+    private val CloudBonusVelocity: Double = dp2px(5)
+    private def randomCloudVelocity = CloudBaseVelocity + (1 - 2*math.random)*CloudBonusVelocity
+
     private val cloudsRegions = Array(
       BitmapRegion(cloudsBitmap, 0, 0         , dp2px(152), dp2px(100)),
       BitmapRegion(cloudsBitmap, 0, dp2px(100), dp2px(152), dp2px(100)),
@@ -287,16 +300,15 @@ trait MainScreenComponent {
       dp2px(150), dp2px(165), dp2px(155), dp2px(150), dp2px(165)
     )
 
-    private val maxX = WindowWidth - dp2px(152)
-
-    private def randomPosition(): Int = scala.util.Random.nextInt(maxX)
+    private val maxX = WindowWidth/2
+    private def randomPosition(): Int = scala.util.Random.nextInt(maxX + dp2px(152)) - dp2px(152)
 
     //generate random positions for each of the 50 possible repeating offset
     private val positions: Array[Int] = Array.fill(50)(randomPosition())
 
     //the current list of clouds, (x, y, cloud), with y pointing upwards to
     //the sky, meaning that it is reversed with regular coordinate system
-    private var currentClouds: List[(Int, Int, Int)] = Nil
+    private var currentClouds: List[Cloud] = Nil 
 
     private var cloudFrame = 0
     private var cloudIndex = 0
@@ -304,18 +316,30 @@ trait MainScreenComponent {
 
     private def popNewClouds(): Unit = {
       while(currentHeight + WindowHeight + dp2px(100) > cloudHeight) {
-        currentClouds ::= ((positions(cloudIndex), cloudHeight, cloudFrame))
+        currentClouds ::= (Cloud(positions(cloudIndex), cloudHeight, cloudFrame))
         cloudIndex = (cloudIndex + 1) % spaces.length
         cloudHeight += spaces(cloudIndex)
         cloudFrame = (cloudFrame+1)%5
       }
 
-      currentClouds = currentClouds.filter(c => c._2 >= currentHeight)
+      currentClouds = currentClouds.filter(c => c.y >= currentHeight)
     }
 
     popNewClouds()
 
     private val skyPaint = defaultPaint.withColor(Color.rgb(181, 242, 251))
+
+    def update(dt: Long): Unit = {
+      currentClouds.foreach(cloud => {
+        //clouds always float right, I guess it makes more sense due to wind?
+        cloud.x = cloud.x + cloud.velocity*(dt/1000d)
+        //and we circle back to left after a while (2*windowwidth)
+        if(cloud.x > WindowWidth) {
+          cloud.x = -cloudsRegions(cloud.cloudFrame).width
+        }
+      })
+    }
+
   
     def render(canvas: Canvas): Unit = {
       canvas.drawRect(0, 0, WindowWidth, WindowHeight, skyPaint)
@@ -327,8 +351,8 @@ trait MainScreenComponent {
       //  if(cloudHeight > currentHeight && cloudHeight < 
       //for(space
 
-      for((x, y, cloudBitmap) <- currentClouds) {
-        canvas.drawBitmap(cloudsRegions(cloudBitmap), x, WindowHeight - y + currentHeight.toInt)
+      for(Cloud(x, y, cloudBitmap) <- currentClouds) {
+        canvas.drawBitmap(cloudsRegions(cloudBitmap), x.toInt, WindowHeight - y + currentHeight.toInt)
       }
 
     }
