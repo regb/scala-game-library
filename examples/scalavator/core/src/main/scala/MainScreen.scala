@@ -15,14 +15,15 @@ trait MainScreenComponent {
   private implicit val Tag = Logger.Tag("main")
 
   class MainScreen(
-    characterBitmap: Bitmap,
+    characterIdleBitmap: Bitmap,
+    characterPreJumpBitmap: Bitmap,
+    characterJumpBitmap: Bitmap,
     cloudsBitmap: Bitmap
   ) extends GameScreen {
 
     override def name = "Scalavator Screen"
 
     private val Gravity = Vec(0, dp2px(550))
-    private val JumpImpulsion = dp2px(550)
 
     private val PlatformHeight = dp2px(5)
     class Platform(var x: Double, var y: Double, val width: Int, var speed: Double) {
@@ -65,8 +66,8 @@ trait MainScreenComponent {
     //refers to the sprite height (but when idle, it uses ony about half of
     //that height). The width only refers to the inner part that is collidable
     //and not the full sprite with the arms.
-    private val CharacterWidth = dp2px(30)
-    private val CharacterHeight = dp2px(68)
+    private val CharacterWidth = dp2px(40)
+    private val CharacterHeight = characterIdleBitmap.height //dp2px(89)
 
     //character position is the bottom left corner of the hittable area. The actual visible sprite
     //expands slightly more to the left and the right of the CharacterWidth (48dp total with 30dp in the
@@ -74,14 +75,37 @@ trait MainScreenComponent {
     private var characterPosition = Point(WindowWidth/2-CharacterWidth/2, WindowHeight - PlatformHeight)
     private var characterVelocity = Vec(0, 0)
 
-    private val characterFrames = Array(
-      BitmapRegion(characterBitmap, 0, 0, dp2px(48), dp2px(68)),
-      BitmapRegion(characterBitmap, dp2px(48), 0, dp2px(48), dp2px(68)),
-      BitmapRegion(characterBitmap, dp2px(96), 0, dp2px(48), dp2px(68)),
-      BitmapRegion(characterBitmap, dp2px(144), 0, dp2px(48), dp2px(68)))
-    private val CharacterIdleAnimation = new Animation(200, Array(characterFrames.head), Animation.Loop)
-    private val CharacterStartJumpAnimation = new Animation(250, characterFrames, Animation.Normal)
-    private val CharacterEndJumpAnimation = new Animation(250, characterFrames, Animation.Reversed)
+    private val characterIdleFrames = Array(
+      BitmapRegion(characterIdleBitmap, 0        ,  0, dp2px(60), CharacterHeight)
+    )
+
+    private val characterPreJumpFrames = Array(
+      BitmapRegion(characterPreJumpBitmap, 0         , 0, dp2px(60), CharacterHeight),
+      BitmapRegion(characterPreJumpBitmap, dp2px(60) , 0, dp2px(60), CharacterHeight),
+      BitmapRegion(characterPreJumpBitmap, dp2px(120), 0, dp2px(60), CharacterHeight)
+    )
+    private val characterJumpFrames = Array(
+      BitmapRegion(characterJumpBitmap, 0         , 0, dp2px(60), CharacterHeight),
+      BitmapRegion(characterJumpBitmap, dp2px(60) , 0, dp2px(60), CharacterHeight),
+      BitmapRegion(characterJumpBitmap, dp2px(120), 0, dp2px(60), CharacterHeight),
+      BitmapRegion(characterJumpBitmap, dp2px(180), 0, dp2px(60), CharacterHeight),
+      BitmapRegion(characterJumpBitmap, dp2px(240), 0, dp2px(60), CharacterHeight),
+      BitmapRegion(characterJumpBitmap, dp2px(300), 0, dp2px(60), CharacterHeight)
+    )
+
+    private val characterLandingFrames = Array(
+      characterJumpFrames(1),
+      characterJumpFrames(0),
+      characterJumpFrames(1),
+      characterJumpFrames(2),
+      characterIdleFrames(0)
+    )
+
+    private val CharacterIdleAnimation = new Animation(200, characterIdleFrames, Animation.Loop)
+    private val CharacterPreJumpAnimation = new Animation(100, characterPreJumpFrames, Animation.Normal)
+    private val CharacterStartJumpAnimation = new Animation(100, characterJumpFrames, Animation.Normal)
+    private val CharacterTopJumpAnimation = new Animation(200, characterJumpFrames.reverse.take(5), Animation.Normal)
+    private val CharacterLandingAnimation = new Animation(200, characterLandingFrames, Animation.Normal)
 
     //this looks like a standard wrapper technique for a character/sprite
     //that can have several state and thus several animation. It seems
@@ -109,8 +133,6 @@ trait MainScreenComponent {
 
     private var characterAnimation = new CharacterAnimation
 
-    private var jumpingDuration: Long = 0
-
     private var standingPlatform: Option[Platform] = Some(startingPlatform)
 
     //a score, derived from the highest platform landed on, to show in HUD
@@ -122,17 +144,35 @@ trait MainScreenComponent {
 
     private val hud = new Hud
 
+    private var totalTime: Long = 0
+
+    private var chargeJumpStart: Long = 0
+
+
+    def jumpChargeToImpulsion(jumpCharge: Long): Double = {
+      //let's try 3 layers, for each 200 ms
+      val level: Int = {
+        val tmp = (jumpCharge / 200d).toInt //for each 200ms, we have 1 level
+        tmp min 2
+      }
+      //level is from 0 to MaxLevel
+
+      (1 + 0.2*level)*dp2px(400)
+    }
 
     def handleInput(ev: Input.InputEvent): Unit = {
       ev match {
         case Input.TouchDownEvent(_, _, _) | Input.MouseDownEvent(_, _, Input.MouseButtons.Left) =>
-          //we should start an animation where the scalaguy "compresses" preparing the jump
-          ()
+          if(standingPlatform.nonEmpty) {
+            chargeJumpStart = totalTime
+            characterAnimation.currentAnimation = CharacterPreJumpAnimation
+          }
         case Input.TouchUpEvent(_, _, _) | Input.MouseUpEvent(_, _, Input.MouseButtons.Left) =>
-          logger.info("Jump input from player detected")
+          val totalCharge = totalTime - chargeJumpStart
+          logger.info("Jump input from player detected. total charge: " + totalCharge)
           if(standingPlatform.nonEmpty) {
             standingPlatform = None
-            characterVelocity = Vec(0, -JumpImpulsion)
+            characterVelocity = Vec(0, -jumpChargeToImpulsion(totalCharge))
             characterAnimation.currentAnimation = CharacterStartJumpAnimation
           }
         case _ => ()
@@ -145,6 +185,8 @@ trait MainScreenComponent {
     private val FixedDelta = 5l
     override def update(dt: Long): Unit = {
       Input.processEvents(handleInput)
+
+      totalTime += dt
 
       accumulatedDelta += dt
 
@@ -171,9 +213,16 @@ trait MainScreenComponent {
           characterVelocity += Gravity*(dt/1000d)
           characterPosition += characterVelocity*(dt/1000d)
 
+          //TODO: maybe we should start an animation just before reaching the top,
+          //      but we need to create State within the character to properly handle
+          //      the different phase of the jump
+          if(characterVelocity.y >= -dp2px(50)) { //trying to detect end of the jump
+          }
+
           if(previousVelocity.y <= 0 && characterVelocity.y >= 0) {
             //if reached peak of the jump
-            characterAnimation.currentAnimation = CharacterEndJumpAnimation
+            //characterAnimation.currentAnimation = CharacterEndJumpAnimation
+            characterAnimation.currentAnimation = CharacterTopJumpAnimation
           }
 
           if(characterPosition.y.toInt < WindowHeight/2)
@@ -193,7 +242,8 @@ trait MainScreenComponent {
                             p.x <= characterPosition.x + CharacterWidth && p.x + p.width >= characterPosition.x
                       ).foreach(platform => {
           standingPlatform = Some(platform)
-          characterAnimation.currentAnimation = CharacterIdleAnimation
+          characterAnimation.currentAnimation = CharacterLandingAnimation
+          //characterAnimation.currentAnimation = CharacterIdleAnimation
         })
 
         if(standingPlatform == None && characterPosition.y-CharacterHeight > WindowHeight) {
@@ -205,7 +255,12 @@ trait MainScreenComponent {
     }
 
     def restart(): Unit = {
-      gameState.newScreen(new MainScreen(characterBitmap, cloudsBitmap))
+      gameState.newScreen(
+        new MainScreen(
+          characterIdleBitmap, characterPreJumpBitmap, characterJumpBitmap,
+          cloudsBitmap
+        )
+      )
     }
 
     override def render(canvas: Canvas): Unit = {

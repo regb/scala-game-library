@@ -12,12 +12,10 @@ trait LoadingScreenComponent {
 
   private implicit val Tag = Logger.Tag("loading-screen")
 
-  object ResourcesLoadingManger {
-
-    var character: Loader[Bitmap] = null
-    var clouds: Loader[Bitmap] = null
-
-  }
+  var characterIdle: Loader[Bitmap] = null
+  var characterPrejump: Loader[Bitmap] = null
+  var characterJump: Loader[Bitmap] = null
+  var clouds: Loader[Bitmap] = null
 
   class ScalavatorLoadingScreen[A](loaders: Seq[Loader[A]]) extends LoadingScreen[A](loaders) {
 
@@ -30,8 +28,10 @@ trait LoadingScreenComponent {
     //screen, meaning that the MainScreen just works with
     //fully loaded bitmap
     override def nextScreen: GameScreen = new MainScreen(
-      ResourcesLoadingManger.character.value.get.get,
-      ResourcesLoadingManger.clouds.value.get.get
+      characterIdle.value.get.get,
+      characterPrejump.value.get.get,
+      characterJump.value.get.get,
+      clouds.value.get.get
     )
   }
 
@@ -40,11 +40,15 @@ trait LoadingScreenComponent {
   //might not be quite ready yet
   override def startingScreen: GameScreen = {
     val pathPrefix = System.ResourcesPrefix / "drawable"
-    ResourcesLoadingManger.character = Graphics.loadImage(pathPrefix / "character.png")
-    ResourcesLoadingManger.clouds = Graphics.loadImage(pathPrefix / "clouds.png")
+    characterIdle = Graphics.loadImage(pathPrefix / "character_idle.png")
+    characterPrejump = Graphics.loadImage(pathPrefix / "character_prejump.png")
+    characterJump = Graphics.loadImage(pathPrefix / "character_jump.png")
+    clouds = Graphics.loadImage(pathPrefix / "clouds.png")
     val allResources = Array(
-      ResourcesLoadingManger.character,
-      ResourcesLoadingManger.clouds
+      characterIdle,
+      characterPrejump,
+      characterJump,
+      clouds
     )
     new ScalavatorLoadingScreen(allResources)
   }
