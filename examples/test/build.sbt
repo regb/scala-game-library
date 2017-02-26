@@ -1,4 +1,8 @@
+import sbtcrossproject.{crossProject, CrossType}
+
 val scalaVer = "2.12.0"
+
+val scalaNativeVer = "2.11.8"
 
 lazy val commonSettings = Seq(
   version        := "1.0",
@@ -6,24 +10,33 @@ lazy val commonSettings = Seq(
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 )
 
+lazy val commonNativeSettings = Seq(
+  scalaVersion  := scalaNativeVer
+)
+
 lazy val sglCoreJVM = ProjectRef(file("../.."), "coreJVM")
 lazy val sglCoreJS = ProjectRef(file("../.."), "coreJS")
+lazy val sglCoreNative = ProjectRef(file("../.."), "coreNative")
 lazy val sglCoreAndroid = ProjectRef(file("../.."), "coreAndroid")
 lazy val sglHtml5 = ProjectRef(file("../.."), "html5")
 lazy val sglDesktop = ProjectRef(file("../.."), "desktopAWT")
 lazy val sglAndroid = ProjectRef(file("../.."), "android")
+lazy val sglNative = ProjectRef(file("../.."), "desktopNative")
 
-lazy val core = (crossProject.crossType(CrossType.Pure) in file("./core"))
+lazy val core = (crossProject(JSPlatform, JVMPlatform, NativePlatform).crossType(CrossType.Pure) in file("./core"))
   .settings(commonSettings: _*)
   .settings(name := "sgl-test-core")
   .jvmSettings(
     exportJars := true
   )
+  .nativeSettings(scalaVersion := scalaNativeVer)
   .jvmConfigure(_.dependsOn(sglCoreJVM))
   .jsConfigure(_.dependsOn(sglCoreJS))
+  .nativeConfigure(_.dependsOn(sglCoreNative))
 
 lazy val coreJVM = core.jvm
 lazy val coreJS = core.js
+lazy val coreNative = core.native
 
 lazy val desktop = (project in file("./desktop"))
   .settings(commonSettings: _*)
@@ -41,6 +54,14 @@ lazy val html5 = (project in file("./html5"))
   )
   .dependsOn(sglCoreJS, sglHtml5, coreJS)
 
+lazy val native = (project in file("./native"))
+  .enablePlugins(ScalaNativePlugin)
+  .settings(commonSettings: _*)
+  .settings(commonNativeSettings: _*)
+  .settings(
+    name := "sgl-test-native"
+  )
+  .dependsOn(sglCoreNative, sglNative, coreNative)
 
 //Android cannot run on Java8 so we stick with 2.11. We
 //need to build core separately for the right version

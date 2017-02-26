@@ -1,9 +1,17 @@
+import sbtcrossproject.{crossProject, CrossType}
+
 val scalaVer = "2.12.0"
+
+val scalaNativeVer = "2.11.8"
 
 lazy val commonSettings = Seq(
   version      := "0.0.1",
   scalaVersion := scalaVer,
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
+)
+
+lazy val commonNativeSettings = Seq(
+  scalaVersion  := scalaNativeVer
 )
 
 lazy val root = (project in file("."))
@@ -15,12 +23,14 @@ lazy val root = (project in file("."))
   .aggregate(coreJVM, coreJS, coreAndroid, desktopAWT, html5, android)
 
 
-lazy val core = (crossProject.crossType(CrossType.Pure) in file("./core"))
+lazy val core = (crossProject(JSPlatform, JVMPlatform, NativePlatform).crossType(CrossType.Pure) in file("./core"))
   .settings(commonSettings: _*)
   .settings(name := "sgl-core")
+  .nativeSettings(scalaVersion := scalaNativeVer)
 
 lazy val coreJVM = core.jvm
 lazy val coreJS = core.js
+lazy val coreNative = core.native
 
 lazy val desktopAWT = (project in file("./desktop-awt"))
   .settings(commonSettings: _*)
@@ -31,6 +41,15 @@ lazy val desktopAWT = (project in file("./desktop-awt"))
     libraryDependencies += "com.googlecode.soundlibs" % "jorbis" % "0.0.17-3"
   )
   .dependsOn(coreJVM)
+
+lazy val desktopNative = (project in file("./desktop-native"))
+  .enablePlugins(ScalaNativePlugin)
+  .settings(commonSettings: _*)
+  .settings(commonNativeSettings: _*)
+  .settings(
+    name := "sgl-desktop-native"
+  )
+  .dependsOn(coreNative)
 
 lazy val html5 = (project in file("./html5"))
   .enablePlugins(ScalaJSPlugin)
