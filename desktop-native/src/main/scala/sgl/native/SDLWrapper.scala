@@ -11,6 +11,9 @@ object SDL {
   //call before anything else. iniialize system with flags. Return 0 if successful
   def SDL_Init(flags: UInt): CInt = extern
 
+  //invoke before quitting. Should be called on all exit conditions
+  def SDL_Quit(): Unit = extern
+
   def SDL_CreateWindow(title: CString,
                        x: CInt, y: CInt, w: Int, h: Int,
                        flags: UInt): Ptr[Window] = extern
@@ -47,6 +50,9 @@ object SDL {
   type Keycode  = Int
 
 
+  type Surface = CStruct0
+
+  def SDL_LoadBMP(path: CString): Ptr[Surface] = extern
 
 
   type Texture = CStruct0
@@ -55,6 +61,9 @@ object SDL {
                         format: UInt, access: CInt,
                         w: Int, h: Int): Ptr[Texture] = extern
 
+  //SDL_QueryTexture to retrieve dimensions
+
+  def SDL_CreateTextureFromSurface(renderer: Ptr[Renderer], surface: Ptr[Surface]): Ptr[Texture] = extern
 }
 
 object SDLExtra {

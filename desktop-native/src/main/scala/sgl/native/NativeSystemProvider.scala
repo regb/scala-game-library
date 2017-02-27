@@ -13,6 +13,7 @@ trait NativeSystemProvider extends SystemProvider {
   }
 
   override def loadTextResource(path: String): Iterator[String] = {
+
     ???
     //val is = getClass.getClassLoader.getResourceAsStream(path)
     //scala.io.Source.fromInputStream(is).getLines

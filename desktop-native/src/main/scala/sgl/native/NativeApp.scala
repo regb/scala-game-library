@@ -27,11 +27,18 @@ trait NativeApp extends GameApp
     val window = SDL_CreateWindow(c"Default App", 0, 0, frameDimension._1, frameDimension._2, WINDOW_SHOWN)
     if(window == null) {
       println("Failed to create a window: " + SDL_GetError())
+      SDL_Quit()
       sys.exit()
     }
 
 
     this.renderer = SDL_CreateRenderer(window, -1, VSYNC)
+    if(this.renderer == null) {
+      //TODO: SDL_DestroyWindow
+      println("Failed to create a renderer: " + SDL_GetError())
+      SDL_Quit()
+      sys.exit()
+    }
 
     this.startup()
     this.resume()

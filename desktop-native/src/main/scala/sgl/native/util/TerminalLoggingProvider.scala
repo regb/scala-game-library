@@ -48,7 +48,7 @@ trait TerminalLoggingProvider extends LoggingProvider {
       val colorTag = Console.CYAN
       "[" + colorPrefix + prefix.substring(1, prefix.length-2) + Console.RESET + "] " +
       "[ " + colorTag + tag.name + Console.RESET + " ] " +
-      msg.trim.replaceAll("\n", "\n" + (" " * (prefix.size)))
+      msg//.trim.replaceAll("\n", "\n" + (" " * (prefix.size)))
     }
   }
 

@@ -9,11 +9,15 @@ import SDL._
 import SDLExtra._
 
 trait NativeGraphicsProvider extends GraphicsProvider {
-  this: SystemProvider =>
+  this: NativeSystemProvider =>
 
   object NativeGraphics extends Graphics {
 
     override def loadImage(path: System.ResourcePath): Loader[Bitmap] = {
+      //val path = c"/home/reg/vcs/games/sgl/examples/test/native/src/main/resources/drawable/character-bitmap.bmp"
+      //val surface = SDL_LoadBMP(path)
+      //println(surface)
+      //Loader.successful(SDLTextureBitmap(surface))
       Loader.successful(SDLTextureBitmap(null))
     }
 
@@ -21,7 +25,7 @@ trait NativeGraphicsProvider extends GraphicsProvider {
   val Graphics: Graphics = NativeGraphics
 
 
-  case class SDLTextureBitmap(texture: Ptr[Texture]) extends AbstractBitmap {
+  case class SDLTextureBitmap(surface: Ptr[Surface]) extends AbstractBitmap {
     override def height: Int = 40
     override def width: Int = 40
   }
@@ -97,19 +101,24 @@ trait NativeGraphicsProvider extends GraphicsProvider {
     }
 
     override def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit = {
-
+      //val texture = SDL_CreateTextureFromSurface(renderer, bitmap.surface)
+      //println("texture: " + texture)
     }
     override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int): Unit = {
-
     }
 
     override def drawRect(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {
-      SDL_SetRenderDrawColor(renderer, 255.toUByte, 0.toUByte, 0.toUByte, 0.toUByte)
+      setRenderColor(paint.color)
+
       val rect = stackalloc[Rect].init(x, y, width, height)
       SDL_RenderFillRect(renderer, rect)
     }
 
     override def drawOval(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {
+      setRenderColor(paint.color)
+
+      val rect = stackalloc[Rect].init(x, y, width, height)
+      SDL_RenderFillRect(renderer, rect)
     }
     override def drawLine(x1: Int, y1: Int, x2: Int, y2: Int, paint: Paint): Unit = {
       ???
@@ -124,7 +133,7 @@ trait NativeGraphicsProvider extends GraphicsProvider {
     }
 
     override def drawColor(color: Color): Unit = {
-      ???
+      SDL_SetRenderDrawColor(renderer, color.red.toUByte, color.green.toUByte, color.blue.toUByte, color.alpha.toUByte)
     }
 
     override def clearRect(x: Int, y: Int, width: Int, height: Int): Unit = {
@@ -134,6 +143,11 @@ trait NativeGraphicsProvider extends GraphicsProvider {
     override def renderText(text: String, width: Int, paint: Paint): TextLayout = {
       ???
     }
+
+    private def setRenderColor(color: Color): Unit = {
+      SDL_SetRenderDrawColor(renderer, color.red.toUByte, color.green.toUByte, color.blue.toUByte, color.alpha.toUByte)
+    }
+
   }
   type Canvas = NativeCanvas
 

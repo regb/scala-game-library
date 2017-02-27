@@ -3,6 +3,10 @@ package native
 
 import sgl.util._
 
+import scalanative.native._
+
+import SDL._
+
 trait PollingGameLoopProvider extends GameLoopProvider {
   self: GraphicsProvider with NativeInputProvider with GameStateComponent with LoggingProvider =>
 
@@ -62,11 +66,11 @@ trait PollingGameLoopProvider extends GameLoopProvider {
 
         //logger.trace(s"Measured FPS: ${statistics.measuredFps}")
 
-        //if(sleepTime > 0) {
-        //  Thread.sleep(sleepTime)
-        //} else if(sleepTime < 0) {
-        //  logger.warning(s"negative sleep time. frame period: $FramePeriod, elapsed time: $elapsedTime.")
-        //}
+        if(sleepTime > 0) {
+          SDL_Delay(sleepTime.toUInt)
+        } else if(sleepTime < 0) {
+          logger.warning(s"negative sleep time. frame period: $FramePeriod, elapsed time: $elapsedTime.")
+        }
       }
     }
 
