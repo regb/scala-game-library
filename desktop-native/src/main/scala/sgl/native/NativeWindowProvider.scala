@@ -4,8 +4,10 @@ package native
 trait NativeWindowProvider extends WindowProvider {
   this: GameStateComponent with NativeGraphicsProvider =>
 
-  override def WindowWidth: Int = 500//this.canvas.width
-  override def WindowHeight: Int = 500//this.canvas.height
+  val frameDimension: (Int, Int)
+
+  override def WindowWidth: Int = frameDimension._1
+  override def WindowHeight: Int = frameDimension._2
 
   override def dpi: Int = 160
 

@@ -8,17 +8,20 @@ object SDL {
   type Window   = CStruct0
   type Renderer = CStruct0
 
-  def SDL_Init(flags: UInt): Unit = extern
+  //call before anything else. iniialize system with flags. Return 0 if successful
+  def SDL_Init(flags: UInt): CInt = extern
+
   def SDL_CreateWindow(title: CString,
-                       x: CInt,
-                       y: CInt,
-                       w: Int,
-                       h: Int,
+                       x: CInt, y: CInt, w: Int, h: Int,
                        flags: UInt): Ptr[Window] = extern
-  def SDL_Delay(ms: UInt): Unit                  = extern
-  def SDL_CreateRenderer(win: Ptr[Window],
-                         index: CInt,
-                         flags: UInt): Ptr[Renderer] = extern
+  def SDL_Delay(ms: UInt): Unit = extern
+  def SDL_CreateRenderer(win: Ptr[Window], index: CInt, flags: UInt): Ptr[Renderer] = extern
+
+
+
+  //retrieve last error that occurred
+  def SDL_GetError(): CString = extern
+
 
   type _56   = Nat.Digit[Nat._5, Nat._6]
   type Event = CStruct2[UInt, CArray[Byte, _56]]
@@ -60,6 +63,10 @@ object SDLExtra {
   val INIT_VIDEO   = 0x00000020.toUInt
   val WINDOW_SHOWN = 0x00000004.toUInt
   val VSYNC        = 0x00000004.toUInt
+
+  //TODO: find for window x/y positions
+  val SDL_WINDOWPOS_CENTERED = 0.toUInt
+  val SDL_WINDOWPOS_UNDEFINED = 0.toUInt
 
   implicit class EventOps(val self: Ptr[Event]) extends AnyVal {
     def type_ = !(self._1)

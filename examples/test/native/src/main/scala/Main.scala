@@ -14,6 +14,6 @@ object Main extends AbstractApp with NativeApp
 
   override val Fps = Some(60)
 
-  //override val frameDimension = (1200, 800)
+  override val frameDimension = (800, 600)
 
 }

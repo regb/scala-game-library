@@ -4,7 +4,7 @@ package native
 import sgl.util._
 
 trait PollingGameLoopProvider extends GameLoopProvider {
-  self: GraphicsProvider with GameStateComponent with LoggingProvider =>
+  self: GraphicsProvider with NativeInputProvider with GameStateComponent with LoggingProvider =>
 
   private implicit val Tag = Logger.Tag("game-loop")
 
@@ -47,6 +47,7 @@ trait PollingGameLoopProvider extends GameLoopProvider {
             val dt = ((newTime - lastTime) / (1000*1000)).toLong
             lastTime = newTime
 
+            collectAllEvents()
             gameLoopStep(dt, canvas)
 
           } finally {
