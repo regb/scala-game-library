@@ -50,9 +50,14 @@ object SDL {
   type Keycode  = Int
 
 
+  type RWops = CStruct0
+
+  def SDL_RWFromFile(file: CString, mode: CString): Ptr[RWops] = extern
+
   type Surface = CStruct0
 
-  def SDL_LoadBMP(path: CString): Ptr[Surface] = extern
+  def SDL_LoadBMP_RW(src: Ptr[RWops], freesrc: CInt): Ptr[Surface] = extern
+
 
 
   type Texture = CStruct0
@@ -104,5 +109,10 @@ object SDLExtra {
       extends AnyVal {
     def keycode: Keycode = !(self._8._2)
   }
+
+  //this is defined as a macro
+  def SDL_LoadBMP(file: CString): Ptr[Surface] =
+    SDL_LoadBMP_RW(SDL_RWFromFile(file, c"rb"), 1)
+
 }
 

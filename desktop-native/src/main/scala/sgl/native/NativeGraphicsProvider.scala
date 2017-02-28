@@ -14,11 +14,9 @@ trait NativeGraphicsProvider extends GraphicsProvider {
   object NativeGraphics extends Graphics {
 
     override def loadImage(path: System.ResourcePath): Loader[Bitmap] = {
-      //val path = c"/home/reg/vcs/games/sgl/examples/test/native/src/main/resources/drawable/character-bitmap.bmp"
-      //val surface = SDL_LoadBMP(path)
-      //println(surface)
-      //Loader.successful(SDLTextureBitmap(surface))
-      Loader.successful(SDLTextureBitmap(null))
+      val path = c"/home/reg/vcs/games/sgl/examples/test/native/src/main/resources/drawable/character-bitmap.bmp"
+      val surface = SDL_LoadBMP(path)
+      Loader.successful(SDLTextureBitmap(surface))
     }
 
   }
@@ -101,8 +99,8 @@ trait NativeGraphicsProvider extends GraphicsProvider {
     }
 
     override def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit = {
-      //val texture = SDL_CreateTextureFromSurface(renderer, bitmap.surface)
-      //println("texture: " + texture)
+      val texture = SDL_CreateTextureFromSurface(renderer, bitmap.surface)
+      println("texture: " + texture)
     }
     override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int): Unit = {
     }
