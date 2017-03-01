@@ -21,7 +21,6 @@ object SDL {
   def SDL_CreateRenderer(win: Ptr[Window], index: CInt, flags: UInt): Ptr[Renderer] = extern
 
 
-
   //retrieve last error that occurred
   def SDL_GetError(): CString = extern
 
@@ -35,10 +34,7 @@ object SDL {
 
   def SDL_RenderClear(renderer: Ptr[Renderer]): Unit = extern
   def SDL_SetRenderDrawColor(renderer: Ptr[Renderer],
-                             r: UByte,
-                             g: UByte,
-                             b: UByte,
-                             a: UByte): Unit = extern
+                             r: UByte, g: UByte, b: UByte, a: UByte): Unit = extern
   def SDL_RenderFillRect(renderer: Ptr[Renderer], rect: Ptr[Rect]): Unit =
     extern
   def SDL_RenderPresent(renderer: Ptr[Renderer]): Unit = extern
@@ -88,8 +84,24 @@ object SDLExtra {
 
 
   val INIT_VIDEO   = 0x00000020.toUInt
-  val WINDOW_SHOWN = 0x00000004.toUInt
   val VSYNC        = 0x00000004.toUInt
+
+
+  val SDL_WINDOW_FULLSCREEN = 0x00000001.toUInt
+  val SDL_WINDOW_OPENGL = 0x00000002.toUInt
+  val SDL_WINDOW_SHOWN = 0x00000004.toUInt
+  val SDL_WINDOW_HIDDEN = 0x00000008.toUInt
+  val SDL_WINDOW_BORDERLESS = 0x00000010.toUInt
+  val SDL_WINDOW_RESIZABLE = 0x00000020.toUInt
+  val SDL_WINDOW_MINIMIZED = 0x00000040.toUInt
+  val SDL_WINDOW_MAXIMIZED = 0x00000080.toUInt
+  val SDL_WINDOW_INPUT_GRABBED = 0x00000100.toUInt
+  val SDL_WINDOW_INPUT_FOCUS = 0x00000200.toUInt
+  val SDL_WINDOW_MOUSE_FOCUS = 0x00000400.toUInt
+  val SDL_WINDOW_FULLSCREEN_DESKTOP = SDL_WINDOW_FULLSCREEN | 0x0000100.toUInt
+  val SDL_WINDOW_FOREIGN = 0x00000800.toUInt
+  val SDL_WINDOW_ALLOW_HIGHDPI = 0x00002000.toUInt
+  val SDL_WINDOW_MOUSE_CAPTURE = 0x00004000.toUInt
 
 
   implicit class EventOps(val self: Ptr[Event]) extends AnyVal {
