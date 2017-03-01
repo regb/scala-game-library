@@ -69,18 +69,28 @@ object SDL {
   //SDL_QueryTexture to retrieve dimensions
 
   def SDL_CreateTextureFromSurface(renderer: Ptr[Renderer], surface: Ptr[Surface]): Ptr[Texture] = extern
+
 }
 
 object SDLExtra {
   import SDL._
 
+
+  val SDL_WINDOWPOS_UNDEFINED_MASK = 0x1FFF0000
+  def SDL_WINDOWPOS_UNDEFINED_DISPLAY(x: CInt) = SDL_WINDOWPOS_UNDEFINED_MASK | x
+  val SDL_WINDOWPOS_UNDEFINED = SDL_WINDOWPOS_UNDEFINED_DISPLAY(0)
+  def SDL_WINDOWPOS_ISUNDEFINED(x: CInt) = (x & 0xFFFF0000) == SDL_WINDOWPOS_UNDEFINED_MASK
+
+  val SDL_WINDOWPOS_CENTERED_MASK = 0x2FFF0000 //maybe it should be a regular 32bit int?
+  def SDL_WINDOWPOS_CENTERED_DISPLAY(x: CInt) = SDL_WINDOWPOS_CENTERED_MASK | x
+  val SDL_WINDOWPOS_CENTERED = SDL_WINDOWPOS_CENTERED_DISPLAY(0)
+  def SDL_WINDOWPOS_ISCENTERED(x: UInt) = (x & 0xFFFF0000.toUInt).toInt == SDL_WINDOWPOS_CENTERED_MASK
+
+
   val INIT_VIDEO   = 0x00000020.toUInt
   val WINDOW_SHOWN = 0x00000004.toUInt
   val VSYNC        = 0x00000004.toUInt
 
-  //TODO: find for window x/y positions
-  val SDL_WINDOWPOS_CENTERED = 0.toUInt
-  val SDL_WINDOWPOS_UNDEFINED = 0.toUInt
 
   implicit class EventOps(val self: Ptr[Event]) extends AnyVal {
     def type_ = !(self._1)

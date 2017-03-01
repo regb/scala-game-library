@@ -16,6 +16,8 @@ trait NativeApp extends GameApp
   this: LoggingProvider =>
 
 
+  //TODO: way to specify initial position of the window
+
   def main(args: Array[String]): Unit = {
     println("Hello SGL Native")
 
@@ -24,7 +26,7 @@ trait NativeApp extends GameApp
       sys.exit()
     }
 
-    val window = SDL_CreateWindow(c"Default App", 0, 0, frameDimension._1, frameDimension._2, WINDOW_SHOWN)
+    val window = SDL_CreateWindow(c"Default App", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, frameDimension._1, frameDimension._2, WINDOW_SHOWN)
     if(window == null) {
       println("Failed to create a window: " + SDL_GetError())
       SDL_Quit()
