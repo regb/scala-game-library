@@ -99,23 +99,30 @@ trait NativeGraphicsProvider extends GraphicsProvider {
     }
 
     override def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit = {
+      println("drawing bitmap at: " + x + ", " + y)
+      val dest = stackalloc[SDL_Rect].init(x, y, 50, 50)
       val texture = SDL_CreateTextureFromSurface(renderer, bitmap.surface)
-      println("texture: " + texture)
+      SDL_RenderCopy(renderer, texture, null, dest)
     }
+
     override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int): Unit = {
+      val src = stackalloc[SDL_Rect].init(sx, sy, width, height)
+      val dest = stackalloc[SDL_Rect].init(dx, dy, width, height)
+      val texture = SDL_CreateTextureFromSurface(renderer, bitmap.surface)
+      SDL_RenderCopy(renderer, texture, src, dest)
     }
 
     override def drawRect(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {
       setRenderColor(paint.color)
 
-      val rect = stackalloc[Rect].init(x, y, width, height)
+      val rect = stackalloc[SDL_Rect].init(x, y, width, height)
       SDL_RenderFillRect(renderer, rect)
     }
 
     override def drawOval(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {
       setRenderColor(paint.color)
 
-      val rect = stackalloc[Rect].init(x, y, width, height)
+      val rect = stackalloc[SDL_Rect].init(x, y, width, height)
       SDL_RenderFillRect(renderer, rect)
     }
     override def drawLine(x1: Int, y1: Int, x2: Int, y2: Int, paint: Paint): Unit = {

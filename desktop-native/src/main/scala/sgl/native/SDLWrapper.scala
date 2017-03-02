@@ -30,13 +30,14 @@ object SDL {
 
   def SDL_PollEvent(event: Ptr[Event]): CInt = extern
 
-  type Rect = CStruct4[CInt, CInt, CInt, CInt]
+  type SDL_Rect = CStruct4[CInt, CInt, CInt, CInt]
 
   def SDL_RenderClear(renderer: Ptr[Renderer]): Unit = extern
   def SDL_SetRenderDrawColor(renderer: Ptr[Renderer],
                              r: UByte, g: UByte, b: UByte, a: UByte): Unit = extern
-  def SDL_RenderFillRect(renderer: Ptr[Renderer], rect: Ptr[Rect]): Unit =
-    extern
+  def SDL_RenderFillRect(renderer: Ptr[Renderer], rect: Ptr[SDL_Rect]): Unit = extern
+  def SDL_RenderCopy(renderer: Ptr[Renderer], texture: Ptr[Texture], 
+                     srcrect: Ptr[SDL_Rect], destrect: Ptr[SDL_Rect]): Unit = extern
   def SDL_RenderPresent(renderer: Ptr[Renderer]): Unit = extern
 
   type KeyboardEvent =
@@ -110,14 +111,19 @@ object SDLExtra {
 
   val QUIT_EVENT = 0x100.toUInt
 
-  implicit class RectOps(val self: Ptr[Rect]) extends AnyVal {
-    def init(x: Int, y: Int, w: Int, h: Int): Ptr[Rect] = {
+  implicit class SDL_RectOps(val self: Ptr[SDL_Rect]) extends AnyVal {
+    def init(x: Int, y: Int, w: Int, h: Int): Ptr[SDL_Rect] = {
       !(self._1) = x
       !(self._2) = y
       !(self._3) = w
       !(self._4) = h
       self
     }
+
+    def x: CInt = !(self._1)
+    def y: CInt = !(self._2)
+    def w: CInt = !(self._3)
+    def h: CInt = !(self._4)
   }
 
   val KEY_DOWN  = 0x300.toUInt
