@@ -36,7 +36,7 @@ object SDL {
   def SDL_SetRenderDrawColor(renderer: Ptr[Renderer],
                              r: UByte, g: UByte, b: UByte, a: UByte): Unit = extern
   def SDL_RenderFillRect(renderer: Ptr[Renderer], rect: Ptr[SDL_Rect]): Unit = extern
-  def SDL_RenderCopy(renderer: Ptr[Renderer], texture: Ptr[Texture], 
+  def SDL_RenderCopy(renderer: Ptr[Renderer], texture: Ptr[SDL_Texture], 
                      srcrect: Ptr[SDL_Rect], destrect: Ptr[SDL_Rect]): Unit = extern
   def SDL_RenderPresent(renderer: Ptr[Renderer]): Unit = extern
 
@@ -51,21 +51,24 @@ object SDL {
 
   def SDL_RWFromFile(file: CString, mode: CString): Ptr[RWops] = extern
 
-  type Surface = CStruct0
+  //TODO: this is an actual struct, so we need to define each field
+  type SDL_Surface = CStruct0
 
-  def SDL_LoadBMP_RW(src: Ptr[RWops], freesrc: CInt): Ptr[Surface] = extern
+  def SDL_LoadBMP_RW(src: Ptr[RWops], freesrc: CInt): Ptr[SDL_Surface] = extern
+  def SDL_FreeSurface(surface: Ptr[SDL_Surface]): Unit = extern
 
 
 
-  type Texture = CStruct0
+  type SDL_Texture = CStruct0
 
   def SDL_CreateTexture(renderer: Ptr[Renderer],
                         format: UInt, access: CInt,
-                        w: Int, h: Int): Ptr[Texture] = extern
+                        w: Int, h: Int): Ptr[SDL_Texture] = extern
 
-  //SDL_QueryTexture to retrieve dimensions
+  def SDL_QueryTexture(texture: Ptr[SDL_Texture], 
+                       format: Ptr[UInt], access: Ptr[CInt], w: Ptr[CInt], h: Ptr[CInt]): CInt = extern
 
-  def SDL_CreateTextureFromSurface(renderer: Ptr[Renderer], surface: Ptr[Surface]): Ptr[Texture] = extern
+  def SDL_CreateTextureFromSurface(renderer: Ptr[Renderer], surface: Ptr[SDL_Surface]): Ptr[SDL_Texture] = extern
 
 }
 
@@ -139,7 +142,7 @@ object SDLExtra {
   }
 
   //this is defined as a macro
-  def SDL_LoadBMP(file: CString): Ptr[Surface] =
+  def SDL_LoadBMP(file: CString): Ptr[SDL_Surface] =
     SDL_LoadBMP_RW(SDL_RWFromFile(file, c"rb"), 1)
 
 }

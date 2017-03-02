@@ -16,17 +16,19 @@ trait NativeGraphicsProvider extends GraphicsProvider {
     override def loadImage(path: System.ResourcePath): Loader[Bitmap] = {
       val path = c"/home/reg/vcs/games/sgl/examples/test/native/src/main/resources/drawable/character-bitmap.bmp"
       val surface = SDL_LoadBMP(path)
-      Loader.successful(SDLTextureBitmap(surface))
+      val texture = SDL_CreateTextureFromSurface(renderer, surface)
+      SDL_FreeSurface(surface)
+      val w: Ptr[CInt] = stackalloc[CInt]
+      val h: Ptr[CInt] = stackalloc[CInt]
+      SDL_QueryTexture(texture, null, null, w, h)
+      Loader.successful(SDLTextureBitmap(texture, !w, !h))
     }
 
   }
   val Graphics: Graphics = NativeGraphics
 
 
-  case class SDLTextureBitmap(surface: Ptr[Surface]) extends AbstractBitmap {
-    override def height: Int = 40
-    override def width: Int = 40
-  }
+  case class SDLTextureBitmap(texture: Ptr[SDL_Texture], width: Int, height: Int) extends AbstractBitmap
   type Bitmap = SDLTextureBitmap
 
   override def loadImageFromResource(path: String): Bitmap = {
@@ -99,17 +101,14 @@ trait NativeGraphicsProvider extends GraphicsProvider {
     }
 
     override def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit = {
-      println("drawing bitmap at: " + x + ", " + y)
       val dest = stackalloc[SDL_Rect].init(x, y, 50, 50)
-      val texture = SDL_CreateTextureFromSurface(renderer, bitmap.surface)
-      SDL_RenderCopy(renderer, texture, null, dest)
+      SDL_RenderCopy(renderer, bitmap.texture, null, dest)
     }
 
     override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int): Unit = {
       val src = stackalloc[SDL_Rect].init(sx, sy, width, height)
       val dest = stackalloc[SDL_Rect].init(dx, dy, width, height)
-      val texture = SDL_CreateTextureFromSurface(renderer, bitmap.surface)
-      SDL_RenderCopy(renderer, texture, src, dest)
+      SDL_RenderCopy(renderer, bitmap.texture, src, dest)
     }
 
     override def drawRect(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {
