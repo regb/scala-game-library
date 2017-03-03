@@ -16,7 +16,12 @@ trait NativeApp extends GameApp
   this: LoggingProvider =>
 
 
-  //TODO: way to specify initial position of the window
+  /** Initial position of the window
+    *
+    * If None, then the window is centered by default. Else, the
+    * tuple is the top-left (x,y) coordinate
+    */
+  val WindowInitialPosition: Option[(Int, Int)]
 
   def main(args: Array[String]): Unit = {
     println("Hello SGL Native")
@@ -26,7 +31,9 @@ trait NativeApp extends GameApp
       sys.exit()
     }
 
-    val window = SDL_CreateWindow(c"Default App", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, frameDimension._1, frameDimension._2, SDL_WINDOW_SHOWN)
+    val (x,y) = WindowInitialPosition.getOrElse((SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED))
+
+    val window = SDL_CreateWindow(c"Default App", x, y, frameDimension._1, frameDimension._2, SDL_WINDOW_SHOWN)
     if(window == null) {
       println("Failed to create a window: " + SDL_GetError())
       SDL_Quit()
@@ -36,8 +43,8 @@ trait NativeApp extends GameApp
 
     this.renderer = SDL_CreateRenderer(window, -1, VSYNC)
     if(this.renderer == null) {
-      //TODO: SDL_DestroyWindow
       println("Failed to create a renderer: " + SDL_GetError())
+      SDL_DestroyWindow(window)
       SDL_Quit()
       sys.exit()
     }
@@ -47,6 +54,9 @@ trait NativeApp extends GameApp
 
     gameLoop.init()
     gameLoop.loop()
+
+    SDL_DestroyWindow(window)
+    SDL_Quit()
   }
 
 }

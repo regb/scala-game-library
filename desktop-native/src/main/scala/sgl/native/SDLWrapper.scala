@@ -5,8 +5,8 @@ import scalanative.native._
 @extern
 @link("SDL2")
 object SDL {
-  type Window   = CStruct0
-  type Renderer = CStruct0
+
+  type SDL_Window   = CStruct0
 
   //call before anything else. iniialize system with flags. Return 0 if successful
   def SDL_Init(flags: UInt): CInt = extern
@@ -16,9 +16,15 @@ object SDL {
 
   def SDL_CreateWindow(title: CString,
                        x: CInt, y: CInt, w: Int, h: Int,
-                       flags: UInt): Ptr[Window] = extern
+                       flags: UInt): Ptr[SDL_Window] = extern
+  def SDL_DestroyWindow(window: Ptr[SDL_Window]) = extern
+
+
   def SDL_Delay(ms: UInt): Unit = extern
-  def SDL_CreateRenderer(win: Ptr[Window], index: CInt, flags: UInt): Ptr[Renderer] = extern
+
+  type Renderer = CStruct0
+
+  def SDL_CreateRenderer(win: Ptr[SDL_Window], index: CInt, flags: UInt): Ptr[Renderer] = extern
 
 
   //retrieve last error that occurred
