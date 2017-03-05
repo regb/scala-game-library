@@ -6,33 +6,13 @@ import scalanative.native._
 @link("SDL2")
 object SDL {
 
-  type SDL_Window   = CStruct0
-
-  def SDL_CreateWindow(title: CString,
-                       x: CInt, y: CInt, w: Int, h: Int,
-                       flags: UInt): Ptr[SDL_Window] = extern
-                      
-  def SDL_CreateWindowFrom(data: Ptr[Byte]): Ptr[SDL_Window] = extern
-
-  def SDL_DestroyWindow(window: Ptr[SDL_Window]) = extern
-
-
   def SDL_Delay(ms: UInt): Unit = extern
-
-  type SDL_Renderer = CStruct0
-
-  def SDL_CreateRenderer(win: Ptr[SDL_Window], index: CInt, flags: UInt): Ptr[SDL_Renderer] = extern
-
-  def SDL_CreateWindowAndRenderer(
-    width: CInt, height: CInt, flags: UInt,
-    window: Ptr[Ptr[SDL_Window]], renderer: Ptr[Ptr[SDL_Renderer]]
-  ): CInt = extern
-
 
   //retrieve last error that occurred
   def SDL_GetError(): CString = extern
 
 
+  type _16   = Nat.Digit[Nat._1, Nat._6]
   type _56   = Nat.Digit[Nat._5, Nat._6]
   type SDL_Event = CStruct2[UInt, CArray[Byte, _56]]
 
@@ -67,7 +47,23 @@ object SDL {
 
 
 
+  /**************************************
+   ************ SDL_render.h *************
+   **************************************/
+
+  type SDL_RendererInfo = CStruct6[CString, UInt, UInt, CArray[UInt, _16], CInt, CInt]
+  type SDL_Renderer = CStruct0
   type SDL_Texture = CStruct0
+
+  def SDL_GetNumRenderDriver(): CInt = extern
+  def SDL_GetRenderDriverInfo(index: CInt, info: Ptr[SDL_RendererInfo]): CInt = extern
+  def SDL_CreateWindowAndRenderer(
+    width: CInt, height: CInt, flags: UInt,
+    window: Ptr[Ptr[SDL_Window]], renderer: Ptr[Ptr[SDL_Renderer]]
+  ): CInt = extern
+  def SDL_CreateRenderer(win: Ptr[SDL_Window], index: CInt, flags: UInt): Ptr[SDL_Renderer] = extern
+
+
 
   def SDL_CreateTexture(renderer: Ptr[SDL_Renderer],
                         format: UInt, access: CInt,
@@ -85,27 +81,69 @@ object SDL {
    **************************************/
 
   type SDL_DisplayMode = CStruct5[UInt, CInt, CInt, CInt, Ptr[Byte]]
+  type SDL_Window   = CStruct0
+
+  def SDL_CreateWindow(title: CString,
+                       x: CInt, y: CInt, w: Int, h: Int,
+                       flags: UInt): Ptr[SDL_Window] = extern
+  def SDL_CreateWindowFrom(data: Ptr[Byte]): Ptr[SDL_Window] = extern
+  def SDL_DestroyWindow(window: Ptr[SDL_Window]) = extern
+
 
 
   /**************************************
-   ************ SDL.h *************
+   *************** SDL.h ****************
    **************************************/
 
-  //call before anything else. iniialize system with flags. Return 0 if successful
   def SDL_Init(flags: UInt): CInt = extern
-
   def SDL_InitSubSystem(flags: UInt): CInt = extern
   def SDL_QuitSubSystem(flags: UInt): Unit = extern
-
   def SDL_WasInit(flags: UInt): UInt = extern
-
-  //invoke before quitting. Should be called on all exit conditions
   def SDL_Quit(): Unit = extern
 
 }
 
 object SDLExtra {
   import SDL._
+
+  /**************************************
+   ************ SDL_render.h *************
+   **************************************/
+
+  /* Start enum SDL_RendererFlags */
+  val SDL_RENDERER_SOFTWARE = 0x00000001.toUInt
+  val SDL_RENDERER_ACCELERATED = 0x00000002.toUInt
+  val SDL_RENDERER_PRESENTVSYNC = 0x00000004.toUInt
+  val SDL_RENDERER_TARGETTEXTURE = 0x00000008.toUInt
+  /* End SDL_RendererFlags */
+
+  implicit class SDL_RendererInfoOps(val self: Ptr[SDL_RendererInfo]) extends AnyVal {
+    def name: CString = !(self._1)
+    def flags: UInt = !(self._2)
+    def num_texture_formats: UInt = !(self._3)
+    def texture_formats: CArray[UInt, _16] = !(self._4)
+    def max_texture_width: CInt = !(self._5)
+    def max_texture_height: CInt = !(self._6)
+  }
+
+  /* Start enum SDL_TextureAccess */
+  val SDL_TEXTUREACCESS_STATIC = 0.toUInt
+  val SDL_TEXTUREACCESS_STREAMING = 1.toUInt
+  val SDL_TEXTUREACCESS_TARGET = 2.toUInt
+  /* End SDL_TextureAccess */
+
+  /* Start enum SDL_TextureModulate */
+  val SDL_TEXTUREMODULATE_NONE = 0x00000000.toUInt
+  val SDL_TEXTUREMODULATE_COLOR = 0x00000001.toUInt
+  val SDL_TEXTUREMODULATE_ALPHA = 0x00000002.toUInt
+  /* End SDL_TextureModulate */
+
+  /* Start enum SDL_RendererFlip */
+  val SDL_FLIP_NONE = 0x00000000.toUInt
+  val SDL_FLIP_HORIZONTAL = 0x00000001.toUInt
+  val SDL_FLIP_VERTICAL = 0x00000002.toUInt
+  /* End SDL_RendererFlip */
+
 
   /**************************************
    ************ SDL_video.h *************
@@ -119,7 +157,7 @@ object SDLExtra {
     def driverdata: Ptr[Byte] = !(self._5)
   }
 
-  /* Start SDL_WindowFlags */
+  /* Start enum SDL_WindowFlags */
   val SDL_WINDOW_FULLSCREEN = 0x00000001.toUInt
   val SDL_WINDOW_OPENGL = 0x00000002.toUInt
   val SDL_WINDOW_SHOWN = 0x00000004.toUInt
@@ -147,7 +185,7 @@ object SDLExtra {
   val SDL_WINDOWPOS_CENTERED = SDL_WINDOWPOS_CENTERED_DISPLAY(0)
   def SDL_WINDOWPOS_ISCENTERED(x: UInt) = (x & 0xFFFF0000.toUInt).toInt == SDL_WINDOWPOS_CENTERED_MASK
 
-  /* Start SDL_WindowEventId */
+  /* Start enum SDL_WindowEventId */
   val SDL_WINDOWEVENT_NONE = 0.toUInt
   val SDL_WINDOWEVENT_SHOWN = 1.toUInt
   val SDL_WINDOWEVENT_HIDDEN = 2.toUInt
@@ -172,6 +210,7 @@ object SDLExtra {
    ************ SDL.h *************
    **************************************/
 
+  /* Start Macros for subsystem IDs */
   val SDL_INIT_TIMER          = 0x00000001.toUInt
   val SDL_INIT_AUDIO          = 0x00000010.toUInt
   val SDL_INIT_VIDEO          = 0x00000020.toUInt
@@ -183,12 +222,12 @@ object SDLExtra {
   val SDL_INIT_EVERYTHING = (
                 SDL_INIT_TIMER | SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_EVENTS |
                 SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMECONTROLLER)
+  /* End Macros for subsystem IDs */
 
 
 
   /*** Other ***/
 
-  val VSYNC        = 0x00000004.toUInt
 
   implicit class SDL_EventOps(val self: Ptr[SDL_Event]) extends AnyVal {
     def type_ = !(self._1)

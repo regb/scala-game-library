@@ -41,7 +41,7 @@ trait NativeApp extends GameApp
     }
 
 
-    this.renderer = SDL_CreateRenderer(window, -1, VSYNC)
+    this.renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC)
     if(this.renderer == null) {
       println("Failed to create a renderer: " + SDL_GetError())
       SDL_DestroyWindow(window)
