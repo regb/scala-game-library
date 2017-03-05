@@ -12,6 +12,28 @@ package sgl
  */
 trait WindowProvider {
 
+  /*TODO:
+  type Window <: AbstractWindow
+  abstract class AbstractWindow {
+    def width: Int 
+    def height: Int 
+
+    def dpi: Int
+    def density: Float
+
+    def dp2px(x: Int): Int = (x*density).toInt
+    def dp2px(x: Double): Double = (x*density)
+  }
+  */
+
+  /** the unique window hosting the game
+    *
+    * Each game app has a single Window object, which
+    * is automatically initialized by the framework. 
+    */
+  //val Window: Window
+
+
   
   def WindowWidth: Int
   def WindowHeight: Int

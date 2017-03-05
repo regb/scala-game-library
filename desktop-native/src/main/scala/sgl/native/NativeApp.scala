@@ -26,7 +26,7 @@ trait NativeApp extends GameApp
   def main(args: Array[String]): Unit = {
     println("Hello SGL Native")
 
-    if(SDL_Init(INIT_VIDEO) != 0) {
+    if(SDL_Init(SDL_INIT_VIDEO) != 0) {
       println("Failed to init SDL: " + SDL_GetError())
       sys.exit()
     }

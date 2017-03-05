@@ -8,12 +8,6 @@ object SDL {
 
   type SDL_Window   = CStruct0
 
-  //call before anything else. iniialize system with flags. Return 0 if successful
-  def SDL_Init(flags: UInt): CInt = extern
-
-  //invoke before quitting. Should be called on all exit conditions
-  def SDL_Quit(): Unit = extern
-
   def SDL_CreateWindow(title: CString,
                        x: CInt, y: CInt, w: Int, h: Int,
                        flags: UInt): Ptr[SDL_Window] = extern
@@ -40,9 +34,9 @@ object SDL {
 
 
   type _56   = Nat.Digit[Nat._5, Nat._6]
-  type Event = CStruct2[UInt, CArray[Byte, _56]]
+  type SDL_Event = CStruct2[UInt, CArray[Byte, _56]]
 
-  def SDL_PollEvent(event: Ptr[Event]): CInt = extern
+  def SDL_PollEvent(event: Ptr[SDL_Event]): CInt = extern
 
   type SDL_Rect = CStruct4[CInt, CInt, CInt, CInt]
 
@@ -84,27 +78,48 @@ object SDL {
 
   def SDL_CreateTextureFromSurface(renderer: Ptr[SDL_Renderer], surface: Ptr[SDL_Surface]): Ptr[SDL_Texture] = extern
 
+
+
+  /**************************************
+   ************ SDL_video.h *************
+   **************************************/
+
+  type SDL_DisplayMode = CStruct5[UInt, CInt, CInt, CInt, Ptr[Byte]]
+
+
+  /**************************************
+   ************ SDL.h *************
+   **************************************/
+
+  //call before anything else. iniialize system with flags. Return 0 if successful
+  def SDL_Init(flags: UInt): CInt = extern
+
+  def SDL_InitSubSystem(flags: UInt): CInt = extern
+  def SDL_QuitSubSystem(flags: UInt): Unit = extern
+
+  def SDL_WasInit(flags: UInt): UInt = extern
+
+  //invoke before quitting. Should be called on all exit conditions
+  def SDL_Quit(): Unit = extern
+
 }
 
 object SDLExtra {
   import SDL._
 
+  /**************************************
+   ************ SDL_video.h *************
+   **************************************/
 
-  val SDL_WINDOWPOS_UNDEFINED_MASK = 0x1FFF0000
-  def SDL_WINDOWPOS_UNDEFINED_DISPLAY(x: CInt) = SDL_WINDOWPOS_UNDEFINED_MASK | x
-  val SDL_WINDOWPOS_UNDEFINED = SDL_WINDOWPOS_UNDEFINED_DISPLAY(0)
-  def SDL_WINDOWPOS_ISUNDEFINED(x: CInt) = (x & 0xFFFF0000) == SDL_WINDOWPOS_UNDEFINED_MASK
+  implicit class SDL_DisplayModeOps(val self: Ptr[SDL_DisplayMode]) extends AnyVal {
+    def format: UInt = !(self._1)
+    def w: CInt = !(self._2)
+    def h: CInt = !(self._3)
+    def refresh_rate: CInt = !(self._4)
+    def driverdata: Ptr[Byte] = !(self._5)
+  }
 
-  val SDL_WINDOWPOS_CENTERED_MASK = 0x2FFF0000
-  def SDL_WINDOWPOS_CENTERED_DISPLAY(x: CInt) = SDL_WINDOWPOS_CENTERED_MASK | x
-  val SDL_WINDOWPOS_CENTERED = SDL_WINDOWPOS_CENTERED_DISPLAY(0)
-  def SDL_WINDOWPOS_ISCENTERED(x: UInt) = (x & 0xFFFF0000.toUInt).toInt == SDL_WINDOWPOS_CENTERED_MASK
-
-
-  val INIT_VIDEO   = 0x00000020.toUInt
-  val VSYNC        = 0x00000004.toUInt
-
-
+  /* Start SDL_WindowFlags */
   val SDL_WINDOW_FULLSCREEN = 0x00000001.toUInt
   val SDL_WINDOW_OPENGL = 0x00000002.toUInt
   val SDL_WINDOW_SHOWN = 0x00000004.toUInt
@@ -120,9 +135,62 @@ object SDLExtra {
   val SDL_WINDOW_FOREIGN = 0x00000800.toUInt
   val SDL_WINDOW_ALLOW_HIGHDPI = 0x00002000.toUInt
   val SDL_WINDOW_MOUSE_CAPTURE = 0x00004000.toUInt
+  /* End SDL_WindowFlags */
+
+  val SDL_WINDOWPOS_UNDEFINED_MASK = 0x1FFF0000
+  def SDL_WINDOWPOS_UNDEFINED_DISPLAY(x: CInt) = SDL_WINDOWPOS_UNDEFINED_MASK | x
+  val SDL_WINDOWPOS_UNDEFINED = SDL_WINDOWPOS_UNDEFINED_DISPLAY(0)
+  def SDL_WINDOWPOS_ISUNDEFINED(x: CInt) = (x & 0xFFFF0000) == SDL_WINDOWPOS_UNDEFINED_MASK
+
+  val SDL_WINDOWPOS_CENTERED_MASK = 0x2FFF0000
+  def SDL_WINDOWPOS_CENTERED_DISPLAY(x: CInt) = SDL_WINDOWPOS_CENTERED_MASK | x
+  val SDL_WINDOWPOS_CENTERED = SDL_WINDOWPOS_CENTERED_DISPLAY(0)
+  def SDL_WINDOWPOS_ISCENTERED(x: UInt) = (x & 0xFFFF0000.toUInt).toInt == SDL_WINDOWPOS_CENTERED_MASK
+
+  /* Start SDL_WindowEventId */
+  val SDL_WINDOWEVENT_NONE = 0.toUInt
+  val SDL_WINDOWEVENT_SHOWN = 1.toUInt
+  val SDL_WINDOWEVENT_HIDDEN = 2.toUInt
+  val SDL_WINDOWEVENT_EXPOSED = 3.toUInt
+  val SDL_WINDOWEVENT_MOVED = 4.toUInt
+  val SDL_WINDOWEVENT_RESIZED = 5.toUInt
+  val SDL_WINDOWEVENT_SIZE_CHANGED = 6.toUInt
+  val SDL_WINDOWEVENT_MINIMIZED = 7.toUInt
+  val SDL_WINDOWEVENT_MAXIMIZED = 8.toUInt
+  val SDL_WINDOWEVENT_RESTORED = 9.toUInt
+  val SDL_WINDOWEVENT_ENTER = 10.toUInt
+  val SDL_WINDOWEVENT_LEAVE = 11.toUInt
+  val SDL_WINDOWEVENT_FOCUS_GAINED = 12.toUInt
+  val SDL_WINDOWEVENT_FOCUS_LOST = 13.toUInt
+  val SDL_WINDOWEVENT_CLOSE = 14.toUInt
+  /* End SDL_WindowEventId */
+
+  type SDL_GLContext = Ptr[Byte]
 
 
-  implicit class EventOps(val self: Ptr[Event]) extends AnyVal {
+  /**************************************
+   ************ SDL.h *************
+   **************************************/
+
+  val SDL_INIT_TIMER          = 0x00000001.toUInt
+  val SDL_INIT_AUDIO          = 0x00000010.toUInt
+  val SDL_INIT_VIDEO          = 0x00000020.toUInt
+  val SDL_INIT_JOYSTICK       = 0x00000200.toUInt
+  val SDL_INIT_HAPTIC         = 0x00001000.toUInt
+  val SDL_INIT_GAMECONTROLLER = 0x00002000.toUInt
+  val SDL_INIT_EVENTS         = 0x00004000.toUInt
+  val SDL_INIT_NOPARACHUTE    = 0x00100000.toUInt //only there for compatibility, maybe we could drop it?
+  val SDL_INIT_EVERYTHING = (
+                SDL_INIT_TIMER | SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_EVENTS |
+                SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMECONTROLLER)
+
+
+
+  /*** Other ***/
+
+  val VSYNC        = 0x00000004.toUInt
+
+  implicit class SDL_EventOps(val self: Ptr[SDL_Event]) extends AnyVal {
     def type_ = !(self._1)
   }
 

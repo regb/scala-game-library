@@ -12,7 +12,7 @@ trait NativeInputProvider extends InputProvider {
   def registerInputListeners(): Unit = { }
 
   def collectAllEvents(): Unit = {
-    val event = stackalloc[Event]
+    val event = stackalloc[SDL_Event]
     while (SDL_PollEvent(event) != 0) {
       event.type_ match {
         case QUIT_EVENT => //special handle quit event
