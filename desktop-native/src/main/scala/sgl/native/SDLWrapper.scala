@@ -89,6 +89,9 @@ object SDL {
   def SDL_CreateWindowFrom(data: Ptr[Byte]): Ptr[SDL_Window] = extern
   def SDL_DestroyWindow(window: Ptr[SDL_Window]) = extern
 
+  def SDL_GetDisplayDPI(displayIndex: CInt, ddpi: Ptr[CFloat],
+                        hdpi: Ptr[CFloat], vdpi: Ptr[CFloat]): CInt = extern
+
 
 
   /**************************************

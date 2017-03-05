@@ -1,6 +1,11 @@
 package sgl
 package native
 
+import scalanative.native._
+
+import SDL._
+import SDLExtra._
+
 trait NativeWindowProvider extends WindowProvider {
   this: GameStateComponent with NativeGraphicsProvider =>
 
@@ -16,7 +21,15 @@ trait NativeWindowProvider extends WindowProvider {
   override def WindowWidth: Int = frameDimension._1
   override def WindowHeight: Int = frameDimension._2
 
-  override def dpi: Int = 160
+  override def dpi: Int = {
+    val ddpi: Ptr[CFloat] = stackalloc[CFloat]
+    //val hdpi: Ptr[CFloat] = stackalloc[CFloat]
+    //val vdpi: Ptr[CFloat] = stackalloc[CFloat]
+    //SDL_GetDisplayDPI(0, ddpi, hdpi, vdpi)
+    SDL_GetDisplayDPI(0, ddpi, null, null)
+    //println("ddpi: " + !ddpi + ". hdpi: " + !hdpi + ". vdpi: " + !vdpi)
+    Math.round(!ddpi)
+  }
 
   override def density: Float = 1f
 

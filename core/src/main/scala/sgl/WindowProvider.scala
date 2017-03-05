@@ -33,6 +33,9 @@ trait WindowProvider {
     */
   //val Window: Window
 
+  //TODO: How about only providing a callback to get a pointer to the window object,
+  //      and invoking this callback whenever the window properties are updated?
+
 
   
   def WindowWidth: Int
