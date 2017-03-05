@@ -17,14 +17,22 @@ object SDL {
   def SDL_CreateWindow(title: CString,
                        x: CInt, y: CInt, w: Int, h: Int,
                        flags: UInt): Ptr[SDL_Window] = extern
+                      
+  def SDL_CreateWindowFrom(data: Ptr[Byte]): Ptr[SDL_Window] = extern
+
   def SDL_DestroyWindow(window: Ptr[SDL_Window]) = extern
 
 
   def SDL_Delay(ms: UInt): Unit = extern
 
-  type Renderer = CStruct0
+  type SDL_Renderer = CStruct0
 
-  def SDL_CreateRenderer(win: Ptr[SDL_Window], index: CInt, flags: UInt): Ptr[Renderer] = extern
+  def SDL_CreateRenderer(win: Ptr[SDL_Window], index: CInt, flags: UInt): Ptr[SDL_Renderer] = extern
+
+  def SDL_CreateWindowAndRenderer(
+    width: CInt, height: CInt, flags: UInt,
+    window: Ptr[Ptr[SDL_Window]], renderer: Ptr[Ptr[SDL_Renderer]]
+  ): CInt = extern
 
 
   //retrieve last error that occurred
@@ -38,13 +46,13 @@ object SDL {
 
   type SDL_Rect = CStruct4[CInt, CInt, CInt, CInt]
 
-  def SDL_RenderClear(renderer: Ptr[Renderer]): Unit = extern
-  def SDL_SetRenderDrawColor(renderer: Ptr[Renderer],
+  def SDL_RenderClear(renderer: Ptr[SDL_Renderer]): Unit = extern
+  def SDL_SetRenderDrawColor(renderer: Ptr[SDL_Renderer],
                              r: UByte, g: UByte, b: UByte, a: UByte): Unit = extern
-  def SDL_RenderFillRect(renderer: Ptr[Renderer], rect: Ptr[SDL_Rect]): Unit = extern
-  def SDL_RenderCopy(renderer: Ptr[Renderer], texture: Ptr[SDL_Texture], 
+  def SDL_RenderFillRect(renderer: Ptr[SDL_Renderer], rect: Ptr[SDL_Rect]): Unit = extern
+  def SDL_RenderCopy(renderer: Ptr[SDL_Renderer], texture: Ptr[SDL_Texture], 
                      srcrect: Ptr[SDL_Rect], destrect: Ptr[SDL_Rect]): Unit = extern
-  def SDL_RenderPresent(renderer: Ptr[Renderer]): Unit = extern
+  def SDL_RenderPresent(renderer: Ptr[SDL_Renderer]): Unit = extern
 
   type KeyboardEvent =
     CStruct8[UInt, UInt, UInt, UByte, UByte, UByte, UByte, Keysym]
@@ -67,14 +75,14 @@ object SDL {
 
   type SDL_Texture = CStruct0
 
-  def SDL_CreateTexture(renderer: Ptr[Renderer],
+  def SDL_CreateTexture(renderer: Ptr[SDL_Renderer],
                         format: UInt, access: CInt,
                         w: Int, h: Int): Ptr[SDL_Texture] = extern
 
   def SDL_QueryTexture(texture: Ptr[SDL_Texture], 
                        format: Ptr[UInt], access: Ptr[CInt], w: Ptr[CInt], h: Ptr[CInt]): CInt = extern
 
-  def SDL_CreateTextureFromSurface(renderer: Ptr[Renderer], surface: Ptr[SDL_Surface]): Ptr[SDL_Texture] = extern
+  def SDL_CreateTextureFromSurface(renderer: Ptr[SDL_Renderer], surface: Ptr[SDL_Surface]): Ptr[SDL_Texture] = extern
 
 }
 

@@ -78,7 +78,7 @@ trait NativeGraphicsProvider extends GraphicsProvider {
   type Paint = NativePaint
   override def defaultPaint: Paint = NativePaint(Font.Default, Color.Black, Alignments.Left)
 
-  case class NativeCanvas(var renderer: Ptr[Renderer], var width: Int, var height: Int) extends AbstractCanvas {
+  case class NativeCanvas(var renderer: Ptr[SDL_Renderer], var width: Int, var height: Int) extends AbstractCanvas {
 
     override def withSave[A](body: => A): A = {
       ???
@@ -156,7 +156,7 @@ trait NativeGraphicsProvider extends GraphicsProvider {
   type Canvas = NativeCanvas
 
 
-  var renderer: Ptr[Renderer] = _
+  var renderer: Ptr[SDL_Renderer] = _
 
   def getScreenCanvas: Canvas = {
     NativeCanvas(renderer, 500, 500)
@@ -172,7 +172,7 @@ trait NativeGraphicsProvider extends GraphicsProvider {
 
     override val height: Int = ???
 
-    def draw(renderer: Ptr[Renderer], x: Int, y: Int): Unit = ???
+    def draw(renderer: Ptr[SDL_Renderer], x: Int, y: Int): Unit = ???
     
 
   }

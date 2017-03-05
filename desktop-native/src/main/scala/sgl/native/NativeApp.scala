@@ -21,7 +21,7 @@ trait NativeApp extends GameApp
     * If None, then the window is centered by default. Else, the
     * tuple is the top-left (x,y) coordinate
     */
-  val WindowInitialPosition: Option[(Int, Int)]
+  val WindowInitialPosition: Option[(Int, Int)] = None
 
   def main(args: Array[String]): Unit = {
     println("Hello SGL Native")
