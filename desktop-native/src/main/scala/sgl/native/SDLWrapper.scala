@@ -110,6 +110,88 @@ object SDLExtra {
   import SDL._
 
   /**************************************
+   ************ SDL_events.h *************
+   **************************************/
+
+  val SDL_RELEASED: CInt = 0
+  val SDL_PRESSED: CInt = 1
+
+  /* Start SDL_EventType */
+  val SDL_FIRSTEVENT               = 0.toUInt
+
+  /* Application events */
+  val SDL_QUIT                     = 0x100.toUInt
+  val SDL_APP_TERMINATING          = (0x100 + 1).toUInt
+  val SDL_APP_LOWMEMORY            = (0x100 + 2).toUInt
+  val SDL_APP_WILLENTERBACKGROUND  = (0x100 + 3).toUInt
+  val SDL_APP_DIDENTERBACKGROUND   = (0x100 + 4).toUInt
+  val SDL_APP_WILLENTERFOREGROUND  = (0x100 + 5).toUInt
+  val SDL_APP_DIDENTERFOREGROUND   = (0x100 + 6).toUInt
+
+  /* Window events */
+  val SDL_WINDOWEVENT              = 0x200.toUInt
+  val SDL_SYSWMEVENT               = (0x200 + 1).toUInt
+
+  /* Keyboard events */
+  val SDL_KEYDOWN                  = 0x300.toUInt
+  val SDL_KEYUP                    = (0x300 + 1).toUInt
+  val SDL_TEXTEDITING              = (0x300 + 2).toUInt
+  val SDL_TEXTINPUT                = (0x300 + 3).toUInt
+  val SDL_KEYMAPCHANGED            = (0x300 + 4).toUInt
+
+  /* Mouse events */
+  val SDL_MOUSEMOTION              = 0x400.toUInt
+  val SDL_MOUSEBUTTONDOWN          = (0x400 + 1).toUInt
+  val SDL_MOUSEBUTTONUP            = (0x400 + 2).toUInt
+  val SDL_MOUSEWHEEL               = (0x400 + 3).toUInt
+
+  /* Joystick events */
+  val SDL_JOYAXISMOTION            = 0x600.toUInt
+  val SDL_JOYBALLMOTION            = (0x600 + 1).toUInt
+  val SDL_JOYHATMOTION             = (0x600 + 2).toUInt
+  val SDL_JOYBUTTONDOWN            = (0x600 + 3).toUInt
+  val SDL_JOYBUTTONUP              = (0x600 + 4).toUInt
+  val SDL_JOYDEVICEADDED           = (0x600 + 5).toUInt
+  val SDL_JOYDEVICEREMOVED         = (0x600 + 6).toUInt
+
+  /* Game controller events */
+  val SDL_CONTROLLERAXISMOTION     = 0x650.toUInt
+  val SDL_CONTROLLERBUTTONDOWN     = (0x650 + 1).toUInt
+  val SDL_CONTROLLERBUTTONUP       = (0x650 + 2).toUInt
+  val SDL_CONTROLLERDEVICEADDED    = (0x650 + 3).toUInt
+  val SDL_CONTROLLERDEVICEREMOVED  = (0x650 + 4).toUInt
+  val SDL_CONTROLLERDEVICEREMAPPED = (0x650 + 5).toUInt
+
+  /* Touch events */
+  val SDL_FINGERDOWN               = 0x700.toUInt
+  val SDL_FINGERUP                 = (0x700 + 1).toUInt
+  val SDL_FINGERMOTION             = (0x700 + 2).toUInt
+
+  /* Gesture events */
+  val SDL_DOLLARGESTURE            = 0x800.toUInt
+  val SDL_DOLLARRECORD             = (0x800 + 1).toUInt
+  val SDL_MULTIGESTURE             = (0x800 + 2).toUInt
+
+  /* Clipboard events */
+  val SDL_CLIPBOARDUPDATE          = 0x900.toUInt
+
+  /* Drag and drop events */
+  val SDL_DROPFILE                 = 0x1000.toUInt
+
+  /* Audio hotplug events */
+  val SDL_AUDIODEVICEADDED         = 0x1100.toUInt
+  val SDL_AUDIODEVICEREMOVED       = (0x1100 + 1).toUInt
+
+  /* Render events */
+  val SDL_RENDER_TARGETS_RESET     = 0x2000.toUInt
+  val SDL_RENDER_DEVICE_RESET      = (0x2000 + 1).toUInt
+
+  val SDL_USEREVENT                = 0x8000.toUInt
+  val SDL_LASTEVENT                = 0xFFFF.toUInt
+
+  /* End SDL_EventType */
+
+  /**************************************
    ************ SDL_render.h *************
    **************************************/
 
@@ -236,8 +318,6 @@ object SDLExtra {
     def type_ = !(self._1)
   }
 
-  val QUIT_EVENT = 0x100.toUInt
-
   implicit class SDL_RectOps(val self: Ptr[SDL_Rect]) extends AnyVal {
     def init(x: Int, y: Int, w: Int, h: Int): Ptr[SDL_Rect] = {
       !(self._1) = x
@@ -253,8 +333,6 @@ object SDLExtra {
     def h: CInt = !(self._4)
   }
 
-  val KEY_DOWN  = 0x300.toUInt
-  val KEY_UP    = (0x300 + 1).toUInt
   val RIGHT_KEY = 1073741903
   val LEFT_KEY  = 1073741904
   val DOWN_KEY  = 1073741905

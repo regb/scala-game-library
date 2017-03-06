@@ -15,14 +15,14 @@ trait NativeInputProvider extends InputProvider {
     val event = stackalloc[SDL_Event]
     while (SDL_PollEvent(event) != 0) {
       event.type_ match {
-        case QUIT_EVENT => //special handle quit event
+        case SDL_QUIT => //special handle quit event
           sys.exit(0)
-        case KEY_DOWN =>
+        case SDL_KEYDOWN =>
           val keyEvent = keycodeToEvent(event.cast[Ptr[KeyboardEvent]].keycode)
           keyEvent.foreach(key => {
             Input.newEvent(Input.KeyDownEvent(key))
           })
-        case KEY_UP =>
+        case SDL_KEYUP =>
           val keyEvent = keycodeToEvent(event.cast[Ptr[KeyboardEvent]].keycode)
           keyEvent.foreach(key => {
             Input.newEvent(Input.KeyUpEvent(key))
