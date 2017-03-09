@@ -13,10 +13,9 @@ object SDL {
 
 
   type _16   = Nat.Digit[Nat._1, Nat._6]
+  type _32   = Nat.Digit[Nat._3, Nat._2]
   type _56   = Nat.Digit[Nat._5, Nat._6]
-  type SDL_Event = CStruct2[UInt, CArray[Byte, _56]]
-
-  def SDL_PollEvent(event: Ptr[SDL_Event]): CInt = extern
+  type _64   = Nat.Digit[Nat._6, Nat._4]
 
   type SDL_Rect = CStruct4[CInt, CInt, CInt, CInt]
 
@@ -28,13 +27,6 @@ object SDL {
                      srcrect: Ptr[SDL_Rect], destrect: Ptr[SDL_Rect]): Unit = extern
   def SDL_RenderPresent(renderer: Ptr[SDL_Renderer]): Unit = extern
 
-  type KeyboardEvent =
-    CStruct8[UInt, UInt, UInt, UByte, UByte, UByte, UByte, Keysym]
-  type Keysym   = CStruct4[Scancode, Keycode, UShort, UInt]
-  type Scancode = Int
-  type Keycode  = Int
-
-
   type RWops = CStruct0
 
   def SDL_RWFromFile(file: CString, mode: CString): Ptr[RWops] = extern
@@ -44,6 +36,66 @@ object SDL {
 
   def SDL_LoadBMP_RW(src: Ptr[RWops], freesrc: CInt): Ptr[SDL_Surface] = extern
   def SDL_FreeSurface(surface: Ptr[SDL_Surface]): Unit = extern
+
+
+  /**************************************
+   ************ SDL_events.h ************
+   **************************************/
+
+  type SDL_CommonEvent = CStruct2[UInt, UInt]
+
+  //TODO: confirm that Sint32 is Int in scala-native
+  type SDL_WindowEvent =
+    CStruct9[UInt, UInt, UInt, UByte, UByte, UByte, UByte, Int, Int]
+
+  type SDL_KeyboardEvent =
+    CStruct8[UInt, UInt, UInt, UByte, UByte, UByte, UByte, SDL_Keysym]
+
+  type SDL_TextEditingEvent =
+    CStruct6[UInt, UInt, UInt, CArray[CChar, _32], Int, Int]
+
+  type SDL_TextInputEvent =
+    CStruct4[UInt, UInt, UInt, CArray[CChar, _32]]
+
+  type SDL_MouseMotionEvent =
+    CStruct9[UInt, UInt, UInt, UInt, UInt, Int, Int, Int, Int]
+
+  type SDL_MouseButtonEvent =
+    CStruct10[UInt, UInt, UInt, UInt, UByte, UByte, UByte, UByte, Int, Int]
+
+  //TODO:
+  //type SDL_MouseWeelEvent
+  //type SDL_JoyAxisEvent
+  //type SDL_JoyBallEvent
+  //type SDL_JoyHatEvent
+  //type SDL_JoyButtonEvent
+  //type SDL_JoyDeviceEvent
+  //type SDL_ControllerAxisEvent
+  //type SDL_ControllerButtonEvent
+  //type SDL_ControllerDeviceEvent
+  //type SDL_AudioDeviceEvent
+
+
+  //TODO: for iOS
+  //type SDL_TouchFingerEvent
+
+  //type SDL_MultiGestureEvent
+  //type SDL_DollarGestureEvent
+  //type SDL_DropEvent
+
+  type SDL_QuitEvent = CStruct2[UInt, UInt]
+  type SDL_OSEvent = CStruct2[UInt, UInt]
+
+  type SDL_UserEvent = CStruct6[UInt, UInt, UInt, Int, Ptr[Byte], Ptr[Byte]]
+
+
+  type SDL_Keysym   = CStruct4[Scancode, Keycode, UShort, UInt]
+
+  type SDL_Event = CStruct2[UInt, CArray[Byte, _56]]
+
+  def SDL_PollEvent(event: Ptr[SDL_Event]): CInt = extern
+  type Scancode = Int
+  type Keycode  = Int
 
 
 
@@ -110,11 +162,11 @@ object SDLExtra {
   import SDL._
 
   /**************************************
-   ************ SDL_events.h *************
+   ************ SDL_events.h ************
    **************************************/
 
-  val SDL_RELEASED: CInt = 0
-  val SDL_PRESSED: CInt = 1
+  val SDL_RELEASED: UByte = 0.toUByte
+  val SDL_PRESSED: UByte = 1.toUByte
 
   /* Start SDL_EventType */
   val SDL_FIRSTEVENT               = 0.toUInt
@@ -191,9 +243,114 @@ object SDLExtra {
 
   /* End SDL_EventType */
 
-  /**************************************
+  implicit class SDL_CommonEventOps(val self: Ptr[SDL_WindowEvent]) extends AnyVal {
+    def type_ : UInt = !(self._1)
+    def timestamp: UInt = !(self._2)
+  }
+
+  implicit class SDL_WindowEventOps(val self: Ptr[SDL_WindowEvent]) extends AnyVal {
+    def type_ : UInt = !(self._1)
+    def timestamp: UInt = !(self._2)
+    def windowID: UInt = !(self._3)
+    def event: UByte = !(self._4)
+    def padding1: UByte = !(self._5)
+    def padding2: UByte = !(self._6)
+    def padding3: UByte = !(self._7)
+    def data1: Int = !(self._8)
+    def data2: Int = !(self._9)
+  }
+
+  implicit class SDL_KeyboardEventOps(val self: Ptr[SDL_KeyboardEvent]) extends AnyVal {
+    def type_ : UInt = !(self._1)
+    def timestamp: UInt = !(self._2)
+    def windowID: UInt = !(self._3)
+    def state: UByte = !(self._4)
+    def repeat: UByte = !(self._5)
+    def padding2: UByte = !(self._6)
+    def padding3: UByte = !(self._7)
+
+    //TODO: trigger unreachable exception with NirNameEncoding.printGlobal in scala-native
+    //def keysym: SDL_Keysym = !(self._8)
+
+    def keycode: Keycode = !(self._8._2)
+  }
+
+  val SDL_TEXTEDITINGEVENT_TEXT_SIZE = 32
+  implicit class SDL_TextEditingEventOps(val self: Ptr[SDL_TextEditingEvent]) extends AnyVal {
+    def type_ : UInt = !(self._1)
+    def timestamp: UInt = !(self._2)
+    def windowID: UInt = !(self._3)
+    def text: CArray[CChar, _32] = !(self._4)
+    def start: Int = !(self._5)
+    def length: Int = !(self._6)
+  }
+
+  val SDL_TEXTINPUTEVENT_TEXT_SIZE = 32
+  implicit class SDL_TextInputEventOps(val self: Ptr[SDL_TextInputEvent]) extends AnyVal {
+    def type_ : UInt = !(self._1)
+    def timestamp: UInt = !(self._2)
+    def windowID: UInt = !(self._3)
+    def text: CArray[CChar, _32] = !(self._4)
+  }
+
+  implicit class SDL_MouseMotionEventOps(val self: Ptr[SDL_MouseMotionEvent]) extends AnyVal {
+    def type_ : UInt = !(self._1)
+    def timestamp: UInt = !(self._2)
+    def windowID: UInt = !(self._3)
+    def which: UInt = !(self._4)
+    def state: UInt = !(self._5)
+    def x: Int = !(self._6)
+    def y: Int = !(self._7)
+    def xrel: Int = !(self._8)
+    def yrel: Int = !(self._9)
+  }
+
+  implicit class SDL_MouseButtonEventOps(val self: Ptr[SDL_MouseButtonEvent]) extends AnyVal {
+    def type_ : UInt = !(self._1)
+    def timestamp: UInt = !(self._2)
+    def windowID: UInt = !(self._3)
+    def which: UInt = !(self._4)
+    def button: UByte = !(self._5)
+    def state: UByte = !(self._6)
+    def clicks: UByte = !(self._7)
+    def padding1: UByte = !(self._8)
+    def x: Int = !(self._9)
+    def y: Int = !(self._10)
+  }
+
+  /* TODO: insert all missing ops */
+
+  implicit class SDL_QuitEventOps(val self: Ptr[SDL_QuitEvent]) extends AnyVal {
+    def type_ : UInt = !(self._1)
+    def timestamp: UInt = !(self._2)
+  }
+  implicit class SDL_OSEventOps(val self: Ptr[SDL_OSEvent]) extends AnyVal {
+    def type_ : UInt = !(self._1)
+    def timestamp: UInt = !(self._2)
+  }
+
+  implicit class SDL_UserEventOps(val self: Ptr[SDL_UserEvent]) extends AnyVal {
+    def type_ : UInt = !(self._1)
+    def timestamp: UInt = !(self._2)
+    def windowID: UInt = !(self._3)
+    def code: Int = !(self._4)
+    def data1: Ptr[Byte] = !(self._5)
+    def data2: Ptr[Byte] = !(self._6)
+  }
+
+
+
+
+
+  val RIGHT_KEY = 1073741903
+  val LEFT_KEY  = 1073741904
+  val DOWN_KEY  = 1073741905
+  val UP_KEY    = 1073741906
+
+
+  /***************************************
    ************ SDL_render.h *************
-   **************************************/
+   ***************************************/
 
   /* Start enum SDL_RendererFlags */
   val SDL_RENDERER_SOFTWARE = 0x00000001.toUInt
@@ -331,16 +488,6 @@ object SDLExtra {
     def y: CInt = !(self._2)
     def w: CInt = !(self._3)
     def h: CInt = !(self._4)
-  }
-
-  val RIGHT_KEY = 1073741903
-  val LEFT_KEY  = 1073741904
-  val DOWN_KEY  = 1073741905
-  val UP_KEY    = 1073741906
-
-  implicit class KeyboardEventOps(val self: Ptr[KeyboardEvent])
-      extends AnyVal {
-    def keycode: Keycode = !(self._8._2)
   }
 
   //this is defined as a macro

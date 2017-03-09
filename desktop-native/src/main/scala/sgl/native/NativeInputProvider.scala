@@ -18,12 +18,12 @@ trait NativeInputProvider extends InputProvider {
         case SDL_QUIT => //special handle quit event
           sys.exit(0)
         case SDL_KEYDOWN =>
-          val keyEvent = keycodeToEvent(event.cast[Ptr[KeyboardEvent]].keycode)
+          val keyEvent = keycodeToEvent(event.cast[Ptr[SDL_KeyboardEvent]].keycode)
           keyEvent.foreach(key => {
             Input.newEvent(Input.KeyDownEvent(key))
           })
         case SDL_KEYUP =>
-          val keyEvent = keycodeToEvent(event.cast[Ptr[KeyboardEvent]].keycode)
+          val keyEvent = keycodeToEvent(event.cast[Ptr[SDL_KeyboardEvent]].keycode)
           keyEvent.foreach(key => {
             Input.newEvent(Input.KeyUpEvent(key))
           })
