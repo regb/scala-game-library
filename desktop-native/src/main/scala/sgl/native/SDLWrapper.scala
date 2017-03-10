@@ -112,6 +112,25 @@ object SDL {
   def SDL_WaitEvent(event: Ptr[SDL_Event]): CInt = extern
   def SDL_WaitEventTimeout(event: Ptr[SDL_Event], timeout: CInt): CInt = extern
 
+  def SDL_PushEvent(event: Ptr[SDL_Event]): CInt = extern
+
+  //TODO:
+  //typedef int (SDLCALL * SDL_EventFilter) (void *userdata, SDL_Event * event);
+  //def SDL_SetEventFilter(filter: SDL_EventFilter, userdata: Ptr[Byte]): Unit = extern
+  //def SDL_GetEventFilter(filter: Ptr[SDL_EventFilter], userdata: Ptr[Ptr[Byte]]): Unit = extern
+  //def SDL_AddEventWatch(filter: SDL_EventFilter, userdata: Ptr[Byte]): Unit = extern
+  //def SDL_DelEventWatch(filter: SDL_EventFilter, userdata: Ptr[Byte]): Unit = extern
+  //def SDL_FilterEvents(filter: SDL_EventFilter, userdata: Ptr[Byte]): Unit = extern
+ 
+  def SDL_EventState(type_ : UInt, state: CInt): UByte = extern
+
+  def SDL_RegisterEvents(numevents: CInt): UInt = extern
+
+
+
+
+
+
   type SDL_Keysym   = CStruct4[Scancode, Keycode, UShort, UInt]
 
   type Scancode = Int
@@ -376,6 +395,13 @@ object SDLExtra {
   val SDL_GETEVENT  = 2.toUInt
   /* End SDL_eventaction */
 
+  val SDL_QUERY: CInt = -1
+  val SDL_IGNORE: CInt = 0
+  val SDL_DISABLE: CInt = 0
+  val SDL_ENABLE: CInt = 1
+
+  def SDL_GetEventState(type_ : UInt): UByte = SDL_EventState(type_, SDL_QUERY)
+
 
 
 
@@ -538,7 +564,6 @@ object SDLExtra {
     def h: CInt = !(self._4)
   }
 
-  //this is defined as a macro
   def SDL_LoadBMP(file: CString): Ptr[SDL_Surface] =
     SDL_LoadBMP_RW(SDL_RWFromFile(file, c"rb"), 1)
 
