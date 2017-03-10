@@ -1,0 +1,16 @@
+<html>
+<head>
+</head>
+<body>
+  <canvas id="my_canvas"></canvas>
+
+  <!-- Include Scala.js compiled code -->
+  <script type="text/javascript" src="./sgl-snake-html5-fastopt.js"></script>
+
+  <script type="text/javascript">
+    var c = document.getElementById("my_canvas");
+    com.regblanc.sgl.snake.html5.Main().main(c);
+  </script>
+
+</body>
+</html>
