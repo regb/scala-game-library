@@ -10,7 +10,7 @@ import sgl.native.util._
 
 /** Wire backend to the App here */
 object Main extends AbstractApp with NativeApp
-  with InputHelpersComponent with VerboseStdErrLoggingProvider with GameLoopStatisticsComponent {
+  with InputHelpersComponent with TraceStdErrLoggingProvider with GameLoopStatisticsComponent {
 
   override val Fps = Some(60)
 

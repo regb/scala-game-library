@@ -1,5 +1,7 @@
 package sgl
 
+import util._
+
 /*
  * The design of the input handling abstraction went through a few
  * unsatisfying trials. The original design was to have GameScreen
@@ -48,6 +50,9 @@ package sgl
   *
   */
 trait InputProvider {
+  self: LoggingProvider =>
+
+  private implicit val LogTag = Logger.Tag("sgl.input")
 
   object Input {
     import scala.collection.mutable.Queue
@@ -56,7 +61,10 @@ trait InputProvider {
 
     //TODO: this should be private, only accessible to the backends implementing the input
     //      provider
-    def newEvent(event: InputEvent): Unit = synchronized { eventQueue.enqueue(event) }
+    def newEvent(event: InputEvent): Unit = synchronized {
+      logger.trace("Adding new event: " + event + " to the queue.")
+      eventQueue.enqueue(event)
+    }
 
     /** Poll for the oldest non processed event.
       *
@@ -179,6 +187,9 @@ trait InputProvider {
       case object Y extends Key
       case object Z extends Key
 
+      /* @regb: NumKey can either be numpad numbers, or regular numbers
+       *        I don't see the point of making the distinction
+       */
       sealed trait NumKey extends Key {
         def toInt = this match {
           case Num0 => 0
@@ -212,7 +223,7 @@ trait InputProvider {
       case object Down extends Key
 
       /*
-       * Maybe we should have a Button type for those
+       * Maybe we should have a Button object to contain these
        */
       case object ButtonStart extends Key
       case object ButtonSelect extends Key

@@ -14,6 +14,7 @@ object SDL {
 
   type _16   = Nat.Digit[Nat._1, Nat._6]
   type _32   = Nat.Digit[Nat._3, Nat._2]
+  type _52   = Nat.Digit[Nat._5, Nat._2]
   type _56   = Nat.Digit[Nat._5, Nat._6]
   type _64   = Nat.Digit[Nat._6, Nat._4]
 
@@ -64,7 +65,7 @@ object SDL {
     CStruct10[UInt, UInt, UInt, UInt, UByte, UByte, UByte, UByte, Int, Int]
 
   //TODO:
-  //type SDL_MouseWeelEvent
+  //type SDL_MouseWheelEvent
   //type SDL_JoyAxisEvent
   //type SDL_JoyBallEvent
   //type SDL_JoyHatEvent
@@ -93,7 +94,11 @@ object SDL {
   type SDL_SysWMEvent = CStruct3[UInt, UInt, Ptr[SDL_SysWMmsg]]
 
   //SDL_Event is a union of all events defined above
-  type SDL_Event = CStruct2[UInt, CArray[Byte, _56]]
+  //SDL defines the padding to be an array of size 56 bytes, we describe
+  //a two element struct, with the first element being the type UInt shared
+  //by all members of the union, and the second element completes the padding
+  //with 52 bytes (to reach 56).
+  type SDL_Event = CStruct2[UInt, CArray[Byte, _52]]
 
   def SDL_PumpEvents(): Unit = extern
 
@@ -142,6 +147,7 @@ object SDL {
    ***************************************/
 
   type SDL_Keycode  = Int
+  type SDL_Keymod = UInt
 
   /**************************************
    ************ SDL_render.h *************
@@ -298,7 +304,7 @@ object SDLExtra {
 
   /* End SDL_EventType */
 
-  implicit class SDL_CommonEventOps(val self: Ptr[SDL_WindowEvent]) extends AnyVal {
+  implicit class SDL_CommonEventOps(val self: Ptr[SDL_CommonEvent]) extends AnyVal {
     def type_ : UInt = !(self._1)
     def timestamp: UInt = !(self._2)
   }
@@ -375,14 +381,18 @@ object SDLExtra {
 
   /* TODO: insert all missing ops */
 
-  implicit class SDL_QuitEventOps(val self: Ptr[SDL_QuitEvent]) extends AnyVal {
-    def type_ : UInt = !(self._1)
-    def timestamp: UInt = !(self._2)
-  }
-  implicit class SDL_OSEventOps(val self: Ptr[SDL_OSEvent]) extends AnyVal {
-    def type_ : UInt = !(self._1)
-    def timestamp: UInt = !(self._2)
-  }
+  /* We do not provide type_ and timestamp as they come from SDL_CommonEventOps
+   * which is the same type (CStruct2). If we provide them as below, they would
+   * create ambiguous implicit conversions!
+   */
+  //implicit class SDL_QuitEventOps(val self: Ptr[SDL_QuitEvent]) extends AnyVal {
+  //  def type_ : UInt = !(self._1)
+  //  def timestamp: UInt = !(self._2)
+  //}
+  //implicit class SDL_OSEventOps(val self: Ptr[SDL_OSEvent]) extends AnyVal {
+  //  def type_ : UInt = !(self._1)
+  //  def timestamp: UInt = !(self._2)
+  //}
 
   implicit class SDL_UserEventOps(val self: Ptr[SDL_UserEvent]) extends AnyVal {
     def type_ : UInt = !(self._1)
@@ -397,6 +407,38 @@ object SDLExtra {
     def type_ : UInt = !(self._1)
     def timestamp: UInt = !(self._2)
     def msg: Ptr[SDL_SysWMmsg] = !(self._3)
+  }
+
+  implicit class SDL_EventOps(val self: Ptr[SDL_Event]) extends AnyVal {
+    def type_ : UInt = !(self._1)
+  
+    def common: Ptr[SDL_CommonEvent] = self.cast[Ptr[SDL_CommonEvent]]
+    def window: Ptr[SDL_WindowEvent] = self.cast[Ptr[SDL_WindowEvent]]
+    def key: Ptr[SDL_KeyboardEvent] = self.cast[Ptr[SDL_KeyboardEvent]]
+    def edit: Ptr[SDL_TextEditingEvent] = self.cast[Ptr[SDL_TextEditingEvent]]
+    def text: Ptr[SDL_TextInputEvent] = self.cast[Ptr[SDL_TextInputEvent]]
+    def motion: Ptr[SDL_MouseMotionEvent] = self.cast[Ptr[SDL_MouseMotionEvent]]
+    def button: Ptr[SDL_MouseButtonEvent] = self.cast[Ptr[SDL_MouseButtonEvent]]
+    //def wheel: Ptr[SDL_MouseWheelEvent] = self.cast[Ptr[SDL_MouseWheelEvent]]
+    //def jaxis: Ptr[SDL_JoyAxisEvent] = self.cast[Ptr[SDL_JoyAxisEvent]]
+    //def jball: Ptr[SDL_JoyBallEvent] = self.cast[Ptr[SDL_JoyBallEvent]]
+    //def jhat: Ptr[SDL_JoyHatEvent] = self.cast[Ptr[SDL_JoyHatEvent]]
+    //def jbutton: Ptr[SDL_JoyButtonEvent] = self.cast[Ptr[SDL_JoyButtonEvent]]
+    //def jdevice: Ptr[SDL_JoyDeviceEvent] = self.cast[Ptr[SDL_JoyDeviceEvent]]
+    //def caxis: Ptr[SDL_ControllerAxisEvent] = self.cast[Ptr[SDL_ControllerAxisEvent]]
+    //def cbutton: Ptr[SDL_ControllerButtonEvent] = self.cast[Ptr[SDL_ControllerButtonEvent]]
+    //def cdevice: Ptr[SDL_ControllerDeviceEvent] = self.cast[Ptr[SDL_ControllerDeviceEvent]]
+    //def adevice: Ptr[SDL_AudioDeviceEvent] = self.cast[Ptr[SDL_AudioDeviceEvent]]
+    def quit: Ptr[SDL_QuitEvent] = self.cast[Ptr[SDL_QuitEvent]]
+    def user: Ptr[SDL_UserEvent] = self.cast[Ptr[SDL_UserEvent]]
+    def syswm: Ptr[SDL_SysWMEvent] = self.cast[Ptr[SDL_SysWMEvent]]
+    //def tfinger: Ptr[SDL_TouchFingerEvent] = self.cast[Ptr[SDL_TouchFingerEvent]]
+    //def mgesture: Ptr[SDL_MultiGestureEvent] = self.cast[Ptr[SDL_MultiGestureEvent]]
+    //def dgesture: Ptr[SDL_DollarGestureEvent] = self.cast[Ptr[SDL_DollarGestureEvent]]
+    //def drop: Ptr[SDL_DropEvent] = self.cast[Ptr[SDL_DropEvent]]
+
+    def padding: Ptr[Byte] = self.cast[Ptr[Byte]]
+
   }
   
   /* Start SDL_eventaction */
@@ -732,7 +774,7 @@ object SDLExtra {
   val SDLK_SCANCODE_MASK: Int = 1 << 30
   def SDL_SCANCODE_TO_KEYCODE(scancode: SDL_Scancode): SDL_Keycode = scancode | SDLK_SCANCODE_MASK
 
-
+  /* Start SDL_Keycode */
   val SDLK_UNKNOWN: Int = 0
 
   val SDLK_RETURN: Int = '\r'
@@ -982,7 +1024,29 @@ object SDLExtra {
   val SDLK_KBDILLUMUP = SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_KBDILLUMUP)
   val SDLK_EJECT = SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_EJECT)
   val SDLK_SLEEP = SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_SLEEP)
+  /* End SDL_Keycode */
 
+  /* Start SDL_Keymod */
+  val KMOD_NONE = 0x0000.toUInt
+  val KMOD_LSHIFT = 0x0001.toUInt
+  val KMOD_RSHIFT = 0x0002.toUInt
+  val KMOD_LCTRL = 0x0040.toUInt
+  val KMOD_RCTRL = 0x0080.toUInt
+  val KMOD_LALT = 0x0100.toUInt
+  val KMOD_RALT = 0x0200.toUInt
+  val KMOD_LGUI = 0x0400.toUInt
+  val KMOD_RGUI = 0x0800.toUInt
+  val KMOD_NUM = 0x1000.toUInt
+  val KMOD_CAPS = 0x2000.toUInt
+  val KMOD_MODE = 0x4000.toUInt
+  val KMOD_RESERVED = 0x800.toUInt
+  /* End SDL_Keymod */
+
+  val KMOD_CTRL = KMOD_LCTRL | KMOD_RCTRL
+  val KMOD_SHIFT = KMOD_LSHIFT | KMOD_RSHIFT
+  val KMOD_ALT = KMOD_LALT | KMOD_RALT
+  val KMOD_GUI = KMOD_LGUI | KMOD_RGUI
+ 
   /***************************************
    ************ SDL_stdinc.h *************
    ***************************************/
@@ -1077,10 +1141,6 @@ object SDLExtra {
 
   /*** Other ***/
 
-
-  implicit class SDL_EventOps(val self: Ptr[SDL_Event]) extends AnyVal {
-    def type_ = !(self._1)
-  }
 
   implicit class SDL_RectOps(val self: Ptr[SDL_Rect]) extends AnyVal {
     def init(x: Int, y: Int, w: Int, h: Int): Ptr[SDL_Rect] = {
