@@ -33,11 +33,11 @@ trait NativeInputProvider extends InputProvider {
     }
   }
 
-  def keycodeToEvent(keycode: Keycode): Option[Input.Keys.Key] = keycode match {
-    case UP_KEY => Some(Input.Keys.Up)
-    case DOWN_KEY => Some(Input.Keys.Down)
-    case LEFT_KEY => Some(Input.Keys.Left)
-    case RIGHT_KEY => Some(Input.Keys.Right)
+  def keycodeToEvent(keycode: SDL_Keycode): Option[Input.Keys.Key] = keycode match {
+    case SDLK_UP => Some(Input.Keys.Up)
+    case SDLK_DOWN => Some(Input.Keys.Down)
+    case SDLK_LEFT => Some(Input.Keys.Left)
+    case SDLK_RIGHT => Some(Input.Keys.Right)
   }
 
 }
