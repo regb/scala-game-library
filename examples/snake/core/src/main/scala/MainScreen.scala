@@ -7,8 +7,8 @@ import scene._
 import util._
 
 trait MainScreenComponent {
-  this: GraphicsProvider with InputProvider with GameStateComponent
-  with WindowProvider with InputHelpersComponent with GameLoopStatisticsComponent
+  self: GraphicsProvider with InputProvider with GameStateComponent
+  with WindowProvider with InputHelpersComponent
   with LoggingProvider with SystemProvider =>
 
   val NbRows = 30
