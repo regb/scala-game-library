@@ -88,12 +88,32 @@ object SDL {
 
   type SDL_UserEvent = CStruct6[UInt, UInt, UInt, Int, Ptr[Byte], Ptr[Byte]]
 
+  type SDL_SysWMmsg = CStruct0
+
+  type SDL_SysWMEvent = CStruct3[UInt, UInt, Ptr[SDL_SysWMmsg]]
+
+  //SDL_Event is a union of all events defined above
+  type SDL_Event = CStruct2[UInt, CArray[Byte, _56]]
+
+  def SDL_PumpEvents(): Unit = extern
+
+  def SDL_PeepEvents(events: Ptr[SDL_Event], numevents: CInt,
+                     action: UInt, minType: UInt, maxType: UInt): Unit = extern
+
+  //TODO: is it fine to have param name differ? should be "type"
+  def SDL_HasEvent(type_ : UInt): SDL_bool = extern
+  def SDL_HasEvents(minType: UInt, maxType: UInt): SDL_bool = extern
+
+  def SDL_FlushEvent(type_ : UInt): Unit = extern
+  def SDL_FlushEvents(minType: UInt, maxType: UInt): Unit = extern
+
+  def SDL_PollEvent(event: Ptr[SDL_Event]): CInt = extern
+
+  def SDL_WaitEvent(event: Ptr[SDL_Event]): CInt = extern
+  def SDL_WaitEventTimeout(event: Ptr[SDL_Event], timeout: CInt): CInt = extern
 
   type SDL_Keysym   = CStruct4[Scancode, Keycode, UShort, UInt]
 
-  type SDL_Event = CStruct2[UInt, CArray[Byte, _56]]
-
-  def SDL_PollEvent(event: Ptr[SDL_Event]): CInt = extern
   type Scancode = Int
   type Keycode  = Int
 
@@ -126,6 +146,12 @@ object SDL {
 
   def SDL_CreateTextureFromSurface(renderer: Ptr[SDL_Renderer], surface: Ptr[SDL_Surface]): Ptr[SDL_Texture] = extern
 
+
+  /***************************************
+   ************ SDL_stdinc.h *************
+   ***************************************/
+
+  type SDL_bool = UInt
 
 
   /**************************************
@@ -338,6 +364,17 @@ object SDLExtra {
     def data2: Ptr[Byte] = !(self._6)
   }
 
+  implicit class SDL_SysWMEventOps(val self: Ptr[SDL_SysWMEvent]) extends AnyVal {
+    def type_ : UInt = !(self._1)
+    def timestamp: UInt = !(self._2)
+    def msg: Ptr[SDL_SysWMmsg] = !(self._3)
+  }
+  
+  /* Start SDL_eventaction */
+  val SDL_ADDEVENT  = 0.toUInt
+  val SDL_PEEKEVENT = 1.toUInt
+  val SDL_GETEVENT  = 2.toUInt
+  /* End SDL_eventaction */
 
 
 
@@ -385,6 +422,17 @@ object SDLExtra {
   val SDL_FLIP_HORIZONTAL = 0x00000001.toUInt
   val SDL_FLIP_VERTICAL = 0x00000002.toUInt
   /* End SDL_RendererFlip */
+
+
+  /***************************************
+   ************ SDL_stdinc.h *************
+   ***************************************/
+
+  /* Start SDL_bool */
+  val SDL_FALSE = 0.toUInt
+  val SDL_TRUE  = 1.toUInt
+  /* End SDL_bool */
+
 
 
   /**************************************
