@@ -35,11 +35,36 @@ trait NativeInputProvider extends InputProvider {
             Input.newEvent(Input.KeyUpEvent(key)))
           .applyOrElse(event.key.keycode,
                        (keycode: SDL_Keycode) => logger.debug("ignoring event with keycode: " + keycode))
+
+        case SDL_MOUSEBUTTONDOWN =>
+          //TODO: check 'which' field to ignore TOUCH events
+          val mouseButtonEvent = event.button
+          buttonToMouseButton(mouseButtonEvent.button).foreach(mb =>
+            Input.newEvent(Input.MouseDownEvent(mouseButtonEvent.x, mouseButtonEvent.y, mb))
+          )
+
+        case SDL_MOUSEBUTTONUP =>
+          //TODO: check 'which' field to ignore TOUCH events
+          val mouseButtonEvent = event.button
+          buttonToMouseButton(mouseButtonEvent.button).foreach(mb =>
+            Input.newEvent(Input.MouseUpEvent(mouseButtonEvent.x, mouseButtonEvent.y, mb))
+          )
+
+        case SDL_MOUSEMOTION =>
+          ()
+
         case _ =>
           ()
       }
     }
   }
+
+  private def buttonToMouseButton(mouseButton: UByte): Option[Input.MouseButtons.MouseButton] =
+    mouseButton match {
+      case SDL_BUTTON_LEFT => Some(Input.MouseButtons.Left)
+      case SDL_BUTTON_MIDDLE => Some(Input.MouseButtons.Middle)
+      case SDL_BUTTON_RIGHT => Some(Input.MouseButtons.Right)
+    }
 
   private def keycodeToEvent: PartialFunction[SDL_Keycode, Input.Keys.Key] = {
     case SDLK_a => Input.Keys.A

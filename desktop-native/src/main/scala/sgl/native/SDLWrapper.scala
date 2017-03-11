@@ -136,11 +136,7 @@ object SDL {
    *********** SDL_keyboard.h ************
    ***************************************/
 
-
-
   type SDL_Keysym   = CStruct4[SDL_Scancode, SDL_Keycode, UShort, UInt]
-
-
 
   /***************************************
    *********** SDL_keycode.h *************
@@ -148,6 +144,36 @@ object SDL {
 
   type SDL_Keycode  = Int
   type SDL_Keymod = UInt
+
+  /**************************************
+   ************ SDL_mouse.h *************
+   **************************************/
+
+  type SDL_Cursor = CStruct0
+  type SDL_SystemCursor = CInt
+  type SDL_MouseWheelDirection = CInt
+
+  def SDL_GetMouseFocus(): Ptr[SDL_Window] = extern
+  def SDL_GetMouseState(x: Ptr[CInt], y: Ptr[CInt]): UInt = extern
+  def SDL_GetGlobalMouseState(x: Ptr[CInt], y: Ptr[CInt]): UInt = extern
+  def SDL_GetRelativeMouseState(x: Ptr[CInt], y: Ptr[CInt]): UInt = extern
+
+  def SDL_WarpMouseInWindow(window: Ptr[SDL_Window], x: CInt, y: CInt): Unit = extern
+  def SDL_WarpMouseGlobal(x: CInt, y: CInt): Unit = extern
+
+  def SDL_SetRelativeMouseMode(enabled: SDL_bool): CInt = extern
+  def SDL_CaptureMouse(enabled: SDL_bool): CInt = extern
+  def SDL_GetRelativeMouseMode(): SDL_bool = extern
+
+  def SDL_CreateCursor(data: Ptr[UByte], mask: Ptr[UByte], 
+                       w: CInt, h: CInt, hot_x: CInt, hot_y: CInt): Ptr[SDL_Cursor] = extern
+  def SDL_CreateColorCursor(surface: Ptr[SDL_Surface], hot_x: CInt, hot_y: CInt): Ptr[SDL_Cursor] = extern 
+  def SDL_CreateSystemCursor(id: SDL_SystemCursor): Ptr[SDL_Cursor] = extern 
+  def SDL_SetCursor(cursor: Ptr[SDL_Cursor]): Unit = extern 
+  def SDL_GetCursor(): Ptr[SDL_Cursor] = extern 
+  def SDL_GetDefaultCursor(): Ptr[SDL_Cursor] = extern 
+  def SDL_FreeCursor(cursor: Ptr[SDL_Cursor]): Unit = extern 
+  def SDL_ShowCursor(toggle: CInt): CInt = extern 
 
   /**************************************
    ************ SDL_render.h *************
@@ -187,7 +213,6 @@ object SDL {
    ***************************************/
 
   type SDL_bool = UInt
-
 
   /**************************************
    ************ SDL_video.h *************
@@ -455,43 +480,6 @@ object SDLExtra {
   def SDL_GetEventState(type_ : UInt): UByte = SDL_EventState(type_, SDL_QUERY)
 
 
-  /***************************************
-   ************ SDL_render.h *************
-   ***************************************/
-
-  /* Start enum SDL_RendererFlags */
-  val SDL_RENDERER_SOFTWARE = 0x00000001.toUInt
-  val SDL_RENDERER_ACCELERATED = 0x00000002.toUInt
-  val SDL_RENDERER_PRESENTVSYNC = 0x00000004.toUInt
-  val SDL_RENDERER_TARGETTEXTURE = 0x00000008.toUInt
-  /* End SDL_RendererFlags */
-
-  implicit class SDL_RendererInfoOps(val self: Ptr[SDL_RendererInfo]) extends AnyVal {
-    def name: CString = !(self._1)
-    def flags: UInt = !(self._2)
-    def num_texture_formats: UInt = !(self._3)
-    def texture_formats: CArray[UInt, _16] = !(self._4)
-    def max_texture_width: CInt = !(self._5)
-    def max_texture_height: CInt = !(self._6)
-  }
-
-  /* Start enum SDL_TextureAccess */
-  val SDL_TEXTUREACCESS_STATIC = 0.toUInt
-  val SDL_TEXTUREACCESS_STREAMING = 1.toUInt
-  val SDL_TEXTUREACCESS_TARGET = 2.toUInt
-  /* End SDL_TextureAccess */
-
-  /* Start enum SDL_TextureModulate */
-  val SDL_TEXTUREMODULATE_NONE = 0x00000000.toUInt
-  val SDL_TEXTUREMODULATE_COLOR = 0x00000001.toUInt
-  val SDL_TEXTUREMODULATE_ALPHA = 0x00000002.toUInt
-  /* End SDL_TextureModulate */
-
-  /* Start enum SDL_RendererFlip */
-  val SDL_FLIP_NONE = 0x00000000.toUInt
-  val SDL_FLIP_HORIZONTAL = 0x00000001.toUInt
-  val SDL_FLIP_VERTICAL = 0x00000002.toUInt
-  /* End SDL_RendererFlip */
 
   /***************************************
    ************ SDL_scancode.h *************
@@ -1046,6 +1034,82 @@ object SDLExtra {
   val KMOD_SHIFT = KMOD_LSHIFT | KMOD_RSHIFT
   val KMOD_ALT = KMOD_LALT | KMOD_RALT
   val KMOD_GUI = KMOD_LGUI | KMOD_RGUI
+
+
+  /**************************************
+   ************ SDL_mouse.h *************
+   **************************************/
+
+  /* Start SDL_SystemCursor */
+  val SDL_SYSTEM_CURSOR_ARROW: CInt = 0
+  val SDL_SYSTEM_CURSOR_IBEAM: CInt = 1
+  val SDL_SYSTEM_CURSOR_WAIT: CInt = 2
+  val SDL_SYSTEM_CURSOR_CROSSHAIR: CInt = 3
+  val SDL_SYSTEM_CURSOR_WAITARROW: CInt = 4
+  val SDL_SYSTEM_CURSOR_SIZENWSE: CInt = 5
+  val SDL_SYSTEM_CURSOR_SIZENESW: CInt = 6
+  val SDL_SYSTEM_CURSOR_SIZEWE: CInt = 7
+  val SDL_SYSTEM_CURSOR_SIZENS: CInt = 8
+  val SDL_SYSTEM_CURSOR_SIZEALL: CInt = 9
+  val SDL_SYSTEM_CURSOR_NO: CInt = 10
+  val SDL_SYSTEM_CURSOR_HAND: CInt = 11
+  val SDL_NUM_SYSTEM_CURSORS: CInt = 12
+  /* End SDL_SystemCursor */
+
+  /* Start SDL_MouseWheelDirection */
+  val SDL_MOUSEWHEEL_NORMAL: CInt = 0
+  val SDL_MOUSEWHEEL_FLIPPED: CInt = 1
+  /* End SDL_MouseWheelDirection */
+
+  def SDL_BUTTON(x: UByte): UInt = (1.toUInt << (x.toByte - 1))
+  val SDL_BUTTON_LEFT: UByte = 1.toUByte
+  val SDL_BUTTON_MIDDLE: UByte = 2.toUByte
+  val SDL_BUTTON_RIGHT: UByte = 3.toUByte
+  val SDL_BUTTON_X1: UByte = 4.toUByte
+  val SDL_BUTTON_X2: UByte = 5.toUByte
+  val SDL_BUTTON_LMASK: UInt = SDL_BUTTON(SDL_BUTTON_LEFT)
+  val SDL_BUTTON_MMASK: UInt = SDL_BUTTON(SDL_BUTTON_MIDDLE)
+  val SDL_BUTTON_RMASK: UInt = SDL_BUTTON(SDL_BUTTON_RIGHT)
+  val SDL_BUTTON_X1MASK: UInt = SDL_BUTTON(SDL_BUTTON_X1)
+  val SDL_BUTTON_X2MASK: UInt = SDL_BUTTON(SDL_BUTTON_X2)
+
+  /***************************************
+   ************ SDL_render.h *************
+   ***************************************/
+
+  /* Start enum SDL_RendererFlags */
+  val SDL_RENDERER_SOFTWARE = 0x00000001.toUInt
+  val SDL_RENDERER_ACCELERATED = 0x00000002.toUInt
+  val SDL_RENDERER_PRESENTVSYNC = 0x00000004.toUInt
+  val SDL_RENDERER_TARGETTEXTURE = 0x00000008.toUInt
+  /* End SDL_RendererFlags */
+
+  implicit class SDL_RendererInfoOps(val self: Ptr[SDL_RendererInfo]) extends AnyVal {
+    def name: CString = !(self._1)
+    def flags: UInt = !(self._2)
+    def num_texture_formats: UInt = !(self._3)
+    def texture_formats: CArray[UInt, _16] = !(self._4)
+    def max_texture_width: CInt = !(self._5)
+    def max_texture_height: CInt = !(self._6)
+  }
+
+  /* Start enum SDL_TextureAccess */
+  val SDL_TEXTUREACCESS_STATIC = 0.toUInt
+  val SDL_TEXTUREACCESS_STREAMING = 1.toUInt
+  val SDL_TEXTUREACCESS_TARGET = 2.toUInt
+  /* End SDL_TextureAccess */
+
+  /* Start enum SDL_TextureModulate */
+  val SDL_TEXTUREMODULATE_NONE = 0x00000000.toUInt
+  val SDL_TEXTUREMODULATE_COLOR = 0x00000001.toUInt
+  val SDL_TEXTUREMODULATE_ALPHA = 0x00000002.toUInt
+  /* End SDL_TextureModulate */
+
+  /* Start enum SDL_RendererFlip */
+  val SDL_FLIP_NONE = 0x00000000.toUInt
+  val SDL_FLIP_HORIZONTAL = 0x00000001.toUInt
+  val SDL_FLIP_VERTICAL = 0x00000002.toUInt
+  /* End SDL_RendererFlip */
  
   /***************************************
    ************ SDL_stdinc.h *************
