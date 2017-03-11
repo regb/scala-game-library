@@ -145,6 +145,11 @@ trait InputProvider {
       }
     }
 
+    //TODO: seems like instead of using trait and case objects inheritence, we
+    //      could use an abstract type MouseButton, and implement with proper
+    //      implementation in each backend. For example, in the SDL-based implementation
+    //      we would have type MouseButton = UByte, and return the UByte from SDL directly
+    //      without the need for the conversion overhead
     object MouseButtons {
       sealed trait MouseButton
       case object Left extends MouseButton

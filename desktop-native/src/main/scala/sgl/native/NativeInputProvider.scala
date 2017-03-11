@@ -51,7 +51,8 @@ trait NativeInputProvider extends InputProvider {
           )
 
         case SDL_MOUSEMOTION =>
-          ()
+          val motionEvent = event.motion
+          Input.newEvent(Input.MouseMovedEvent(motionEvent.x, motionEvent.y))
 
         case _ =>
           ()
