@@ -5,8 +5,10 @@ import sgl.util._
 
 import scalanative.native._
 
-import SDL._
-import SDLExtra._
+import sdl2.SDL2._
+import sdl2.Extras._
+import sdl2.image.SDL2_image._
+import sdl2.image.Extras._
 
 trait NativeApp extends GameApp 
                    with NativeGraphicsProvider with NativeInputProvider with NativeAudioProvider
@@ -40,6 +42,13 @@ trait NativeApp extends GameApp
       sys.exit()
     }
 
+    val imgFlags = IMG_INIT_PNG
+    if(IMG_Init(imgFlags) != imgFlags) {
+      println("Failed to initialize SDL_image: " + IMG_GetError())
+      SDL_DestroyWindow(window)
+      SDL_Quit()
+      sys.exit()
+    }
 
     this.renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC)
     if(this.renderer == null) {
@@ -55,6 +64,7 @@ trait NativeApp extends GameApp
     gameLoop.init()
     gameLoop.loop()
 
+    IMG_Quit()
     SDL_DestroyWindow(window)
     SDL_Quit()
   }

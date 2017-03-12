@@ -5,7 +5,7 @@ import sgl.util._
 
 import scalanative.native._
 
-import SDL._
+import sdl2.SDL2._
 
 trait PollingGameLoopProvider extends GameLoopProvider {
   self: GraphicsProvider with NativeInputProvider with GameStateComponent with LoggingProvider =>

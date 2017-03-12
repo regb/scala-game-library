@@ -5,8 +5,8 @@ import sgl.util._
 
 import scalanative.native._
 
-import SDL._
-import SDLExtra._
+import sdl2.SDL2._
+import sdl2.Extras._
 
 trait NativeInputProvider extends InputProvider {
   this: NativeWindowProvider with NativeGraphicsProvider with LoggingProvider =>

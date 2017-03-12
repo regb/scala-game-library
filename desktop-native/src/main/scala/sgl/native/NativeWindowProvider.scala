@@ -3,8 +3,8 @@ package native
 
 import scalanative.native._
 
-import SDL._
-import SDLExtra._
+import sdl2.SDL2._
+import sdl2.Extras._
 
 trait NativeWindowProvider extends WindowProvider {
   this: GameStateComponent with NativeGraphicsProvider =>

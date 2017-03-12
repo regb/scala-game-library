@@ -5,8 +5,9 @@ import sgl.util._
 
 import scalanative.native._
 
-import SDL._
-import SDLExtra._
+import sdl2.SDL2._
+import sdl2.Extras._
+import sdl2.image.SDL2_image._
 
 trait NativeGraphicsProvider extends GraphicsProvider {
   this: NativeSystemProvider =>
@@ -14,8 +15,9 @@ trait NativeGraphicsProvider extends GraphicsProvider {
   object NativeGraphics extends Graphics {
 
     override def loadImage(path: System.ResourcePath): Loader[Bitmap] = {
-      val path = c"/home/reg/vcs/games/sgl/examples/test/native/src/main/resources/drawable/character-bitmap.bmp"
-      val surface = SDL_LoadBMP(path)
+      val path = c"/home/reg/vcs/games/sgl/examples/test/native/src/main/resources/drawable/character.png"
+      //val surface = SDL_LoadBMP(path)
+      val surface = IMG_Load(path)
       val texture = SDL_CreateTextureFromSurface(renderer, surface)
       SDL_FreeSurface(surface)
       val w: Ptr[CInt] = stackalloc[CInt]
