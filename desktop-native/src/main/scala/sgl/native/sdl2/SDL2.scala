@@ -219,6 +219,10 @@ object SDL2 {
 
   def SDL_CreateTextureFromSurface(renderer: Ptr[SDL_Renderer], surface: Ptr[SDL_Surface]): Ptr[SDL_Texture] = extern
 
+
+  def SDL_DestroyTexture(texture: Ptr[SDL_Texture]): Unit = extern
+  def SDL_DestroyRenderer(renderer: Ptr[SDL_Renderer]): Unit = extern
+
   /**************************************
    *********** SDL_scancode.h ***********
    **************************************/

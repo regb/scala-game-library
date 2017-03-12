@@ -96,8 +96,7 @@ trait SystemProvider {
       * provide a way to list content of directory. There is also no delete operation.
       * All these kind of operations seem unnecessary.
       */
-    type ResourcePath// <: AbstractResourcePath
-    //TODO: how to allow ResourcePath to be = String while still providing the '/' method ?
+    type ResourcePath <: AbstractResourcePath
 
     //indeed, ResourcePath without a 's' as this is the path to ONE resource. But
     //the root prefix is ResourcesPrefix, as it is the prefix of ALL resources.
@@ -106,6 +105,7 @@ trait SystemProvider {
   }
   val System: System
 
-  implicit def wrapResourcePath(resourcePath: System.ResourcePath): System.AbstractResourcePath
-
+  //TODO: alternative is to provide a conversion from resource to wrapper with the / method
+  //TODO: how to allow ResourcePath to be = String while still providing the '/' method ?
+  //implicit def wrapResourcePath(resourcePath: System.ResourcePath): System.AbstractResourcePath
 }

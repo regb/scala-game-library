@@ -15,48 +15,43 @@ trait NativeInputProvider extends InputProvider {
 
   def registerInputListeners(): Unit = { }
 
-  def collectAllEvents(): Unit = {
-    val event = stackalloc[SDL_Event]
-    while (SDL_PollEvent(event) != 0) {
-      event.type_ match {
-        case SDL_QUIT => //special handle quit event
-          sys.exit(0)
-        case SDL_KEYDOWN =>
-          val keyEvent = event.key
-          if(keyEvent.repeat == 0.toUByte) //SDL2 re-trigger events when holding the key for some time
-            keycodeToEvent
-            .andThen(key =>
-              Input.newEvent(Input.KeyDownEvent(key)))
-            .applyOrElse(keyEvent.keycode,
-                         (keycode: SDL_Keycode) => logger.debug("ignoring event with keycode: " + keycode))
-        case SDL_KEYUP =>
+  def handleEvent(event: Ptr[SDL_Event]): Unit = {
+    event.type_ match {
+      case SDL_KEYDOWN =>
+        val keyEvent = event.key
+        if(keyEvent.repeat == 0.toUByte) //SDL2 re-trigger events when holding the key for some time
           keycodeToEvent
           .andThen(key =>
-            Input.newEvent(Input.KeyUpEvent(key)))
-          .applyOrElse(event.key.keycode,
+            Input.newEvent(Input.KeyDownEvent(key)))
+          .applyOrElse(keyEvent.keycode,
                        (keycode: SDL_Keycode) => logger.debug("ignoring event with keycode: " + keycode))
+      case SDL_KEYUP =>
+        keycodeToEvent
+        .andThen(key =>
+          Input.newEvent(Input.KeyUpEvent(key)))
+        .applyOrElse(event.key.keycode,
+                     (keycode: SDL_Keycode) => logger.debug("ignoring event with keycode: " + keycode))
 
-        case SDL_MOUSEBUTTONDOWN =>
-          //TODO: check 'which' field to ignore TOUCH events
-          val mouseButtonEvent = event.button
-          buttonToMouseButton(mouseButtonEvent.button).foreach(mb =>
-            Input.newEvent(Input.MouseDownEvent(mouseButtonEvent.x, mouseButtonEvent.y, mb))
-          )
+      case SDL_MOUSEBUTTONDOWN =>
+        //TODO: check 'which' field to ignore TOUCH events
+        val mouseButtonEvent = event.button
+        buttonToMouseButton(mouseButtonEvent.button).foreach(mb =>
+          Input.newEvent(Input.MouseDownEvent(mouseButtonEvent.x, mouseButtonEvent.y, mb))
+        )
 
-        case SDL_MOUSEBUTTONUP =>
-          //TODO: check 'which' field to ignore TOUCH events
-          val mouseButtonEvent = event.button
-          buttonToMouseButton(mouseButtonEvent.button).foreach(mb =>
-            Input.newEvent(Input.MouseUpEvent(mouseButtonEvent.x, mouseButtonEvent.y, mb))
-          )
+      case SDL_MOUSEBUTTONUP =>
+        //TODO: check 'which' field to ignore TOUCH events
+        val mouseButtonEvent = event.button
+        buttonToMouseButton(mouseButtonEvent.button).foreach(mb =>
+          Input.newEvent(Input.MouseUpEvent(mouseButtonEvent.x, mouseButtonEvent.y, mb))
+        )
 
-        case SDL_MOUSEMOTION =>
-          val motionEvent = event.motion
-          Input.newEvent(Input.MouseMovedEvent(motionEvent.x, motionEvent.y))
+      case SDL_MOUSEMOTION =>
+        val motionEvent = event.motion
+        Input.newEvent(Input.MouseMovedEvent(motionEvent.x, motionEvent.y))
 
-        case _ =>
-          ()
-      }
+      case _ =>
+        ()
     }
   }
 

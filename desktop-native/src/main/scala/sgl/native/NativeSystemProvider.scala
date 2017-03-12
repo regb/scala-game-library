@@ -36,15 +36,15 @@ trait NativeSystemProvider extends SystemProvider {
 
   object NativeSystem extends System {
 
-    //TODO: can I also extend AnyVal ?
     case class StringPath(path: String) extends AbstractResourcePath {
-      override def /(filename: String): ResourcePath = path + "/" + filename
+      override def /(filename: String): ResourcePath = StringPath(path + "/" + filename)
     }
-    type ResourcePath = String
-    val ResourcesPrefix: ResourcePath = "resources"
+    type ResourcePath = StringPath
+    val ResourcesPrefix: ResourcePath = StringPath("assets")
   }
   val System = NativeSystem
-  override implicit def wrapResourcePath(resourcePath: System.ResourcePath) = System.StringPath(resourcePath)
+
+  //override implicit def wrapResourcePath(resourcePath: System.ResourcePath) = System.StringPath(resourcePath)
 
   //Centralize the execution context used for asynchronous tasks in the Desktop backend
   //Could be overriden at wiring time

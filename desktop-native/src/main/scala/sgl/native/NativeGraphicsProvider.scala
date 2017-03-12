@@ -16,7 +16,6 @@ trait NativeGraphicsProvider extends GraphicsProvider {
 
     override def loadImage(path: System.ResourcePath): Loader[Bitmap] = {
       //val path = c"/home/reg/vcs/games/sgl/examples/test/native/src/main/resources/drawable/character.png"
-      //val surface = SDL_LoadBMP(path)
       val surface = IMG_Load(toCString(path.path))
       val texture = SDL_CreateTextureFromSurface(renderer, surface)
       SDL_FreeSurface(surface)
@@ -80,7 +79,10 @@ trait NativeGraphicsProvider extends GraphicsProvider {
   type Paint = NativePaint
   override def defaultPaint: Paint = NativePaint(Font.Default, Color.Black, Alignments.Left)
 
-  case class NativeCanvas(var renderer: Ptr[SDL_Renderer], var width: Int, var height: Int) extends AbstractCanvas {
+  case class NativeCanvas(var renderer: Ptr[SDL_Renderer]) extends AbstractCanvas {
+
+    override val width: Int = 0
+    override val height: Int = 0
 
     override def withSave[A](body: => A): A = {
       ???
@@ -160,12 +162,8 @@ trait NativeGraphicsProvider extends GraphicsProvider {
 
   var renderer: Ptr[SDL_Renderer] = _
 
-  def getScreenCanvas: Canvas = {
-    NativeCanvas(renderer, 500, 500)
-  }
-  def releaseScreenCanvas(canvas: Canvas): Unit = {
-    SDL_RenderPresent(canvas.renderer)
-  }
+  def getScreenCanvas: Canvas = ???
+  def releaseScreenCanvas(canvas: Canvas): Unit = ???
 
   type TextLayout = NativeTextLayout
   case class NativeTextLayout(text: String, width: Int, paint: Paint) extends AbstractTextLayout {
