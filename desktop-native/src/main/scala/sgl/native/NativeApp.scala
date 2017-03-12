@@ -17,6 +17,7 @@ trait NativeApp extends GameApp
 
   this: LoggingProvider =>
 
+  private implicit val LogTag = Logger.Tag("native.main")
 
   /** Initial position of the window
     *
@@ -26,10 +27,8 @@ trait NativeApp extends GameApp
   val WindowInitialPosition: Option[(Int, Int)] = None
 
   def main(args: Array[String]): Unit = {
-    println("Hello SGL Native")
-
     if(SDL_Init(SDL_INIT_VIDEO) != 0) {
-      println("Failed to init SDL: " + SDL_GetError())
+      logger.error("Failed to init SDL: " + fromCString(SDL_GetError()))
       sys.exit()
     }
 
@@ -37,14 +36,14 @@ trait NativeApp extends GameApp
 
     val window = SDL_CreateWindow(c"Default App", x, y, frameDimension._1, frameDimension._2, SDL_WINDOW_SHOWN)
     if(window == null) {
-      println("Failed to create a window: " + SDL_GetError())
+      logger.error("Failed to create a window: " + fromCString(SDL_GetError()))
       SDL_Quit()
       sys.exit()
     }
 
     val imgFlags = IMG_INIT_PNG
     if(IMG_Init(imgFlags) != imgFlags) {
-      println("Failed to initialize SDL_image: " + IMG_GetError())
+      logger.error("Failed to initialize SDL_image: " + IMG_GetError())
       SDL_DestroyWindow(window)
       SDL_Quit()
       sys.exit()
@@ -52,7 +51,7 @@ trait NativeApp extends GameApp
 
     this.renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC)
     if(this.renderer == null) {
-      println("Failed to create a renderer: " + SDL_GetError())
+      logger.error("Failed to create a renderer: " + fromCString(SDL_GetError()))
       SDL_DestroyWindow(window)
       SDL_Quit()
       sys.exit()

@@ -6,6 +6,8 @@ import java.awt.Desktop
 
 import scala.concurrent.ExecutionContext
 
+import scala.language.implicitConversions
+
 trait NativeSystemProvider extends SystemProvider {
 
   override def exit(): Unit = {
@@ -34,16 +36,15 @@ trait NativeSystemProvider extends SystemProvider {
 
   object NativeSystem extends System {
 
+    //TODO: can I also extend AnyVal ?
     case class StringPath(path: String) extends AbstractResourcePath {
-      //We don't use java.io.File.separator for the "/" separator, as
-      //resource path must always use "/", even on Windows
-      override def / (filename: String): ResourcePath =
-        if(this == ResourcesPrefix) StringPath(filename) else StringPath(path + "/" + filename)
+      override def /(filename: String): ResourcePath = path + "/" + filename
     }
-    type ResourcePath = StringPath
-    val ResourcesPrefix: ResourcePath = StringPath("")
+    type ResourcePath = String
+    val ResourcesPrefix: ResourcePath = "resources"
   }
   val System = NativeSystem
+  override implicit def wrapResourcePath(resourcePath: System.ResourcePath) = System.StringPath(resourcePath)
 
   //Centralize the execution context used for asynchronous tasks in the Desktop backend
   //Could be overriden at wiring time

@@ -2,6 +2,8 @@ package sgl
 
 import scala.util._
 
+import scala.language.implicitConversions
+
 trait SystemProvider {
 
   /** Exit the game, returning to the system
@@ -94,7 +96,8 @@ trait SystemProvider {
       * provide a way to list content of directory. There is also no delete operation.
       * All these kind of operations seem unnecessary.
       */
-    type ResourcePath <: AbstractResourcePath
+    type ResourcePath// <: AbstractResourcePath
+    //TODO: how to allow ResourcePath to be = String while still providing the '/' method ?
 
     //indeed, ResourcePath without a 's' as this is the path to ONE resource. But
     //the root prefix is ResourcesPrefix, as it is the prefix of ALL resources.
@@ -102,5 +105,7 @@ trait SystemProvider {
 
   }
   val System: System
+
+  implicit def wrapResourcePath(resourcePath: System.ResourcePath): System.AbstractResourcePath
 
 }

@@ -15,9 +15,9 @@ trait NativeGraphicsProvider extends GraphicsProvider {
   object NativeGraphics extends Graphics {
 
     override def loadImage(path: System.ResourcePath): Loader[Bitmap] = {
-      val path = c"/home/reg/vcs/games/sgl/examples/test/native/src/main/resources/drawable/character.png"
+      //val path = c"/home/reg/vcs/games/sgl/examples/test/native/src/main/resources/drawable/character.png"
       //val surface = SDL_LoadBMP(path)
-      val surface = IMG_Load(path)
+      val surface = IMG_Load(toCString(path.path))
       val texture = SDL_CreateTextureFromSurface(renderer, surface)
       SDL_FreeSurface(surface)
       val w: Ptr[CInt] = stackalloc[CInt]
