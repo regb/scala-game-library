@@ -5,6 +5,15 @@ import scalanative.native._
 
 object Extras {
   import SDL2._
+ 
+  /***************************************
+   ************ SDL_stdinc.h *************
+   ***************************************/
+
+  /* Start SDL_bool */
+  val SDL_FALSE = 0.toUInt
+  val SDL_TRUE  = 1.toUInt
+  /* End SDL_bool */
 
   /**************************************
    ************ SDL_events.h ************
@@ -832,6 +841,49 @@ object Extras {
   val SDL_BUTTON_X1MASK: UInt = SDL_BUTTON(SDL_BUTTON_X1)
   val SDL_BUTTON_X2MASK: UInt = SDL_BUTTON(SDL_BUTTON_X2)
 
+  /**************************************
+   ************* SDL_rect.h *************
+   **************************************/
+
+  implicit class SDL_PointOps(val self: Ptr[SDL_Point]) extends AnyVal {
+    def init(x: CInt, y: CInt): Ptr[SDL_Point] = {
+      !(self._1) = x
+      !(self._2) = y
+      self
+    }
+
+    def x: CInt = !(self._1)
+    def x_(nx: CInt): Unit = { !(self._1) = nx }
+    def y: CInt = !(self._2)
+    def y_(ny: CInt): Unit = { !(self._2) = ny }
+  }
+  implicit class SDL_RectOps(val self: Ptr[SDL_Rect]) extends AnyVal {
+    def init(x: CInt, y: CInt, w: CInt, h: CInt): Ptr[SDL_Rect] = {
+      !(self._1) = x
+      !(self._2) = y
+      !(self._3) = w
+      !(self._4) = h
+      self
+    }
+
+    def x: CInt = !(self._1)
+    def x_(nx: CInt): Unit = { !(self._1) = nx }
+    def y: CInt = !(self._2)
+    def y_(ny: CInt): Unit = { !(self._2) = ny }
+    def w: CInt = !(self._3)
+    def w_=(nw: CInt): Unit = { !(self._3) = nw }
+    def h: CInt = !(self._4)
+    def h_=(nh: CInt): Unit = { !(self._4) = nh }
+  }
+
+  def SDL_RectEmpty(r: Ptr[SDL_Rect]): SDL_bool =
+    if(r == null || r.w <= 0 || r.h <= 0) SDL_TRUE else SDL_FALSE
+
+  def SDL_RectEquals(a: Ptr[SDL_Rect], b: Ptr[SDL_Rect]): SDL_bool =
+    if(a != null && b != null && a.x == b.x && a.y == b.y &&
+       a.w == b.w && a.h == b.h) SDL_TRUE else SDL_FALSE
+
+
   /***************************************
    ************ SDL_render.h *************
    ***************************************/
@@ -869,15 +921,6 @@ object Extras {
   val SDL_FLIP_HORIZONTAL = 0x00000001.toUInt
   val SDL_FLIP_VERTICAL = 0x00000002.toUInt
   /* End SDL_RendererFlip */
- 
-  /***************************************
-   ************ SDL_stdinc.h *************
-   ***************************************/
-
-  /* Start SDL_bool */
-  val SDL_FALSE = 0.toUInt
-  val SDL_TRUE  = 1.toUInt
-  /* End SDL_bool */
 
   /**************************************
    *********** SDL_version.h ************
@@ -892,6 +935,8 @@ object Extras {
     def patch_=(v: UByte): Unit = { !(self._3) = v }
   }
 
+  //TODO: these should use some @extern annotation (is that @name?)
+  //      because their definitions varies from installation to installation
   val SDL_MAJOR_VERSION: UByte = 2.toUByte
   val SDL_MINOR_VERSION: UByte = 0.toUByte
   val SDL_PATCHLEVEL: UByte = 4.toUByte
@@ -993,21 +1038,6 @@ object Extras {
 
   /*** Other ***/
 
-
-  implicit class SDL_RectOps(val self: Ptr[SDL_Rect]) extends AnyVal {
-    def init(x: Int, y: Int, w: Int, h: Int): Ptr[SDL_Rect] = {
-      !(self._1) = x
-      !(self._2) = y
-      !(self._3) = w
-      !(self._4) = h
-      self
-    }
-
-    def x: CInt = !(self._1)
-    def y: CInt = !(self._2)
-    def w: CInt = !(self._3)
-    def h: CInt = !(self._4)
-  }
 
   def SDL_LoadBMP(file: CString): Ptr[SDL_Surface] =
     SDL_LoadBMP_RW(SDL_RWFromFile(file, c"rb"), 1)

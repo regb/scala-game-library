@@ -27,8 +27,6 @@ object SDL2 {
   type _56   = Nat.Digit[Nat._5, Nat._6]
   type _64   = Nat.Digit[Nat._6, Nat._4]
 
-  type SDL_Rect = CStruct4[CInt, CInt, CInt, CInt]
-
   def SDL_RenderClear(renderer: Ptr[SDL_Renderer]): Unit = extern
   def SDL_SetRenderDrawColor(renderer: Ptr[SDL_Renderer],
                              r: UByte, g: UByte, b: UByte, a: UByte): Unit = extern
@@ -191,6 +189,21 @@ object SDL2 {
   def SDL_GetDefaultCursor(): Ptr[SDL_Cursor] = extern 
   def SDL_FreeCursor(cursor: Ptr[SDL_Cursor]): Unit = extern 
   def SDL_ShowCursor(toggle: CInt): CInt = extern 
+
+
+  /**************************************
+   ************* SDL_rect.h *************
+   **************************************/
+
+  type SDL_Point = CStruct2[CInt, CInt]
+  type SDL_Rect = CStruct4[CInt, CInt, CInt, CInt]
+
+  def SDL_HasIntersection(A: Ptr[SDL_Rect], B: Ptr[SDL_Rect]): SDL_bool = extern
+  def SDL_IntersectRect(A: Ptr[SDL_Rect], B: Ptr[SDL_Rect], result: Ptr[SDL_Rect]): SDL_bool = extern
+  def SDL_UnionRect(A: Ptr[SDL_Rect], B: Ptr[SDL_Rect], result: Ptr[SDL_Rect]): SDL_bool = extern
+  def SDL_EnclosePoints(points: Ptr[SDL_Point], count: CInt, clip: Ptr[SDL_Rect], result: Ptr[SDL_Rect]): SDL_bool = extern
+  def SDL_IntersectRectAndLine(rect: Ptr[SDL_Point],
+    x1: Ptr[CInt], y1: Ptr[CInt], x2: Ptr[CInt], y2: Ptr[CInt]): SDL_bool = extern
 
   /**************************************
    ************ SDL_render.h *************
