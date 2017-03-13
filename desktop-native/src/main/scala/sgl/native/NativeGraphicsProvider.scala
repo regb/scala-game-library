@@ -5,9 +5,9 @@ import sgl.util._
 
 import scalanative.native._
 
-import sdl2.SDL2._
+import sdl2.SDL._
 import sdl2.Extras._
-import sdl2.image.SDL2_image._
+import sdl2.image.SDL_image._
 
 trait NativeGraphicsProvider extends GraphicsProvider {
   this: NativeSystemProvider =>

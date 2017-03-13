@@ -4,16 +4,16 @@ package image
 
 import scalanative.native._
 
-import SDL2._
+import SDL._
 import sdl2.Extras._
 
 /*
  * We follow SDL naming convention, because we want to provide the
- * closest possible interface to the original library.
+ * closest possible interface to the C API.
  */
 @extern
 @link("SDL2_image")
-object SDL2_image {
+object SDL_image {
 
   def IMG_Linked_Version(): Ptr[SDL_version] = extern
 

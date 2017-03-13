@@ -10,14 +10,14 @@ import scalanative.native._
  * It would be nicer to decompose these extern functions
  * into one object per component, but it would then become
  * annoying to import. With this design, clients can simply
- * import SDL2._, which is pretty much equivalent to #include <SDL2>
- * from the official documentation. The only additional import
- * is SDL2Extras._, needed to provide all macros and proper methods.
- * 
+ * import sdl2.SDL._, which is pretty much equivalent to #include <SDL.h>
+ * for the C API. The only additional import
+ * is sdl2.Extras._, needed to provide all macros and proper methods/fields
+ * to structures.
  */
 @extern
 @link("SDL2")
-object SDL2 {
+object SDL {
 
   def SDL_Delay(ms: UInt): Unit = extern
 

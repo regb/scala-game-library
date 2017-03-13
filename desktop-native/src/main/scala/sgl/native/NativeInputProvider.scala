@@ -5,7 +5,7 @@ import sgl.util._
 
 import scalanative.native._
 
-import sdl2.SDL2._
+import sdl2.SDL._
 import sdl2.Extras._
 
 trait NativeInputProvider extends InputProvider {

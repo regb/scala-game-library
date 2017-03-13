@@ -2,9 +2,10 @@ package sgl.native
 package sdl2
 
 import scalanative.native._
+  
+import SDL._
 
 object Extras {
-  import SDL2._
 
   /*
    * Definitions are ordered according to dependencies among the
