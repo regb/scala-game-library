@@ -59,6 +59,9 @@ trait NativeApp extends GameApp
       sys.exit()
     }
 
+    //TODO: try logical size
+    //SDL_RenderSetLogicalSize(renderer, 300, 300)
+
     this.startup()
     this.resume()
 

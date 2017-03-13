@@ -10,6 +10,18 @@ object Extras {
    * Definitions are ordered according to dependencies among the
    * header files.
    */
+
+  /**************************************
+   ********** SDL_blendmode.h ***********
+   **************************************/
+
+  /* Start enum SDL_BlendMode */
+  val SDL_BLENDMODE_NONE: UInt = 0x00000000.toUInt
+  val SDL_BLENDMODE_BLEND: UInt = 0x00000001.toUInt
+  val SDL_BLENDMODE_ADD: UInt = 0x00000002.toUInt
+  val SDL_BLENDMODE_MOD: UInt = 0x00000004.toUInt
+  /* End enum SDL_BlendMode */
+
  
   /***************************************
    ************ SDL_stdinc.h *************

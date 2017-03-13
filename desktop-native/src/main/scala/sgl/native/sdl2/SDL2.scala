@@ -28,13 +28,6 @@ object SDL2 {
   type _56   = Nat.Digit[Nat._5, Nat._6]
   type _64   = Nat.Digit[Nat._6, Nat._4]
 
-  def SDL_RenderClear(renderer: Ptr[SDL_Renderer]): Unit = extern
-  def SDL_SetRenderDrawColor(renderer: Ptr[SDL_Renderer],
-                             r: UByte, g: UByte, b: UByte, a: UByte): Unit = extern
-  def SDL_RenderFillRect(renderer: Ptr[SDL_Renderer], rect: Ptr[SDL_Rect]): Unit = extern
-  def SDL_RenderCopy(renderer: Ptr[SDL_Renderer], texture: Ptr[SDL_Texture], 
-                     srcrect: Ptr[SDL_Rect], destrect: Ptr[SDL_Rect]): Unit = extern
-  def SDL_RenderPresent(renderer: Ptr[SDL_Renderer]): Unit = extern
 
   type SDL_RWops = CStruct0
 
@@ -45,6 +38,12 @@ object SDL2 {
 
   def SDL_LoadBMP_RW(src: Ptr[SDL_RWops], freesrc: CInt): Ptr[SDL_Surface] = extern
   def SDL_FreeSurface(surface: Ptr[SDL_Surface]): Unit = extern
+
+  /**************************************
+   ********** SDL_blendmode.h ***********
+   **************************************/
+
+  type SDL_BlendMode = UInt
 
 
   /**************************************
@@ -246,32 +245,115 @@ object SDL2 {
    ************ SDL_render.h *************
    **************************************/
 
+  type SDL_RendererFlags = UInt
+
   type SDL_RendererInfo = CStruct6[CString, UInt, UInt, CArray[UInt, _16], CInt, CInt]
+
+  type SDL_TextureAccess = UInt
+  type SDL_TextureModulate = UInt
+  type SDL_RendererFlip = UInt
+
   type SDL_Renderer = CStruct0
   type SDL_Texture = CStruct0
 
   def SDL_GetNumRenderDriver(): CInt = extern
   def SDL_GetRenderDriverInfo(index: CInt, info: Ptr[SDL_RendererInfo]): CInt = extern
+
   def SDL_CreateWindowAndRenderer(
     width: CInt, height: CInt, flags: UInt,
     window: Ptr[Ptr[SDL_Window]], renderer: Ptr[Ptr[SDL_Renderer]]
   ): CInt = extern
-  def SDL_CreateRenderer(win: Ptr[SDL_Window], index: CInt, flags: UInt): Ptr[SDL_Renderer] = extern
-
-
+  def SDL_CreateRenderer(window: Ptr[SDL_Window], index: CInt, flags: UInt): Ptr[SDL_Renderer] = extern
+  def SDL_CreateSoftwareRenderer(surface: Ptr[SDL_Surface]): Ptr[SDL_Renderer] = extern
+  def SDL_GetRenderer(window: Ptr[SDL_Window]): Ptr[SDL_Renderer] = extern
+  def SDL_GetRendererInfo(renderer: Ptr[SDL_Renderer], info: Ptr[SDL_RendererInfo]): CInt = extern
+  def SDL_GetRendererOutputSize(renderer: Ptr[SDL_Renderer],
+        w: Ptr[CInt], h: Ptr[CInt]): CInt = extern
 
   def SDL_CreateTexture(renderer: Ptr[SDL_Renderer],
                         format: UInt, access: CInt,
                         w: Int, h: Int): Ptr[SDL_Texture] = extern
-
-  def SDL_QueryTexture(texture: Ptr[SDL_Texture], 
-                       format: Ptr[UInt], access: Ptr[CInt], w: Ptr[CInt], h: Ptr[CInt]): CInt = extern
-
   def SDL_CreateTextureFromSurface(renderer: Ptr[SDL_Renderer], surface: Ptr[SDL_Surface]): Ptr[SDL_Texture] = extern
+  def SDL_QueryTexture(texture: Ptr[SDL_Texture], format: Ptr[UInt], 
+        access: Ptr[CInt], w: Ptr[CInt], h: Ptr[CInt]): CInt = extern
 
+  def SDL_SetTextureColorMod(texture: Ptr[SDL_Texture],
+                             r: UByte, g: UByte, b: UByte): CInt = extern
+  def SDL_GetTextureColorMod(texture: Ptr[SDL_Texture],
+                             r: Ptr[UByte], g: Ptr[UByte], b: Ptr[UByte]): CInt = extern
+  def SDL_SetTextureAlphaMod(texture: Ptr[SDL_Texture], alpha: UByte): CInt = extern
+  def SDL_GetTextureAlphaMod(texture: Ptr[SDL_Texture], alpha: Ptr[UByte]): CInt = extern
+  def SDL_SetTextureBlendMod(texture: Ptr[SDL_Texture], blendMode: SDL_BlendMode): CInt = extern
+  def SDL_GetTextureBlendMod(texture: Ptr[SDL_Texture], blendMode: Ptr[SDL_BlendMode]): CInt = extern
+
+  def SDL_UpdateTexture(texture: Ptr[SDL_Texture], rect: Ptr[SDL_Rect],
+                        pixels: Ptr[Byte], pictch: CInt): CInt = extern
+  def SDL_UpdateYUVTexture(
+        texture: Ptr[SDL_Texture], rect: Ptr[SDL_Rect],
+        Yplane: Ptr[UByte], Ypitch: Ptr[UByte],
+        Uplane: Ptr[UByte], Upitch: Ptr[UByte],
+        Vplane: Ptr[UByte], Vpitch: Ptr[UByte]): CInt = extern
+
+  def SDL_LockTexture(texture: Ptr[SDL_Texture], rect: Ptr[SDL_Rect],
+                      pixels: Ptr[Ptr[Byte]], pitch: Ptr[CInt]): CInt = extern
+  def SDL_UnlockTexture(texture: Ptr[SDL_Texture]): Unit = extern
+
+  def SDL_RenderTargetSupported(renderer: Ptr[SDL_Renderer]): SDL_bool = extern
+  def SDL_SetRenderTarget(renderer: Ptr[SDL_Renderer], texture: Ptr[SDL_Texture]): CInt = extern
+  def SDL_GetRenderTarget(renderer: Ptr[SDL_Renderer]): Ptr[SDL_Texture] = extern
+
+  def SDL_RenderSetLogicalSize(renderer: Ptr[SDL_Renderer],
+        w: CInt, h: CInt): CInt = extern
+  def SDL_RenderGetLogicalSize(renderer: Ptr[SDL_Renderer],
+        w: Ptr[CInt], h: Ptr[CInt]): Unit = extern
+  def SDL_RenderSetViewport(renderer: Ptr[SDL_Renderer], rect: Ptr[SDL_Rect]): CInt = extern
+  def SDL_RenderGetViewport(renderer: Ptr[SDL_Renderer], rect: Ptr[SDL_Rect]): Unit = extern
+
+  def SDL_RenderSetClipRect(renderer: Ptr[SDL_Renderer], rect: Ptr[SDL_Rect]): CInt = extern
+  def SDL_RenderGetClipRect(renderer: Ptr[SDL_Renderer], rect: Ptr[SDL_Rect]): Unit = extern
+  def SDL_RenderSetScale(renderer: Ptr[SDL_Renderer],
+        scaleX: CFloat, scaleY: CFloat): CInt = extern
+  def SDL_RenderGetScale(renderer: Ptr[SDL_Renderer],
+        scaleX: Ptr[CFloat], scaleY: Ptr[CFloat]): CInt = extern
+
+  def SDL_SetRenderDrawColor(renderer: Ptr[SDL_Renderer],
+            r: UByte, g: UByte, b: UByte, a: UByte): CInt = extern
+  def SDL_GetRenderDrawColor(renderer: Ptr[SDL_Renderer],
+            r: Ptr[UByte], g: Ptr[UByte], b: Ptr[UByte], a: Ptr[UByte]): CInt = extern
+
+  def SDL_SetRenderDrawBlendMode(renderer: Ptr[SDL_Renderer], blendMode: SDL_BlendMode): CInt = extern
+  def SDL_GetRenderDrawBlendMode(renderer: Ptr[SDL_Renderer], blendMode: Ptr[SDL_BlendMode]): CInt = extern
+
+  def SDL_RenderClear(renderer: Ptr[SDL_Renderer]): CInt = extern
+
+  def SDL_RenderDrawPoint(renderer: Ptr[SDL_Renderer], x: CInt, y: CInt): CInt = extern
+  def SDL_RenderDrawPoints(renderer: Ptr[SDL_Renderer], points: Ptr[SDL_Point], count: CInt): CInt = extern
+  def SDL_RenderDrawLine(renderer: Ptr[SDL_Renderer],
+        x1: CInt, y1: CInt, x2: CInt, y2: CInt): CInt = extern
+  def SDL_RenderDrawLines(renderer: Ptr[SDL_Renderer], points: Ptr[SDL_Point], count: CInt): CInt = extern
+
+  def SDL_RenderDrawRect(renderer: Ptr[SDL_Renderer], rect: Ptr[SDL_Rect]): CInt = extern
+  def SDL_RenderDrawRects(renderer: Ptr[SDL_Renderer], rects: Ptr[SDL_Rect], count: CInt): CInt = extern
+  def SDL_RenderFillRect(renderer: Ptr[SDL_Renderer], rect: Ptr[SDL_Rect]): CInt = extern
+  def SDL_RenderFillRects(renderer: Ptr[SDL_Renderer], rects: Ptr[SDL_Rect], count: CInt): CInt = extern
+
+  def SDL_RenderCopy(renderer: Ptr[SDL_Renderer], texture: Ptr[SDL_Texture], 
+                     srcrect: Ptr[SDL_Rect], destrect: Ptr[SDL_Rect]): CInt = extern
+  def SDL_RenderCopyEx(
+        renderer: Ptr[SDL_Renderer], texture: Ptr[SDL_Texture], 
+        srcrect: Ptr[SDL_Rect], destrect: Ptr[SDL_Rect], angle: CDouble,
+        center: Ptr[SDL_Point], flip: SDL_RendererFlip): CInt = extern
+
+  def SDL_RenderReadPixels(renderer: Ptr[SDL_Renderer], rect: Ptr[SDL_Rect],
+    format: UInt, pixels: Ptr[Byte], pitch: CInt): CInt = extern
+
+  def SDL_RenderPresent(renderer: Ptr[SDL_Renderer]): Unit = extern
 
   def SDL_DestroyTexture(texture: Ptr[SDL_Texture]): Unit = extern
   def SDL_DestroyRenderer(renderer: Ptr[SDL_Renderer]): Unit = extern
+
+  def SDL_GL_BindTexture(texture: Ptr[SDL_Texture], texw: Ptr[CFloat], texh: Ptr[CFloat]): CInt = extern
+  def SDL_GL_UnbindTexture(texture: Ptr[SDL_Texture]): CInt = extern
 
   /**************************************
    *********** SDL_scancode.h ***********
