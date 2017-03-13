@@ -43,6 +43,37 @@ object Extras {
   val SDL_TRUE  = 1.toUInt
   /* End SDL_bool */
 
+  /**************************************
+   ************ SDL_error.h *************
+   **************************************/
+
+  /* Start enum SDL_errorcode */
+  val SDL_ENOMEM: UInt = 0.toUInt
+  val SDL_EFREAD: UInt = 1.toUInt
+  val SDL_EFWRITE: UInt = 2.toUInt
+  val SDL_EFSEEK: UInt = 3.toUInt
+  val SDL_UNSUPPORTED: UInt = 4.toUInt
+  val SDL_LASTERROR: UInt = 5.toUInt
+  /* End enum SDL_errorcode */
+
+  def SDL_OutOfMemory(): CInt = SDL_Error(SDL_ENOMEM)
+  def SDL_Unsupported(): CInt = SDL_Error(SDL_UNSUPPORTED)
+  def SDL_InvalidParamError(param: CString): CInt = SDL_SetError(c"Parameter '%s' is invalid", param)
+
+  /**************************************
+   ************ SDL_rwops.h *************
+   **************************************/
+
+  val SDL_RWOPS_UNKNOWN: UByte = 0.toUByte
+  val SDL_RWOPS_WINFILE: UByte = 1.toUByte
+  val SDL_RWOPS_STDFILE: UByte = 2.toUByte
+  val SDL_RWOPS_JNIFILE: UByte = 3.toUByte
+  val SDL_RWOPS_MEMORY: UByte = 4.toUByte
+  val SDL_RWOPS_MEMORY_RO: UByte = 5.toUByte
+  
+  /*
+   * TODO: to complete
+   */
 
   /***************************************
    ************ SDL_pixels.h *************
@@ -356,9 +387,9 @@ object Extras {
     def padding3: UByte = !(self._7)
 
     //TODO: trigger unreachable exception with NirNameEncoding.printGlobal in scala-native
-    //def keysym: SDL_Keysym = !(self._8)
+    def keysym: Ptr[SDL_Keysym] = self._8
 
-    def keycode: SDL_Keycode = !(self._8._2)
+    //def keycode: SDL_Keycode = !(self._8._2)
   }
 
   val SDL_TEXTEDITINGEVENT_TEXT_SIZE = 32
@@ -1035,6 +1066,17 @@ object Extras {
   val KMOD_ALT = KMOD_LALT | KMOD_RALT
   val KMOD_GUI = KMOD_LGUI | KMOD_RGUI
 
+  /***************************************
+   *********** SDL_keyboard.h ************
+   ***************************************/
+
+  implicit class SDL_KeysymOps(val self: Ptr[SDL_Keysym]) extends AnyVal {
+    def scancode: SDL_Scancode = !(self._1)
+    def sym: SDL_Keycode = !(self._2)
+    def mod: UShort = !(self._3)
+    def unused: UInt = !(self._4)
+  }
+  
 
   /**************************************
    ************ SDL_mouse.h *************
@@ -1115,6 +1157,32 @@ object Extras {
     if(a != null && b != null && a.x == b.x && a.y == b.y &&
        a.w == b.w && a.h == b.h) SDL_TRUE else SDL_FALSE
 
+
+  /**************************************
+   *********** SDL_surface.h ************
+   **************************************/
+
+  val SDL_SWSURFACE: UInt = 0.toUInt
+  val SDL_PREALLOC: UInt = 0x00000001.toUInt
+  val SDL_RLEACCEL: UInt = 0x00000002.toUInt
+  val SDL_DONTFREE: UInt = 0x00000004.toUInt
+
+  def SDL_MUSTLOCK(s: Ptr[SDL_Surface]): Boolean =
+    (s.flags & SDL_RLEACCEL) != 0.toUInt
+
+  implicit class SDL_SurfaceOps(val self: Ptr[SDL_Surface]) extends AnyVal {
+    def flags: UInt = !(self._1)
+    def format: Ptr[SDL_PixelFormat] = !(self._2)
+    def w: CInt = !(self._3)
+    def h: CInt = !(self._4)
+    def pitch: CInt = !(self._5)
+    def pixels: Ptr[Byte] = !(self._6)
+    def userdata: Ptr[Byte] = !(self._7)
+    def locked: CInt = !(self._8)
+    def lock_data: Ptr[Byte] = !(self._9)
+    def clip_rect: Ptr[SDL_Rect] = self._10
+    def refcount: CInt = !(self._12)
+  }
 
   /***************************************
    ************ SDL_render.h *************

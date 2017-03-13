@@ -29,16 +29,6 @@ object SDL2 {
   type _64   = Nat.Digit[Nat._6, Nat._4]
 
 
-  type SDL_RWops = CStruct0
-
-  def SDL_RWFromFile(file: CString, mode: CString): Ptr[SDL_RWops] = extern
-
-  //TODO: this is an actual struct, so we need to define each field
-  type SDL_Surface = CStruct0
-
-  def SDL_LoadBMP_RW(src: Ptr[SDL_RWops], freesrc: CInt): Ptr[SDL_Surface] = extern
-  def SDL_FreeSurface(surface: Ptr[SDL_Surface]): Unit = extern
-
   /**************************************
    ********** SDL_blendmode.h ***********
    **************************************/
@@ -53,6 +43,9 @@ object SDL2 {
   def SDL_SetError(fmt: CString, args: CVararg*): CInt = extern
   def SDL_GetError(): CString = extern
   def SDL_ClearError(): Unit = extern
+
+  type SDL_errorcode = UInt
+  def SDL_Error(code: SDL_errorcode): CInt = extern
 
   /**************************************
    ************ SDL_events.h ************
@@ -148,17 +141,39 @@ object SDL2 {
 
 
   /***************************************
-   *********** SDL_keyboard.h ************
-   ***************************************/
-
-  type SDL_Keysym   = CStruct4[SDL_Scancode, SDL_Keycode, UShort, UInt]
-
-  /***************************************
    *********** SDL_keycode.h *************
    ***************************************/
 
   type SDL_Keycode  = Int
   type SDL_Keymod = UInt
+
+  /***************************************
+   *********** SDL_keyboard.h ************
+   ***************************************/
+
+  type SDL_Keysym = CStruct4[SDL_Scancode, SDL_Keycode, UShort, UInt]
+
+  def SDL_GetKeyboardFocus(): Ptr[SDL_Window] = extern
+
+  def SDL_GetKeyboardState(numkeys: Ptr[CInt]): UByte = extern
+
+  def SDL_GetModState(): SDL_Keymod = extern
+  def SDL_SetModState(modstate: SDL_Keymod): Unit = extern
+
+  def SDL_GetKeyFromScancode(scancode: SDL_Scancode): SDL_Keycode = extern
+  def SDL_GetScancodeFromKey(key: SDL_Keycode): SDL_Scancode = extern
+  def SDL_GetScancodeName(scancode: SDL_Scancode): CString = extern
+  def SDL_GetScancodeFromName(name: CString): SDL_Scancode = extern
+  def SDL_GetKeyName(key: SDL_Keycode): CString = extern
+  def SDL_GetKeyFromName(name: CString): SDL_Keycode = extern
+
+  def SDL_StartTextInput(): Unit = extern
+  def SDL_IsTextInputActive(): SDL_bool = extern
+  def SDL_StopTextInput(): Unit = extern
+  def SDL_SetTextInputRect(rect: Ptr[SDL_Rect]): Unit = extern
+
+  def SDL_HasScreenKeyboardSupport(): SDL_bool = extern
+  def SDL_IsScreenKeyboardShown(window: Ptr[SDL_Window]): SDL_bool = extern
 
   /**************************************
    ************ SDL_mouse.h *************
@@ -240,6 +255,21 @@ object SDL2 {
   def SDL_EnclosePoints(points: Ptr[SDL_Point], count: CInt, clip: Ptr[SDL_Rect], result: Ptr[SDL_Rect]): SDL_bool = extern
   def SDL_IntersectRectAndLine(rect: Ptr[SDL_Point],
     x1: Ptr[CInt], y1: Ptr[CInt], x2: Ptr[CInt], y2: Ptr[CInt]): SDL_bool = extern
+
+  /**************************************
+   *********** SDL_surface.h ************
+   **************************************/
+
+  type SDL_BlitMap = CStruct0
+  type SDL_Surface = 
+    CStruct12[UInt, Ptr[SDL_PixelFormat], CInt, CInt, CInt, Ptr[Byte],
+              Ptr[Byte], CInt, Ptr[Byte], SDL_Rect, Ptr[SDL_BlitMap], CInt]
+
+
+
+
+  def SDL_LoadBMP_RW(src: Ptr[SDL_RWops], freesrc: CInt): Ptr[SDL_Surface] = extern
+  def SDL_FreeSurface(surface: Ptr[SDL_Surface]): Unit = extern
 
   /**************************************
    ************ SDL_render.h *************
@@ -354,6 +384,16 @@ object SDL2 {
 
   def SDL_GL_BindTexture(texture: Ptr[SDL_Texture], texw: Ptr[CFloat], texh: Ptr[CFloat]): CInt = extern
   def SDL_GL_UnbindTexture(texture: Ptr[SDL_Texture]): CInt = extern
+
+  /**************************************
+   ************ SDL_rwops.h *************
+   **************************************/
+
+  //TODO: exact structure
+  type SDL_RWops = CStruct0
+
+  def SDL_RWFromFile(file: CString, mode: CString): Ptr[SDL_RWops] = extern
+
 
   /**************************************
    *********** SDL_scancode.h ***********

@@ -23,13 +23,13 @@ trait NativeInputProvider extends InputProvider {
           keycodeToEvent
           .andThen(key =>
             Input.newEvent(Input.KeyDownEvent(key)))
-          .applyOrElse(keyEvent.keycode,
+          .applyOrElse(keyEvent.keysym.sym,
                        (keycode: SDL_Keycode) => logger.debug("ignoring event with keycode: " + keycode))
       case SDL_KEYUP =>
         keycodeToEvent
         .andThen(key =>
           Input.newEvent(Input.KeyUpEvent(key)))
-        .applyOrElse(event.key.keycode,
+        .applyOrElse(event.key.keysym.sym,
                      (keycode: SDL_Keycode) => logger.debug("ignoring event with keycode: " + keycode))
 
       case SDL_MOUSEBUTTONDOWN =>
