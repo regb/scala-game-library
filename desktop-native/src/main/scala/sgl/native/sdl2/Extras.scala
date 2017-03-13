@@ -5,15 +5,235 @@ import scalanative.native._
 
 object Extras {
   import SDL2._
+
+  /*
+   * Definitions are ordered according to dependencies among the
+   * header files.
+   */
  
   /***************************************
    ************ SDL_stdinc.h *************
    ***************************************/
 
+  //def SDL_reinterpret_cast[A,B](expression: A): B = expression.cast[B]
+  //def SDL_static_cast[A,B](expression: A): B = expression.cast[B]
+  //def SDL_const_cast[A,B](expression: A): B = expression.cast[B]
+
+/* Define a four character code as a Uint32 */
+  def SDL_FOURCC(a: CChar, b: CChar, c: CChar, d: CChar): UInt =
+    (a.toUByte << 0 ).toUInt |
+    (b.toUByte << 8 ).toUInt |
+    (c.toUByte << 16).toUInt |
+    (d.toUByte << 24).toUInt
+
   /* Start SDL_bool */
   val SDL_FALSE = 0.toUInt
   val SDL_TRUE  = 1.toUInt
   /* End SDL_bool */
+
+
+  /***************************************
+   ************ SDL_pixels.h *************
+   ***************************************/
+
+  val SDL_ALPHA_OPAQUE: UByte = 255.toUByte
+  val SDL_ALPHA_TRANSPARENT: UByte = 0.toUByte
+
+  val SDL_PIXELTYPE_UNKNOWN: UByte =  0.toUByte
+  val SDL_PIXELTYPE_INDEX1: UByte =   1.toUByte
+  val SDL_PIXELTYPE_INDEX4: UByte =   2.toUByte
+  val SDL_PIXELTYPE_INDEX8: UByte =   3.toUByte
+  val SDL_PIXELTYPE_PACKED8: UByte =  4.toUByte
+  val SDL_PIXELTYPE_PACKED16: UByte = 5.toUByte
+  val SDL_PIXELTYPE_PACKED32: UByte = 6.toUByte
+  val SDL_PIXELTYPE_ARRAYU8: UByte =  7.toUByte
+  val SDL_PIXELTYPE_ARRAYU16: UByte = 8.toUByte
+  val SDL_PIXELTYPE_ARRAYU32: UByte = 9.toUByte
+  val SDL_PIXELTYPE_ARRAYF16: UByte = 10.toUByte
+  val SDL_PIXELTYPE_ARRAYF32: UByte = 11.toUByte
+
+  val SDL_BITMAPORDER_NONE: UByte = 0.toUByte
+  val SDL_BITMAPORDER_4321: UByte = 1.toUByte
+  val SDL_BITMAPORDER_1234: UByte = 2.toUByte
+
+  val SDL_PACKEDORDER_NONE: UByte = 0.toUByte
+  val SDL_PACKEDORDER_XRGB: UByte = 1.toUByte
+  val SDL_PACKEDORDER_RGBX: UByte = 2.toUByte
+  val SDL_PACKEDORDER_ARGB: UByte = 3.toUByte
+  val SDL_PACKEDORDER_RGBA: UByte = 4.toUByte
+  val SDL_PACKEDORDER_XBGR: UByte = 5.toUByte
+  val SDL_PACKEDORDER_BGRX: UByte = 6.toUByte
+  val SDL_PACKEDORDER_ABGR: UByte = 7.toUByte
+  val SDL_PACKEDORDER_BGRA: UByte = 8.toUByte
+
+  val SDL_ARRAYORDER_NONE: UByte = 0.toUByte
+  val SDL_ARRAYORDER_RGB: UByte = 1.toUByte
+  val SDL_ARRAYORDER_RGBA: UByte = 2.toUByte
+  val SDL_ARRAYORDER_ARGB: UByte = 3.toUByte
+  val SDL_ARRAYORDER_BGR: UByte = 4.toUByte
+  val SDL_ARRAYORDER_BGRA: UByte = 5.toUByte
+  val SDL_ARRAYORDER_ABGR: UByte = 6.toUByte
+
+  val SDL_PACKEDLAYOUT_NONE: UByte = 0.toUByte
+  val SDL_PACKEDLAYOUT_332: UByte = 1.toUByte
+  val SDL_PACKEDLAYOUT_4444: UByte = 2.toUByte
+  val SDL_PACKEDLAYOUT_1555: UByte = 3.toUByte
+  val SDL_PACKEDLAYOUT_5551: UByte = 4.toUByte
+  val SDL_PACKEDLAYOUT_565: UByte = 5.toUByte
+  val SDL_PACKEDLAYOUT_8888: UByte = 6.toUByte
+  val SDL_PACKEDLAYOUT_2101010: UByte = 7.toUByte
+  val SDL_PACKEDLAYOUT_1010102: UByte = 8.toUByte
+
+  def SDL_DEFINE_PIXELFOURCC(a: CChar, b: CChar, c: CChar, d: CChar): UInt = SDL_FOURCC(a, b, c, d)
+
+  def SDL_DEFINE_PIXELFORMAT(type_ : UByte, order: UByte, layout: UByte, bits: UByte, bytes: UByte): UInt =
+    ((1 << 28).toUInt | (type_ << 24) | (order << 20) | (layout << 16) | (bits << 8) | (bytes << 0)).toUInt
+
+  def SDL_PIXELFLAG(format: UInt): UByte = ((format.toInt >> 28) & 0x0F).toUByte
+  def SDL_PIXELTYPE(format: UInt): UByte = ((format.toInt >> 24) & 0x0F).toUByte
+  def SDL_PIXELORDER(format: UInt): UByte = ((format.toInt >> 20) & 0x0F).toUByte
+  def SDL_PIXELLAYOUT(format: UInt): UByte = ((format.toInt >> 16) & 0x0F).toUByte
+  def SDL_BITSPERPIXEL(format: UInt): UByte = ((format.toInt >> 8) & 0xFF).toUByte
+  def SDL_BYTESPERPIXEL(format: UInt): UByte =
+    if(SDL_ISPIXELFORMAT_FOURCC(format)) {
+      if(format == SDL_PIXELFORMAT_YUY2 || format == SDL_PIXELFORMAT_UYVY || format == SDL_PIXELFORMAT_YVYU)
+        2.toUByte
+      else 
+        1.toUByte
+    } else ((format >> 0).toInt & 0xFF).toUByte
+
+  def SDL_ISPIXELFORMAT_INDEXED(format: UInt): Boolean =
+    SDL_ISPIXELFORMAT_FOURCC(format) && (
+      (SDL_PIXELTYPE(format) == SDL_PIXELTYPE_INDEX1) ||
+      (SDL_PIXELTYPE(format) == SDL_PIXELTYPE_INDEX4) ||
+      (SDL_PIXELTYPE(format) == SDL_PIXELTYPE_INDEX8))
+
+  def SDL_ISPIXELFORMAT_ALPHA(format: UInt): Boolean =
+    !SDL_ISPIXELFORMAT_FOURCC(format) && (
+      (SDL_PIXELORDER(format) == SDL_PACKEDORDER_ARGB) ||
+      (SDL_PIXELORDER(format) == SDL_PACKEDORDER_RGBA) ||
+      (SDL_PIXELORDER(format) == SDL_PACKEDORDER_ABGR) ||
+      (SDL_PIXELORDER(format) == SDL_PACKEDORDER_BGRA))
+
+  def SDL_ISPIXELFORMAT_FOURCC(format: UInt): Boolean = (format != 0.toUInt) && (SDL_PIXELFLAG(format) != 1.toUByte)
+
+  /* Begin PIXELFORMAT (anonymous) enum */
+  val SDL_PIXELFORMAT_UNKNOWN: UInt = 0.toUInt
+  val SDL_PIXELFORMAT_INDEX1LSB: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_INDEX1, SDL_BITMAPORDER_4321, 0.toUByte, 1.toUByte, 0.toUByte)
+  val SDL_PIXELFORMAT_INDEX1MSB: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_INDEX1, SDL_BITMAPORDER_1234, 0.toUByte, 1.toUByte, 0.toUByte)
+  val SDL_PIXELFORMAT_INDEX4LSB: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_INDEX4, SDL_BITMAPORDER_4321, 0.toUByte, 4.toUByte, 0.toUByte)
+  val SDL_PIXELFORMAT_INDEX4MSB: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_INDEX4, SDL_BITMAPORDER_1234, 0.toUByte, 4.toUByte, 0.toUByte)
+  val SDL_PIXELFORMAT_INDEX8: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_INDEX8, 0.toUByte, 0.toUByte, 8.toUByte, 1.toUByte)
+  val SDL_PIXELFORMAT_RGB332: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED8, SDL_PACKEDORDER_XRGB, SDL_PACKEDLAYOUT_332, 8.toUByte, 1.toUByte)
+  val SDL_PIXELFORMAT_RGB444: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED16, SDL_PACKEDORDER_XRGB, SDL_PACKEDLAYOUT_4444, 12.toUByte, 2.toUByte)
+  val SDL_PIXELFORMAT_RGB555: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED16, SDL_PACKEDORDER_XRGB, SDL_PACKEDLAYOUT_1555, 15.toUByte, 2.toUByte)
+  val SDL_PIXELFORMAT_BGR555: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED16, SDL_PACKEDORDER_XBGR, SDL_PACKEDLAYOUT_1555, 15.toUByte, 2.toUByte)
+  val SDL_PIXELFORMAT_ARGB4444: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED16, SDL_PACKEDORDER_ARGB, SDL_PACKEDLAYOUT_4444, 16.toUByte, 2.toUByte)
+  val SDL_PIXELFORMAT_RGBA4444: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED16, SDL_PACKEDORDER_RGBA, SDL_PACKEDLAYOUT_4444, 16.toUByte, 2.toUByte)
+  val SDL_PIXELFORMAT_ABGR4444 =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED16, SDL_PACKEDORDER_ABGR, SDL_PACKEDLAYOUT_4444, 16.toUByte, 2.toUByte)
+  val SDL_PIXELFORMAT_BGRA4444 =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED16, SDL_PACKEDORDER_BGRA, SDL_PACKEDLAYOUT_4444, 16.toUByte, 2.toUByte)
+  val SDL_PIXELFORMAT_ARGB1555: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED16, SDL_PACKEDORDER_ARGB, SDL_PACKEDLAYOUT_4444, 16.toUByte, 2.toUByte)
+  val SDL_PIXELFORMAT_RGBA5551: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED16, SDL_PACKEDORDER_RGBA, SDL_PACKEDLAYOUT_5551, 16.toUByte, 2.toUByte)
+  val SDL_PIXELFORMAT_ABGR1555: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED16, SDL_PACKEDORDER_ABGR, SDL_PACKEDLAYOUT_1555, 16.toUByte, 2.toUByte)
+  val SDL_PIXELFORMAT_BGRA5551: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED16, SDL_PACKEDORDER_BGRA, SDL_PACKEDLAYOUT_5551, 16.toUByte, 2.toUByte)
+  val SDL_PIXELFORMAT_RGB565: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED16, SDL_PACKEDORDER_XRGB, SDL_PACKEDLAYOUT_565, 16.toUByte, 2.toUByte)
+  val SDL_PIXELFORMAT_BGR565: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED16, SDL_PACKEDORDER_XBGR, SDL_PACKEDLAYOUT_565, 16.toUByte, 2.toUByte)
+  val SDL_PIXELFORMAT_RGB24: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_ARRAYU8, SDL_ARRAYORDER_RGB, 0.toUByte, 24.toUByte, 3.toUByte)
+  val SDL_PIXELFORMAT_BGR24: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_ARRAYU8, SDL_ARRAYORDER_BGR, 0.toUByte, 24.toUByte, 3.toUByte)
+  val SDL_PIXELFORMAT_RGB888: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED32, SDL_PACKEDORDER_XRGB, SDL_PACKEDLAYOUT_8888, 24.toUByte, 4.toUByte)
+  val SDL_PIXELFORMAT_RGBX8888: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED32, SDL_PACKEDORDER_RGBX, SDL_PACKEDLAYOUT_8888, 24.toUByte, 4.toUByte)
+  val SDL_PIXELFORMAT_BGR888: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED32, SDL_PACKEDORDER_XBGR, SDL_PACKEDLAYOUT_8888, 24.toUByte, 4.toUByte)
+  val SDL_PIXELFORMAT_BGRX8888: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED32, SDL_PACKEDORDER_BGRX, SDL_PACKEDLAYOUT_8888, 24.toUByte, 4.toUByte)
+  val SDL_PIXELFORMAT_ARGB8888: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED32, SDL_PACKEDORDER_ARGB, SDL_PACKEDLAYOUT_8888, 32.toUByte, 4.toUByte)
+  val SDL_PIXELFORMAT_RGBA8888: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED32, SDL_PACKEDORDER_RGBA, SDL_PACKEDLAYOUT_8888, 32.toUByte, 4.toUByte)
+  val SDL_PIXELFORMAT_ABGR8888: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED32, SDL_PACKEDORDER_ABGR, SDL_PACKEDLAYOUT_8888, 32.toUByte, 4.toUByte)
+  val SDL_PIXELFORMAT_BGRA8888: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED32, SDL_PACKEDORDER_BGRA, SDL_PACKEDLAYOUT_8888, 32.toUByte, 4.toUByte)
+  val SDL_PIXELFORMAT_ARGB2101010: UInt =
+        SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED32, SDL_PACKEDORDER_ARGB, SDL_PACKEDLAYOUT_2101010, 32.toUByte, 4.toUByte)
+
+  val SDL_PIXELFORMAT_YV12: UInt =  SDL_DEFINE_PIXELFOURCC('Y', 'V', '1', '2')
+  val SDL_PIXELFORMAT_IYUV: UInt = SDL_DEFINE_PIXELFOURCC('I', 'Y', 'U', 'V')
+  val SDL_PIXELFORMAT_YUY2: UInt = SDL_DEFINE_PIXELFOURCC('Y', 'U', 'Y', '2')
+  val SDL_PIXELFORMAT_UYVY: UInt = SDL_DEFINE_PIXELFOURCC('U', 'Y', 'V', 'Y')
+  val SDL_PIXELFORMAT_YVYU: UInt = SDL_DEFINE_PIXELFOURCC('Y', 'V', 'Y', 'U')
+  /* End PIXELFORMAT (anonymous) enum */
+
+  implicit class SDL_ColorOps(val self: Ptr[SDL_Color]) extends AnyVal {
+    def init(r: UByte, g: UByte, b: UByte, a: UByte): Ptr[SDL_Color] = {
+      !(self._1) = r
+      !(self._2) = g
+      !(self._3) = b
+      !(self._4) = a
+      self
+    }
+    def r: UByte = !(self._1)
+    def r_=(nr: UByte): Unit = { !(self._1) = nr }
+    def g: UByte = !(self._2)
+    def g_=(ng: UByte): Unit = { !(self._2) = ng }
+    def b: UByte = !(self._3)
+    def b_=(nb: UByte): Unit = { !(self._3) = nb }
+    def a: UByte = !(self._4)
+    def a_=(na: UByte): Unit = { !(self._4) = na }
+  }
+  type SDL_Colour = SDL_Color
+
+  implicit class SDL_PaletteOps(val self: Ptr[SDL_Palette]) extends AnyVal {
+    def ncolors: CInt = !(self._1)
+    def colors: Ptr[SDL_Color] = !(self._2)
+    def version: UInt = !(self._3)
+    def refcount: CInt = !(self._4)
+  }
+
+  implicit class SDL_PixelFormatOps(val self: Ptr[SDL_PixelFormat]) extends AnyVal {
+    def format: UInt = !(self._1)
+    def palette: Ptr[SDL_Palette] = !(self._2)
+    def BitsPerPixel: UByte = !(self._3)
+    def BytesPerPixel: UByte = !(self._4)
+    def padding: CArray[UByte, _2] = !(self._5)
+    def Rmask: UInt = !(self._6)
+    def Gmask: UInt = !(self._7)
+    def Bmask: UInt = !(self._8)
+    def Amask: UInt = !(self._9)
+    def Rloss: UByte = !(self._10)
+    def Gloss: UByte = !(self._11)
+    def Bloss: UByte = !(self._12)
+    def Aloss: UByte = !(self._13)
+    def Rshift: UByte = !(self._14)
+    def Gshift: UByte = !(self._15)
+    def Bshift: UByte = !(self._16)
+    def Ashift: UByte = !(self._17)
+    def refcount: CInt = !(self._18)
+    def next: Ptr[SDL_PixelFormat] = (!(self._19)).cast[Ptr[SDL_PixelFormat]]
+  }
 
   /**************************************
    ************ SDL_events.h ************
@@ -853,9 +1073,9 @@ object Extras {
     }
 
     def x: CInt = !(self._1)
-    def x_(nx: CInt): Unit = { !(self._1) = nx }
+    def x_=(nx: CInt): Unit = { !(self._1) = nx }
     def y: CInt = !(self._2)
-    def y_(ny: CInt): Unit = { !(self._2) = ny }
+    def y_=(ny: CInt): Unit = { !(self._2) = ny }
   }
   implicit class SDL_RectOps(val self: Ptr[SDL_Rect]) extends AnyVal {
     def init(x: CInt, y: CInt, w: CInt, h: CInt): Ptr[SDL_Rect] = {
@@ -867,9 +1087,9 @@ object Extras {
     }
 
     def x: CInt = !(self._1)
-    def x_(nx: CInt): Unit = { !(self._1) = nx }
+    def x_=(nx: CInt): Unit = { !(self._1) = nx }
     def y: CInt = !(self._2)
-    def y_(ny: CInt): Unit = { !(self._2) = ny }
+    def y_=(ny: CInt): Unit = { !(self._2) = ny }
     def w: CInt = !(self._3)
     def w_=(nw: CInt): Unit = { !(self._3) = nw }
     def h: CInt = !(self._4)

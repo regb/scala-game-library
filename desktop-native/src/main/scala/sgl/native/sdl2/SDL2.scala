@@ -21,6 +21,7 @@ object SDL2 {
 
   def SDL_Delay(ms: UInt): Unit = extern
 
+  type _2    = Nat._2
   type _16   = Nat.Digit[Nat._1, Nat._6]
   type _32   = Nat.Digit[Nat._3, Nat._2]
   type _52   = Nat.Digit[Nat._5, Nat._2]
@@ -189,6 +190,42 @@ object SDL2 {
   def SDL_GetDefaultCursor(): Ptr[SDL_Cursor] = extern 
   def SDL_FreeCursor(cursor: Ptr[SDL_Cursor]): Unit = extern 
   def SDL_ShowCursor(toggle: CInt): CInt = extern 
+
+  /***************************************
+   ************ SDL_pixels.h *************
+   ***************************************/
+
+  type SDL_Color = CStruct4[UByte, UByte, UByte, UByte]
+  type SDL_Palette = CStruct4[CInt, Ptr[SDL_Color], UInt, CInt]
+
+  type SDL_PixelFormat = CStruct19[
+    UInt, Ptr[SDL_Palette], UByte, UByte, CArray[UByte, _2],
+    UInt, UInt, UInt, UInt, UByte, UByte, UByte, UByte, UByte, UByte, UByte, UByte,
+    CInt, Ptr[Byte]]
+
+  def SDL_GetPixelFormatName(format: UInt): CString = extern
+  def SDL_PixelFormatEnumToMasks(format: UInt, bpp: Ptr[CInt],
+        Rmask: Ptr[UInt], Gmask: Ptr[UInt], Bmask: Ptr[UInt], Amask: Ptr[UInt]): SDL_bool = extern
+  def SDL_MasksToPixelFormatEnum(bpp: CInt, Rmask: UInt, Gmask: UInt, Bmask: UInt, Amask: UInt): UInt = extern
+
+  def SDL_AllocFormat(pixel_format: UInt): Ptr[SDL_PixelFormat] = extern
+  def SDL_FreeFormat(format: Ptr[SDL_PixelFormat]): Unit = extern
+
+  def SDL_AllocPalette(ncolors: CInt): Ptr[SDL_Palette] = extern
+  def SDL_SetPixelFormatPalette(format: Ptr[SDL_PixelFormat], palette: Ptr[SDL_Palette]): CInt = extern
+  def SDL_SetPaletteColors(palette: Ptr[SDL_Palette],
+              colors: Ptr[SDL_Color], firstcolor: CInt, ncolors: CInt): CInt = extern
+  def SDL_FreePalette(palette: Ptr[SDL_Palette]): Unit = extern
+
+  def SDL_MapRGB(format: Ptr[SDL_PixelFormat], r: UByte, g: UByte, b: UByte): UInt = extern
+  def SDL_MapRGBA(format: Ptr[SDL_PixelFormat],
+                  r: UByte, g: UByte, b: UByte, a: UByte): UInt = extern
+  def SDL_GetRGB(pixel: UInt, format: Ptr[SDL_PixelFormat],
+                 r: Ptr[UByte], g: Ptr[UByte], b: Ptr[UByte]): Unit = extern
+  def SDL_GetRGBA(pixel: UInt, format: Ptr[SDL_PixelFormat],
+                  r: Ptr[UByte], g: Ptr[UByte], b: Ptr[UByte], a: Ptr[UByte]): Unit = extern
+
+  def SDL_CalculateGammaRamp(gamma: CFloat, ramp: Ptr[UShort]): Unit = extern
 
 
   /**************************************
