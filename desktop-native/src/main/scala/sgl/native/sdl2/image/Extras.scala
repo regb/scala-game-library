@@ -4,9 +4,9 @@ package image
 
 import scalanative.native._
 
-import SDL2._
+import SDL._
 import sdl2.Extras._
-import SDL2_image._
+import SDL_image._
 
 object Extras {
 

@@ -1314,11 +1314,69 @@ object Extras {
   val SDL_WINDOWEVENT_CLOSE = 14.toUInt
   /* End SDL_WindowEventId */
 
-  type SDL_GLContext = Ptr[Byte]
+  /* Start enum SDL_GLattr */
+  val SDL_GL_RED_SIZE: UInt = 0.toUInt
+  val SDL_GL_GREEN_SIZE: UInt = 1.toUInt
+  val SDL_GL_BLUE_SIZE: UInt = 2.toUInt
+  val SDL_GL_ALPHA_SIZE: UInt = 3.toUInt
+  val SDL_GL_BUFFER_SIZE: UInt = 4.toUInt
+  val SDL_GL_DOUBLEBUFFER: UInt = 5.toUInt
+  val SDL_GL_DEPTH_SIZE: UInt = 6.toUInt
+  val SDL_GL_STENCIL_SIZE: UInt = 7.toUInt
+  val SDL_GL_ACCUM_RED_SIZE: UInt = 8.toUInt
+  val SDL_GL_ACCUM_GREEN_SIZE: UInt = 9.toUInt
+  val SDL_GL_ACCUM_BLUE_SIZE: UInt = 10.toUInt
+  val SDL_GL_ACCUM_ALPHA_SIZE: UInt = 11.toUInt
+  val SDL_GL_STEREO: UInt = 12.toUInt
+  val SDL_GL_MULTISAMPLEBUFFERS: UInt = 13.toUInt
+  val SDL_GL_MULTISAMPLESAMPLES: UInt = 14.toUInt
+  val SDL_GL_ACCELERATED_VISUAL: UInt = 15.toUInt
+  val SDL_GL_RETAINED_BACKING: UInt = 16.toUInt
+  val SDL_GL_CONTEXT_MAJOR_VERSION: UInt = 17.toUInt
+  val SDL_GL_CONTEXT_MINOR_VERSION: UInt = 18.toUInt
+  val SDL_GL_CONTEXT_EGL: UInt = 19.toUInt
+  val SDL_GL_CONTEXT_FLAGS: UInt = 20.toUInt
+  val SDL_GL_CONTEXT_PROFILE_MASK: UInt = 21.toUInt
+  val SDL_GL_SHARE_WITH_CURRENT_CONTEXT: UInt = 22.toUInt
+  val SDL_GL_FRAMEBUFFER_SRGB_CAPABLE: UInt = 23.toUInt
+  val SDL_GL_CONTEXT_RELEASE_BEHAVIOR: UInt = 24.toUInt
+  /* End enum SDL_GLattr */
+
+  /* Start enum SDL_GLprofile */
+  val SDL_GL_CONTEXT_PROFILE_CORE: UShort           = 0x0001.toUShort
+  val SDL_GL_CONTEXT_PROFILE_COMPATIBILITY: UShort  = 0x0002.toUShort
+  val SDL_GL_CONTEXT_PROFILE_ES: UShort             = 0x0004.toUShort
+  /* End enum SDL_GLprofile */
+
+  /* Start enum SDL_GlcontextFlag */
+  val SDL_GL_CONTEXT_DEBUG_FLAG: UShort              = 0x0001.toUShort
+  val SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG: UShort = 0x0002.toUShort
+  val SDL_GL_CONTEXT_ROBUST_ACCESS_FLAG: UShort      = 0x0004.toUShort
+  val SDL_GL_CONTEXT_RESET_ISOLATION_FLAG: UShort    = 0x0008.toUShort
+  /* End enum SDL_GlcontextFlag */
+
+  /* Start enum SDL_GLcontextReleaseFlag */
+  val SDL_GL_CONTEXT_RELEASE_BEHAVIOR_NONE: UShort   = 0x0000.toUShort
+  val SDL_GL_CONTEXT_RELEASE_BEHAVIOR_FLUSH: UShort  = 0x0001.toUShort
+  /* End enum SDL_GLcontextReleaseFlag */
+
+  /* Start SDL_HitTestResult */
+  val SDL_HITTEST_NORMAL: UInt = 0.toUInt
+  val SDL_HITTEST_DRAGGABLE: UInt = 1.toUInt
+  val SDL_HITTEST_RESIZE_TOPLEFT: UInt = 2.toUInt
+  val SDL_HITTEST_RESIZE_TOP: UInt = 3.toUInt
+  val SDL_HITTEST_RESIZE_TOPRIGHT: UInt = 4.toUInt
+  val SDL_HITTEST_RESIZE_RIGHT: UInt = 5.toUInt
+  val SDL_HITTEST_RESIZE_BOTTOMRIGHT: UInt = 6.toUInt
+  val SDL_HITTEST_RESIZE_BOTTOM: UInt = 7.toUInt
+  val SDL_HITTEST_RESIZE_BOTTOMLEFT: UInt = 8.toUInt
+  val SDL_HITTEST_RESIZE_LEFT: UInt = 9.toUInt
+  /* Start SDL_HitTestResult */
+
 
 
   /**************************************
-   ************ SDL.h *************
+   *************** SDL.h ****************
    **************************************/
 
   /* Start Macros for subsystem IDs */

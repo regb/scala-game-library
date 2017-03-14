@@ -424,16 +424,121 @@ object SDL {
   type SDL_DisplayMode = CStruct5[UInt, CInt, CInt, CInt, Ptr[Byte]]
   type SDL_Window   = CStruct0
 
+  type SDL_GLContext = Ptr[Byte]
+  type SDL_GLattr = UInt
+  type SDL_GLprofile = UShort
+  type SDL_GLcontextFlag = UShort
+  type SDL_GLcontextReleaseFlag = UShort
+
+  def SDL_GetNumVideoDrivers(): CInt = extern
+  def SDL_GetVideoDriver(index: CInt): CString = extern
+
+  def SDL_VideoInit(driver_name: CString): CInt = extern
+  def SDL_VideoQuit(): Unit = extern
+
+  def SDL_GetCurrentVideoDriver(): CString = extern
+  def SDL_GetNumVideoDisplays(): CInt = extern
+  def SDL_GetDisplayName(displayIndex: CInt): CString = extern
+  def SDL_GetDisplayBounds(displayIndex: CInt, rect: Ptr[SDL_Rect]): CInt = extern
+  def SDL_GetDisplayDPI(displayIndex: CInt, ddpi: Ptr[CFloat],
+                        hdpi: Ptr[CFloat], vdpi: Ptr[CFloat]): CInt = extern
+
+  def SDL_GetNumDisplayModes(displayIndex: CInt): CInt = extern
+  def SDL_GetDisplayMode(displayIndex: CInt, modeIndex: CInt, mode: Ptr[SDL_DisplayMode]): CInt = extern
+  def SDL_GetDesktopDisplayMode(displayIndex: CInt, mode: Ptr[SDL_DisplayMode]): CInt = extern
+  def SDL_GetCurrentDisplayMode(displayIndex: CInt, mode: Ptr[SDL_DisplayMode]): CInt = extern
+  def SDL_GetClosestDisplayMode(displayIndex: CInt, mode: Ptr[SDL_DisplayMode], closest: Ptr[SDL_DisplayMode]): CInt = extern
+
+  def SDL_GetWindowDisplayIndex(window: Ptr[SDL_Window]): CInt = extern
+  def SDL_SetWindowDisplayMode(window: Ptr[SDL_Window], mode: Ptr[SDL_DisplayMode]): CInt = extern
+  def SDL_GetWindowDisplayMode(window: Ptr[SDL_Window], mode: Ptr[SDL_DisplayMode]): CInt = extern
+  def SDL_GetWindowPixelFormat(window: Ptr[SDL_Window]): UInt = extern
+
   def SDL_CreateWindow(title: CString,
                        x: CInt, y: CInt, w: Int, h: Int,
                        flags: UInt): Ptr[SDL_Window] = extern
   def SDL_CreateWindowFrom(data: Ptr[Byte]): Ptr[SDL_Window] = extern
+
+  def SDL_GetWindowID(window: Ptr[SDL_Window]): UInt = extern
+  def SDL_GetWindowFromID(id: UInt): Ptr[SDL_Window] = extern
+  def SDL_GetWindowFlags(window: Ptr[SDL_Window]): UInt = extern
+  def SDL_SetWindowTitle(window: Ptr[SDL_Window], title: CString): Unit = extern
+  def SDL_GetWindowTitle(window: Ptr[SDL_Window]): CString = extern
+  def SDL_SetWindowIcon(window: Ptr[SDL_Window], icon: Ptr[SDL_Surface]): Unit = extern
+  def SDL_SetWindowData(window: Ptr[SDL_Window], name: CString, userdata: Ptr[Byte]): Ptr[Byte] = extern
+  def SDL_GetWindowData(window: Ptr[SDL_Window], name: CString): Ptr[Byte] = extern
+  def SDL_SetWindowPosition(window: Ptr[SDL_Window], x: CInt, y: CInt): Unit = extern
+  def SDL_GetWindowPosition(window: Ptr[SDL_Window], x: Ptr[CInt], y: Ptr[CInt]): Unit = extern
+  def SDL_SetWindowSize(window: Ptr[SDL_Window], w: CInt, h: CInt): Unit = extern
+  def SDL_GetWindowSize(window: Ptr[SDL_Window], w: Ptr[CInt], h: Ptr[CInt]): Unit = extern
+  def SDL_SetWindowMinimumSize(window: Ptr[SDL_Window], min_w: CInt, min_h: CInt): Unit = extern
+  def SDL_GetWindowMinimumSize(window: Ptr[SDL_Window], w: Ptr[CInt], h: Ptr[CInt]): Unit = extern
+  def SDL_SetWindowMaximumSize(window: Ptr[SDL_Window], max_w: CInt, max_h: CInt): Unit = extern
+  def SDL_GetWindowMaximumSize(window: Ptr[SDL_Window], w: Ptr[CInt], h: Ptr[CInt]): Unit = extern
+  def SDL_SetWindowBordered(window: Ptr[SDL_Window], bordered: SDL_bool): Unit = extern
+
+  def SDL_ShowWIndow(window: Ptr[SDL_Window]): Unit = extern
+  def SDL_HideWIndow(window: Ptr[SDL_Window]): Unit = extern
+  def SDL_RaiseWIndow(window: Ptr[SDL_Window]): Unit = extern
+  def SDL_MaximizeWIndow(window: Ptr[SDL_Window]): Unit = extern
+  def SDL_MinimizeWIndow(window: Ptr[SDL_Window]): Unit = extern
+  def SDL_RestoreWIndow(window: Ptr[SDL_Window]): Unit = extern
+  def SDL_SetWindowFullscreen(window: Ptr[SDL_Window], flags: UInt): CInt = extern
+
+  def SDL_GetWindowSurface(window: Ptr[SDL_Window]): Ptr[SDL_Surface] = extern
+  def SDL_UpdateWindowSurface(window: Ptr[SDL_Window]): Ptr[SDL_Surface] = extern
+  def SDL_UpdateWindowSurfaceRects(window: Ptr[SDL_Window],
+                        rects: Ptr[SDL_Rect], numrects: CInt): CInt = extern
+  
+  def SDL_SetWindowGrab(window: Ptr[SDL_Window], grabbed: SDL_bool): Unit = extern
+  def SDL_GetWindowGrab(window: Ptr[SDL_Window]): SDL_bool = extern
+  def SDL_GetGrabbedWindow(): Ptr[SDL_Window] = extern
+  def SDL_SetWindowBrightness(window: Ptr[SDL_Window], brightness: CFloat): CInt = extern
+  def SDL_GetWindowBrightness(window: Ptr[SDL_Window]): CFloat = extern
+  def SDL_SetWindowGammaRamp(window: Ptr[SDL_Window],
+        red: Ptr[UShort], green: Ptr[UShort], blue: Ptr[UShort]): CInt = extern
+  def SDL_GetWindowGammaRamp(window: Ptr[SDL_Window],
+        red: Ptr[UShort], green: Ptr[UShort], blue: Ptr[UShort]): CInt = extern
+
+  type SDL_HitTestResult = UInt
+  //TODO:
+  //typedef SDL_HitTestResult (SDLCALL *SDL_HitTest)(SDL_Window *win,
+  //                                               const SDL_Point *area,
+  //                                               void *data);
+  //extern DECLSPEC int SDLCALL SDL_SetWindowHitTest(SDL_Window * window,
+  //                                                 SDL_HitTest callback,
+  //                                                 void *callback_data);
+
   def SDL_DestroyWindow(window: Ptr[SDL_Window]) = extern
 
-  def SDL_GetDisplayDPI(displayIndex: CInt, ddpi: Ptr[CFloat],
-                        hdpi: Ptr[CFloat], vdpi: Ptr[CFloat]): CInt = extern
+  def SDL_IsScreenSaverEnabled(): SDL_bool = extern
+  def SDL_EnableScreenSaver(): Unit = extern
+  def SDL_DisableScreenSaver(): Unit = extern
 
+  /* Start OpenGL support functions */
 
+  def SDL_GL_LoadLibrary(path: CString): CInt = extern
+  def SDL_GL_GetProcAddress(proc: CString): Ptr[Byte] = extern
+  def SDL_GL_UnloadLibrary(): Unit = extern
+
+  def SDL_GL_ExtensionSupported(extension: CString): SDL_bool = extern
+  def SDL_GL_ResetAttributes(): Unit = extern
+  def SDL_GL_SetAttribute(attr: SDL_GLattr, value: CInt): CInt = extern
+  def SDL_GL_GetAttribute(attr: SDL_GLattr, value: Ptr[CInt]): CInt = extern
+
+  def SDL_GL_CreateContext(window: Ptr[SDL_Window]): SDL_GLContext = extern
+  def SDL_GL_MakeCurrent(window: Ptr[SDL_Window], context: SDL_GLContext): CInt = extern
+
+  def SDL_GL_GetCurrentWindow(): Ptr[SDL_Window] = extern
+  def SDL_GL_GetCurrentContext(): SDL_GLContext = extern
+  def SDL_GL_GetDrawableSize(window: Ptr[SDL_Window], w: Ptr[CInt], h: Ptr[CInt]): Unit = extern
+  def SDL_GL_SetSwapInterval(interval: CInt): CInt = extern
+  def SDL_GL_GetSwapInterval(): CInt = extern
+  def SDL_GL_SwapWindow(window: Ptr[SDL_Window]): Unit = extern
+
+  def SDL_GL_DeleteContext(context: SDL_GLContext): Unit = extern
+  
+  /* End OpenGl support functions */
 
   /**************************************
    *************** SDL.h ****************
