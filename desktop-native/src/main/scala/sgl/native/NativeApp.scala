@@ -59,9 +59,6 @@ trait NativeApp extends GameApp
       sys.exit()
     }
 
-    //TODO: try logical size
-    //SDL_RenderSetLogicalSize(renderer, 300, 300)
-
     this.startup()
     this.resume()
 
@@ -103,18 +100,10 @@ trait NativeApp extends GameApp
       }
     }
 
-    //TODO: for some reason, the app is trapped into a loop when exiting the program
-    sys.exit(0)
-
-    logger.info("loop exit")
     IMG_Quit()
-    logger.info("IMG quit")
     SDL_DestroyRenderer(renderer)
-    logger.info("renderer destroyed")
     SDL_DestroyWindow(window)
-    logger.info("window destroyed")
     SDL_Quit()
-    logger.info("sdl quit")
   }
 
 }

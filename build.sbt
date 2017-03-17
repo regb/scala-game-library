@@ -42,6 +42,13 @@ lazy val desktopAWT = (project in file("./desktop-awt"))
   )
   .dependsOn(coreJVM)
 
+def ghProject(repo: String, version: String, name: String) = ProjectRef(uri(s"${repo}#${version}"), name)
+
+lazy val sdl2 = ghProject("git://github.com/regb/scalanative-graphics-bindings.git", "fad5e6ece5508e1937fd9657eeb9b079f4f29ce5", "sdl2")
+lazy val sdl2Image = ghProject("git://github.com/regb/scalanative-graphics-bindings.git", "fad5e6ece5508e1937fd9657eeb9b079f4f29ce5", "sdl2Image")
+lazy val opengl = ghProject("git://github.com/regb/scalanative-graphics-bindings.git", "fad5e6ece5508e1937fd9657eeb9b079f4f29ce5", "opengl")
+
+
 lazy val desktopNative = (project in file("./desktop-native"))
   .enablePlugins(ScalaNativePlugin)
   .settings(commonSettings: _*)
@@ -49,7 +56,7 @@ lazy val desktopNative = (project in file("./desktop-native"))
   .settings(
     name := "sgl-desktop-native"
   )
-  .dependsOn(coreNative)
+  .dependsOn(coreNative, sdl2, sdl2Image, opengl)
 
 lazy val html5 = (project in file("./html5"))
   .enablePlugins(ScalaJSPlugin)
