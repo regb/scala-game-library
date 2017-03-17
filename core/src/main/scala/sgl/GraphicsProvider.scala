@@ -167,9 +167,14 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
       */
     def translate(x: Int, y: Int): Unit
 
-    /** rotate around center of canvas
+    /** rotate the canvas
       *
-      * The angle theta is in radian. TODO: specify direction
+      * The angle theta is given in radian. The rotation follows the mathematical conventions,
+      * which is to rotate towards the the positive axises. In SGL, since origin is top-left
+      * and x-axis points to the right and y-axis points to the bottom, a positive value
+      * of theta will rotate in clockwise order.
+      *
+      * TODO: do we need to specify the center of rotation? Should it be the origin (0,0) (top-left)?
       */
     def rotate(theta: Double): Unit
 

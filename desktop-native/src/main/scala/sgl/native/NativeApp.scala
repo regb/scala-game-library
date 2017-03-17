@@ -56,6 +56,8 @@ trait NativeApp extends GameApp
     }
     SDL_GL_SetSwapInterval(1)
 
+    glEnable(GL_SCISSOR_TEST)
+
 
     val imgFlags = IMG_INIT_PNG
     if(IMG_Init(imgFlags) != imgFlags) {

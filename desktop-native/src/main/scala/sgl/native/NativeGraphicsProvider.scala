@@ -87,23 +87,28 @@ trait NativeGraphicsProvider extends GraphicsProvider {
     override val height: Int = 0
 
     override def withSave[A](body: => A): A = {
-      ???
+      glPushMatrix()
+      val res = body
+      glPopMatrix()
+      res
     }
 
     override def translate(x: Int, y: Int): Unit = {
-      ???
+      glTranslatef(x.toFloat, y.toFloat, 0f)
     }
 
     override def rotate(theta: Double): Unit = {
-      ???
+      val radian = theta*scala.math.Pi/180d
+      glRotated(theta, 0d, 0d, 1d)
     }
 
     override def scale(sx: Double, sy: Double): Unit = {
-      ???
+      glScaled(sx, sy, 0d)
     }
 
     override def clipRect(x: Int, y: Int, width: Int, height: Int): Unit = {
-      ???
+      val down = y+height
+      glScissor(x, down, width.toUInt, height.toUInt)
     }
 
     override def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit = {
