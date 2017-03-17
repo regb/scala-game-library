@@ -57,6 +57,19 @@ lazy val desktopNative = (project in file("./desktop-native"))
   .settings(commonSettings: _*)
   .settings(commonNativeSettings: _*)
   .settings(
-    name := "sgl-snake-desktop-native"
+    name := "sgl-snake-desktop-native",
+    if(isLinux(OS))
+      nativeLinkingOptions += "-lGL"
+    else if(isMac(OS))
+      nativeLinkingOptions ++= Seq("-framework", "OpenGL")
+    else
+      ???
   )
   .dependsOn(sglCoreNative, sglDesktopNative, coreNative)
+
+lazy val OS = sys.props("os.name").toLowerCase
+lazy val LinuxName = "Linux"
+lazy val MacName = "Mac OS X"
+
+def isLinux(name: String): Boolean = name.startsWith(LinuxName.toLowerCase)
+def isMac(name: String): Boolean = name.startsWith(MacName.toLowerCase)

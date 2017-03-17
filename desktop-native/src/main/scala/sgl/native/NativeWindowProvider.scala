@@ -11,6 +11,9 @@ trait NativeWindowProvider extends WindowProvider {
 
   val frameDimension: (Int, Int)
 
+  ///** The name of the window */
+  //val windowTitle: String
+
   //TODO: provide a WindowDimension object, with either fixed width/height or FullScreen
   //abstract class WindowDimension
   //case class FixedWindowDimension(width: Int, height: Int)

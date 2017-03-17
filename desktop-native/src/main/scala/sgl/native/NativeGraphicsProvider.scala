@@ -8,6 +8,8 @@ import scalanative.native._
 import sdl2.SDL._
 import sdl2.Extras._
 import sdl2.image.SDL_image._
+import gl.GL._
+import gl.Extras._
 
 trait NativeGraphicsProvider extends GraphicsProvider {
   this: NativeSystemProvider =>
@@ -118,8 +120,12 @@ trait NativeGraphicsProvider extends GraphicsProvider {
     override def drawRect(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {
       setRenderColor(paint.color)
 
-      val rect = stackalloc[SDL_Rect].init(x, y, width, height)
-      SDL_RenderFillRect(renderer, rect)
+      glBegin(GL_QUADS)
+        glVertex2i(x, y)
+        glVertex2i(x+width, y)
+        glVertex2i(x+width, y+height)
+        glVertex2i(x, y+height)
+      glEnd()
     }
 
     override def drawOval(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {
@@ -141,11 +147,12 @@ trait NativeGraphicsProvider extends GraphicsProvider {
     }
 
     override def drawColor(color: Color): Unit = {
-      SDL_SetRenderDrawColor(renderer, color.red.toUByte, color.green.toUByte, color.blue.toUByte, color.alpha.toUByte)
+      glClearColor(color.red/255f, color.green/255f, color.blue/255f, color.alpha/255f)
+      glClear(GL_COLOR_BUFFER_BIT)
     }
 
     override def clearRect(x: Int, y: Int, width: Int, height: Int): Unit = {
-      SDL_RenderClear(renderer)
+      glClear(GL_COLOR_BUFFER_BIT)
     }
 
     override def renderText(text: String, width: Int, paint: Paint): TextLayout = {
@@ -153,7 +160,7 @@ trait NativeGraphicsProvider extends GraphicsProvider {
     }
 
     private def setRenderColor(color: Color): Unit = {
-      SDL_SetRenderDrawColor(renderer, color.red.toUByte, color.green.toUByte, color.blue.toUByte, color.alpha.toUByte)
+      glColor4f(color.red/255f, color.green/255f, color.blue/255f, color.alpha/255f)
     }
 
   }

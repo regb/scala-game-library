@@ -9,6 +9,8 @@ import sdl2.SDL._
 import sdl2.Extras._
 import sdl2.image.SDL_image._
 import sdl2.image.Extras._
+import gl.GL._
+import gl.Extras._
 
 import java.lang.System.nanoTime
 
@@ -33,14 +35,27 @@ trait NativeApp extends GameApp
       sys.exit()
     }
 
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2)
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1)
+
     val (x,y) = WindowInitialPosition.getOrElse((SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED))
 
-    val window = SDL_CreateWindow(c"Default App", x, y, frameDimension._1, frameDimension._2, SDL_WINDOW_SHOWN)
+    val window = SDL_CreateWindow(c"Default App", x, y, frameDimension._1, frameDimension._2, SDL_WINDOW_OPENGL)
     if(window == null) {
       logger.error("Failed to create a window: " + fromCString(SDL_GetError()))
       SDL_Quit()
       sys.exit()
     }
+
+    val glContext = SDL_GL_CreateContext(window)
+    if (glContext == null) {
+      logger.error("Could not create OpenGL context: " + fromCString(SDL_GetError()))
+      SDL_DestroyWindow(window)
+      SDL_Quit()
+      sys.exit()
+    }
+    SDL_GL_SetSwapInterval(1)
+
 
     val imgFlags = IMG_INIT_PNG
     if(IMG_Init(imgFlags) != imgFlags) {
@@ -58,6 +73,16 @@ trait NativeApp extends GameApp
       SDL_Quit()
       sys.exit()
     }
+
+    glMatrixMode(GL_PROJECTION)
+    glLoadIdentity()
+    glOrtho(0f, frameDimension._1, frameDimension._2, 0f, 1f, -1f)
+
+    glMatrixMode(GL_MODELVIEW)
+    glLoadIdentity()
+
+    glClearColor(0f, 0f, 0f, 1f)
+
 
     this.startup()
     this.resume()
@@ -86,7 +111,8 @@ trait NativeApp extends GameApp
 
       gameLoopStep(dt, canvas)
 
-      SDL_RenderPresent(canvas.renderer)
+      //SDL_RenderPresent(canvas.renderer)
+      SDL_GL_SwapWindow(window)
 
       val endTime: Long = nanoTime
       val elapsedTime: Long = endTime - beginTime
