@@ -16,23 +16,50 @@ trait NativeGraphicsProvider extends GraphicsProvider {
 
   object NativeGraphics extends Graphics {
 
+    //override def loadImage(path: System.ResourcePath): Loader[Bitmap] = {
+    //  //val path = c"/home/reg/vcs/games/sgl/examples/test/native/src/main/resources/drawable/character.png"
+    //  val surface = IMG_Load(toCString(path.path))
+    //  val texture = SDL_CreateTextureFromSurface(renderer, surface)
+    //  SDL_FreeSurface(surface)
+    //  val w: Ptr[CInt] = stackalloc[CInt]
+    //  val h: Ptr[CInt] = stackalloc[CInt]
+    //  SDL_QueryTexture(texture, null, null, w, h)
+    //  Loader.successful(SDLTextureBitmap(texture, !w, !h))
+    //}
     override def loadImage(path: System.ResourcePath): Loader[Bitmap] = {
-      //val path = c"/home/reg/vcs/games/sgl/examples/test/native/src/main/resources/drawable/character.png"
       val surface = IMG_Load(toCString(path.path))
-      val texture = SDL_CreateTextureFromSurface(renderer, surface)
+      //println("w: " + surface.w + "h: " + surface.h + " Bpp: " + surface.format.BytesPerPixel + " bpp: " + surface.format.BitsPerPixel)
+      val width = surface.w
+      val height = surface.h
+
+      val test: UByte = (SDL_MapRGB(surface.format, 0xAA.toUByte, 0xBB.toUByte, 0XCC.toUByte) & 0xFF.toUInt).toUByte
+      //val sourceFormat = if(surface.format.BitsPerPixel == 8.toUByte) GL_COLOR_INDEX else GL_BGR
+      val sourceFormat = if(surface.format.BytesPerPixel == 4.toUByte) {
+        if(test == 0xAA.toUByte) GL_RGBA else GL_BGRA
+      } else {
+        if(test == 0xAA.toUByte) GL_RGB else GL_BGR
+      }
+
+      val textureId: Ptr[GLuint] = stackalloc[GLuint]
+      glGenTextures(1.toUInt, textureId)
+      glBindTexture(GL_TEXTURE_2D, !textureId)
+
+      glTexImage2D(GL_TEXTURE_2D, 0, surface.format.BytesPerPixel.toInt, 
+                   surface.w.toUInt, surface.h.toUInt, 0, sourceFormat,
+                   GL_UNSIGNED_BYTE, surface.pixels)
+
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
       SDL_FreeSurface(surface)
-      val w: Ptr[CInt] = stackalloc[CInt]
-      val h: Ptr[CInt] = stackalloc[CInt]
-      SDL_QueryTexture(texture, null, null, w, h)
-      Loader.successful(SDLTextureBitmap(texture, !w, !h))
+      val texture = OpenGLTextureBitmap(!textureId, width, height)
+      Loader.successful(texture)
     }
 
   }
   val Graphics: Graphics = NativeGraphics
 
-
-  case class SDLTextureBitmap(texture: Ptr[SDL_Texture], width: Int, height: Int) extends AbstractBitmap
-  type Bitmap = SDLTextureBitmap
+  case class OpenGLTextureBitmap(texture: GLuint, width: Int, height: Int) extends AbstractBitmap
+  type Bitmap = OpenGLTextureBitmap
 
   override def loadImageFromResource(path: String): Bitmap = {
     ???
@@ -81,7 +108,7 @@ trait NativeGraphicsProvider extends GraphicsProvider {
   type Paint = NativePaint
   override def defaultPaint: Paint = NativePaint(Font.Default, Color.Black, Alignments.Left)
 
-  case class NativeCanvas(var renderer: Ptr[SDL_Renderer]) extends AbstractCanvas {
+  class NativeCanvas extends AbstractCanvas {
 
     override val width: Int = 0
     override val height: Int = 0
@@ -112,14 +139,55 @@ trait NativeGraphicsProvider extends GraphicsProvider {
     }
 
     override def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit = {
-      val dest = stackalloc[SDL_Rect].init(x, y, 50, 50)
-      SDL_RenderCopy(renderer, bitmap.texture, null, dest)
+      glColor4f(1f,1f,1f,1f)
+
+      glEnable(GL_TEXTURE_2D)
+      glBindTexture(GL_TEXTURE_2D, bitmap.texture)
+
+      glDepthMask(GL_FALSE)
+      glEnable(GL_BLEND)
+      glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA)
+
+      glBegin(GL_QUADS)
+        glTexCoord2f(0f, 0f); glVertex2i(x, y)
+        glTexCoord2f(1f, 0f); glVertex2i(x+bitmap.width, y)
+        glTexCoord2f(1f, 1f); glVertex2i(x+bitmap.width, y+bitmap.height)
+        glTexCoord2f(0f, 1f); glVertex2i(x, y+bitmap.height)
+      glEnd()
+
+      glDepthMask(GL_TRUE)
+      glDisable(GL_BLEND)
+
+      glDisable(GL_TEXTURE_2D)
     }
 
     override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int): Unit = {
-      val src = stackalloc[SDL_Rect].init(sx, sy, width, height)
-      val dest = stackalloc[SDL_Rect].init(dx, dy, width, height)
-      SDL_RenderCopy(renderer, bitmap.texture, src, dest)
+
+      glColor4f(1f,1f,1f,1f)
+
+      val sxf: Float = sx/bitmap.width.toFloat
+      val syf: Float = sy/bitmap.height.toFloat
+      val swf: Float = width/bitmap.width.toFloat
+      val shf: Float = height/bitmap.height.toFloat
+
+      glEnable(GL_TEXTURE_2D)
+      glBindTexture(GL_TEXTURE_2D, bitmap.texture)
+
+      glDepthMask(GL_FALSE)
+      glEnable(GL_BLEND)
+      glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA)
+
+      glBegin(GL_QUADS)
+        glTexCoord2f(sxf, syf); glVertex2i(dx, dy)
+        glTexCoord2f(sxf+swf, syf); glVertex2i(dx+width, dy)
+        glTexCoord2f(sxf+swf, syf+shf); glVertex2i(dx+width, dy+height)
+        glTexCoord2f(sxf, syf+shf); glVertex2i(dx, dy+height)
+      glEnd()
+
+      glDepthMask(GL_TRUE)
+      glDisable(GL_BLEND)
+
+      glDisable(GL_TEXTURE_2D)
     }
 
     override def drawRect(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {
@@ -136,11 +204,31 @@ trait NativeGraphicsProvider extends GraphicsProvider {
     override def drawOval(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {
       setRenderColor(paint.color)
 
-      val rect = stackalloc[SDL_Rect].init(x, y, width, height)
-      SDL_RenderFillRect(renderer, rect)
+      //val rect = stackalloc[SDL_Rect].init(x, y, width, height)
+      //SDL_RenderFillRect(renderer, rect)
+
+      var degree: Int = 0
+
+      glPushMatrix()
+      glTranslatef(x.toFloat, y.toFloat, 0f)
+
+      glBegin(GL_TRIANGLE_FAN)
+      while(degree < 360) {
+        val radian = degree*scala.math.Pi/180d
+        glVertex2d(math.cos(radian)*width/2, math.sin(radian)*height/2)
+        degree += 1
+      }
+      glEnd()
+
+      glPopMatrix()
     }
+
     override def drawLine(x1: Int, y1: Int, x2: Int, y2: Int, paint: Paint): Unit = {
-      ???
+      setRenderColor(paint.color)
+      glBegin(GL_LINE)
+        glVertex2i(x1, y1)
+        glVertex2i(x2, y2)
+      glEnd()
     }
 
     override def drawString(str: String, x: Int, y: Int, paint: Paint): Unit = {

@@ -59,7 +59,13 @@ lazy val native = (project in file("./native"))
   .settings(commonSettings: _*)
   .settings(commonNativeSettings: _*)
   .settings(
-    name := "sgl-test-native"
+    name := "sgl-test-native",
+    if(isLinux(OS))
+      nativeLinkingOptions += "-lGL"
+    else if(isMac(OS))
+      nativeLinkingOptions ++= Seq("-framework", "OpenGL")
+    else
+      ???
   )
   .dependsOn(sglCoreNative, sglNative, coreNative)
 
@@ -109,3 +115,10 @@ lazy val android = (project in file("./android"))
     platformTarget := "android-23"
   )
   .dependsOn(sglCoreAndroid, sglAndroid, coreAndroid)
+
+lazy val OS = sys.props("os.name").toLowerCase
+lazy val LinuxName = "Linux"
+lazy val MacName = "Mac OS X"
+
+def isLinux(name: String): Boolean = name.startsWith(LinuxName.toLowerCase)
+def isMac(name: String): Boolean = name.startsWith(MacName.toLowerCase)

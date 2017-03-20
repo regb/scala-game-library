@@ -56,9 +56,6 @@ trait NativeApp extends GameApp
     }
     SDL_GL_SetSwapInterval(1)
 
-    glEnable(GL_SCISSOR_TEST)
-
-
     val imgFlags = IMG_INIT_PNG
     if(IMG_Init(imgFlags) != imgFlags) {
       logger.error("Failed to initialize SDL_image: " + IMG_GetError())
@@ -67,14 +64,18 @@ trait NativeApp extends GameApp
       sys.exit()
     }
 
-    this.renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC)
-    if(this.renderer == null) {
-      logger.error("Failed to create a renderer: " + fromCString(SDL_GetError()))
-      IMG_Quit()
-      SDL_DestroyWindow(window)
-      SDL_Quit()
-      sys.exit()
-    }
+    //this.renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC)
+    //if(this.renderer == null) {
+    //  logger.error("Failed to create a renderer: " + fromCString(SDL_GetError()))
+    //  IMG_Quit()
+    //  SDL_DestroyWindow(window)
+    //  SDL_Quit()
+    //  sys.exit()
+    //}
+
+    glEnable(GL_SCISSOR_TEST)
+    //seems that we only need to active texture-2d during rendering of bitmaps
+    //glEnable(GL_TEXTURE_2D)
 
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
@@ -93,7 +94,7 @@ trait NativeApp extends GameApp
 
     var running = true
     var lastTime: Long = nanoTime
-    val canvas = NativeCanvas(this.renderer)
+    val canvas = new NativeCanvas
     val event = stackalloc[SDL_Event]
 
     while(running) {
