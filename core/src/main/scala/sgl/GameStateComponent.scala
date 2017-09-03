@@ -40,7 +40,7 @@ trait GameStateComponent {
       * from other GameScreen on the game state, and in general will
       * be automatically cleaned up by the framework.
       */
-    def render(canvas: Canvas): Unit
+    def render(canvas: Graphics.Canvas): Unit
   
     /** Determine whether next screen on the stack should be rendered 
       *

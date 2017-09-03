@@ -8,7 +8,7 @@ import java.awt.event._
 import java.awt.Dimension
 
 trait AWTWindowProvider extends WindowProvider {
-  this: GameStateComponent with ThreadBasedGameLoopProvider =>
+  this: GameStateComponent =>
 
   /** The title of the frame */
   val frameTitle: String = "Default App"
@@ -38,12 +38,6 @@ trait AWTWindowProvider extends WindowProvider {
 
     this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE)
   
-    this.addWindowListener(new java.awt.event.WindowAdapter() {
-      override def windowClosing(windowEvent: WindowEvent): Unit = {
-        gameLoop.stop()
-      }
-    })
-
     this.setVisible(true)
 
     this.setResizable(false)
@@ -55,7 +49,7 @@ trait AWTWindowProvider extends WindowProvider {
   /*
    * We don't initialize as part of the cake mixin, because
    * of the usual issues with initialization order and null pointers
-   * due to override (frameDimension). They are initialized in the main
+   * due to override (frameDimension). They are initialized in main
    * instead
    */
   var gamePanel: GamePanel = null

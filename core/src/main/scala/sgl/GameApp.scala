@@ -17,7 +17,5 @@ import util._
   * dependencies for a typical game.
   */
 trait GameApp extends GraphicsProvider with InputProvider with AudioProvider
-                 with WindowProvider with GameLoopProvider with SystemProvider
-                 with LoggingProvider with GameStateComponent with Lifecycle {
-
-}
+                 with WindowProvider with SystemProvider with LoggingProvider 
+                 with GameLoopComponent with GameStateComponent with LifecycleListenerProvider

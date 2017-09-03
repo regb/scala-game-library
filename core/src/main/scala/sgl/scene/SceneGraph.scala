@@ -85,7 +85,7 @@ trait SceneGraphComponent {
   
     def update(dt: Long): Unit = root.update(dt)
   
-    def render(canvas: Canvas): Unit = root.render(canvas)
+    def render(canvas: Graphics.Canvas): Unit = root.render(canvas)
 
     /** The root SceneGroup containing all nodes
       *
@@ -145,7 +145,7 @@ trait SceneGraphComponent {
   
     def update(dt: Long): Unit
 
-    def render(canvas: Canvas): Unit
+    def render(canvas: Graphics.Canvas): Unit
   
     //def addAction(action: Action): Unit
   
@@ -202,7 +202,7 @@ trait SceneGraphComponent {
       nodes.foreach(_.update(dt))
     }
   
-    override def render(canvas: Canvas): Unit = {
+    override def render(canvas: Graphics.Canvas): Unit = {
       //val canvasWidth = canvas.width
       //val canvasHeight = canvas.height
       canvas.withSave {

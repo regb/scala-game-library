@@ -2,9 +2,10 @@ package sgl
 package awt
 
 import java.awt.event._
+import sgl.util._
 
 trait AWTInputProvider extends InputProvider {
-  this: AWTWindowProvider =>
+  this: AWTWindowProvider with LoggingProvider =>
 
   private def mouseEventButton(e: MouseEvent): Input.MouseButtons.MouseButton = {
     if(javax.swing.SwingUtilities.isLeftMouseButton(e))

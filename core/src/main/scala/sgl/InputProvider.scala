@@ -47,7 +47,6 @@ import util._
   * behind in term of updating/rendering, it's better to let it decide how to handle
   * inputs that should have been handled a few frames ago (rather than just drop them from the
   * queue).
-  *
   */
 trait InputProvider {
   self: LoggingProvider =>

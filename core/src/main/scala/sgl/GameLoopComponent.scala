@@ -2,31 +2,39 @@ package sgl
 
 import util._
 
-/** Each backend needs to implement a game loop provider
+/** Definitions related to the Game Loop.
   *
-  * The game loop provider for a given backend is responsible to setup
+  * Each backend needs to implement way to provide the game loop, respecting
+  * settings and architecture from the game loop component.
+  *
+  * The game loop component for a given backend is responsible to setup
   * the general structure of the game loop, and it will leverage the
   * platform where it is running. On HTML5 for example, the provider
   * would rely on the JavaScript main loop engine, and not do too much,
-  * while on the desktop it will likely uses local thread to handle
+  * while on the desktop it will likely uses a local thread to handle
   * the game loop itself.
   */
-trait GameLoopProvider {
+trait GameLoopComponent {
   self: GameStateComponent with GraphicsProvider =>
 
-  //TODO: should probably name it DesiredFps
-  /** Override if you want to target a different FPS.
-      None means that the game will run at max FPS */
-  val Fps: Option[Int] = Some(40)
+  /** Defines the target FPS of the game
+    *
+    * Override to define a target FPS.
+    *
+    * If value is None, the game will run at maximal possible
+    * FPS depending on the platform. On Desktop, it would typically
+    * not sleep between each frame, but on the web, it might set
+    * an arbitrary speed for the setInterval.
+    */
+  val TargetFps: Option[Int] = Some(30)
 
   //the frame period is in milliseconds
-  lazy val FramePeriod: Option[Long] = Fps.map(fps => (1000.0 / fps.toDouble).toLong)
-
+  //lazy val FramePeriod: Option[Long] = Fps.map(fps => (1000.0 / fps.toDouble).toLong)
 
   /** Interface to hook into the game loop
     *
     * Can be used for some low level optimization
-    * or monitoring. Typically, this is how we
+    * or monitoring. This is how we
     * implement the statistics module to collect
     * measures
     */
@@ -76,7 +84,7 @@ trait GameLoopProvider {
   val gameLoopListener: GameLoopListener = SilentGameLoopListener
   
   //this core loop step seems to be common to all platforms
-  def gameLoopStep(dt: Long, canvas: Canvas): Unit = {
+  def gameLoopStep(dt: Long, canvas: Graphics.Canvas): Unit = {
     gameLoopListener.onStepStart()
 
     //canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)

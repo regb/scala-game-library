@@ -4,24 +4,26 @@ package tiled
 import geometry.Point
 
 trait TiledMapRendererComponent {
-  this: GraphicsProvider with WindowProvider =>
+  this: SystemProvider with GraphicsProvider with WindowProvider =>
 
 
-  class TiledMapRenderer(tileMap: TiledMap, var camera: Camera, tileMapPrefix: String) {
+  class TiledMapRenderer(tileMap: TiledMap, var camera: Camera, tileMapPrefix: ResourcePath) {
 
-    private val tileSetBitmaps = tileMap.tileSets.map(
+    private val tileSetBitmaps: Vector[Graphics.Bitmap] = tileMap.tileSets.map(
       ts => {
-        val path = tileMapPrefix + "/" + ts.image
+        val path = tileMapPrefix / ts.image
         println("loading tileset: " + path)
-        loadImageFromResource(path)
+        Graphics.loadImage(path)
+        //TODO: handle Loaders
+        ???
       }
     )
 
-    private val tileSet2Bitmap: Map[TileSet, Bitmap] = tileMap.tileSets.zip(tileSetBitmaps).toMap
+    private val tileSet2Bitmap: Map[TileSet, Graphics.Bitmap] = tileMap.tileSets.zip(tileSetBitmaps).toMap
 
 
     /** render all tile layers of the Map */
-    def render(canvas: Canvas): Unit = {
+    def render(canvas: Graphics.Canvas): Unit = {
       tileMap.tileLayers.foreach(tl => {
         if(tl.isVisible)
           render(canvas, tl)
@@ -37,7 +39,7 @@ trait TiledMapRendererComponent {
     //TODO: use layer offsets
     //TODO: how to render tiles that are larger than grid and start from outside
     //      lower/upper bound and expand into the view port?
-    private def render(canvas: Canvas, tileMapLayer: TileLayer): Unit = {
+    private def render(canvas: Graphics.Canvas, tileMapLayer: TileLayer): Unit = {
       val i1 = camera.y / tileMap.tileHeight
       val i2 = (camera.y + WindowHeight - 1) / tileMap.tileHeight
       val j1 = camera.x / tileMap.tileWidth

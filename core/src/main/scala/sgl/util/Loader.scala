@@ -18,7 +18,7 @@ import scala.util.{Try, Success, Failure}
   * Loader does not provide a blocking call to access the underlying value. Even
   * though it would be extremely convenient while prototyping and debuging on
   * platforms such as the desktop, it is unfortunately very hard to provide
-  * such blocking calls in all backend, in particular on Javascript.
+  * such blocking calls in all backends, in particular with Javascript.
   *
   * We could probably just use a Future from standard library, but it seemed
   * potentially safer and more flexible to use our own implementation at the

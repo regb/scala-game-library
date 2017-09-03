@@ -1,6 +1,6 @@
 package sgl
 
-trait InputHelpersComponent extends Lifecycle {
+trait InputHelpersComponent {
   this: InputProvider =>
 
   object InputHelpers {

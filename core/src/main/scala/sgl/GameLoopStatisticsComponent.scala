@@ -7,8 +7,8 @@ package sgl
   * the main loop to collect statistics. Being optional, it won't
   * impact performence on production build, if not included.
   */
-trait GameLoopStatisticsComponent extends Lifecycle {
-  this: GameLoopProvider =>
+trait GameLoopStatisticsComponent {
+  this: GameLoopComponent =>
 
   val statistics: GameLoopStatistics = new GameLoopStatistics
 

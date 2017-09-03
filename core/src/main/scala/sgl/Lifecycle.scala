@@ -1,6 +1,6 @@
 package sgl
 
-trait Lifecycle {
+trait LifecycleListener {
 
   /*
    * Not sure how to best integrate this into the framework.
@@ -20,7 +20,7 @@ trait Lifecycle {
 
   /** Called at startup of the game application.
     * 
-    * Cake mixin has a somewhate fishy initialization order for
+    * Cake mixin has a somewhat fishy initialization order for
     * vals. This startup is called after the whole cake component
     * is initialized and can thus be used to perform some operations
     * that would be risky to perform in a trait body (constructor).
@@ -63,3 +63,11 @@ trait Lifecycle {
   //TODO: notify when the application window is being resized
   //def resize(width: Int, height: Int)
 }
+
+
+object SilentLifecyclieListener extends LifecycleListener {
+  override def startup(): Unit = {}
+  override def resume(): Unit = {}
+  override def pause(): Unit = {}
+  override def shutdown(): Unit = {}
+} 

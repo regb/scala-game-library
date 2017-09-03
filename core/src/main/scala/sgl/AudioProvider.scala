@@ -5,7 +5,21 @@ package sgl
  * while Music is for loop sound in the background.
  * Music should typically be streamed from disk instead of loaded in RAM as the sound.
  */
+
+/** Provides platform-specific Audio module.
+  *
+  * The Audio module defines the Sound and Music datatypes.
+  *
+  * This provider is not mandatory. If your game does not require
+  * audio, you do not need to mix-in an implementation for this
+  * provider. That being said, I do not recommand a game without
+  * sound.
+  */
 trait AudioProvider {
+
+  //TODO: wrap all definitions into an Audio module
+  //trait Audio { ... }
+  //val Audio: Audio
 
   /** Represents data for short sound
     *

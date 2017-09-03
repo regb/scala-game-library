@@ -20,6 +20,9 @@ trait GraphicsHelpersComponent {
   this: GraphicsProvider =>
 
 
+  trait GraphicsExtension {
+    this: Graphics =>
+
   /** Provides non-primitive methods for Canvas
     *
     * Most methods here involve some computation and composition
@@ -172,6 +175,8 @@ trait GraphicsHelpersComponent {
     case object LoopPingPong extends PlayMode
 
     //TODO: more play mode could be a custom play mode with exact indexing and frame duration?
+  }
+
   }
 
 }
