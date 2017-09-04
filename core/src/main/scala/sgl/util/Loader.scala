@@ -127,6 +127,35 @@ object Loader {
     p.success(result)
     p.loader
   }
+
+  /*
+   * fold can be used to implement a loading screen that waits for a set of Loader to be
+   * fully loaded. Just fold over the entire set, returning Unit, and wait for the resulting
+   * Loader to be loaded.
+   */
+  //def fold[A,R](loaders: TraversableOnce[Loader[A]])(zero: R)(foldFun: (R, A) => R): Loader[R] = {
+  //  loaders.foldLeft(zero)((r, l) => 
+
+  //}
+
+  def combine[A](loaders: Seq[Loader[A]]): Loader[Seq[A]] = {
+    val p = new DefaultLoader[Seq[A]]
+    val totalToLoad = loaders.size
+    var totalLoaded = 0
+
+    //assuming we use always the same thread, so no race conditions
+    loaders.foreach(loader => loader.onLoad((res: Try[A]) => res match {
+      case Success(v) =>
+        totalLoaded += 1
+        if(totalLoaded == totalToLoad)
+          p.success(loaders.map(l => l.value.get.get))
+      case Failure(e) =>
+        p.failure(e)
+    }))
+
+    p.loader
+  }
+
 }
 
 trait LoaderPromise[A] {
