@@ -7,9 +7,11 @@ import scene._
 import util._
 
 trait MainScreenComponent {
-  this: GraphicsProvider with InputProvider with GameStateComponent
-  with WindowProvider with InputHelpersComponent with GameLoopStatisticsComponent
-  with LoggingProvider with SystemProvider =>
+  this: GraphicsProvider with InputProvider with SystemProvider with WindowProvider 
+  with GameStateComponent with InputHelpersComponent with GameLoopStatisticsComponent
+  with LoggingProvider with GraphicsHelpersComponent =>
+
+  import Graphics.{Bitmap, Canvas, Color, BitmapRegion, Animation, RichCanvas}
 
   private implicit val LogTag = Logger.Tag("main-screen")
 
@@ -22,7 +24,7 @@ trait MainScreenComponent {
 
     override def update(dt: Long): Unit = {
       if(characterBitmapLoader == null) {
-        characterBitmapLoader = Graphics.loadImage(System.ResourcesPrefix / "drawable" / "character.png")
+        characterBitmapLoader = Graphics.loadImage(ResourcesPrefix / "drawable" / "character.png")
       }
       if(characterBitmapLoader.isLoaded) {
         characterBitmap = Some(characterBitmapLoader.value.get.get)
@@ -82,8 +84,8 @@ trait MainScreenComponent {
     }
 
     override def render(canvas: Canvas): Unit = {
-      canvas.drawRect(0, 0, WindowWidth, WindowHeight, defaultPaint.withColor(Color.rgb(204, 242, 204)))
-      canvas.drawCircle(autoX.toInt, autoY.toInt, dp2px(50), defaultPaint.withColor(Color.Black))
+      canvas.drawRect(0, 0, WindowWidth, WindowHeight, Graphics.defaultPaint.withColor(Color.rgb(204, 242, 204)))
+      canvas.drawCircle(autoX.toInt, autoY.toInt, dp2px(50), Graphics.defaultPaint.withColor(Color.Black))
 
       canvas.drawBitmap(characterAnimation.currentFrame(totalTime), x.toInt, y.toInt)
     }

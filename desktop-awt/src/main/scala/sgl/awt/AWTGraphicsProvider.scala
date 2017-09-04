@@ -32,12 +32,6 @@ trait AWTGraphicsProvider extends GraphicsProvider {
     }
     type Bitmap = AWTBitmap
 
-    override def loadImageFromResource(path: String): Bitmap = {
-      val url = getClass.getClassLoader.getResource(path)
-      val bi = ImageIO.read(url)
-      AWTBitmap(bi)
-    }
-
     case class AWTFont(f: java.awt.Font) extends AbstractFont {
       override def withSize(s: Int): Font = AWTFont(f.deriveFont(f.getStyle, s))
       override def withStyle(s: Font.Style): Font = AWTFont(f.deriveFont(AWTFontCompanion.toAWTStyle(s)))
@@ -200,7 +194,6 @@ trait AWTGraphicsProvider extends GraphicsProvider {
       }
     }
     type Canvas = AWTCanvas
-    def makeCanvas(graphics2D: Graphics2D, width: Int, height: Int): Canvas = AWTCanvas(graphics2D, width, height)
 
     type TextLayout = AWTTextLayout
     case class AWTTextLayout(text: String, width: Int, textMetrics: FontMetrics, paint: Paint) extends AbstractTextLayout {
@@ -271,6 +264,6 @@ trait AWTGraphicsProvider extends GraphicsProvider {
     }
 
   }
-  override val Graphics: Graphics = AWTGraphics
+  override val Graphics = AWTGraphics
 
 }

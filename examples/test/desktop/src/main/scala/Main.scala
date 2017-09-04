@@ -12,7 +12,7 @@ import sgl.awt.util._
 object Main extends AbstractApp with AWTApp
   with InputHelpersComponent with VerboseStdErrLoggingProvider with GameLoopStatisticsComponent {
 
-  override val Fps = Some(60)
+  override val TargetFps = Some(60)
 
   override val frameDimension = (1200, 800)
 

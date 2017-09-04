@@ -109,7 +109,7 @@ trait AWTApp extends GameApp
       while(running) {
         val beginTime: Long = java.lang.System.nanoTime
 
-        val canvas = AWTGraphics.makeCanvas(backBuffer.getGraphics.asInstanceOf[Graphics2D], gamePanel.getWidth, gamePanel.getHeight)
+        val canvas: Graphics.Canvas = Graphics.AWTCanvas(backBuffer.getGraphics.asInstanceOf[Graphics2D], gamePanel.getWidth, gamePanel.getHeight)
 
         val newTime = java.lang.System.nanoTime
         //delta time, in ms (all time measures are in nano)
