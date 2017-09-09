@@ -17,7 +17,7 @@ object FutureLoader {
   def apply[A](body: => A)(implicit ec: ExecutionContext): Loader[A] = {
     val loader = new DefaultLoader[A]
     val f = Future(body)
-    f.foreach(r => loader.success(r))
+    f.onComplete(r => loader.complete(r))
     loader.loader
   }
 

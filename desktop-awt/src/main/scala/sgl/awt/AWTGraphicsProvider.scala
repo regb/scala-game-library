@@ -13,14 +13,13 @@ trait AWTGraphicsProvider extends GraphicsProvider {
 
   object AWTGraphics extends Graphics {
 
-    //We use Future infrastructure to perform the asynchronous loading on
-    //desktop. This is not used on other platforms, as we want to have
-    //a better integration in the system, but it seems like a good choice
-    //on the desktop
     override def loadImage(path: ResourcePath): Loader[Bitmap] = {
       FutureLoader {
         //TODO: understand and explain why getResource on getClassLoader needs relative path
         val url = getClass.getClassLoader.getResource(path.path)
+        if(url == null) {
+          throw new java.io.FileNotFoundException("Resource " + path + " not found.")
+        }
         val bi = ImageIO.read(url)
         AWTBitmap(bi)
       }

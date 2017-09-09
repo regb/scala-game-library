@@ -94,7 +94,7 @@ trait Loader[A] {
     *
     * Note that it doesn't mean that the loading was
     * successful, just that the operation completed.
-    * The actual value could still be a failure to load
+    * The actual result could still be failure to load
     * TODO: maybe we are being too general here, and we should
     *       have a simplified API.
     */
@@ -107,6 +107,8 @@ trait Loader[A] {
     */
   def value: Option[Try[A]]
 
+  /** true if loaded and is failure */
+  def isFailed: Boolean = value.exists(t => t.isFailure)
 
   //just some cool design idea for the future,
   //would be nice to have a get method that returns the
@@ -165,7 +167,6 @@ trait LoaderPromise[A] {
   def isCompleted: Boolean
 
   def tryComplete(result: Try[A]): Boolean
-
   def complete(result: Try[A]): this.type =
     if(tryComplete(result)) this else throw new IllegalStateException("LoaderPromise already completed")
 

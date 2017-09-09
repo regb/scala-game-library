@@ -1,5 +1,7 @@
 package sgl
 
+import scala.language.implicitConversions
+
 /** Provide helpers for common graphics operations
   *
   * This is designed as a separate module to the GraphicsProvider,
@@ -91,6 +93,9 @@ trait GraphicsHelpersComponent {
 
       def this(bitmap: Bitmap) = this(bitmap, 0, 0, bitmap.width, bitmap.height)
     }
+
+    implicit def bitmapToBitmapRegion(bitmap: Bitmap): BitmapRegion =
+      new BitmapRegion(bitmap)
 
     /** Animation helper class
       *
