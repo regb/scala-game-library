@@ -33,40 +33,37 @@ trait GraphicsHelpersComponent {
       */
     implicit class RichCanvas(canvas: Canvas) {
 
-      /** draws the bitmap mutliple times to fill the area
+      /** draws the bitmap region mutliple times to fill the area
         *
         * Draws the bitmap in tiles of original size, to completely
         * fill the specified area.
         */
-      def drawRepeatedBitmap(bitmap: Bitmap, x: Int, y: Int, width: Int, height: Int): Unit = {
-        val bitmapWidth = bitmap.width
-        val bitmapHeight = bitmap.height
-
-        val nbFullCols: Int = width/bitmapWidth
-        val nbFullRows: Int = height/bitmapHeight
+      def drawRepeatedBitmap(region: BitmapRegion, x: Int, y: Int, width: Int, height: Int): Unit = {
+        val nbFullCols: Int = width/region.width
+        val nbFullRows: Int = height/region.height
 
         //first we draw all the full tiles
         for(i <- 0 until nbFullCols) {
           for(j <- 0 until nbFullRows) {
-            canvas.drawBitmap(bitmap, x+i*bitmapWidth, y+j*bitmapHeight)
+            canvas.drawBitmap(region.bitmap, x+i*region.width, y+j*region.height, region.x, region.y, region.width, region.height)
           }
         }
 
         //now draw last col and las rows (without corner)
-        val missingWidth = width - nbFullCols*bitmapWidth
+        val missingWidth = width - nbFullCols*region.width
         if(missingWidth > 0) {
           for(i <- 0 until nbFullRows)
-            canvas.drawBitmap(bitmap, x+nbFullCols*bitmapWidth, y+i*bitmapHeight, 0, 0, missingWidth, bitmapHeight)
+            canvas.drawBitmap(region.bitmap, x+nbFullCols*region.width, y+i*region.height, region.x, region.y, missingWidth, region.height)
         }
-        val missingHeight = height - nbFullRows*bitmapHeight
+        val missingHeight = height - nbFullRows*region.height
         if(missingHeight > 0) {
           for(i <- 0 until nbFullCols)
-            canvas.drawBitmap(bitmap, x+i*bitmapWidth, y+nbFullRows*bitmapHeight, 0, 0, bitmapWidth, missingHeight)
+            canvas.drawBitmap(region.bitmap, x+i*region.width, y+nbFullRows*region.height, region.x, region.y, region.width, missingHeight)
         }
 
         //finally draw bottom right corner
         if(missingWidth > 0 && missingHeight > 0) {
-          canvas.drawBitmap(bitmap, nbFullCols*bitmapWidth, nbFullRows*bitmapHeight, 0, 0, missingWidth, missingHeight)
+          canvas.drawBitmap(region.bitmap, nbFullCols*region.width, nbFullRows*region.height, region.x, region.y, missingWidth, missingHeight)
         }
 
       }
@@ -91,11 +88,11 @@ trait GraphicsHelpersComponent {
       val bitmap: Bitmap, val x: Int, val y: Int,
       val width: Int, val height: Int) {
 
-      def this(bitmap: Bitmap) = this(bitmap, 0, 0, bitmap.width, bitmap.height)
     }
-
-    implicit def bitmapToBitmapRegion(bitmap: Bitmap): BitmapRegion =
-      new BitmapRegion(bitmap)
+    object BitmapRegion {
+      def apply(bitmap: Bitmap): BitmapRegion = BitmapRegion(bitmap, 0, 0, bitmap.width, bitmap.height)
+    }
+    implicit def bitmapToBitmapRegion(bitmap: Bitmap): BitmapRegion = BitmapRegion(bitmap)
 
     /** Animation helper class
       *
@@ -180,6 +177,13 @@ trait GraphicsHelpersComponent {
       case object LoopPingPong extends PlayMode
 
       //TODO: more play mode could be a custom play mode with exact indexing and frame duration?
+
+      //specify using the total duration of the animation (the time to display all the frames)
+      //the frameDuration is computed by dividing the total by the number of frames
+      def fromTotalDuration(totalDuration: Long, frames: Array[BitmapRegion], playMode: Animation.PlayMode): Animation = {
+        new Animation(totalDuration/frames.length, frames, playMode)
+      }
+
     }
 
   }
