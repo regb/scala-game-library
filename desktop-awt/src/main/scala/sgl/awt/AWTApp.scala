@@ -119,8 +119,10 @@ trait AWTApp extends GameApp
         gameLoopStep(dt, canvas)
 
         val g = gamePanel.getGraphics
-        g.drawImage(backBuffer, 0, 0, null)
-        g.dispose()
+        if(g != null) {
+          g.drawImage(backBuffer, 0, 0, null)
+          g.dispose()
+        }
 
         val endTime: Long = java.lang.System.nanoTime
         val elapsedTime: Long = endTime - beginTime
