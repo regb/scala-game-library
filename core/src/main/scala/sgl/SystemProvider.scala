@@ -48,11 +48,23 @@ trait SystemProvider {
 
 
     /*
-     * Find the path in the resources, and load the text content
-     * of the file
+     * Checks if a resource is present in the resources.
+     * NOTE: Commented out for now, as I'm not sure there is a good use case for
+     *       a potentially absent file in a game. Probably resources should always be
+     *       there, and if absent it would be a programming/configuration error.
+     */
+    // def resourceExists(path: ResourcePath): Boolean
+
+    /*
+     * Loads the text from the file in the resources bundle, identified by the path.
      */
     def loadTextResource(path: String): Iterator[String]
+    def loadText(path: ResourcePath): Iterator[String]
 
+    /*
+     * Loads the binary data from the file in the resources bundle, identified by the path.
+     */
+    def loadBinary(path: ResourcePath): Array[Byte]
 
     /** Opens a webpage
       *
