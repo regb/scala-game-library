@@ -58,7 +58,6 @@ trait SystemProvider {
     /*
      * Loads the text from the file in the resources bundle, identified by the path.
      */
-    def loadTextResource(path: String): Iterator[String]
     def loadText(path: ResourcePath): Iterator[String]
 
     /*

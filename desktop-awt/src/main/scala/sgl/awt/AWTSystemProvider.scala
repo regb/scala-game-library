@@ -14,10 +14,6 @@ trait AWTSystemProvider extends SystemProvider {
       sys.exit()
     }
 
-    override def loadTextResource(path: String): Iterator[String] = {
-      val is = getClass.getClassLoader.getResourceAsStream(path)
-      scala.io.Source.fromInputStream(is).getLines
-    }
     override def loadText(path: ResourcePath): Iterator[String] = {
       val is = getClass.getClassLoader.getResourceAsStream(path.path)
       scala.io.Source.fromInputStream(is).getLines
