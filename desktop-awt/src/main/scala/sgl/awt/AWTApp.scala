@@ -97,7 +97,7 @@ trait AWTApp extends GameApp
 
     private implicit val Tag = Logger.Tag("game-loop")
 
-    private val framePeriod: Option[Long] = TargetFps.map(fps => (1000.0 / fps.toDouble).toLong)
+    private val targetFramePeriod: Option[Long] = TargetFps map framePeriod
 
     var running = true
 
@@ -127,12 +127,12 @@ trait AWTApp extends GameApp
         val endTime: Long = java.lang.System.nanoTime
         val elapsedTime: Long = endTime - beginTime
 
-        val sleepTime: Long = framePeriod.map(fp => fp - elapsedTime/(1000*1000)).getOrElse(0)
+        val sleepTime: Long = targetFramePeriod.map(fp => fp - elapsedTime/(1000*1000)).getOrElse(0)
 
         if(sleepTime > 0) {
           Thread.sleep(sleepTime)
         } else if(sleepTime < 0) {
-          logger.warning(s"negative sleep time. frame period: $framePeriod, elapsed time: $elapsedTime.")
+          logger.warning(s"negative sleep time. frame period: $targetFramePeriod, elapsed time: $elapsedTime.")
         }
       }
     }

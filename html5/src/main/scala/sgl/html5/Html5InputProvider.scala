@@ -1,11 +1,13 @@
 package sgl
 package html5
 
+import sgl.util._
+
 import org.scalajs.dom
 import dom.html
 
 trait Html5InputProvider extends InputProvider {
-  this: Html5WindowProvider with Html5GraphicsProvider =>
+  this: Html5App with LoggingProvider =>
 
   import Input._
 
@@ -30,16 +32,16 @@ trait Html5InputProvider extends InputProvider {
   }
 
   def registerInputListeners(): Unit = {
-    this.canvas.onmousedown = (e: dom.MouseEvent) => {
-      val (x,y) = getCursorPosition(this.canvas, e)
+    this.htmlCanvas.onmousedown = (e: dom.MouseEvent) => {
+      val (x,y) = getCursorPosition(this.htmlCanvas, e)
       Input.newEvent(Input.MouseDownEvent(x, y, mouseEventButton(e)))
     }
-    this.canvas.onmouseup = (e: dom.MouseEvent) => {
-      val (x,y) = getCursorPosition(this.canvas, e)
+    this.htmlCanvas.onmouseup = (e: dom.MouseEvent) => {
+      val (x,y) = getCursorPosition(this.htmlCanvas, e)
       Input.newEvent(Input.MouseUpEvent(x, y, mouseEventButton(e)))
     }
-    this.canvas.onmousemove = (e: dom.MouseEvent) => {
-      val (x,y) = getCursorPosition(this.canvas, e)
+    this.htmlCanvas.onmousemove = (e: dom.MouseEvent) => {
+      val (x,y) = getCursorPosition(this.htmlCanvas, e)
       Input.newEvent(Input.MouseMovedEvent(x, y))
     }
 
@@ -61,7 +63,7 @@ trait Html5InputProvider extends InputProvider {
      * fits the whole viewport.
      */
 
-    this.canvas.addEventListener("touchstart", (e: dom.Event) => {
+    this.htmlCanvas.addEventListener("touchstart", (e: dom.Event) => {
       val touchEvent = e.asInstanceOf[dom.raw.TouchEvent]
       touchEvent.preventDefault()
       val touches = touchEvent.changedTouches
@@ -70,12 +72,12 @@ trait Html5InputProvider extends InputProvider {
       while(i < touches.length) {
         val touch = touches(i)
         i += 1
-        val (x,y) = getCursorPosition(this.canvas, touch.clientX.toInt, touch.clientY.toInt)
+        val (x,y) = getCursorPosition(this.htmlCanvas, touch.clientX.toInt, touch.clientY.toInt)
         val id = touch.identifier.toInt
         Input.newEvent(Input.TouchDownEvent(x, y, id))
       }
     })
-    this.canvas.addEventListener("touchend", (e: dom.Event) => {
+    this.htmlCanvas.addEventListener("touchend", (e: dom.Event) => {
       val touchEvent = e.asInstanceOf[dom.raw.TouchEvent]
       touchEvent.preventDefault()
       val touches = touchEvent.changedTouches
@@ -84,12 +86,12 @@ trait Html5InputProvider extends InputProvider {
       while(i < touches.length) {
         val touch = touches(i)
         i += 1
-        val (x,y) = getCursorPosition(this.canvas, touch.clientX.toInt, touch.clientY.toInt)
+        val (x,y) = getCursorPosition(this.htmlCanvas, touch.clientX.toInt, touch.clientY.toInt)
         val id = touch.identifier.toInt
         Input.newEvent(Input.TouchUpEvent(x, y, id))
       }
     })
-    this.canvas.addEventListener("touchmove", (e: dom.Event) => {
+    this.htmlCanvas.addEventListener("touchmove", (e: dom.Event) => {
       val touchEvent = e.asInstanceOf[dom.raw.TouchEvent]
       touchEvent.preventDefault()
       val touches = touchEvent.changedTouches
@@ -98,7 +100,7 @@ trait Html5InputProvider extends InputProvider {
       while(i < touches.length) {
         val touch = touches(i)
         i += 1
-        val (x,y) = getCursorPosition(this.canvas, touch.clientX.toInt, touch.clientY.toInt)
+        val (x,y) = getCursorPosition(this.htmlCanvas, touch.clientX.toInt, touch.clientY.toInt)
         val id = touch.identifier.toInt
         Input.newEvent(Input.TouchMovedEvent(x, y, id))
       }

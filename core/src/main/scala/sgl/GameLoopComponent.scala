@@ -28,8 +28,8 @@ trait GameLoopComponent {
     */
   val TargetFps: Option[Int] = Some(30)
 
-  //the frame period is in milliseconds
-  //lazy val FramePeriod: Option[Long] = Fps.map(fps => (1000.0 / fps.toDouble).toLong)
+  // Convert an FPS to its corresponding frame period in in milliseconds.
+  def framePeriod(fps: Int): Long = (1000.0 / fps.toDouble).toLong
 
   /** Interface to hook into the game loop
     *

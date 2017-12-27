@@ -1,15 +1,11 @@
 package sgl
 package html5
 
-trait Html5WindowProvider extends WindowProvider with Lifecycle {
-  this: GameStateComponent with Html5GraphicsProvider =>
+trait Html5WindowProvider extends WindowProvider {
+  this: Html5App =>
 
-  abstract override def startup(): Unit = {
-    super.startup()
-  }
-
-  override def WindowWidth: Int = this.canvas.width
-  override def WindowHeight: Int = this.canvas.height
+  override def WindowWidth: Int = this.htmlCanvas.width
+  override def WindowHeight: Int = this.htmlCanvas.height
 
   override def dpi: Int = 160
 
