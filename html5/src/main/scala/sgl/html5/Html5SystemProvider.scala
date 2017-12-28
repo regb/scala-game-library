@@ -44,7 +44,8 @@ trait Html5SystemProvider extends SystemProvider {
       fileReq.onreadystatechange = (event: dom.Event) => {
         if(fileReq.readyState == 4) {
           if(fileReq.status == 200 || fileReq.status == 0) {
-            p.success(fileReq.response.toArray)
+            println(fileReq.response)
+            //p.success(fileReq.response.toArray)
           } else {
             p.failure(new RuntimeException("file: " + path + " failed to load"))
           }
