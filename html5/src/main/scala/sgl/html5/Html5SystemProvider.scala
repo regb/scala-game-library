@@ -4,6 +4,7 @@ package html5
 import java.net.URI
 
 import org.scalajs.dom
+import scala.scalajs.js.typedarray.{ArrayBuffer, TypedArrayBuffer}
 
 import sgl.util._
 
@@ -44,8 +45,11 @@ trait Html5SystemProvider extends SystemProvider {
       fileReq.onreadystatechange = (event: dom.Event) => {
         if(fileReq.readyState == 4) {
           if(fileReq.status == 200 || fileReq.status == 0) {
-            println(fileReq.response)
-            //p.success(fileReq.response.toArray)
+            val responseBuffer: ArrayBuffer = fileReq.response.asInstanceOf[ArrayBuffer]
+            val bb: java.nio.ByteBuffer = TypedArrayBuffer.wrap(responseBuffer)
+            val array: Array[Byte] = new Array(bb.remaining)
+            bb.get(array)
+            p.success(array)
           } else {
             p.failure(new RuntimeException("file: " + path + " failed to load"))
           }
