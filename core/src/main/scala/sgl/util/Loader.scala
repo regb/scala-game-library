@@ -55,13 +55,9 @@ trait Loader[A] {
     */
   def onLoad[U](f: (Try[A]) => U): Unit
 
-
   def transform[B](f: (Try[A]) => Try[B]): Loader[B]
 
-  //I don't think it makes so much sense to use the result of a loader to
-  //then load something else
-  //def transformWith[B](f: (Try[A]) => Loader[B]): Loader[B]
-
+  def transformWith[B](f: (Try[A]) => Loader[B]): Loader[B]
 
   /** Apply f when loader complete loading successfully */
   def foreach[U](f: (A) => U): Unit = {
@@ -72,10 +68,10 @@ trait Loader[A] {
     transform(_ map f)
   }
 
-  //def flatMap[B](f: (A) => Loader[B]): Loader[B] = transformWith {
-  //  case Success(a) => f(a)
-  //  case Failure(e) => Loader.failed(e)
-  //}
+  def flatMap[B](f: (A) => Loader[B]): Loader[B] = transformWith {
+    case Success(a) => f(a)
+    case Failure(e) => Loader.failed(e)
+  }
 
   /** Apply the partial function in specific order
     *
@@ -89,6 +85,12 @@ trait Loader[A] {
       result
     }
   }
+
+  // Although zip is using a flatMap to "sequence" both Loaders, the computation
+  // of both Loaders is started in parallel and the flatMap is just used to combine
+  // them into a single Loader. This is an example of how flatMap (and thus transformWith)
+  // can be useful to parallelization.
+  def zip[B](that: Loader[B]): Loader[(A, B)] = flatMap(a => that.map(b => (a, b)))
 
   /** Whether the loader has completed loading
     *
@@ -226,17 +228,12 @@ class DefaultLoader[A] extends Loader[A] with LoaderPromise[A] {
   //implementation of this in standard scala library looks quite complex
   //with a lot of casting, may want to revisit it sometimes to make sure we
   //are not having bugs with our own implementation
-  //override def transformWith[B](f: (Try[A]) => Loader[B]): Loader[B] = {
-  //  val p = new DefaultLoader[B]()
-  //  this.onLoad(result => {
-  //    val r = try {
-  //      f(result)
-  //    } catch {
-  //      case (t: Throwable) => Failure(t)
-  //    }
-  //    p.complete(r)
-  //  })
-  //  p.loader
-  //}
+  override def transformWith[B](f: (Try[A]) => Loader[B]): Loader[B] = {
+    val p = new DefaultLoader[B]()
+    this.onLoad(result => {
+      f(result).onLoad(r => p.complete(r))
+    })
+    p.loader
+  }
 
 }

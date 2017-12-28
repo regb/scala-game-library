@@ -1,6 +1,9 @@
 package sgl
 package awt
 
+import sgl.util._
+import util._
+
 import java.net.URI
 import java.awt.Desktop
 
@@ -14,20 +17,24 @@ trait AWTSystemProvider extends SystemProvider {
       sys.exit()
     }
 
-    override def loadText(path: ResourcePath): Iterator[String] = {
-      val is = getClass.getClassLoader.getResourceAsStream(path.path)
-      scala.io.Source.fromInputStream(is).getLines
+    override def loadText(path: ResourcePath): Loader[Array[String]] = {
+      FutureLoader {
+        val is = getClass.getClassLoader.getResourceAsStream(path.path)
+        scala.io.Source.fromInputStream(is).getLines.toArray
+      }
     }
 
-    override def loadBinary(path: ResourcePath): Array[Byte] = {
-      val is = getClass.getClassLoader.getResourceAsStream(path.path)
-      val bis = new java.io.BufferedInputStream(is)
-      val bytes = new scala.collection.mutable.ListBuffer[Byte]
-      var b: Int = 0
-      while({ b = bis.read; b != -1}) {
-        bytes.append(b.toByte)
+    override def loadBinary(path: ResourcePath): Loader[Array[Byte]] = {
+      FutureLoader {
+        val is = getClass.getClassLoader.getResourceAsStream(path.path)
+        val bis = new java.io.BufferedInputStream(is)
+        val bytes = new scala.collection.mutable.ListBuffer[Byte]
+        var b: Int = 0
+        while({ b = bis.read; b != -1}) {
+          bytes.append(b.toByte)
+        }
+        bytes.toArray
       }
-      bytes.toArray
     }
 
     override def openWebpage(uri: URI): Unit = {

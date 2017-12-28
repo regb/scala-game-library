@@ -1,5 +1,7 @@
 package sgl
 
+import sgl.util._
+
 import scala.util._
 
 import scala.language.implicitConversions
@@ -56,14 +58,24 @@ trait SystemProvider {
     // def resourceExists(path: ResourcePath): Boolean
 
     /*
-     * Loads the text from the file in the resources bundle, identified by the path.
+     * Loads the text as an array of lines from the file in the resources bundle, identified by the path.
+     * Returns a Loader as the data need to be fetched from somewhere. We assume that
+     * the data will always be needed entirely in memory (hence the Array[String]) and not lazily
+     * (as it would be with an Iterator[String]). We could probably export an Iterator to simulate
+     * streaming the data line by line, but I doubt there would be an actual use case for that (especially
+     * for text files), so it seems better to simplify the signature and just assume we always load 
+     * in memory a complete array with the content of the file.
+     *
+     * A missing file will be visible by a completed Loader with failure.
      */
-    def loadText(path: ResourcePath): Iterator[String]
+    def loadText(path: ResourcePath): Loader[Array[String]]
 
     /*
      * Loads the binary data from the file in the resources bundle, identified by the path.
+     *
+     * A missing file will be visible by a completed Loader with failure.
      */
-    def loadBinary(path: ResourcePath): Array[Byte]
+    def loadBinary(path: ResourcePath): Loader[Array[Byte]]
 
     /** Opens a webpage
       *
@@ -149,6 +161,9 @@ trait SystemProvider {
   val ResourcesPrefix: ResourcePath
   //indeed, ResourcePath without a 's' as this is the path to ONE resource. But
   //the root prefix is ResourcesPrefix, as it is the prefix of ALL resources.
+
+  /* TODO: Why not root  instead of prefix? */
+  def ResourcesRoot: ResourcePath = ResourcesPrefix
 
 
   //TODO: alternative is to provide a conversion from resource to wrapper with the / method
