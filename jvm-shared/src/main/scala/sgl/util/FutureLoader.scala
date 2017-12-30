@@ -1,16 +1,14 @@
-package sgl.awt.util
-
-import sgl.util._
+package sgl.util
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
 
-/** A loader backed by a Future
+/** A loader backed by a Future.
   *
   * We use Future infrastructure to perform the asynchronous loading on
-  * desktop. This is not used on other platforms, as we want to have
+  * JVM-based platform. This is not used on other platforms, as we want to have
   * a better integration in the system, but it seems like a good choice
-  * on the desktop
+  * for JVM-based platform with standard threads.
   */
 object FutureLoader {
 

@@ -2,7 +2,6 @@ package sgl
 package awt
 
 import sgl.util._
-import util._
 
 import java.net.URI
 import java.awt.Desktop

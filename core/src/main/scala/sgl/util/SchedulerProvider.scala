@@ -22,6 +22,11 @@ trait SchedulerProvider {
       */
     def run(ms: Long): Unit
 
+    /** The Scheduler will stop executing all scheduled task
+      * and it will clean-up all platform-specific resources
+      * (for example, running worker threads).
+      */
+    def shutdown(): Unit
   }
   val Scheduler: Scheduler
 
@@ -69,6 +74,8 @@ trait SingleThreadSchedulerProvider extends SchedulerProvider {
         remaining -= available
       }
     }
+
+    override def shutdown(): Unit = {}
 
   }
   override val Scheduler = new SingleThreadScheduler

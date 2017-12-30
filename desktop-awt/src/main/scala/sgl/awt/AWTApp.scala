@@ -8,7 +8,7 @@ import java.awt.Graphics2D
 
 trait AWTApp extends GameApp 
                 with AWTGraphicsProvider with AWTInputProvider with AWTAudioProvider
-                with AWTWindowProvider with AWTSystemProvider with SingleThreadSchedulerProvider
+                with AWTWindowProvider with AWTSystemProvider with ThreadPoolSchedulerProvider
                 with GameStateComponent {
 
   this: LoggingProvider =>
@@ -34,8 +34,6 @@ trait AWTApp extends GameApp
     this.registerInputListeners()
 
     gameState.newScreen(startingScreen)
-
-
 
     resumeThread()
 
@@ -139,6 +137,8 @@ trait AWTApp extends GameApp
           logger.warning(s"negative sleep time. frame period: $targetFramePeriod, elapsed time: $elapsedTime.")
         }
       }
+
+      Scheduler.shutdown()
     }
   }
 

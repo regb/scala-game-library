@@ -32,6 +32,10 @@ lazy val coreJVM = core.jvm
 lazy val coreJS = core.js
 lazy val coreNative = core.native
 
+lazy val jvmShared = (project in file("./jvm-shared"))
+  .settings(commonSettings: _*)
+  .dependsOn(coreJVM)
+
 lazy val desktopAWT = (project in file("./desktop-awt"))
   .settings(commonSettings: _*)
   .settings(
@@ -40,7 +44,7 @@ lazy val desktopAWT = (project in file("./desktop-awt"))
     libraryDependencies += "com.googlecode.soundlibs" % "vorbisspi" % "1.0.3-2",
     libraryDependencies += "com.googlecode.soundlibs" % "jorbis" % "0.0.17-3"
   )
-  .dependsOn(coreJVM)
+  .dependsOn(coreJVM, jvmShared)
 
 def ghProject(repo: String, version: String, name: String) = ProjectRef(uri(s"${repo}#${version}"), name)
 
