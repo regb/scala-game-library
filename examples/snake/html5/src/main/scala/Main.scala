@@ -18,7 +18,7 @@ object Main extends core.AbstractApp with Html5App
 
   //We should not force the fps on Html5 and just let
   //requestAnimationFrame do its best
-  override val Fps: Option[Int] = None
+  override val TargetFps: Option[Int] = None
 
   override val theme = new FixedWindowTheme {
     override val frameSize = (TotalWidth, TotalHeight)

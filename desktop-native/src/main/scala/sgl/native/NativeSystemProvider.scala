@@ -1,6 +1,8 @@
 package sgl
 package native
 
+import sgl.util._
+
 import java.net.URI
 import java.awt.Desktop
 
@@ -10,43 +12,38 @@ import scala.language.implicitConversions
 
 trait NativeSystemProvider extends SystemProvider {
 
-  override def exit(): Unit = {
-    sys.exit()
-  }
-
-  override def loadTextResource(path: String): Iterator[String] = {
-
-    ???
-    //val is = getClass.getClassLoader.getResourceAsStream(path)
-    //scala.io.Source.fromInputStream(is).getLines
-  }
-
-  override def openWebpage(uri: URI): Unit = {
-    ()
-    //val desktop = if(Desktop.isDesktopSupported()) Desktop.getDesktop() else null
-    //if(desktop != null && desktop.isSupported(Desktop.Action.BROWSE)) {
-    //  try {
-    //    desktop.browse(uri);
-    //  } catch {
-    //    case (e: Exception) =>
-    //      e.printStackTrace()
-    //  }
-    //}
-  }
-
   object NativeSystem extends System {
 
-    case class StringPath(path: String) extends AbstractResourcePath {
-      override def /(filename: String): ResourcePath = StringPath(path + "/" + filename)
+    override def exit(): Unit = {
+      sys.exit()
     }
-    type ResourcePath = StringPath
-    val ResourcesPrefix: ResourcePath = StringPath("assets")
+
+    override def millis(): Long = {
+      // TODO: check that we can use java.lang.System ?
+      java.lang.System.currentTimeMillis
+    }
+
+    override def loadText(path: ResourcePath): Loader[Array[String]] = {
+      ???
+      //val is = getClass.getClassLoader.getResourceAsStream(path)
+      //scala.io.Source.fromInputStream(is).getLines
+    }
+
+    override def loadBinary(path: ResourcePath): Loader[Array[Byte]] = {
+      ???
+    }
+
+    override def openWebpage(uri: URI): Unit = {
+      ???
+    }
   }
-  val System = NativeSystem
 
-  //override implicit def wrapResourcePath(resourcePath: System.ResourcePath) = System.StringPath(resourcePath)
+  override val System = NativeSystem
 
-  //Centralize the execution context used for asynchronous tasks in the Desktop backend
-  //Could be overriden at wiring time
-  //implicit val executionContext: ExecutionContext = ExecutionContext.Implicits.global
+  case class StringPath(path: String) extends AbstractResourcePath {
+    override def /(filename: String): ResourcePath = StringPath(path + "/" + filename)
+  }
+  type ResourcePath = StringPath
+  val ResourcesPrefix: ResourcePath = StringPath("assets")
+
 }

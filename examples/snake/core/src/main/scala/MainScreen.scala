@@ -11,6 +11,8 @@ trait MainScreenComponent {
   with WindowProvider with InputHelpersComponent
   with LoggingProvider with SystemProvider =>
 
+  import Graphics._
+
   val NbRows = 30
   val NbCols = 30
 

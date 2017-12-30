@@ -16,7 +16,8 @@ import java.lang.System.nanoTime
 
 trait NativeApp extends GameApp 
                    with NativeGraphicsProvider with NativeInputProvider with NativeAudioProvider
-                   with NativeWindowProvider with NativeSystemProvider with GameStateComponent {
+                   with NativeWindowProvider with NativeSystemProvider with GameStateComponent 
+                   with SingleThreadSchedulerProvider {
 
   this: LoggingProvider =>
 
@@ -86,15 +87,13 @@ trait NativeApp extends GameApp
 
     glClearColor(0f, 0f, 0f, 1f)
 
-
-    this.startup()
-    this.resume()
-
     gameState.newScreen(startingScreen)
+
+    val targetFramePeriod: Option[Long] = TargetFps map framePeriod
 
     var running = true
     var lastTime: Long = nanoTime
-    val canvas = new NativeCanvas
+    val canvas: Graphics.Canvas = new Graphics.NativeCanvas
     val event = stackalloc[SDL_Event]
 
     while(running) {
@@ -117,20 +116,26 @@ trait NativeApp extends GameApp
       //SDL_RenderPresent(canvas.renderer)
       SDL_GL_SwapWindow(window)
 
+      val currentTime: Long = java.lang.System.nanoTime
+      val timeForScheduler: Long = targetFramePeriod.map(fp => fp - (currentTime - beginTime)/(1000l*1000l)).getOrElse(10l)
+      Scheduler.run(timeForScheduler)
+
       val endTime: Long = nanoTime
       val elapsedTime: Long = endTime - beginTime
 
-      val sleepTime: Long = FramePeriod.map(fp => fp - elapsedTime/(1000*1000)).getOrElse(0)
+      val sleepTime: Long = targetFramePeriod.map(fp => fp - elapsedTime/(1000l*1000l)).getOrElse(0)
 
       if(sleepTime > 0) {
         SDL_Delay(sleepTime.toUInt)
       } else if(sleepTime < 0) {
-        logger.warning(s"negative sleep time. frame period: $FramePeriod, elapsed time: $elapsedTime.")
+        logger.warning(s"negative sleep time. target frame period: $targetFramePeriod, elapsed time: $elapsedTime.")
       }
     }
 
+    Scheduler.shutdown()
+
     IMG_Quit()
-    SDL_DestroyRenderer(renderer)
+    //SDL_DestroyRenderer(renderer)
     SDL_DestroyWindow(window)
     SDL_Quit()
   }

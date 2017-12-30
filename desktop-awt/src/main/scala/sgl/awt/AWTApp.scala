@@ -134,7 +134,7 @@ trait AWTApp extends GameApp
         if(sleepTime > 0) {
           Thread.sleep(sleepTime)
         } else if(sleepTime < 0) {
-          logger.warning(s"negative sleep time. frame period: $targetFramePeriod, elapsed time: $elapsedTime.")
+          logger.warning(s"negative sleep time. target frame period: $targetFramePeriod, elapsed time: $elapsedTime.")
         }
       }
 
