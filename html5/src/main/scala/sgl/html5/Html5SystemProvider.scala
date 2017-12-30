@@ -4,7 +4,8 @@ package html5
 import java.net.URI
 
 import org.scalajs.dom
-import scala.scalajs.js.typedarray.{ArrayBuffer, TypedArrayBuffer}
+import scala.scalajs.js
+import js.typedarray.{ArrayBuffer, TypedArrayBuffer}
 
 import sgl.util._
 
@@ -13,6 +14,8 @@ trait Html5SystemProvider extends SystemProvider {
   object Html5System extends System {
 
     override def exit(): Unit = {}
+
+    override def millis: Long = js.Date.now.toLong
 
     //probably cleaner to return lazily and block only when iterator is called
     //class LazyTextResource(rawFile: dom.XMLHttpRequest) extends Iterator[String] = {

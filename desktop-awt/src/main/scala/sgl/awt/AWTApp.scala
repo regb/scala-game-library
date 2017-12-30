@@ -8,7 +8,7 @@ import java.awt.Graphics2D
 
 trait AWTApp extends GameApp 
                 with AWTGraphicsProvider with AWTInputProvider with AWTAudioProvider
-                with AWTWindowProvider with AWTSystemProvider
+                with AWTWindowProvider with AWTSystemProvider with SingleThreadSchedulerProvider
                 with GameStateComponent {
 
   this: LoggingProvider =>
@@ -124,10 +124,14 @@ trait AWTApp extends GameApp
           g.dispose()
         }
 
+        val currentTime: Long = java.lang.System.nanoTime
+        val timeForScheduler: Long = targetFramePeriod.map(fp => fp - (currentTime - beginTime)/(1000l*1000l)).getOrElse(10l)
+        Scheduler.run(timeForScheduler)
+
         val endTime: Long = java.lang.System.nanoTime
         val elapsedTime: Long = endTime - beginTime
 
-        val sleepTime: Long = targetFramePeriod.map(fp => fp - elapsedTime/(1000*1000)).getOrElse(0)
+        val sleepTime: Long = targetFramePeriod.map(fp => fp - elapsedTime/(1000l*1000l)).getOrElse(0)
 
         if(sleepTime > 0) {
           Thread.sleep(sleepTime)

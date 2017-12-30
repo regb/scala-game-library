@@ -17,6 +17,10 @@ trait AWTSystemProvider extends SystemProvider {
       sys.exit()
     }
 
+    override def millis(): Long = {
+      java.lang.System.currentTimeMillis
+    }
+
     override def loadText(path: ResourcePath): Loader[Array[String]] = {
       FutureLoader {
         val is = getClass.getClassLoader.getResourceAsStream(path.path)

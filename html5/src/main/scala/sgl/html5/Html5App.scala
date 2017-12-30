@@ -1,6 +1,7 @@
 package sgl
 package html5
 
+import sgl.util._
 import util._
 import themes._
 
@@ -11,7 +12,7 @@ import dom.html
 
 trait Html5App extends GameApp 
                   with Html5GraphicsProvider with Html5InputProvider with Html5AudioProvider
-                  with Html5WindowProvider with Html5SystemProvider {
+                  with Html5WindowProvider with Html5SystemProvider with SingleThreadSchedulerProvider {
 
   val theme: Theme
 
@@ -58,17 +59,23 @@ trait Html5App extends GameApp
         lastTime = now
 
         gameLoopStep(dt, canvas)
+
+
+        // TODO: take into account available time
+        Scheduler.run(10l)
         
         targetFramePeriod.foreach(framePeriod => {
           //we check the time from the begininning of the frame until the end. The exact
           //dt sent to the update function will be different, as it depends on when the
           //setInterval fires the code, and might slightly overflow the target FPS
           val frameTime = js.Date.now.toLong - now
+          logger.info("frame time: " + frameTime)
+          logger.info("frame period: " + framePeriod)
           if(frameTime > framePeriod)
             logger.warning("Frame took too long to execute. Losing FPS. Frame time: " + frameTime)
         })
       } else {
-        logger.debug("Callback too early for Fps, skipping a frame")
+        logger.debug("GameLoop callback invoked before enough time has elapsed. No need to perform any work, just waiting for next callback.")
       }
 
       if(requestAnimationFrameSupported)

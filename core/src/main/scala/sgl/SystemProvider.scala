@@ -48,6 +48,12 @@ trait SystemProvider {
      * that exiting the game should be done by stopping the game loop
      */
 
+    /** The Unix timestamp in milliseconds
+      *
+      * This is the difference, in milliseconds, between the
+      * current time and midnight, January 1, 1970 UTC
+      */
+    def millis(): Long
 
     /*
      * Checks if a resource is present in the resources.
