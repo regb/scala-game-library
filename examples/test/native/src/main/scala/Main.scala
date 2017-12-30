@@ -12,7 +12,7 @@ import sgl.native.util._
 object Main extends AbstractApp with NativeApp
   with InputHelpersComponent with TraceStdErrLoggingProvider with GameLoopStatisticsComponent {
 
-  override val Fps = Some(60)
+  override val TargetFps = Some(60)
 
   override val frameDimension = (800, 600)
 
