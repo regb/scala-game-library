@@ -15,18 +15,6 @@ trait SchedulerProvider {
       */
     def schedule(task: ChunkedTask): Unit
 
-    /** Give control to the scheduler to allocate
-      * CPU to the pending tasks. The scheduler returns
-      * either after the ms amount of time, or as soon
-      * as no more work is required.
-      */
-    def run(ms: Long): Unit
-
-    /** The Scheduler will stop executing all scheduled task
-      * and it will clean-up all platform-specific resources
-      * (for example, running worker threads).
-      */
-    def shutdown(): Unit
   }
   val Scheduler: Scheduler
 
@@ -34,7 +22,8 @@ trait SchedulerProvider {
 
 /** This is a default implementation of the SchedulerProvider
   * that does not rely on any platform-specific features. It is able
-  * to execute
+  * to execute tasks by allocating CPU from the main game loop
+  * when invoked by the run() method.
   */
 trait SingleThreadSchedulerProvider extends SchedulerProvider {
   this: LoggingProvider =>
@@ -62,7 +51,12 @@ trait SingleThreadSchedulerProvider extends SchedulerProvider {
       taskQueue.enqueue(task)
     }
 
-    override def run(ms: Long): Unit = {
+    /** Give control to the scheduler to allocate
+      * CPU to the pending tasks. The scheduler returns
+      * either after the ms amount of time, or as soon
+      * as no more work is required.
+      */
+    def run(ms: Long): Unit = {
       logger.trace("Running SingleThreadScheduler with taskQueue size of: " + taskQueue.size)
       var remaining = ms
       while(remaining > 0 && taskQueue.nonEmpty) {
@@ -74,8 +68,6 @@ trait SingleThreadSchedulerProvider extends SchedulerProvider {
         remaining -= available
       }
     }
-
-    override def shutdown(): Unit = {}
 
   }
   override val Scheduler = new SingleThreadScheduler
