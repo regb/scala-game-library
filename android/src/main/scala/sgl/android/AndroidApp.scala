@@ -4,9 +4,13 @@ import sgl.util._
 
 import sgl.{android => adr, _}
 
-import android.app.Activity
-import android.content.Intent
-import android.os.Bundle
+import _root_.android.app.Activity
+import _root_.android.content.Intent
+import _root_.android.os.Bundle
+import _root_.android.util.AttributeSet
+import _root_.android.view.View
+import _root_.android.view.SurfaceView
+import _root_.android.view.SurfaceHolder;
 
 /** Activity providing all providers implementation for Android.
   *
@@ -18,8 +22,8 @@ import android.os.Bundle
   */
 trait AndroidApp extends Activity with GameApp
                     with AndroidGraphicsProvider with AndroidInputProvider with AndroidAudioProvider
-                    with AndroidWindowProvider with ThreadBasedGameLoopProvider
-                    with AndroidSystemProvider with GameStateComponent {
+                    with AndroidWindowProvider with ThreadPoolSchedulerProvider with AndroidSystemProvider
+                    with GameStateComponent {
 
   this: LoggingProvider =>
 
@@ -77,6 +81,8 @@ trait AndroidApp extends Activity with GameApp
       logger.warning("Main Activity is not the root.  Finishing Main Activity instead of launching.")
       finish()
     }
+
+    gameState.newScreen(startingScreen)
 
     this.registerInputsListeners()
 
@@ -140,7 +146,9 @@ trait AndroidApp extends Activity with GameApp
 
   class GameLoop extends Runnable {
 
-    private implicit val Tag = Logger.Tag("game-loop")
+    // This, as a side-effect, will shadow LogTag from the AndroidApp and ensures
+    // logging calls in the GameLoop uses that tag instead.
+    private implicit val LogTag = Logger.Tag("game-loop")
 
     private val targetFramePeriod: Option[Long] = TargetFps map framePeriod
 
@@ -185,7 +193,7 @@ trait AndroidApp extends Activity with GameApp
   class GameView(attributeSet: AttributeSet) extends SurfaceView(AndroidApp.this)
                                              with SurfaceHolder.Callback {
   
-    private implicit val LogTag = gameActivity.Logger.Tag("sgl-gameview")
+    private implicit val LogTag = Logger.Tag("sgl-gameview")
   
     getHolder.addCallback(this)
     setFocusable(true)

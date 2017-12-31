@@ -1,6 +1,8 @@
 package sgl
 package android
 
+import sgl.util.LoggingProvider
+
 import _root_.android.app.Activity
 import _root_.android.os.Bundle
 
@@ -14,7 +16,7 @@ import _root_.android.view.KeyEvent
 //      something that needs to be visible at the type level
 //      for the clients.
 trait AndroidInputProvider extends Activity with InputProvider {
-  this: AndroidWindowProvider =>
+  this: AndroidWindowProvider with LoggingProvider =>
 
   def registerInputsListeners(): Unit = {
     val gestureDetector = new GestureDetector(gameView.getContext, new GameGestureListener)

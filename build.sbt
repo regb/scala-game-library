@@ -92,6 +92,13 @@ lazy val coreAndroid = (project in file("./core"))
     target       := baseDirectory.value / ".android" / "target"
   )
 
+lazy val jvmSharedAndroid = (project in file("./jvm-shared"))
+  .settings(commonSettings: _*)
+  .settings(commonAndroidSettings: _*)
+  .settings(
+    target       := baseDirectory.value / ".android" / "target"
+  )
+  .dependsOn(coreAndroid)
 
 lazy val android = (project in file("./android"))
   .enablePlugins(AndroidLib)
@@ -118,4 +125,4 @@ lazy val android = (project in file("./android"))
     ),
     platformTarget := "android-23"
   )
-  .dependsOn(coreAndroid)
+  .dependsOn(coreAndroid, jvmSharedAndroid)

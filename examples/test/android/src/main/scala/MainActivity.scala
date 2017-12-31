@@ -13,6 +13,6 @@ import test.core._
 class MainActivity extends Activity with AbstractApp with AndroidApp
   with InputHelpersComponent with NoLoggingProvider with GameLoopStatisticsComponent {
 
-  override val Fps = Some(40)
+  override val TargetFps = Some(40)
 
 }

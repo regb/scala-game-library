@@ -5,6 +5,7 @@ import _root_.android.app.Activity
 import _root_.android.view.SurfaceView
 
 trait AndroidWindowProvider extends WindowProvider {
+  this: AndroidApp =>
 
   var gameView: GameView = null
 

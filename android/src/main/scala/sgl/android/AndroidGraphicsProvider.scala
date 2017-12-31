@@ -16,7 +16,7 @@ import _root_.android.graphics.PorterDuff
 import _root_.android.graphics.{Rect => AndroidRect, RectF}
 
 trait AndroidGraphicsProvider extends GraphicsProvider {
-  this: AndroidWindowProvider with Activity =>
+  self: AndroidWindowProvider with AndroidSystemProvider with Activity =>
 
   object AndroidGraphics extends Graphics {
 
@@ -27,9 +27,9 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
     type Bitmap = AndroidBitmap
 
     override def loadImage(path: ResourcePath): Loader[Bitmap] = FutureLoader {
-      val filename = path.split("/")(1).dropRight(4)
-      val resources = this.getResources
-      val drawableId = resources.getIdentifier(filename, "drawable", this.getPackageName())
+      val filename = path.path.split("/")(1).dropRight(4)
+      val resources = self.getResources
+      val drawableId = resources.getIdentifier(filename, "drawable", self.getPackageName())
       val bitmap = BitmapFactory.decodeResource(resources, drawableId)
       AndroidBitmap(bitmap)
     }
