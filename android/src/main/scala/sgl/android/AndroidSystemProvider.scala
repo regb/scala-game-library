@@ -28,7 +28,17 @@ trait AndroidSystemProvider extends SystemProvider {
       scala.io.Source.fromInputStream(is).getLines.toArray
     }
 
-    override def loadBinary(path: ResourcePath): Loader[Array[Byte]] = ???
+    override def loadBinary(path: ResourcePath): Loader[Array[Byte]] = FutureLoader {
+      val am = self.getAssets()
+      val is = am.open(path.path)
+      val bis = new java.io.BufferedInputStream(is)
+      val bytes = new scala.collection.mutable.ListBuffer[Byte]
+      var b: Int = 0
+      while({ b = bis.read; b != -1}) {
+        bytes.append(b.toByte)
+      }
+      bytes.toArray
+    }
 
     override def openWebpage(uri: URI): Unit = {
       val browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri.toString))

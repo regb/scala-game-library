@@ -121,6 +121,7 @@ lazy val android = (project in file("./android"))
         "-dontwarn scala.collection.mutable.**", // required from Scala 2.11.0
         "-ignorewarnings",
         "-keep class scala.Dynamic",
+        "-keep class scala.concurrent.*",
         "-keep class test.**"
     ),
     platformTarget := "android-23"
