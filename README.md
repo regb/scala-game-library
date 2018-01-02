@@ -61,6 +61,29 @@ game](https://play.google.com/store/apps/details?id=com.regblanc.winsmash) with
 it. The library helped tremendously, by being entirely Scala-based and by
 allowing for transparent porting from the Desktop to the Android platform.
 
+## Depending on SGL
+
+SGL is split across several sub-projects so that games built by the framework
+only packs the necessary dependencies. The organization is to provide a `core`
+sub-project which defines all the APIs and roughly one backend per platform. A
+game should then depend on both the core abstraction and the platform on which
+it will deploys. Cross-platform games can be further split into smaller units,
+with a cross-platform core logic that will only depends on the core SGL abstractions
+and various platform-specific implementations. The [snake](examples/snake) project
+demonstrates how you can organize a game to be cross platform.
+
+SGL is currently spllited into the following sub-projects:
+
+  * coreJVM, coreJS, coreNative (the core abstractions compiled for JVM, scalajs, and scala-native).
+  * desktopAWT, depends on coreJVM and provide window and graphics with AWT.
+  * desktopNative, depends on coreNative and use scala-native and OpenGL to build a native executable.
+  * html5, depends on coreJS and use scala.js to generate a javascript game.
+  * coreAndroid and android, for the android platform.
+  * jvmShared, some non-core utilities shared by all JVM-based platform
+
+These projects are defined in the [built.sbt](build.sbt) file and have their
+sources in each corresponding subdirectory.
+
 ## Design Principles
 
 * Games and only games. This is not a general media toolkit. The only things that
