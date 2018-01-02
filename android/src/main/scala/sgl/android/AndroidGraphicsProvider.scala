@@ -26,11 +26,17 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
     }
     type Bitmap = AndroidBitmap
 
+    private var totalBytes: Long = 0
     override def loadImage(path: ResourcePath): Loader[Bitmap] = FutureLoader {
       val filename = path.path.split("/")(1).dropRight(4)
       val resources = self.getResources
       val drawableId = resources.getIdentifier(filename, "drawable", self.getPackageName())
-      val bitmap = BitmapFactory.decodeResource(resources, drawableId)
+      val opts = new BitmapFactory.Options
+      opts.inPreferredConfig = NativeBitmap.Config.ARGB_8888
+      val bitmap = BitmapFactory.decodeResource(resources, drawableId, opts)
+      println(s"bitmap ${path}; config: ${bitmap.getConfig}; size: ${bitmap.getWidth}x${bitmap.getHeight}; byte count: ${bitmap.getByteCount}")
+      totalBytes += bitmap.getByteCount
+      println("total bytes used: " + totalBytes)
       AndroidBitmap(bitmap)
     }
 
@@ -126,16 +132,24 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
         canvas.clipRect(x, y, x+width, y+height)
       }
 
+      private val bitmapPaint = new NativePaint
 
       override def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit = {
-        canvas.drawBitmap(bitmap.bitmap, x, y, new NativePaint)
+        canvas.drawBitmap(bitmap.bitmap, x, y, bitmapPaint)
+      }
+
+      override def drawBitmap(bitmap: Bitmap, x: Int, y: Int, s: Float): Unit = {
+        val src = new AndroidRect(0, 0, width, height)
+        val dst = new AndroidRect(x, y, x + (s*width).toInt, y + (s*height).toInt)
+        canvas.drawBitmap(bitmap.bitmap, src, dst, bitmapPaint)
       }
       
-      override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int): Unit = {
+      override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f): Unit = {
         val src = new AndroidRect(sx, sy, sx+width, sy+height)
-        val dst = new AndroidRect(dx, dy, dx+width, dy+height)
-        canvas.drawBitmap(bitmap.bitmap, src, dst, new NativePaint)
+        val dst = new AndroidRect(dx, dy, dx + (s*width).toInt, dy + (s*height).toInt)
+        canvas.drawBitmap(bitmap.bitmap, src, dst, bitmapPaint)
       }
+
 
       override def drawRect(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {
         canvas.drawRect(x, y, x+width, y+height, paint.toAndroid)

@@ -49,9 +49,11 @@ trait AWTApp extends GameApp
     gameLoop = new GameLoop
     val t = new Thread(gameLoop)
     runningThread = t
+    Scheduler.resume()
     t.start()
   }
   private def pauseThread(): Unit = {
+    Scheduler.pause()
     gameLoop.running = false
     runningThread = null
   }
@@ -107,6 +109,11 @@ trait AWTApp extends GameApp
       while(running) {
         val beginTime: Long = java.lang.System.nanoTime
 
+        // TODO: probably want to have some ways to extract such monitoring data
+        // println("heap used: " + java.lang.Runtime.getRuntime.totalMemory())
+        // println("heap max: " + java.lang.Runtime.getRuntime.maxMemory())
+        // println("heap free: " + java.lang.Runtime.getRuntime.freeMemory())
+
         val canvas: Graphics.Canvas = Graphics.AWTCanvas(backBuffer.getGraphics.asInstanceOf[Graphics2D], gamePanel.getWidth, gamePanel.getHeight)
 
         val newTime = java.lang.System.nanoTime
@@ -121,10 +128,6 @@ trait AWTApp extends GameApp
           g.drawImage(backBuffer, 0, 0, null)
           g.dispose()
         }
-
-        val currentTime: Long = java.lang.System.nanoTime
-        val timeForScheduler: Long = targetFramePeriod.map(fp => fp - (currentTime - beginTime)/(1000l*1000l)).getOrElse(10l)
-        Scheduler.run(timeForScheduler)
 
         val endTime: Long = java.lang.System.nanoTime
         val elapsedTime: Long = endTime - beginTime

@@ -17,6 +17,7 @@ import java.lang.System.nanoTime
 trait NativeApp extends GameApp 
                    with NativeGraphicsProvider with NativeInputProvider with NativeAudioProvider
                    with NativeWindowProvider with NativeSystemProvider with GameStateComponent 
+                     // TODO: use thread-based scheduler
                    with SingleThreadSchedulerProvider {
 
   this: LoggingProvider =>
@@ -131,8 +132,6 @@ trait NativeApp extends GameApp
         logger.warning(s"negative sleep time. target frame period: $targetFramePeriod, elapsed time: $elapsedTime.")
       }
     }
-
-    Scheduler.shutdown()
 
     IMG_Quit()
     //SDL_DestroyRenderer(renderer)

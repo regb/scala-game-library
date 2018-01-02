@@ -122,8 +122,11 @@ trait AWTGraphicsProvider extends GraphicsProvider {
       override def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit = {
         graphics.drawImage(bitmap.img, x, y, null)
       }
-      override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int): Unit = {
-        graphics.drawImage(bitmap.img, dx, dy, dx+width, dy+height, sx, sy, sx+width, sy+height, null)
+      override def drawBitmap(bitmap: Bitmap, x: Int, y: Int, s: Float): Unit = {
+        graphics.drawImage(bitmap.img, x, y, x + (s*width).toInt, y + (s*height).toInt, 0, 0, width, height, null)
+      }
+      override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f): Unit = {
+        graphics.drawImage(bitmap.img, dx, dy, dx+ (s*width).toInt, dy+ (s*height).toInt, sx, sy, sx+width, sy+height, null)
       }
 
       override def drawRect(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {

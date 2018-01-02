@@ -149,8 +149,12 @@ trait Html5GraphicsProvider extends GraphicsProvider {
         context.drawImage(bitmap.image, x, y)
       }
 
-      override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int): Unit = {
-        context.drawImage(bitmap.image, sx, sy, width, height, dx, dy, width, height)
+      override def drawBitmap(bitmap: Bitmap, x: Int, y: Int, s: Float): Unit = {
+        drawBitmap(bitmap, x, y, 0, 0, width, height, s)
+      }
+
+      override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f): Unit = {
+        context.drawImage(bitmap.image, sx, sy, width, height, dx, dy, s*width, s*height)
       }
 
       override def drawRect(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {

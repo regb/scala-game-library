@@ -179,17 +179,39 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
 
       /*
        * Then the canvas provide standard drawing methods
+       *
+       * We favor a simple but limited drawing API rather than a generic
+       * and complex with arbitrary signature (such as a drawBitmap from Rect to Rect,
+       * or with a transformation matrix). The rational is that there are
+       * not many use cases where you need that much flexibility, while there are a
+       * lot where you need a simple and clear interface. For the rare cases where you still
+       * need that, you can always use the translate/scale function on the canvas before
+       * drawing, to achieve the same result.
+       *
+       * The only scaled drawing function that we have is justified because it is
+       * common in low-memory environment (such as mobile) to use lower resolution
+       * bitmaps and to scale while drawing (such as background image). We don't want
+       * to offer scaling in both axis as we don't believe it is good design to break
+       * the aspect ratio in general (so one should go out of their way by using Canvas.scale
+       * to do so).
+       *
+       * The drawBitmap with arbitrary dx/dy and sx/sy is to support spritesheets, another
+       * fairly common tools of game development.
        */
 
-      /** draw the whole bitmap at x and y */
+      /** draw the whole bitmap at x and y. */
       def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit
+
+      /** draw the bitmap at x and y with a scaling factor. */
+      def drawBitmap(bitmap: Bitmap, x: Int, y: Int, s: Float): Unit
 
       /** draw a selected rectangle in the bitmap at x and y.
         *
-        * No scaling supported, and can only draw aligned rectangle,
-        * hence why the function only takes one width and height
+        * This is slightly simpler than the more general drawing from a
+        * source rect to a dest rect, but we only support aligned rectangle
+        * and symmetric scaling.
         */
-      def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int): Unit
+      def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f): Unit
 
       def drawRect(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit
 

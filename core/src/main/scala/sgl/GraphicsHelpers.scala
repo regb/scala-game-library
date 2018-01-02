@@ -71,6 +71,9 @@ trait GraphicsHelpersComponent {
       def drawBitmap(region: BitmapRegion, x: Int, y: Int): Unit = {
         canvas.drawBitmap(region.bitmap, x, y, region.x, region.y, region.width, region.height)
       }
+      def drawBitmap(region: BitmapRegion, x: Int, y: Int, s: Float): Unit = {
+        canvas.drawBitmap(region.bitmap, x, y, region.x, region.y, region.width, region.height, s)
+      }
 
     }
 

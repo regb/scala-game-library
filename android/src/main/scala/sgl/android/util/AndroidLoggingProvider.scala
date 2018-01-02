@@ -33,7 +33,7 @@ trait AndroidDefaultLoggingProvider extends AndroidLoggingProvider {
   override val logger = DefaultLogLogger
 }
 
-trait AndroidVerboseConsoleLoggingProvider extends AndroidLoggingProvider {
+trait AndroidVerboseLoggingProvider extends AndroidLoggingProvider {
   case object VerboseLogLogger extends LogLogger {
     override val logLevel: Logger.LogLevel = Logger.Debug
   }

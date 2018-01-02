@@ -154,7 +154,11 @@ trait NativeGraphicsProvider extends GraphicsProvider {
         glDisable(GL_TEXTURE_2D)
       }
   
-      override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int): Unit = {
+      override def drawBitmap(bitmap: Bitmap, x: Int, y: Int, s: Float): Unit = {
+        drawBitmap(bitmap, x, y, 0, 0, width, height, s)
+      }
+
+      override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f): Unit = {
   
         glColor4f(1f,1f,1f,1f)
   
@@ -172,9 +176,9 @@ trait NativeGraphicsProvider extends GraphicsProvider {
   
         glBegin(GL_QUADS)
           glTexCoord2f(sxf, syf); glVertex2i(dx, dy)
-          glTexCoord2f(sxf+swf, syf); glVertex2i(dx+width, dy)
-          glTexCoord2f(sxf+swf, syf+shf); glVertex2i(dx+width, dy+height)
-          glTexCoord2f(sxf, syf+shf); glVertex2i(dx, dy+height)
+          glTexCoord2f(sxf+swf, syf); glVertex2i(dx+(s*width).toInt, dy)
+          glTexCoord2f(sxf+swf, syf+shf); glVertex2i(dx+(s*width).toInt, dy+(s*height).toInt)
+          glTexCoord2f(sxf, syf+shf); glVertex2i(dx, dy+(s*height).toInt)
         glEnd()
   
         glDepthMask(GL_TRUE)

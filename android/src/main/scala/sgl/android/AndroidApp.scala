@@ -177,9 +177,9 @@ trait AndroidApp extends Activity with GameApp
         }
 
         val endTime: Long = java.lang.System.nanoTime
-        val elapsedTime: Long = endTime - beginTime
+        val elapsedTime: Long = (endTime - beginTime)/(1000l*1000l)
 
-        val sleepTime: Long = targetFramePeriod.map(fp => fp - elapsedTime/(1000l*1000l)).getOrElse(0)
+        val sleepTime: Long = targetFramePeriod.map(fp => fp - elapsedTime).getOrElse(0)
 
         if(sleepTime > 0) {
           Thread.sleep(sleepTime)
