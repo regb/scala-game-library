@@ -1,8 +1,10 @@
 package sgl
 package scene
 
+import scala.collection.mutable.HashMap
+
 trait SceneGraphComponent {
-  this: GraphicsProvider with InputProvider =>
+  this: GraphicsProvider with InputProvider with SystemProvider =>
 
   import Input._
 
@@ -28,7 +30,7 @@ trait SceneGraphComponent {
 
     //TODO: width/height are kind of a viewport for the scene graph. They probably should
     //      become some mix of Camera/Viewport
-  
+
     /** Process an input event
       *
       * Each input you wish to handle in the Scene must be processed by the SceneGraph 
@@ -38,6 +40,8 @@ trait SceneGraphComponent {
       * caller organizes a HUD on top of its own game map, then processInput will return true if the HUD 
       * intercepts the input event, and thus the caller should consider it as intercepted).
       */
+
+    private var downEvents: HashMap[Int, (SceneNode, Long)] = new HashMap
     def processInput(input: Input.InputEvent): Boolean = {
       val hitPosition: Option[(Int, Int)] = input match {
         case MouseDownEvent(x, y, _) => Some((x, y))
@@ -48,32 +52,56 @@ trait SceneGraphComponent {
       }
 
       val hitNode: Option[SceneNode] = hitPosition.flatMap{case (x, y) => root.hit(x, y)}
-      println("hit node: " + hitNode)
+    
+      input match {
+        case MouseMovedEvent(x, y) =>
+          downEvents.get(0).foreach{ case (n, _) => {
+            if(!n.hit(x,y).exists(_ == n)) { // we just left the node that we were pressing down.
+              n.notifyPointerLeave()
+              downEvents.remove(0)
+            }
+          }}
+        case TouchMovedEvent(x, y, p) =>
+          downEvents.get(p).foreach{ case (n, _) => {
+            if(!n.hit(x,y).exists(_ == n)) { // we just left the node that we were touching down.
+              n.notifyPointerLeave()
+              downEvents.remove(p)
+            }
+          }}
+        case _ => ()
+      }
 
       hitNode.foreach(node => {
         input match {
           case MouseDownEvent(x, y, _) =>
-            node.downEvent = Some(((x, y), System.currentTimeMillis))
+            downEvents(0) = (node, System.millis)
             node.notifyDown(x, y)
-          case TouchDownEvent(x, y, _) =>
-            node.downEvent = Some(((x, y), System.currentTimeMillis))
+          case TouchDownEvent(x, y, p) =>
+            downEvents(p) = (node, System.millis)
             node.notifyDown(x, y)
+
           case MouseUpEvent(x, y, _) =>
             node.notifyUp(x, y)
-            node.downEvent.foreach{ case (_, t) =>
-              val age = System.currentTimeMillis - t
-              if(age < 2000)
-                node.notifyClick(x, y)
+            downEvents.get(0) match {
+              case None => // means that the downEvents was cleaned because the mouse left the node
+                ()
+              case Some((n, t)) =>
+                val duration = System.millis - t
+                if(node == n && node.mouseClickCondition(duration)) {
+                  node.notifyClick(x, y)
+                } // else means that the up event is in a different component
             }
-            node.downEvent = None
-          case TouchUpEvent(x, y, _) =>
+            downEvents.remove(0)
+          case TouchUpEvent(x, y, p) =>
             node.notifyUp(x, y)
-            node.downEvent.foreach{ case (_, t) =>
-              val age = System.currentTimeMillis - t
-              if(age > 100 && age < 2000)
+            downEvents.get(p).foreach{ case (n, t) => {
+              val duration = System.millis - t
+              if(node == n && node.touchClickCondition(duration)) {
                 node.notifyClick(x, y)
-            }
-            node.downEvent = None
+              } // else means that the up event is in a different component
+            }}
+            downEvents.remove(p)
+
           case _ =>
             throw new Exception("Should never reach that point")
         }
@@ -159,8 +187,8 @@ trait SceneGraphComponent {
       * the panel.
       */
     def hit(x: Int, y: Int): Option[SceneNode] = {
-      println("computing hit on node: " + this + " at hit position: " + x + ", " + y)
-      println(s"node is at (${this.x}, ${this.y}) with size ${this.width}x${this.height}")
+      //println("computing hit on node: " + this + " at hit position: " + x + ", " + y)
+      //println(s"node is at (${this.x}, ${this.y}) with size ${this.width}x${this.height}")
       if(x >= this.x && x <= this.x + width &&
          y >= this.y && y <= this.y + height)
         Some(this)
@@ -168,7 +196,11 @@ trait SceneGraphComponent {
         None
     }
 
-    var downEvent: Option[((Int, Int), Long)] = None
+    /*
+     * Order should be down -> up -> click, although a down
+     * event does not guarantee a follow-up up/click event.
+     */
+
     def notifyDown(x: Int, y: Int): Boolean = false
     def notifyUp(x: Int, y: Int): Boolean = false
 
@@ -182,6 +214,27 @@ trait SceneGraphComponent {
      * Coordinates are local to the node (this.x + x would be local to the parent).
      */
     def notifyClick(x: Int, y: Int): Boolean = false
+
+    // Rule to determine if a click duration (down to up, in ms) from
+    // a mouse should be considered as a click, or should be ignored.
+    // One use case, if click is too long we can ignore it. Default is any duration is valid.
+    def mouseClickCondition(duration: Long): Boolean = true
+    // Same for touch. Additional considerations for touch event would be that
+    // the screen can be very sensible, and thus very short duration could be ignored.
+    // This also default to true.
+    def touchClickCondition(duration: Long): Boolean = true
+  
+
+    /*
+     * Called when the pointer that was hovering (or pressing) on the
+     * node just left. Could happened after a notifyDown. Does not prevent
+     * a follow-up notifyUp (if the pointer comes back into), but this will
+     * prevent a notifyClick on the node.
+     */
+    def notifyPointerLeave(): Unit = ()
+
+    // Maybe we need also a
+    // def notifyPointerEnter(): Unit = ()
 
   }
   
