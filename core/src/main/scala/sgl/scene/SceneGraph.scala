@@ -56,14 +56,16 @@ trait SceneGraphComponent {
       input match {
         case MouseMovedEvent(x, y) =>
           downEvents.get(0).foreach{ case (n, _) => {
-            if(!n.hit(x,y).exists(_ == n)) { // we just left the node that we were pressing down.
+            val hitNode = root.hit(x, y)
+            if(!hitNode.exists(_ == n)) { // we just left the node that we were pressing down.
               n.notifyPointerLeave()
               downEvents.remove(0)
             }
           }}
         case TouchMovedEvent(x, y, p) =>
           downEvents.get(p).foreach{ case (n, _) => {
-            if(!n.hit(x,y).exists(_ == n)) { // we just left the node that we were touching down.
+            val hitNode = root.hit(x, y)
+            if(!hitNode.exists(_ == n)) { // we just left the node that we were touching down.
               n.notifyPointerLeave()
               downEvents.remove(p)
             }

@@ -66,6 +66,7 @@ trait Html5InputProvider extends InputProvider {
     this.htmlCanvas.addEventListener("touchstart", (e: dom.Event) => {
       val touchEvent = e.asInstanceOf[dom.raw.TouchEvent]
       touchEvent.preventDefault()
+      touchEvent.stopPropagation()
       val touches = touchEvent.changedTouches
 
       var i = 0
@@ -80,6 +81,7 @@ trait Html5InputProvider extends InputProvider {
     this.htmlCanvas.addEventListener("touchend", (e: dom.Event) => {
       val touchEvent = e.asInstanceOf[dom.raw.TouchEvent]
       touchEvent.preventDefault()
+      touchEvent.stopPropagation()
       val touches = touchEvent.changedTouches
 
       var i = 0
@@ -94,6 +96,7 @@ trait Html5InputProvider extends InputProvider {
     this.htmlCanvas.addEventListener("touchmove", (e: dom.Event) => {
       val touchEvent = e.asInstanceOf[dom.raw.TouchEvent]
       touchEvent.preventDefault()
+      touchEvent.stopPropagation()
       val touches = touchEvent.changedTouches
 
       var i = 0
