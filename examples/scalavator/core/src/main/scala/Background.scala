@@ -8,6 +8,8 @@ trait BackgroundComponent {
   this: MainScreenComponent with GraphicsProvider with WindowProvider 
   with SystemProvider with LoggingProvider =>
 
+  import Graphics._
+
   private implicit val Tag = Logger.Tag("background")
 
   /*

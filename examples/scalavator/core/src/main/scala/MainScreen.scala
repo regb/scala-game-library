@@ -7,10 +7,10 @@ import scene._
 import util._
 
 trait MainScreenComponent extends BackgroundComponent {
-  this: GraphicsProvider with InputProvider with GameLoopProvider
-  with GameStateComponent with WindowProvider 
-  with SystemProvider with AudioProvider
-  with SceneComponent with LoggingProvider =>
+  this: GraphicsProvider with InputProvider with GameStateComponent with WindowProvider 
+  with SystemProvider with AudioProvider with SceneComponent with LoggingProvider =>
+
+  import Graphics._
 
   private implicit val Tag = Logger.Tag("main")
 
@@ -243,7 +243,6 @@ trait MainScreenComponent extends BackgroundComponent {
                       ).foreach(platform => {
           standingPlatform = Some(platform)
           characterAnimation.currentAnimation = CharacterLandingAnimation
-          //characterAnimation.currentAnimation = CharacterIdleAnimation
         })
 
         if(standingPlatform == None && characterPosition.y-CharacterHeight > WindowHeight) {
@@ -251,7 +250,7 @@ trait MainScreenComponent extends BackgroundComponent {
           restart()
         }
       }
-      
+
     }
 
     def restart(): Unit = {
@@ -273,6 +272,7 @@ trait MainScreenComponent extends BackgroundComponent {
         characterPosition.x.toInt-dp2px(9), characterPosition.y.toInt-CharacterHeight)
 
       hud.sceneGraph.render(canvas)
+
     }
 
     /*

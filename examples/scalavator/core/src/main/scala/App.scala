@@ -5,14 +5,9 @@ import sgl._
 import scene._
 import util._
 
-trait AbstractApp extends MainScreenComponent with LoadingScreenComponent with Lifecycle {
+trait AbstractApp extends MainScreenComponent with LoadingScreenComponent {
   this: GraphicsProvider with InputProvider with WindowProvider with AudioProvider
   with GameStateComponent with SystemProvider
-  with GameLoopProvider with SceneComponent with LoggingProvider =>
-
-  override def startup(): Unit = {}
-  override def resume(): Unit = {}
-  override def pause(): Unit = {}
-  override def shutdown(): Unit = {}
+  with SceneComponent with LoggingProvider =>
 
 }

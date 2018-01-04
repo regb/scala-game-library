@@ -6,9 +6,10 @@ import scene._
 import util._
 
 trait LoadingScreenComponent {
-  this: GraphicsProvider with InputProvider with GameLoopProvider
-  with GameStateComponent with WindowProvider with SystemProvider
-  with LoggingProvider with MainScreenComponent =>
+  this: GraphicsProvider with InputProvider with GameStateComponent
+  with WindowProvider with SystemProvider with LoggingProvider with MainScreenComponent =>
+
+  import Graphics._
 
   private implicit val Tag = Logger.Tag("loading-screen")
 
@@ -39,7 +40,7 @@ trait LoadingScreenComponent {
   //everything when the whole cake is initializing, as the framework
   //might not be quite ready yet
   override def startingScreen: GameScreen = {
-    val pathPrefix = System.ResourcesPrefix / "drawable"
+    val pathPrefix = ResourcesPrefix / "drawable"
     characterIdle = Graphics.loadImage(pathPrefix / "character_idle.png")
     characterPrejump = Graphics.loadImage(pathPrefix / "character_prejump.png")
     characterJump = Graphics.loadImage(pathPrefix / "character_jump.png")
