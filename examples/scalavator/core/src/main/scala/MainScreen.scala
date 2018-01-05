@@ -71,10 +71,22 @@ trait MainScreenComponent extends BackgroundComponent {
         val frame = if(speed > 0) bugRightAnimation.currentFrame(age) else bugLeftAnimation.currentFrame(age)
         canvas.drawBitmap(frame, x.toInt, y.toInt)
       }
+
+      // Character position (left-bottom of the hittable area)
+      def hitCharacter(characterX: Double, characterY: Double): Boolean = {
+        (characterX + CharacterWidth >= x + dp2px(6) && characterX < x + Bug.Width - dp2px(6)) &&
+        (characterY >= y + dp2px(15) && characterY - CharacterIdleHeight < y + Bug.Height - dp2px(10))
+      }
+
     }
     object Bug {
       val Width = dp2px(64)
       val Height = dp2px(64)
+      def random(y: Double): Bug = {
+        val x = scala.util.Random.nextInt(WindowWidth - Width)
+        val speed = dp2px(90 + scala.util.Random.nextInt(20))
+        new Bug(x, y, speed)
+      }
     }
 
     private val startingPlatform = new Platform(0, WindowHeight-PlatformHeight, WindowWidth, 0)
@@ -87,16 +99,15 @@ trait MainScreenComponent extends BackgroundComponent {
       startingPlatform
     )
 
-    private val bugs: List[Bug] = List(
-      new Bug(100, 300, dp2px(77))
-    )
+    private var bugs: List[Bug] = List(new Bug(0, WindowHeight - 200, 100))
 
     //character real height varies from sprite to sprite, and the value
-    //refers to the sprite height (but when idle, it uses ony about half of
+    //refers to the sprite height (but when idle, it uses ony about 3/4 of
     //that height). The width only refers to the inner part that is collidable
     //and not the full sprite with the arms.
     private val CharacterWidth = dp2px(40)
     private val CharacterHeight = characterIdleBitmap.height //dp2px(89)
+    private val CharacterIdleHeight = dp2px(65)
 
     //character position is the bottom left corner of the hittable area. The actual visible sprite
     //expands slightly more to the left and the right of the CharacterWidth (48dp total with 30dp in the
@@ -184,7 +195,12 @@ trait MainScreenComponent extends BackgroundComponent {
 
     private var randomNextPop: Int = generateRandomNextPop
 
+    // Distance to jump until we pop the next bug
+    private var distanceToNextBug: Int = WindowHeight
+
     private def generateRandomNextPop: Int = dp2px(60 + scala.util.Random.nextInt(30))
+
+    private def generateRandomDistanceToBug: Int = dp2px(WindowHeight/2 + WindowHeight)
 
     private val hud = new Hud(this)
 
@@ -192,6 +208,7 @@ trait MainScreenComponent extends BackgroundComponent {
 
     private var chargeJumpStart: Long = 0
 
+    private var hitByBug = false
     private var freeFalling = false
     private var scrollDownVelocity = 0d
     private var scrolledDown = 0d
@@ -220,7 +237,7 @@ trait MainScreenComponent extends BackgroundComponent {
             characterAnimation.currentAnimation = CharacterPreJumpAnimation
           }
         case Input.TouchUpEvent(_, _, _) | Input.MouseUpEvent(_, _, Input.MouseButtons.Left) =>
-          if(chargeJumpStart != 0) {
+          if(chargeJumpStart != 0 && !hitByBug && !freeFalling) {
             val totalCharge = totalTime - chargeJumpStart
             chargeJumpStart = 0
             logger.info("Jump input from player detected. total charge: " + totalCharge)
@@ -326,6 +343,11 @@ trait MainScreenComponent extends BackgroundComponent {
             freeFalling = true
           }
         }
+        if(bugs.exists(_.hitCharacter(characterPosition.x, characterPosition.y))) {
+          characterVelocity = Vec(0, dp2px(10))
+          freeFalling = true
+          hitByBug = true
+        }
       }
 
     }
@@ -347,8 +369,17 @@ trait MainScreenComponent extends BackgroundComponent {
       platforms.foreach(_.render(canvas))
       bugs.foreach(_.render(canvas))
 
-      canvas.drawBitmap(characterAnimation.currentFrame,
-        characterPosition.x.toInt-dp2px(9), characterPosition.y.toInt-CharacterHeight)
+      if(hitByBug) {
+        canvas.withSave {
+          canvas.translate(characterPosition.x.toInt + CharacterWidth/2, characterPosition.y.toInt - CharacterHeight/2)
+          //-dp2px(9), characterPosition.y.toInt-CharacterHeight)
+          canvas.rotate(math.Pi)
+          canvas.drawBitmap(characterAnimation.currentFrame, -CharacterWidth/2, -CharacterHeight/2)
+        }
+      } else {
+        canvas.drawBitmap(characterAnimation.currentFrame,
+          characterPosition.x.toInt-dp2px(9), characterPosition.y.toInt-CharacterHeight)
+      }
 
       hud.sceneGraph.render(canvas)
 
@@ -382,7 +413,14 @@ trait MainScreenComponent extends BackgroundComponent {
         platforms ::= Platform.random(0)
       }
 
+      distanceToNextBug -= distance
+      if(distanceToNextBug <= 0) {
+        distanceToNextBug = generateRandomDistanceToBug
+        bugs ::= Bug.random(-Bug.Height)
+      }
+
       platforms = platforms.filterNot(p => p.y > WindowHeight)
+      bugs = bugs.filterNot(b => b.y > WindowHeight)
 
       //paralax scrolling with background
       background.scrollUp(distance/3d)
