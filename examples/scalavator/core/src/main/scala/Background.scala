@@ -33,6 +33,9 @@ trait BackgroundComponent {
       currentHeight += delta
       popNewClouds()
     }
+    def scrollDown(delta: Double): Unit = {
+      currentHeight -= delta
+    }
 
     private case class Cloud(var x: Double, y: Int, cloudFrame: Int) {
       val velocity = randomCloudVelocity

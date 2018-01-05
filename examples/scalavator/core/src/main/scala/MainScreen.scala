@@ -8,7 +8,8 @@ import util._
 
 trait MainScreenComponent extends BackgroundComponent {
   this: GraphicsProvider with InputProvider with GameStateComponent with WindowProvider 
-  with SystemProvider with AudioProvider with SceneComponent with LoggingProvider =>
+  with SystemProvider with AudioProvider with SceneComponent with LoggingProvider
+  with SaveComponent =>
 
   import Graphics._
 
@@ -177,19 +178,25 @@ trait MainScreenComponent extends BackgroundComponent {
 
     private var standingPlatform: Option[Platform] = Some(startingPlatform)
 
-    //a score, derived from the highest platform landed on, to show in HUD
-    private var score = 0
+    // The score is how high we go, it's a long, just in case
+    var currentScore: Long = 0
+    private var highestScore: Long = 0
 
     private var randomNextPop: Int = generateRandomNextPop
 
     private def generateRandomNextPop: Int = dp2px(60 + scala.util.Random.nextInt(30))
 
-    private val hud = new Hud
+    private val hud = new Hud(this)
 
     private var totalTime: Long = 0
 
     private var chargeJumpStart: Long = 0
 
+    private var freeFalling = false
+    private var scrollDownVelocity = 0d
+    private var scrolledDown = 0d
+
+    private var gameOver = false
 
     def jumpChargeToImpulsion(jumpCharge: Long): Double = {
       //let's try 3 layers, for each 200 ms
@@ -205,17 +212,23 @@ trait MainScreenComponent extends BackgroundComponent {
     def handleInput(ev: Input.InputEvent): Unit = {
       ev match {
         case Input.TouchDownEvent(_, _, _) | Input.MouseDownEvent(_, _, Input.MouseButtons.Left) =>
+          if(gameOver)
+            restart()
+
           if(standingPlatform.nonEmpty) {
             chargeJumpStart = totalTime
             characterAnimation.currentAnimation = CharacterPreJumpAnimation
           }
         case Input.TouchUpEvent(_, _, _) | Input.MouseUpEvent(_, _, Input.MouseButtons.Left) =>
-          val totalCharge = totalTime - chargeJumpStart
-          logger.info("Jump input from player detected. total charge: " + totalCharge)
-          if(standingPlatform.nonEmpty) {
-            standingPlatform = None
-            characterVelocity = Vec(0, -jumpChargeToImpulsion(totalCharge))
-            characterAnimation.currentAnimation = CharacterStartJumpAnimation
+          if(chargeJumpStart != 0) {
+            val totalCharge = totalTime - chargeJumpStart
+            chargeJumpStart = 0
+            logger.info("Jump input from player detected. total charge: " + totalCharge)
+            if(standingPlatform.nonEmpty) {
+              standingPlatform = None
+              characterVelocity = Vec(0, -jumpChargeToImpulsion(totalCharge))
+              characterAnimation.currentAnimation = CharacterStartJumpAnimation
+            }
           }
         case _ => ()
       }
@@ -248,49 +261,70 @@ trait MainScreenComponent extends BackgroundComponent {
       val originalCharacterFeet = characterPosition.y
       platforms.foreach(_.update(dt))
       bugs.foreach(_.update(dt))
-
-      standingPlatform match {
-        case None => {
-          val previousVelocity = characterVelocity
-
-          characterVelocity += Gravity*(dt/1000d)
-          characterPosition += characterVelocity*(dt/1000d)
-
-          //TODO: maybe we should start an animation just before reaching the top,
-          //      but we need to create State within the character to properly handle
-          //      the different phase of the jump
-          if(characterVelocity.y >= -dp2px(50)) { //trying to detect end of the jump
-          }
-
-          if(previousVelocity.y <= 0 && characterVelocity.y >= 0) {
-            //if reached peak of the jump
-            //characterAnimation.currentAnimation = CharacterEndJumpAnimation
-            characterAnimation.currentAnimation = CharacterTopJumpAnimation
-          }
-
-          if(characterPosition.y.toInt < WindowHeight/2)
-            scrollUp(WindowHeight/2 - characterPosition.y.toInt)
+  
+      if(gameOver) {
+        // wait for a touch event to restart.
+      } else if(freeFalling) {
+        characterVelocity += Gravity*(dt/1000d)
+        characterPosition += characterVelocity*(dt/1000d)
+        if(characterPosition.y.toInt - WindowHeight > 0) {
+          scrollDownVelocity = 2*characterVelocity.y
         }
-        case Some(platform) => {
-          characterPosition = characterPosition + Vec(1,0)*platform.speed*(dt/1000d)
-          if(characterPosition.x < 0)
-            characterPosition = characterPosition.copy(x = 0)
-          if(characterPosition.x + CharacterWidth > WindowWidth)
-            characterPosition = characterPosition.copy(x = WindowWidth-CharacterWidth)
+        if(characterPosition.y > WindowHeight + CharacterHeight) {
+          gameOver = true
+          highestScore = save.getLongOrElse("highest_score", 0)
+          if(currentScore > highestScore) {
+            highestScore = currentScore
+            save.putLong("highest_score", highestScore)
+          }
+        } else if(scrolledDown < WindowHeight) {
+          val scrollDownDistance = scrollDownVelocity*(dt/1000d)
+          scrollDown(scrollDownDistance)
+          scrolledDown += scrollDownDistance
         }
-      }
-      val newCharacterFeet = characterPosition.y
-      if(newCharacterFeet > originalCharacterFeet) { //if falling
-        platforms.find(p => p.y+1 > originalCharacterFeet && p.y+1 <= newCharacterFeet && 
-                            p.x <= characterPosition.x + CharacterWidth && p.x + p.width >= characterPosition.x
-                      ).foreach(platform => {
-          standingPlatform = Some(platform)
-          characterAnimation.currentAnimation = CharacterLandingAnimation
-        })
+      } else {
+        standingPlatform match {
+          case None => {
+            val previousVelocity = characterVelocity
 
-        if(standingPlatform == None && characterPosition.y-CharacterHeight > WindowHeight) {
-          logger.info("Game Over")
-          restart()
+            characterVelocity += Gravity*(dt/1000d)
+            characterPosition += characterVelocity*(dt/1000d)
+
+            //TODO: maybe we should start an animation just before reaching the top,
+            //      but we need to create State within the character to properly handle
+            //      the different phase of the jump
+            if(characterVelocity.y >= -dp2px(50)) { //trying to detect end of the jump
+            }
+
+            if(previousVelocity.y <= 0 && characterVelocity.y >= 0) {
+              //if reached peak of the jump
+              //characterAnimation.currentAnimation = CharacterEndJumpAnimation
+              characterAnimation.currentAnimation = CharacterTopJumpAnimation
+            }
+
+            if(characterPosition.y.toInt < WindowHeight/2)
+              scrollUp(WindowHeight/2 - characterPosition.y.toInt)
+          }
+          case Some(platform) => {
+            characterPosition = characterPosition + Vec(1,0)*platform.speed*(dt/1000d)
+            if(characterPosition.x < 0)
+              characterPosition = characterPosition.copy(x = 0)
+            if(characterPosition.x + CharacterWidth > WindowWidth)
+              characterPosition = characterPosition.copy(x = WindowWidth-CharacterWidth)
+          }
+        }
+        val newCharacterFeet = characterPosition.y
+        if(newCharacterFeet > originalCharacterFeet) { //if falling
+          platforms.find(p => p.y+1 > originalCharacterFeet && p.y+1 <= newCharacterFeet && 
+                              p.x <= characterPosition.x + CharacterWidth && p.x + p.width >= characterPosition.x
+                        ).foreach(platform => {
+            standingPlatform = Some(platform)
+            characterAnimation.currentAnimation = CharacterLandingAnimation
+          })
+
+          if(standingPlatform == None && characterPosition.y > WindowHeight) {
+            freeFalling = true
+          }
         }
       }
 
@@ -305,6 +339,7 @@ trait MainScreenComponent extends BackgroundComponent {
       )
     }
 
+    private val gameOverPaint = defaultPaint.withColor(Color.Black).withFont(Font.Default.withSize(dp2px(20))).withAlignment(Alignments.Center)
     override def render(canvas: Canvas): Unit = {
 
       background.render(canvas)
@@ -316,6 +351,14 @@ trait MainScreenComponent extends BackgroundComponent {
         characterPosition.x.toInt-dp2px(9), characterPosition.y.toInt-CharacterHeight)
 
       hud.sceneGraph.render(canvas)
+
+      if(gameOver) {
+        canvas.drawString("Score: " + currentScore, WindowWidth/2, WindowHeight/2 - dp2px(14), gameOverPaint)
+        canvas.drawString("Highest Score: " + highestScore, WindowWidth/2, WindowHeight/2 + dp2px(14), gameOverPaint)
+
+        if((totalTime/700d).toInt % 2 == 0)
+          canvas.drawString("Press to start a new game", WindowWidth/2, WindowHeight*3/4, gameOverPaint)
+      }
 
     }
 
@@ -329,9 +372,10 @@ trait MainScreenComponent extends BackgroundComponent {
      */
     private def scrollUp(distance: Int): Unit = {
       platforms.foreach(plat => plat.y += distance)
+      bugs.foreach(bug => bug.y += distance)
       characterPosition = characterPosition + Vec(0, distance.toDouble)
 
-      hud.scoreLabel.score += distance
+      currentScore += distance
 
       if(platforms.head.y >= randomNextPop) {
         randomNextPop = generateRandomNextPop
@@ -344,10 +388,17 @@ trait MainScreenComponent extends BackgroundComponent {
       background.scrollUp(distance/3d)
     }
 
+    // scroll down is the inverse of scroll up, except that it will not generate
+    // any new platforms or enemies. We use it for our game over animation.
+    private def scrollDown(distance: Double): Unit = {
+      platforms.foreach(plat => plat.y -= distance)
+      bugs.foreach(bug => bug.y -= distance)
+      characterPosition = characterPosition - Vec(0, distance)
+    }
   }
 
 
-  class Hud {
+  class Hud(mainScreen: MainScreen) {
 
     val sceneGraph = new SceneGraph(WindowWidth, WindowHeight)
 
@@ -375,10 +426,9 @@ trait MainScreenComponent extends BackgroundComponent {
       }
     }
     class ScoreLabel extends SceneNode(WindowWidth-dp2px(15), dp2px(25), 0, 0) {
-      var score: Int = 0
       override def update(dt: Long): Unit = {}
       override def render(canvas: Canvas): Unit = {
-        canvas.drawString(score.toString, x.toInt, y.toInt, textPaint.withAlignment(Alignments.Right))
+        canvas.drawString(mainScreen.currentScore.toString, x.toInt, y.toInt, textPaint.withAlignment(Alignments.Right))
       }
     }
     
