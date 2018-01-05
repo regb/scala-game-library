@@ -86,3 +86,34 @@ trait NoSaveComponent extends SaveComponent {
   type Save = NoSave
   override val save = new NoSave
 }
+
+/** A save implementation that stores data in RAM.
+  *
+  * Useful in similar situations as NoSaveComponent. Does
+  * not actually persist anything, but could be nicer over
+  * long sessions as the data is actually stored.
+  */
+trait MemorySaveComponent extends SaveComponent {
+
+  class MemorySave extends AbstractSave {
+    import scala.collection.mutable.HashMap
+    private val intStore = new HashMap[String, Int]
+    override def putInt(name: String, value: Int): Unit = { intStore(name) = value }
+    override def getInt(name: String): Option[Int] = intStore.get(name)
+  
+    private val longStore = new HashMap[String, Long]
+    override def putLong(name: String, value: Long): Unit = { longStore(name) = value }
+    override def getLong(name: String): Option[Long] = longStore.get(name)
+  
+    // Could use a HashSet, but honestly code is simpler with a HashMap here.
+    private val booleanStore = new HashMap[String, Boolean]
+    override def putBoolean(name: String, value: Boolean): Unit = { booleanStore(name) = value }
+    override def getBoolean(name: String): Option[Boolean] = booleanStore.get(name)
+  
+    private val stringStore = new HashMap[String, String]
+    override def putString(name: String, value: String): Unit = { stringStore(name) = value }
+    override def getString(name: String): Option[String] = stringStore.get(name)
+  }
+  type Save = MemorySave
+  override val save = new MemorySave
+}

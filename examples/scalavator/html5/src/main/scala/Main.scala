@@ -14,11 +14,11 @@ import scala.scalajs.js.annotation.JSExport
 object Main extends core.AbstractApp with Html5App 
   with Html5VerboseConsoleLoggingProvider
   //with NoLoggingProvider
-  with SceneComponent with InputHelpersComponent {
+  with SceneComponent with InputHelpersComponent with MemorySaveComponent {
 
   //We should not force the fps on Html5 and just let
   //requestAnimationFrame do its best
-  override val Fps: Option[Int] = None
+  override val TargetFps: Option[Int] = None
 
   override val theme = new DefaultTheme {
     override val maxFrame = (400, 650)

@@ -99,7 +99,8 @@ trait MainScreenComponent extends BackgroundComponent {
       startingPlatform
     )
 
-    private var bugs: List[Bug] = List(new Bug(0, WindowHeight - 200, 100))
+    private var bugs: List[Bug] = List()
+    //private var bugs: List[Bug] = List(new Bug(0, WindowHeight - 200, 100))
 
     //character real height varies from sprite to sprite, and the value
     //refers to the sprite height (but when idle, it uses ony about 3/4 of
