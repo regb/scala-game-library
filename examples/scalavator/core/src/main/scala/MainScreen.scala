@@ -18,6 +18,7 @@ trait MainScreenComponent extends BackgroundComponent {
     characterIdleBitmap: Bitmap,
     characterPreJumpBitmap: Bitmap,
     characterJumpBitmap: Bitmap,
+    bugBitmap: Bitmap,
     cloudsBitmap: Bitmap
   ) extends GameScreen {
 
@@ -52,6 +53,29 @@ trait MainScreenComponent extends BackgroundComponent {
       }
     }
 
+    class Bug(var x: Double, var y: Double, var speed: Double) {
+      private var age: Long = 0
+      def update(dt: Long): Unit = {
+        age += dt
+        x = x + speed*(dt/1000d)
+        if(x + Bug.Width > WindowWidth) {
+          x = WindowWidth - Bug.Width
+          speed = -speed
+        } else if(x < 0) {
+          x = 0
+          speed = -speed
+        }
+      }
+      def render(canvas: Canvas): Unit = {
+        val frame = if(speed > 0) bugRightAnimation.currentFrame(age) else bugLeftAnimation.currentFrame(age)
+        canvas.drawBitmap(frame, x.toInt, y.toInt)
+      }
+    }
+    object Bug {
+      val Width = dp2px(64)
+      val Height = dp2px(64)
+    }
+
     private val startingPlatform = new Platform(0, WindowHeight-PlatformHeight, WindowWidth, 0)
     private var platforms: List[Platform] = List(
       new Platform(WindowWidth/2, WindowHeight-dp2px(500), dp2px(70), -dp2px(130)),
@@ -60,6 +84,10 @@ trait MainScreenComponent extends BackgroundComponent {
       new Platform(WindowWidth/2, WindowHeight-dp2px(200), dp2px(70), dp2px(110)),
       new Platform(WindowWidth/2, WindowHeight-dp2px(100), dp2px(70), dp2px(90)),
       startingPlatform
+    )
+
+    private val bugs: List[Bug] = List(
+      new Bug(100, 300, dp2px(77))
     )
 
     //character real height varies from sprite to sprite, and the value
@@ -101,11 +129,25 @@ trait MainScreenComponent extends BackgroundComponent {
       characterIdleFrames(0)
     )
 
+    private val BugLeftFrames = Array(
+      BitmapRegion(bugBitmap, 0         , 0, Bug.Width, Bug.Height),
+      BitmapRegion(bugBitmap, dp2px(64) , 0, Bug.Width, Bug.Height),
+      BitmapRegion(bugBitmap, dp2px(128), 0, Bug.Width, Bug.Height)
+    )
+    private val BugRightFrames = Array(
+      BitmapRegion(bugBitmap, 0         , dp2px(64), Bug.Width, Bug.Height),
+      BitmapRegion(bugBitmap, dp2px(64) , dp2px(64), Bug.Width, Bug.Height),
+      BitmapRegion(bugBitmap, dp2px(128), dp2px(64), Bug.Width, Bug.Height)
+    )
+
     private val CharacterIdleAnimation = new Animation(200, characterIdleFrames, Animation.Loop)
     private val CharacterPreJumpAnimation = new Animation(100, characterPreJumpFrames, Animation.Normal)
     private val CharacterStartJumpAnimation = new Animation(100, characterJumpFrames, Animation.Normal)
     private val CharacterTopJumpAnimation = new Animation(200, characterJumpFrames.reverse.take(5), Animation.Normal)
     private val CharacterLandingAnimation = new Animation(150, characterLandingFrames, Animation.Normal)
+    private val bugLeftAnimation = new Animation(200, BugLeftFrames, Animation.LoopReversed)
+    private val bugRightAnimation = new Animation(200, BugRightFrames, Animation.LoopReversed)
+
 
     //this looks like a standard wrapper technique for a character/sprite
     //that can have several state and thus several animation. It seems
@@ -205,6 +247,7 @@ trait MainScreenComponent extends BackgroundComponent {
 
       val originalCharacterFeet = characterPosition.y
       platforms.foreach(_.update(dt))
+      bugs.foreach(_.update(dt))
 
       standingPlatform match {
         case None => {
@@ -257,7 +300,7 @@ trait MainScreenComponent extends BackgroundComponent {
       gameState.newScreen(
         new MainScreen(
           characterIdleBitmap, characterPreJumpBitmap, characterJumpBitmap,
-          cloudsBitmap
+          bugBitmap, cloudsBitmap
         )
       )
     }
@@ -267,6 +310,7 @@ trait MainScreenComponent extends BackgroundComponent {
       background.render(canvas)
 
       platforms.foreach(_.render(canvas))
+      bugs.foreach(_.render(canvas))
 
       canvas.drawBitmap(characterAnimation.currentFrame,
         characterPosition.x.toInt-dp2px(9), characterPosition.y.toInt-CharacterHeight)
