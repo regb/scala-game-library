@@ -50,4 +50,6 @@ trait WindowProvider {
   def dp2px(x: Int): Int = (x*density).toInt
   def dp2px(x: Double): Double = (x*density)
 
+  def px2dp(x: Double): Double = (x/density)
+
 }

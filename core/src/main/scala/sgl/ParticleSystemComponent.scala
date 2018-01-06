@@ -55,16 +55,25 @@ trait ParticleSystemComponent {
     var x = 100
     var y = 200
 
+    // java.util.Random seems to be supported by scalajs, scala-native, and is useable on Android.
+    // We will keep the implementation simple and based on that for now, but apparently
+    // the quality of random numbers is not great. We should eventually revisit if we need
+    // a custom implementation for games, but at the very least it seems like we should extract
+    // this into some sort of Provider with the possibility to choose how to seed it. We could
+    // have a global RandomProvider, with a Random interface, which can be seeded. Although, it's not
+    // too clear how useful that is for games.
+    private val random = new java.util.Random()
+
     // Returns random value between min and max, both inclusive.
     def random(min: Double, max: Double): Double = {
       val diff = max - min
-      min + math.random()*diff
+      min + random.nextDouble()*diff
     }
 
     // Returns random value between min and max, both inclusive.
     def random(min: Int, max: Int): Int = {
       val diff = max - min
-      min + (math.random()*diff).toInt
+      min + (random.nextDouble()*diff).toInt
     }
 
     // We choose a random velocity within these constraints.

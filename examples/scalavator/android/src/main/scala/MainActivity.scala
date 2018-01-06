@@ -3,16 +3,19 @@ package com.regblanc.scalavator
 import android.app.Activity
 import android.os.Bundle
 
-import sgl.android._
 import core._
 
+import sgl._
+import sgl.android._
 import sgl.util._
 import sgl.scene._
-import sgl.Lifecycle
 
-class MainActivity extends Activity with AbstractApp with AndroidApp
-  with SceneComponent with NoLoggingProvider {
+class MainActivity extends Activity with AndroidApp with AbstractApp
+  with SceneComponent with NoLoggingProvider with SaveComponent {
 
-  override val Fps = Some(40)
+  override val TargetFps = Some(30)
+
+  type Save = AndroidSave
+  override val save = new AndroidSave("scalavator-savefile", this)
 
 }

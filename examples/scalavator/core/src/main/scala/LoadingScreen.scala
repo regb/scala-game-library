@@ -17,6 +17,7 @@ trait LoadingScreenComponent {
   var characterPrejump: Loader[Bitmap] = null
   var characterJump: Loader[Bitmap] = null
   var bug: Loader[Bitmap] = null
+  var platform: Loader[Bitmap] = null
   var clouds: Loader[Bitmap] = null
 
   class ScalavatorLoadingScreen[A](loaders: Seq[Loader[A]]) extends LoadingScreen[A](loaders) {
@@ -34,6 +35,7 @@ trait LoadingScreenComponent {
       characterPrejump.value.get.get,
       characterJump.value.get.get,
       bug.value.get.get,
+      platform.value.get.get,
       clouds.value.get.get
     )
   }
@@ -47,12 +49,14 @@ trait LoadingScreenComponent {
     characterPrejump = Graphics.loadImage(pathPrefix / "character_prejump.png")
     characterJump = Graphics.loadImage(pathPrefix / "character_jump.png")
     bug = Graphics.loadImage(pathPrefix / "bug.png")
+    platform = Graphics.loadImage(pathPrefix / "platform.png")
     clouds = Graphics.loadImage(pathPrefix / "clouds.png")
     val allResources = Array(
       characterIdle,
       characterPrejump,
       characterJump,
       bug,
+      platform,
       clouds
     )
     new ScalavatorLoadingScreen(allResources)

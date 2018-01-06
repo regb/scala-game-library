@@ -11,7 +11,8 @@ import sgl.scene._
 
 
 /** Wire backend to the App here */
-object Main extends AbstractApp with AWTApp with SceneComponent with VerboseStdOutLoggingProvider with SaveComponent {
+object Main extends AbstractApp with AWTApp 
+  with SceneComponent with VerboseStdOutLoggingProvider with SaveComponent {
 
   override val TargetFps = Some(60)
 

@@ -20,6 +20,7 @@ trait MainScreenComponent extends BackgroundComponent {
     characterPreJumpBitmap: Bitmap,
     characterJumpBitmap: Bitmap,
     bugBitmap: Bitmap,
+    platformBitmap: Bitmap,
     cloudsBitmap: Bitmap
   ) extends GameScreen {
 
@@ -27,8 +28,8 @@ trait MainScreenComponent extends BackgroundComponent {
 
     private val Gravity = Vec(0, dp2px(550))
 
-    private val PlatformHeight = dp2px(5)
     class Platform(var x: Double, var y: Double, val width: Int, var speed: Double) {
+      private val region = BitmapRegion(platformBitmap, 0 max (platformBitmap.width-width)/2, 0, platformBitmap.width, platformBitmap.height)
       def update(dt: Long): Unit = {
         x = x + speed*(dt/1000d)
         if(x+width > WindowWidth) {
@@ -40,7 +41,7 @@ trait MainScreenComponent extends BackgroundComponent {
         }
       }
       def render(canvas: Canvas): Unit = {
-        canvas.drawRect(x.toInt, y.toInt, width, PlatformHeight, defaultPaint.withColor(Color.Blue))
+        canvas.drawRepeatedBitmap(region, x.toInt, y.toInt, width, platformBitmap.height)
       }
 
       override def toString = s"Platform($x, $y) with speed $speed"
@@ -74,7 +75,7 @@ trait MainScreenComponent extends BackgroundComponent {
 
       // Character position (left-bottom of the hittable area)
       def hitCharacter(characterX: Double, characterY: Double): Boolean = {
-        (characterX + CharacterWidth >= x + dp2px(6) && characterX < x + Bug.Width - dp2px(6)) &&
+        (characterX + CharacterHitboxStart >= x + dp2px(6) && characterX < x + Bug.Width - dp2px(6)) &&
         (characterY >= y + dp2px(15) && characterY - CharacterIdleHeight < y + Bug.Height - dp2px(10))
       }
 
@@ -89,7 +90,7 @@ trait MainScreenComponent extends BackgroundComponent {
       }
     }
 
-    private val startingPlatform = new Platform(0, WindowHeight-PlatformHeight, WindowWidth, 0)
+    private val startingPlatform = new Platform(0, WindowHeight-platformBitmap.height, WindowWidth, 0)
     private var platforms: List[Platform] = List(
       new Platform(WindowWidth/2, WindowHeight-dp2px(500), dp2px(70), -dp2px(130)),
       new Platform(WindowWidth/2, WindowHeight-dp2px(400), dp2px(70), dp2px(80)),
@@ -99,21 +100,23 @@ trait MainScreenComponent extends BackgroundComponent {
       startingPlatform
     )
 
-    private var bugs: List[Bug] = List()
-    //private var bugs: List[Bug] = List(new Bug(0, WindowHeight - 200, 100))
+    //private var bugs: List[Bug] = List()
+    private var bugs: List[Bug] = List(new Bug(0, WindowHeight - 200, 100))
 
     //character real height varies from sprite to sprite, and the value
     //refers to the sprite height (but when idle, it uses ony about 3/4 of
     //that height). The width only refers to the inner part that is collidable
     //and not the full sprite with the arms.
-    private val CharacterWidth = dp2px(40)
+    // The pixel at which the character becomes collidable
+    private val CharacterHitboxStart = dp2px(18)
+    // The width of the hitbox from the starting point
+    private val CharacterHitboxWidth = dp2px(24)
     private val CharacterHeight = characterIdleBitmap.height //dp2px(89)
     private val CharacterIdleHeight = dp2px(65)
 
     //character position is the bottom left corner of the hittable area. The actual visible sprite
-    //expands slightly more to the left and the right of the CharacterWidth (48dp total with 30dp in the
-    //middle for collision)
-    private var characterPosition = Point(WindowWidth/2-CharacterWidth/2, WindowHeight - PlatformHeight)
+    //expands slightly more to the left and the right of the CharacterWidth.
+    private var characterPosition = Point(WindowWidth/2-characterIdleBitmap.width/2+CharacterHitboxStart, WindowHeight - platformBitmap.height)
     private var characterVelocity = Vec(0, 0)
 
     private val characterIdleFrames = Array(
@@ -191,7 +194,7 @@ trait MainScreenComponent extends BackgroundComponent {
     private var standingPlatform: Option[Platform] = Some(startingPlatform)
 
     // The score is how high we go, it's a long, just in case
-    var currentScore: Long = 0
+    var currentScore: Double = 0
     private var highestScore: Long = 0
 
     private var randomNextPop: Int = generateRandomNextPop
@@ -291,8 +294,8 @@ trait MainScreenComponent extends BackgroundComponent {
         if(characterPosition.y > WindowHeight + CharacterHeight) {
           gameOver = true
           highestScore = save.getLongOrElse("highest_score", 0)
-          if(currentScore > highestScore) {
-            highestScore = currentScore
+          if(currentScore.toInt > highestScore) {
+            highestScore = currentScore.toInt
             save.putLong("highest_score", highestScore)
           }
         } else if(scrolledDown < WindowHeight) {
@@ -327,14 +330,14 @@ trait MainScreenComponent extends BackgroundComponent {
             characterPosition = characterPosition + Vec(1,0)*platform.speed*(dt/1000d)
             if(characterPosition.x < 0)
               characterPosition = characterPosition.copy(x = 0)
-            if(characterPosition.x + CharacterWidth > WindowWidth)
-              characterPosition = characterPosition.copy(x = WindowWidth-CharacterWidth)
+            if(characterPosition.x + CharacterHitboxWidth > WindowWidth)
+              characterPosition = characterPosition.copy(x = WindowWidth-CharacterHitboxWidth)
           }
         }
         val newCharacterFeet = characterPosition.y
         if(newCharacterFeet > originalCharacterFeet) { //if falling
           platforms.find(p => p.y+1 > originalCharacterFeet && p.y+1 <= newCharacterFeet && 
-                              p.x <= characterPosition.x + CharacterWidth && p.x + p.width >= characterPosition.x
+                              p.x <= characterPosition.x + CharacterHitboxWidth && p.x + p.width >= characterPosition.x
                         ).foreach(platform => {
             standingPlatform = Some(platform)
             characterAnimation.currentAnimation = CharacterLandingAnimation
@@ -357,7 +360,7 @@ trait MainScreenComponent extends BackgroundComponent {
       gameState.newScreen(
         new MainScreen(
           characterIdleBitmap, characterPreJumpBitmap, characterJumpBitmap,
-          bugBitmap, cloudsBitmap
+          bugBitmap, platformBitmap, cloudsBitmap
         )
       )
     }
@@ -372,20 +375,20 @@ trait MainScreenComponent extends BackgroundComponent {
 
       if(hitByBug) {
         canvas.withSave {
-          canvas.translate(characterPosition.x.toInt + CharacterWidth/2, characterPosition.y.toInt - CharacterHeight/2)
+          canvas.translate((characterPosition.x.toInt - CharacterHitboxStart) + characterIdleBitmap.width/2, characterPosition.y.toInt - CharacterHeight/2)
           //-dp2px(9), characterPosition.y.toInt-CharacterHeight)
           canvas.rotate(math.Pi)
-          canvas.drawBitmap(characterAnimation.currentFrame, -CharacterWidth/2, -CharacterHeight/2)
+          canvas.drawBitmap(characterAnimation.currentFrame, -characterIdleBitmap.width/2, -CharacterHeight/2)
         }
       } else {
         canvas.drawBitmap(characterAnimation.currentFrame,
-          characterPosition.x.toInt-dp2px(9), characterPosition.y.toInt-CharacterHeight)
+          characterPosition.x.toInt- CharacterHitboxStart, characterPosition.y.toInt-CharacterHeight)
       }
 
       hud.sceneGraph.render(canvas)
 
       if(gameOver) {
-        canvas.drawString("Score: " + currentScore, WindowWidth/2, WindowHeight/2 - dp2px(14), gameOverPaint)
+        canvas.drawString("Score: " + currentScore.toInt, WindowWidth/2, WindowHeight/2 - dp2px(14), gameOverPaint)
         canvas.drawString("Highest Score: " + highestScore, WindowWidth/2, WindowHeight/2 + dp2px(14), gameOverPaint)
 
         if((totalTime/700d).toInt % 2 == 0)
@@ -407,7 +410,11 @@ trait MainScreenComponent extends BackgroundComponent {
       bugs.foreach(bug => bug.y += distance)
       characterPosition = characterPosition + Vec(0, distance.toDouble)
 
-      currentScore += distance
+      // Since we base the score on the distance (in actual pixels), we
+      // need to convert that distance back to dp, otherwise people
+      // with high density screens would get a much higher score while
+      // jumping the same distance.
+      currentScore += px2dp(distance)
 
       if(platforms.head.y >= randomNextPop) {
         randomNextPop = generateRandomNextPop
@@ -467,7 +474,7 @@ trait MainScreenComponent extends BackgroundComponent {
     class ScoreLabel extends SceneNode(WindowWidth-dp2px(15), dp2px(25), 0, 0) {
       override def update(dt: Long): Unit = {}
       override def render(canvas: Canvas): Unit = {
-        canvas.drawString(mainScreen.currentScore.toString, x.toInt, y.toInt, textPaint.withAlignment(Alignments.Right))
+        canvas.drawString(mainScreen.currentScore.toInt.toString, x.toInt, y.toInt, textPaint.withAlignment(Alignments.Right))
       }
     }
     
