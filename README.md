@@ -134,7 +134,7 @@ short, but I'm hopeful that it will grow over time.
 [Android](https://play.google.com/store/apps/details?id=com.regblanc.winsmash)
 * [Scalavator](http://regblanc.com/games/scalavator/), available for
 [Android](https://play.google.com/store/apps/details?id=com.regblanc.scalavator)
-and for the [Web](https://regblanc.com/games/scalavator/play.html). Code source
+and for the [Web](http://regblanc.com/games/scalavator/play.html). Code source
 available on [GitHub](https://github.com/regb/scalavator).
 
 ### In Developement
