@@ -84,6 +84,15 @@ SGL is currently spllited into the following sub-projects:
 These projects are defined in the [built.sbt](build.sbt) file and have their
 sources in each corresponding subdirectory.
 
+## Getting Started
+
+There are minimal working projects in the [examples](examples/) folder. Cloning
+this directory and copy-pasting one of the example project is a good way to
+start working on your own game (keep the copy in the examples folder as the
+build file are pointing to the SGL root directory).  I also developed a small,
+but complete, [open-source game](https://github.com/regb/scalavator) intended
+to demonstrate some of the features of the library.
+
 ## Design Principles
 
 * Games and only games. This is not a general media toolkit. The only things that
@@ -123,6 +132,10 @@ short, but I'm hopeful that it will grow over time.
 
 * [WinSmash](http://regblanc.com/games/winsmash/), available for
 [Android](https://play.google.com/store/apps/details?id=com.regblanc.winsmash)
+* [Scalavator](http://regblanc.com/games/scalavator/), available for
+[Android](https://play.google.com/store/apps/details?id=com.regblanc.scalavator)
+and for the [Web](https://regblanc.com/games/scalavator/play.html). Code source
+available on [GitHub](https://github.com/regb/scalavator).
 
 ### In Developement
 
