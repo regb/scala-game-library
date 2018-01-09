@@ -6,7 +6,7 @@ import geometry._
 import scene._
 import util._
 
-trait MainScreenComponent {
+trait MainScreenComponent extends ViewportComponent {
   this: GraphicsProvider with InputProvider with SystemProvider with WindowProvider 
   with GameStateComponent with InputHelpersComponent with GameLoopStatisticsComponent
   with LoggingProvider with GraphicsHelpersComponent =>
@@ -38,6 +38,14 @@ trait MainScreenComponent {
 
     override def name: String = "TestScreen"
 
+    val Width = 480
+    val Height = 320
+
+    //val viewport = new Viewport(WindowWidth, WindowHeight/2)
+    val viewport = new Viewport(WindowWidth, WindowHeight)
+    viewport.setCamera(0, 0, Width, Height)
+    viewport.scalingStrategy = Viewport.Extend
+
     private val characterBitmap = LoadingScreen.characterBitmap.get
     private val characterFrames = Array(
       BitmapRegion(characterBitmap, 0, 0, dp2px(48), dp2px(68)),
@@ -57,8 +65,9 @@ trait MainScreenComponent {
     override def update(dt: Long): Unit = {
       InputHelpers.processEvents(e => e match {
         case Input.PointerDownEvent(x, y, _) =>
-          this.x = x
-          this.y = y
+          val (wx, wy) = viewport.screenToWorld(x, y)
+          this.x = wx
+          this.y = wy
         case _ => ()
       })
       totalTime += dt
@@ -84,10 +93,14 @@ trait MainScreenComponent {
     }
 
     override def render(canvas: Canvas): Unit = {
-      canvas.drawRect(0, 0, WindowWidth, WindowHeight, Graphics.defaultPaint.withColor(Color.rgb(204, 242, 204)))
-      canvas.drawCircle(autoX.toInt, autoY.toInt, dp2px(50), Graphics.defaultPaint.withColor(Color.Black))
+      canvas.drawRect(0, 0, WindowWidth, WindowHeight, Graphics.defaultPaint.withColor(Color.rgb(0, 0, 0)))
+      viewport.withViewport(canvas){
+        canvas.drawRect(0, 0, WindowWidth, WindowHeight, Graphics.defaultPaint.withColor(Color.rgb(0, 0, 200)))
+        canvas.drawRect(0, 0, Width, Height, Graphics.defaultPaint.withColor(Color.rgb(204, 242, 204)))
+        canvas.drawCircle(autoX.toInt, autoY.toInt, dp2px(50), Graphics.defaultPaint.withColor(Color.Black))
 
-      canvas.drawBitmap(characterAnimation.currentFrame(totalTime), x.toInt, y.toInt)
+        canvas.drawBitmap(characterAnimation.currentFrame(totalTime), x.toInt, y.toInt)
+      }
     }
 
   }

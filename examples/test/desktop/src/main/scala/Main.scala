@@ -14,6 +14,6 @@ object Main extends AbstractApp with AWTApp
 
   override val TargetFps = Some(60)
 
-  override val frameDimension = (1200, 800)
+  override val frameDimension = (800, 800)
 
 }
