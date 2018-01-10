@@ -8,6 +8,6 @@ package scene
   * each individually.
   */
 trait SceneComponent extends SceneGraphComponent {
-  this: GraphicsProvider with InputProvider with SystemProvider =>
+  this: GraphicsProvider with InputProvider with SystemProvider with ViewportComponent =>
 
 }

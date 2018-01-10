@@ -32,6 +32,9 @@ trait ViewportComponent {
     private var offsetY: Int = 0
 
     update()
+
+    def width: Int = screenWidth
+    def height: Int = screenHeight
   
     def setCamera(x: Int, y: Int, w: Int, h: Int): Unit = {
       cameraX = x

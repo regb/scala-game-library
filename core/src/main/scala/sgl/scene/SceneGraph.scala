@@ -4,7 +4,7 @@ package scene
 import scala.collection.mutable.HashMap
 
 trait SceneGraphComponent {
-  this: GraphicsProvider with InputProvider with SystemProvider =>
+  this: GraphicsProvider with InputProvider with SystemProvider with ViewportComponent =>
 
   import Input._
 
@@ -26,10 +26,9 @@ trait SceneGraphComponent {
     * level (likely less efficient) abstraction on top of the core providers
     * of graphics and game features.
     */
-  class SceneGraph(width: Int, height: Int) {
+  class SceneGraph(width: Int, height: Int, val viewport: Viewport) {
 
-    //TODO: width/height are kind of a viewport for the scene graph. They probably should
-    //      become some mix of Camera/Viewport
+    private var downEvents: HashMap[Int, (SceneNode, Long)] = new HashMap
 
     /** Process an input event
       *
@@ -40,14 +39,12 @@ trait SceneGraphComponent {
       * caller organizes a HUD on top of its own game map, then processInput will return true if the HUD 
       * intercepts the input event, and thus the caller should consider it as intercepted).
       */
-
-    private var downEvents: HashMap[Int, (SceneNode, Long)] = new HashMap
     def processInput(input: Input.InputEvent): Boolean = {
       val hitPosition: Option[(Int, Int)] = input match {
-        case MouseDownEvent(x, y, _) => Some((x, y))
-        case MouseUpEvent(x, y, _) => Some((x, y))
-        case TouchDownEvent(x, y, _) => Some((x, y))
-        case TouchUpEvent(x, y, _) => Some((x, y))
+        case MouseDownEvent(x, y, _) => Some(viewport.screenToWorld(x, y))
+        case MouseUpEvent(x, y, _) => Some(viewport.screenToWorld(x, y))
+        case TouchDownEvent(x, y, _) => Some(viewport.screenToWorld(x, y))
+        case TouchUpEvent(x, y, _) => Some(viewport.screenToWorld(x, y))
         case _ => None
       }
 
@@ -56,7 +53,8 @@ trait SceneGraphComponent {
       input match {
         case MouseMovedEvent(x, y) =>
           downEvents.get(0).foreach{ case (n, _) => {
-            val hitNode = root.hit(x, y)
+            val (wx, wy) = viewport.screenToWorld(x, y)
+            val hitNode = root.hit(wx, wy)
             if(!hitNode.exists(_ == n)) { // we just left the node that we were pressing down.
               n.notifyPointerLeave()
               downEvents.remove(0)
@@ -64,7 +62,8 @@ trait SceneGraphComponent {
           }}
         case TouchMovedEvent(x, y, p) =>
           downEvents.get(p).foreach{ case (n, _) => {
-            val hitNode = root.hit(x, y)
+            val (wx, wy) = viewport.screenToWorld(x, y)
+            val hitNode = root.hit(wx, wy)
             if(!hitNode.exists(_ == n)) { // we just left the node that we were touching down.
               n.notifyPointerLeave()
               downEvents.remove(p)
@@ -76,30 +75,34 @@ trait SceneGraphComponent {
       hitNode.foreach(node => {
         input match {
           case MouseDownEvent(x, y, _) =>
+            val (wx, wy) = viewport.screenToWorld(x, y)
             downEvents(0) = (node, System.millis)
-            node.notifyDown(x, y)
+            node.notifyDown(wx, wy)
           case TouchDownEvent(x, y, p) =>
+            val (wx, wy) = viewport.screenToWorld(x, y)
             downEvents(p) = (node, System.millis)
-            node.notifyDown(x, y)
+            node.notifyDown(wx, wy)
 
           case MouseUpEvent(x, y, _) =>
-            node.notifyUp(x, y)
+            val (wx, wy) = viewport.screenToWorld(x, y)
+            node.notifyUp(wx, wy)
             downEvents.get(0) match {
               case None => // means that the downEvents was cleaned because the mouse left the node
                 ()
               case Some((n, t)) =>
                 val duration = System.millis - t
                 if(node == n && node.mouseClickCondition(duration)) {
-                  node.notifyClick(x, y)
+                  node.notifyClick(wx, wy)
                 } // else means that the up event is in a different component
             }
             downEvents.remove(0)
           case TouchUpEvent(x, y, p) =>
-            node.notifyUp(x, y)
+            val (wx, wy) = viewport.screenToWorld(x, y)
+            node.notifyUp(wx, wy)
             downEvents.get(p).foreach{ case (n, t) => {
               val duration = System.millis - t
               if(node == n && node.touchClickCondition(duration)) {
-                node.notifyClick(x, y)
+                node.notifyClick(wx, wy)
               } // else means that the up event is in a different component
             }}
             downEvents.remove(p)
@@ -115,7 +118,11 @@ trait SceneGraphComponent {
   
     def update(dt: Long): Unit = root.update(dt)
   
-    def render(canvas: Graphics.Canvas): Unit = root.render(canvas)
+    def render(canvas: Graphics.Canvas): Unit = {
+      viewport.withViewport(canvas){
+        root.render(canvas)
+      }
+    }
 
     /** The root SceneGroup containing all nodes
       *
@@ -258,16 +265,11 @@ trait SceneGraphComponent {
     }
   
     override def render(canvas: Graphics.Canvas): Unit = {
-      //val canvasWidth = canvas.width
-      //val canvasHeight = canvas.height
       canvas.withSave {
         canvas.translate(x.toInt, y.toInt)
         canvas.clipRect(0, 0, width.toInt, height.toInt)
 
         nodes.reverse.foreach(_.render(canvas))
-
-        //canvas.translate(-x.toInt, -y.toInt)
-        //canvas.clipRect(0, 0, canvasWidth, canvasHeight)
       }
     }
   
