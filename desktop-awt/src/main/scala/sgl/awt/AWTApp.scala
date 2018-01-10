@@ -28,6 +28,9 @@ trait AWTApp extends GameApp
     this.applicationFrame.addWindowListener(new java.awt.event.WindowAdapter() {
       override def windowClosing(windowEvent: java.awt.event.WindowEvent): Unit = {
         pauseThread()
+        Scheduler.shutdown()
+        lifecycleListener.pause()
+        lifecycleListener.shutdown()
       }
     })
 

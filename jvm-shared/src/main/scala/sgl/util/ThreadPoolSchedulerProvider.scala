@@ -56,13 +56,22 @@ trait ThreadPoolSchedulerProvider extends SchedulerProvider {
     /** The Scheduler will stop executing all scheduled task
       * and it will clean-up all platform-specific resources
       * (for example, running worker threads).
+      * It is ok to call shutdown before any call to resume() and/or
+      * schedule(), which means one can create a scheduler and then
+      * right away shutdown on it.
       */
     def shutdown(): Unit = {
       pool.shutdown()
-      r1.shouldStop = true
-      r2.shouldStop = true
-      r3.shouldStop = true
-      r4.shouldStop = true
+
+      // Need to check for null because we could have skipped resume.
+      if(r1 != null)
+        r1.shouldStop = true
+      if(r2 != null)
+        r2.shouldStop = true
+      if(r3 != null)
+        r3.shouldStop = true
+      if(r4 != null)
+        r4.shouldStop = true
     }
 
     // Simple Runnable class that picks up the first available ChunkedTask and

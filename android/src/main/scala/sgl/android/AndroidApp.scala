@@ -80,6 +80,10 @@ trait AndroidApp extends Activity with GameApp
                         Intent.ACTION_MAIN.equals(intent.getAction())) {
       logger.warning("Main Activity is not the root.  Finishing Main Activity instead of launching.")
       finish()
+      // With this call to finish, it seem that onDestroy will be called before any other lifecycle methods (onResume, onPause).
+      // In particular, we need to be careful with the Scheduler shutdown.
+      // finish() does not stop the invokation of onCreate, but it will call onDestroy right after. So we do not return
+      // in order to maintain the symmetry between onCreate and onDestroy.
     }
 
     gameState.newScreen(startingScreen)
