@@ -114,7 +114,6 @@ trait SceneGraphComponent {
 
       true
     }
-
   
     def update(dt: Long): Unit = root.update(dt)
   
@@ -147,13 +146,13 @@ trait SceneGraphComponent {
 
   }
   
-  /** An element that participate to the scene
+  /** An element that participates to the scene.
     *
     * Provides the subdivision of Scene into different parts. A SceneNode
     * could be a simple character sprite, or a button. It could also be a Group
     * of scene element.
     *
-    * the position (x,y) is the top-left position of the node, in the coordinate system
+    * The position (x,y) is the top-left position of the node, in the coordinate system
     * of the direct parent. So if the node is part of a group, its position can be specified
     * relatively to the group, and then the group can be positioned globally independently.
     * the coordinates use Float, as typically a node could be simulated by physics on a frame-by-frame
@@ -168,6 +167,8 @@ trait SceneGraphComponent {
   abstract class SceneNode(
     var x: Float, var y: Float, var width: Float, var height: Float
   ) {
+
+    private[SceneGraphComponent] var parent: SceneNode = null
 
     //TODO: support for rotation, need to store origin inside the SceneNode coordinate system
     //var originX: Float = 0
@@ -245,6 +246,12 @@ trait SceneGraphComponent {
     // Maybe we need also a
     // def notifyPointerEnter(): Unit = ()
 
+    // Returns the coordinates of this node in the coordinate system of the root element.
+    def absolutePosition: (Float, Float) = if(parent == null) (x, y) else {
+      val (ax, ay) = parent.absolutePosition
+      (ax + x, ay + y)
+    }
+
   }
   
   /*
@@ -257,6 +264,7 @@ trait SceneGraphComponent {
     private var nodes: List[SceneNode] = List()
   
     def addNode(node: SceneNode): Unit = {
+      node.parent = this
       nodes ::= node
     }
   
@@ -282,7 +290,7 @@ trait SceneGraphComponent {
       }
       found
     }
-  
+
   }
   object SceneGroup {
 
