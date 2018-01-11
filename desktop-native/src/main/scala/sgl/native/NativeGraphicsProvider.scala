@@ -155,7 +155,7 @@ trait NativeGraphicsProvider extends GraphicsProvider {
       }
   
       override def drawBitmap(bitmap: Bitmap, x: Int, y: Int, s: Float): Unit = {
-        drawBitmap(bitmap, x, y, 0, 0, width, height, s)
+        drawBitmap(bitmap, x, y, 0, 0, bitmap.width, bitmap.height, s)
       }
 
       override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f): Unit = {

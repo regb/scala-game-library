@@ -139,8 +139,8 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
       }
 
       override def drawBitmap(bitmap: Bitmap, x: Int, y: Int, s: Float): Unit = {
-        val src = new AndroidRect(0, 0, width, height)
-        val dst = new AndroidRect(x, y, x + (s*width).toInt, y + (s*height).toInt)
+        val src = new AndroidRect(0, 0, bitmap.width, bitmap.height)
+        val dst = new AndroidRect(x, y, x + (s*bitmap.width).toInt, y + (s*bitmap.height).toInt)
         canvas.drawBitmap(bitmap.bitmap, src, dst, bitmapPaint)
       }
       
