@@ -9,8 +9,6 @@ object LocalStorageSave extends AbstractSave {
 
   val localStorageSupported = !js.isUndefined(js.Dynamic.global.localStorage)
 
-  println("local storage supported: " + localStorageSupported)
-
   // One idea could be to fallback on cookies for the implementation, although
   // I think we should be able to assume support for local storage, as our other
   // dependencies are probably stronger.
@@ -62,4 +60,9 @@ object LocalStorageSave extends AbstractSave {
     })
   }
 
+}
+
+trait LocalStorageSaveComponent extends SaveComponent {
+  type Save = LocalStorageSave.type
+  override val save = LocalStorageSave
 }
