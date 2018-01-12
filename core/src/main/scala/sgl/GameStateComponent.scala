@@ -34,13 +34,31 @@ trait GameStateComponent {
       */
     def update(dt: Long): Unit
   
-    /** Render current game state on the Canvas
+    /** Render current game state on the Canvas.
       *
       * You should not clean the canvas as it could contain elements
       * from other GameScreen on the game state, and in general will
       * be automatically cleaned up by the framework.
       */
     def render(canvas: Graphics.Canvas): Unit
+
+    /** Render the screen state while still loading.
+      *
+      * While the screen is loading (if some Loaders are set at creation time).
+      * Then this loadingRender method is called instead of the main render method.
+      * This gives the chance to the screen to still render something while waiting
+      * on must-have assets to start the main update/render loop.
+      */
+    def loadingRender(canvas: Graphics.Canvas): Unit = {}
+
+    private[sgl] var preloaders: List[Loader[_]] = List()
+    def addPreloading[A](l: Loader[A]) = preloaders ::= l
+
+    private[sgl] var _isLoading = true
+
+    def isLoading: Boolean = _isLoading
+
+    def onLoaded(): Unit = {}
   
     /** Determine whether next screen on the stack should be rendered 
       *
@@ -92,6 +110,19 @@ trait GameStateComponent {
 
   }
 
+  /*
+   * A LoadingScreen is a screen dedicated to loading assets. Typically the game would
+   * show a progress bar and/or a splash screen with the game logo. This is intended
+   * as a way to load a large amount of resources in memory, which could take several
+   * seconds.
+   *
+   * By contrast, the built-in preload feature from each GameScreen is meant
+   * as a very short "last minute" loading for the screen, and should be used to load
+   * very few assets and that are truly unique to that level. One particular example would
+   * be level data (map, tilemap) for a platformer/puzzle game, where we need to load the 
+   * current level for the current screen. Such loading should be extermely light and
+   * only take a few frames, so that we don't need to display anything.
+   */
   abstract class LoadingScreen[A](val loaders: Seq[Loader[A]]) extends GameScreen {
     import scala.collection.mutable.HashSet
 

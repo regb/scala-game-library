@@ -97,14 +97,24 @@ trait GameLoopComponent {
     val renderedScreens = gameState.screensStack.takeWhile(!_.isOpaque).reverse
     val lastOpaqueScreen = gameState.screensStack.find(_.isOpaque)
 
-    gameLoopListener.onUpdateStart()
-    currentScreen.update(dt)
-    gameLoopListener.onUpdateComplete()
+    if(currentScreen.isLoading && currentScreen.preloaders.exists((l: Loader[_]) => !l.isLoaded)) {
+      currentScreen.loadingRender(canvas)
+    } else {
+      if(currentScreen.isLoading) {
+        // current screen just finished loading
+        currentScreen.onLoaded()
+        currentScreen._isLoading = false
+      }
 
-    gameLoopListener.onRenderStart()
-    lastOpaqueScreen.foreach(screen => screen.render(canvas))
-    renderedScreens.foreach(screen => screen.render(canvas))
-    gameLoopListener.onRenderComplete()
+      gameLoopListener.onUpdateStart()
+      currentScreen.update(dt)
+      gameLoopListener.onUpdateComplete()
+
+      gameLoopListener.onRenderStart()
+      lastOpaqueScreen.foreach(screen => screen.render(canvas))
+      renderedScreens.foreach(screen => screen.render(canvas))
+      gameLoopListener.onRenderComplete()
+    }
 
     gameLoopListener.onStepComplete()
   }
