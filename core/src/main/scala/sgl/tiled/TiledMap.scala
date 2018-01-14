@@ -114,6 +114,53 @@ case class TileLayer(
   offsetX: Int, offsetY: Int
 ) extends Layer {
 
+  // An advantage of the tile layout is that the world is well structured
+  // and we can do random access very efficiently. The following methods
+  // are efficient (O(1)) ways to find relevant tiles in the tile layer.
+
+  def intersectingTile(pos: Point): Option[Tile] = {                     
+    if(tiles.isEmpty || tiles(0).isEmpty) None else {
+      val tileWidth = tiles(0)(0).width
+      val tileHeight = tiles(0)(0).height
+      val i = (pos.y / tileHeight).toInt
+      val j = (pos.x / tileWidth).toInt
+      if(i >= 0 && i < tiles.length && j >= 0 && j < tiles(i).length)
+        Some(tiles(i)(j))
+      else
+        None
+    }
+  }
+
+  def intersectingTiles(rect: Rect): Set[Tile] = {
+    if(tiles.isEmpty || tiles(0).isEmpty) Set() else {
+      val tileWidth = tiles(0)(0).width
+      val tileHeight = tiles(0)(0).height
+      val i1 = (rect.top / tileHeight) max 0
+      val i2 = (rect.bottom / tileHeight) min (tiles.length-1)
+      val j1 = (rect.left / tileWidth) max 0
+      val j2 = (rect.right / tileWidth) min (tiles(i1).length-1)
+
+      var res = Set[Tile]()
+      for(i <- i1 to i2) {
+        for(j <- j1 to j2) {
+          res += tiles(i)(j)
+        }
+      }
+      res
+    }
+  }
+
+  def intersectingTiles(circle: Circle): Set[Tile] = {
+    val boundingRect = circle.boundingRect
+
+    var res = Set[Tile]()
+    for(tile <- intersectingTiles(boundingRect)) {
+      if(circle.intersect(tile.rect))
+        res += tile
+    }
+    res
+  }
+
 }
 
 case class ObjectLayer(
