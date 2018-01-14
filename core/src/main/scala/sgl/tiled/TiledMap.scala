@@ -88,10 +88,10 @@ case class TiledMap(
   }
 
 }
-object TiledMap {
-  def fromJson(lines: Iterator[String]): TiledMap = fromJson(lines.toList.mkString("\n"))
-  def fromJson(rawJson: String): TiledMap = TmxJsonParser.parse(rawJson)
-}
+// object TiledMap {
+//   def fromJson(lines: Iterator[String]): TiledMap = fromJson(lines.toList.mkString("\n"))
+//   def fromJson(rawJson: String): TiledMap = TmxJsonParser.parse(rawJson)
+// }
 
 
 abstract sealed trait Layer {

@@ -1,7 +1,8 @@
 package sgl
 package tiled
 
-import geometry.Point
+import sgl.geometry.Point
+import sgl.util._
 
 trait TiledMapRendererComponent {
   this: SystemProvider with GraphicsProvider with WindowProvider =>
@@ -9,17 +10,15 @@ trait TiledMapRendererComponent {
 
   class TiledMapRenderer(tileMap: TiledMap, var camera: Camera, tileMapPrefix: ResourcePath) {
 
-    private val tileSetBitmaps: Vector[Graphics.Bitmap] = tileMap.tileSets.map(
+    private val tileSetBitmaps: Vector[Loader[Graphics.Bitmap]] = tileMap.tileSets.map(
       ts => {
         val path = tileMapPrefix / ts.image
         println("loading tileset: " + path)
         Graphics.loadImage(path)
-        //TODO: handle Loaders
-        ???
       }
     )
 
-    private val tileSet2Bitmap: Map[TileSet, Graphics.Bitmap] = tileMap.tileSets.zip(tileSetBitmaps).toMap
+    private val tileSet2Bitmap: Map[TileSet, Loader[Graphics.Bitmap]] = tileMap.tileSets.zip(tileSetBitmaps).toMap
 
 
     /** render all tile layers of the Map */
@@ -52,8 +51,10 @@ trait TiledMapRendererComponent {
               val ts = tileMap.getTileSetForTileId(index)
               val (imageX, imageY) = ts.tileBottomLeft(index)
               val Point(tx, ty) = camera.worldToCamera(Point(tile.x, tile.y+tile.height))
-              canvas.drawBitmap(tileSet2Bitmap(ts), tx.toInt, ty.toInt-ts.tileHeight,
-                                imageX.toInt, imageY.toInt-ts.tileHeight, ts.tileWidth, ts.tileHeight)
+              tileSet2Bitmap(ts).foreach(bm =>
+                canvas.drawBitmap(bm, tx.toInt, ty.toInt-ts.tileHeight,
+                                  imageX.toInt, imageY.toInt-ts.tileHeight, ts.tileWidth, ts.tileHeight)
+              )
             })
           }
         }

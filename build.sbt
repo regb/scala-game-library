@@ -42,7 +42,8 @@ lazy val desktopAWT = (project in file("./desktop-awt"))
     name                := "sgl-desktop-awt",
     libraryDependencies += "com.googlecode.soundlibs" % "tritonus-share" % "0.3.7-3",
     libraryDependencies += "com.googlecode.soundlibs" % "vorbisspi" % "1.0.3-2",
-    libraryDependencies += "com.googlecode.soundlibs" % "jorbis" % "0.0.17-3"
+    libraryDependencies += "com.googlecode.soundlibs" % "jorbis" % "0.0.17-3",
+    libraryDependencies += "net.liftweb" %% "lift-json" % "3.1.1"
   )
   .dependsOn(coreJVM, jvmShared)
 
