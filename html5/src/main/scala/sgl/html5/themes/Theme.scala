@@ -29,6 +29,13 @@ abstract class Theme {
 
 }
 
+/** Do not use any special theme.
+  *
+  * This theme is useful if we want the game to just use the
+  * provided canvas element (not moving it or mutating its dimensions). It
+  * gives full control to the html/css designer that can setup the
+  * optimal environment for the game.
+  */
 class NoTheme extends Theme {
 
   override def init(canvas: html.Canvas): Unit = {}

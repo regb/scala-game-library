@@ -1,6 +1,6 @@
 import sbtcrossproject.{crossProject, CrossType}
 
-val scalaVer = "2.12.0"
+val scalaVer = "2.12.4"
 
 val scalaNativeVer = "2.11.8"
 
@@ -24,9 +24,6 @@ lazy val sglHtml5 = ProjectRef(file("../.."), "html5")
 lazy val core = (crossProject(JSPlatform, JVMPlatform, NativePlatform).crossType(CrossType.Pure) in file("./core"))
   .settings(commonSettings: _*)
   .settings(name := "sgl-snake-core")
-  .jvmSettings(
-    exportJars := true
-  )
   .nativeSettings(scalaVersion := scalaNativeVer)
   .jvmConfigure(_.dependsOn(sglCoreJVM))
   .jsConfigure(_.dependsOn(sglCoreJS))
@@ -48,6 +45,7 @@ lazy val html5 = (project in file("./html5"))
   .settings(commonSettings: _*)
   .settings(
     name := "sgl-snake-html5",
+    scalaJSUseMainModuleInitializer := true,
     libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.1"
   )
   .dependsOn(sglCoreJS, sglHtml5, coreJS)
