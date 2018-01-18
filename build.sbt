@@ -59,7 +59,8 @@ lazy val html5 = (project in file("./html5"))
   .settings(commonSettings: _*)
   .settings(
     name := "sgl-html5",
-    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.1"
+    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.1",
+    libraryDependencies += "org.scalatest" %%% "scalatest" % "3.0.0" % "test"
   )
   .dependsOn(coreJS)
 
