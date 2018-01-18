@@ -6,6 +6,7 @@ val scalaNativeVer = "2.11.8"
 
 lazy val commonSettings = Seq(
   version      := "0.0.1",
+  organization := "com.regblanc.sgl",
   scalaVersion := scalaVer,
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 )
