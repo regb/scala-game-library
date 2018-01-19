@@ -11,24 +11,45 @@ class Html5JsonSuite extends FunSuite {
 
   test("Parsing literals should return the right literal") {
     parse("23") match {
-      case JInt(n) => assert(n == 23)
+      case JInt(n) => assert(n === 23)
       case _ => assert(false)
     }
     parse("10") match {
-      case JInt(n) => assert(n == 10)
+      case JInt(n) => assert(n === 10)
       case _ => assert(false)
     }
     parse("\"abc\"") match {
-      case JString(v) => assert(v == "abc")
+      case JString(v) => assert(v === "abc")
+      case _ => assert(false)
+    }
+    parse("true") match {
+      case JBool(b) => assert(b)
       case _ => assert(false)
     }
   }
 
-  test("Parsing double literals that match an integer should return an integer") {
+  test("Parsing simple objects should return a JObject with the right attribute") {
+    parse("{\"x\": 23}") match {
+      case JObject(List(("x", JInt(n)))) => assert(n === 23)
+      case _ => assert(false)
+    }
+    parse("{\"y\": \"abc\"}") match {
+      case JObject(List(("y", JString(v)))) => assert(v === "abc")
+      case _ => assert(false)
+    }
+    parse("{\"z\": 12.34}") match {
+      case JDouble(_) => assert(false)
+      case JArray(_) => assert(false)
+      case JObject(List(("z", JDouble(d)))) => assert(d === 12.34)
+      case _ => assert(false)
+    }
+  }
+
+  test("Parsing double literals that are actually integers should return an integer") {
     println(parse("1.0"))
     parse("1.0") match {
-      case JInt(n) => n == 1
       case JDouble(_) => assert(false)
+      case JInt(n) => n == 1
       case _ => assert(false)
     }
   }
@@ -49,12 +70,5 @@ class Html5JsonSuite extends FunSuite {
     }
   }
 
-
-  test("Parsing object with one element should return the element at the key") {
-    val jsonProvider = new util.Html5JsonProvider{}
-    val r = jsonProvider.Json.parse("{\"aaa\": 23}")
-    println(r)
-    //println(js.typeOf(js.Dynamic.global.abc))
-  }
 
 }

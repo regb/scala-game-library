@@ -39,8 +39,8 @@ trait Html5JsonProvider extends JsonProvider {
 
     object Html5JDouble extends AbstractJDouble {
       override def unapply(v: JValue): Option[Double] = v match {
+        case (x: Int) => None
         case (x: Double) => Some(x)
-        case (x: Float) => Some(x)
         case _ => None
       }
     }
