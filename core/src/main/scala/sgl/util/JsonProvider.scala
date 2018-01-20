@@ -73,8 +73,36 @@ import scala.language.implicitConversions
  * That discussion is there to remind that the parser implementation is unlikely to truly respect the standard to its full extend, and must
  * make the most convenient conversion to the host language so that the data is actually useful in solving real problems. And now I'm going
  * to make the call that the ability to distinguish 1.0 from 1 is not going to be relevant to the sort of data that games are going to load
- * (or persist) from JSON. The semantics will then be that any numeric value that is fully representable as an Int should get parsed as
- * a JInt type, while the remaining numeric data will be represented as a JDouble (and approximated if need be).
+ * (or persist) from JSON.
+ *
+ * Once we want to parse both 1.0 and 1 as the same value, we need to
+ * work with the constraint of jvm-based parsers, which will typically
+ * offer both an Int and a Double wrapper. For example, Lift has a
+ * JInt and a JDouble. Now comes the tricky part, as JInt(1) != Jdouble(1.0)
+ * (although 1 == 1.0 in Scala). This makes sense in the context of the
+ * library, as both are different syntactic elements. However, by using
+ * JSON in the browser, there is no way that we would be able to respect
+ * a similar behaviour. In order to avoid such problems as comparing
+ * both Int and Double, we want to provide a single numeric type,
+ * JNumber, which will contain a Double. For convenience, we should
+ * also provide AsInt and AsDouble, but these will only be extractors
+ * and are only going to be convenient view on top of the JNumber node.
+ * We will approximate the numeric value to a double in case it doesn't
+ * fit in the regular representation.
+ *
+ * It's important to keep in mind that our JSON implementation is not
+ * meant to be a general, all-around, implementation. In particular, one
+ * should not use it to serialize very advanced and complex data, instead
+ * it aims at being good enough to support loading typical data format
+ * efficiently, and sometimes serializing simple, but structured, game
+ * data. For example, the parse method simply returns an Option of the
+ * JValue, instead of a detailed error. The idea is to keep the simplest
+ * API that works in most cases. Very often, the json comes from a third
+ * party tool, and thus error debugging should not be necessary at the
+ * framework level. If you suspect something is wrong with the file, use
+ * a JSON validator. If the file passes the JSON validator but parses
+ * as None, then it is very likely a bug in SGL and the best would be
+ * to report it.
  */
 trait JsonProvider {
 
@@ -83,53 +111,71 @@ trait JsonProvider {
     type JValue
     def parse(raw: String): JValue
     // def write(ast: JValue): String
+
     abstract class RichJsonAst {
       def \ (field: String): JValue
     }
     implicit def richJsonAst(ast: JValue): RichJsonAst
 
-    type JNothing
+    type JNothing <: JValue
     val JNothing: JNothing
-    type JNull
+    type JNull <: JValue
     val JNull: JNull
 
-    abstract class AbstractJString {
+    abstract class JStringCompanion {
       def unapply(ast: JValue): Option[String]
     }
-    type JString <: AbstractJString
-    val JString: JString
+    type JString <: JValue
+    val JString: JStringCompanion
 
-    abstract class AbstractJDouble {
+    abstract class JNumberCompanion {
       def unapply(ast: JValue): Option[Double]
     }
-    type JDouble <: AbstractJDouble
-    val JDouble: JDouble
+    type JNumber <: JValue
+    val JNumber: JNumberCompanion
 
-    abstract class AbstractJInt {
-      def unapply(ast: JValue): Option[BigInt]
-    }
-    type JInt <: AbstractJInt
-    val JInt: JInt
-
-    abstract class AbstractJBool {
+    abstract class JBooleanCompanion {
       def unapply(ast: JValue): Option[Boolean]
     }
-    type JBool <: AbstractJBool
-    val JBool: JBool
+    type JBoolean <: JValue
+    val JBoolean: JBooleanCompanion
 
-    abstract class AbstractJObject {
+    abstract class JObjectCompanion {
       def unapply(ast: JValue): Option[List[JField]]
     }
-    type JObject <: AbstractJObject
-    val JObject: JObject
+    type JObject <: JValue
+    val JObject: JObjectCompanion
 
-    abstract class AbstractJArray {
+    abstract class JArrayCompanion {
       def unapply(ast: JValue): Option[List[JValue]]
     }
-    type JArray <: AbstractJArray
-    val JArray: JArray
+    type JArray <: JValue
+    val JArray: JArrayCompanion
 
     type JField = (String, JValue)
+
+    /* AsInt and AsDouble provide extractor methods to handle JNumber
+     * in as the same type (using Double underlying).
+     * It is intended as a convenient way to read the parsed data
+     * when we only care about the value as a Double. It is needed
+     * as JDouble will only parse when the mathematical value is not
+     * an integer ("1.0" will parse as a JInt and not a JDouble). This
+     * deicision 
+     */
+    object AsInt {
+      def unapply(v: JValue): Option[Int] = v match {
+        case JNumber(n) => if(n == math.floor(n) && !n.isInfinite) Some(n.toInt) else None
+        case _ => None
+      }
+    }
+
+    object JInt {
+      def unapply(v: JValue): Option[Int] = v match {
+        case JNumber(n) => if(n == math.floor(n) && !n.isInfinite) Some(n.toInt) else None
+        case _ => None
+      }
+    }
+
   }
   val Json: Json
 

@@ -65,7 +65,7 @@ trait TmxJsonParserComponent {
         //we don't parse x/y coordinates, as apparently they are always 0
   
         val visible: Boolean = (layer \ "visible") match {
-          case JBool(v) => v
+          case JBoolean(v) => v
           case _ => true
         }
         val opacity: Double = jsonToDouble(layer \ "opacity").getOrElse(1)
@@ -185,9 +185,12 @@ trait TmxJsonParserComponent {
              stagger=stagger)
     }
   
+    // TODO: we probably want to provide .as[T] (.as[Double] for example)
+    // in the api to return this Option instead of having to use
+    // extractors.
     private def jsonToDouble(json: JValue): Option[Double] = json match {
-      case JDouble(v) => Some(v)
-      case JInt(v) => Some(v.toDouble) //assuming that for coordinates this cannot overflow
+      case JNumber(v) => Some(v)
+      //case JInt(v) => Some(v.toDouble) //assuming that for coordinates this cannot overflow
       case _ => None
     }
   }

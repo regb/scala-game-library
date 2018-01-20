@@ -14,8 +14,11 @@ trait Html5JsonProvider extends JsonProvider {
 
     type JValue = Any
     override def parse(raw: String): JValue = {
-      val r = js.JSON.parse(raw)
-      r
+      try {
+        js.JSON.parse(raw)
+      } catch {
+        case (_: Exception) => None
+      }
     }
 
     class Html5RichJsonAst(v: JValue) extends RichJsonAst {
@@ -28,44 +31,35 @@ trait Html5JsonProvider extends JsonProvider {
     type JNull = Null
     override val JNull = null
 
-    object Html5JString extends AbstractJString {
+    object Html5JStringCompanion extends JStringCompanion {
       override def unapply(v: JValue): Option[String] = v match {
         case (x: String) => Some(x)
         case _ => None
       }
     }
-    type JString = Html5JString.type
-    override val JString = Html5JString
+    type JString = String
+    override val JString = Html5JStringCompanion
 
-    object Html5JDouble extends AbstractJDouble {
+    object Html5JNumberCompanion extends JNumberCompanion {
       override def unapply(v: JValue): Option[Double] = v match {
-        case (x: Int) => None
+        case (x: Int) => Some(x)
         case (x: Double) => Some(x)
         case _ => None
       }
     }
-    type JDouble = Html5JDouble.type
-    override val JDouble = Html5JDouble
+    type JNumber = Double
+    override val JNumber = Html5JNumberCompanion
 
-    object Html5JInt extends AbstractJInt {
-      override def unapply(v: JValue): Option[BigInt] = v match {
-        case (x: Int) => Some(x)
-        case _ => None
-      }
-    }
-    type JInt = Html5JInt.type
-    override val JInt = Html5JInt
-
-    object Html5JBool extends AbstractJBool {
+    object Html5JBooleanCompanion extends JBooleanCompanion {
       override def unapply(v: JValue): Option[Boolean] = v match {
         case (x: Boolean) => Some(x)
         case _ => None
       }
     }
-    type JBool = Html5JBool.type
-    override val JBool = Html5JBool
+    type JBoolean = Boolean
+    override val JBoolean = Html5JBooleanCompanion
 
-    object Html5JObject extends AbstractJObject {
+    object Html5JObjectCompanion extends JObjectCompanion {
       override def unapply(v: JValue): Option[List[JField]] = {
         if(v.toString == "[object Object]") {
           val d = v.asInstanceOf[js.Dictionary[Any]]
@@ -73,17 +67,17 @@ trait Html5JsonProvider extends JsonProvider {
         } else None
       }
     }
-    type JObject = Html5JObject.type
-    override val JObject = Html5JObject
+    type JObject = js.Dictionary[Any]
+    override val JObject = Html5JObjectCompanion
 
-    object JsArray extends AbstractJArray {
+    object Html5JArrayCompanion extends JArrayCompanion {
       override def unapply(v: JValue): Option[List[JValue]] = v match {
         case (x: js.Array[_]) => Some(x.map((x: Any) => x).toList)
         case _ => None
       }
     }
-    type JArray = JsArray.type
-    override val JArray = JsArray
+    type JArray = js.Array[Any]
+    override val JArray = Html5JArrayCompanion
   }
 
   override val Json = Html5Json
