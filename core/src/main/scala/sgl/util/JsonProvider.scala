@@ -164,7 +164,13 @@ trait JsonProvider {
      */
     object AsInt {
       def unapply(v: JValue): Option[Int] = v match {
-        case JNumber(n) => if(n == math.floor(n) && !n.isInfinite) Some(n.toInt) else None
+        case JNumber(n) => 
+          if(n <= Int.MaxValue &&
+             n == math.floor(n) &&
+             !n.isInfinite) 
+            Some(n.toInt)
+          else
+            None
         case _ => None
       }
     }
