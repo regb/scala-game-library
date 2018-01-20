@@ -17,7 +17,10 @@ lazy val commonNativeSettings = Seq(
 
 lazy val core = (crossProject(JSPlatform, JVMPlatform, NativePlatform).crossType(CrossType.Pure) in file("./core"))
   .settings(commonSettings: _*)
-  .settings(name := "sgl-core")
+  .settings(
+    name := "sgl-core",
+    libraryDependencies += "org.scalatest" %%% "scalatest" % "3.0.0" % "test"
+  )
   .nativeSettings(scalaVersion := scalaNativeVer)
 
 lazy val coreJVM = core.jvm
@@ -35,9 +38,10 @@ lazy val desktopAWT = (project in file("./desktop-awt"))
     libraryDependencies += "com.googlecode.soundlibs" % "tritonus-share" % "0.3.7-3",
     libraryDependencies += "com.googlecode.soundlibs" % "vorbisspi" % "1.0.3-2",
     libraryDependencies += "com.googlecode.soundlibs" % "jorbis" % "0.0.17-3",
-    libraryDependencies += "net.liftweb" %% "lift-json" % "3.1.1"
+    libraryDependencies += "net.liftweb" %% "lift-json" % "3.1.1",
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.0" % "test"
   )
-  .dependsOn(coreJVM, jvmShared)
+  .dependsOn(coreJVM % "test->test;compile->compile", jvmShared)
 
 def ghProject(repo: String, version: String, name: String) = ProjectRef(uri(s"${repo}#${version}"), name)
 
@@ -63,5 +67,5 @@ lazy val html5 = (project in file("./html5"))
     libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.1",
     libraryDependencies += "org.scalatest" %%% "scalatest" % "3.0.0" % "test"
   )
-  .dependsOn(coreJS)
+  .dependsOn(coreJS % "test->test;compile->compile")
 
