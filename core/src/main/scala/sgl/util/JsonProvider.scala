@@ -89,27 +89,40 @@ import scala.language.implicitConversions
  * and are only going to be convenient view on top of the JNumber node.
  * We will approximate the numeric value to a double in case it doesn't
  * fit in the regular representation.
- *
- * It's important to keep in mind that our JSON implementation is not
- * meant to be a general, all-around, implementation. In particular, one
- * should not use it to serialize very advanced and complex data, instead
- * it aims at being good enough to support loading typical data format
- * efficiently, and sometimes serializing simple, but structured, game
- * data. For example, the parse method simply returns an Option of the
- * JValue, instead of a detailed error. The idea is to keep the simplest
- * API that works in most cases. Very often, the json comes from a third
- * party tool, and thus error debugging should not be necessary at the
- * framework level. If you suspect something is wrong with the file, use
- * a JSON validator. If the file passes the JSON validator but parses
- * as None, then it is very likely a bug in SGL and the best would be
- * to report it.
  */
 trait JsonProvider {
 
   trait Json {
 
+    class ParseException(message: String) extends Exception(message)
+
     type JValue
+
+    /*
+     * The parse method returns a plain JValue object and
+     * throws in case of errors. The alternative is, as always, to
+     * return an Option type, or something more precise with an
+     * error field and forces the caller to handle. One motivation
+     * for using exceptions instead is to realize that a game is shipped
+     * along with its necessary resources (which could include a
+     * JSON-encoded data for maps or others). This means that a failure
+     * to parse such data is essentially a fatal error for the game:
+     * there is no way to recover. At the same time, we except most
+     * of the time that the data will be there and will be useable, thus
+     * it would be annoying to constantly have to explicitly handle the
+     * None/Failure cases. This seems like the right circonstancies to
+     * use an exception over an Option, so that's why we do it. Of course,
+     * there will be cases where the absence of data is recoverable (maybe if
+     * the json encoding is used as a saved file and ends up being corrupted),
+     * but in these it is possible to handle the exception and recover.
+     */
+    /** Parse a jSON object in a raw String.
+      * 
+      * @throws ParseException is thrown if the raw string contains
+      *         an invalid representation of Json.
+      */
     def parse(raw: String): JValue
+
     // def write(ast: JValue): String
 
     abstract class RichJsonAst {
