@@ -16,6 +16,8 @@ trait LiftJsonProvider extends JsonProvider {
     override def parse(raw: String): JValue = {
       try {
         val v = liftJson.parse(raw)
+        if(v == liftJson.JNothing)
+          throw new ParseException("JSON data was incomplete")
         /*
          * TODO: Find a more efficient solution.
          *

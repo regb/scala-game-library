@@ -17,7 +17,8 @@ trait Html5JsonProvider extends JsonProvider {
       try {
         js.JSON.parse(raw)
       } catch {
-        case (_: Exception) => None
+        case (e: js.JavaScriptException) =>
+          throw new ParseException(e.getMessage)
       }
     }
 
