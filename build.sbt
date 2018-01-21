@@ -19,6 +19,11 @@ lazy val core = (crossProject(JSPlatform, JVMPlatform, NativePlatform).crossType
   .settings(commonSettings: _*)
   .settings(
     name := "sgl-core",
+  )
+  .jvmSettings(
+    libraryDependencies += "org.scalatest" %%% "scalatest" % "3.0.0" % "test"
+  )
+  .jsSettings(
     libraryDependencies += "org.scalatest" %%% "scalatest" % "3.0.0" % "test"
   )
   .nativeSettings(scalaVersion := scalaNativeVer)
@@ -38,7 +43,7 @@ lazy val desktopAWT = (project in file("./desktop-awt"))
     libraryDependencies += "com.googlecode.soundlibs" % "tritonus-share" % "0.3.7-3",
     libraryDependencies += "com.googlecode.soundlibs" % "vorbisspi" % "1.0.3-2",
     libraryDependencies += "com.googlecode.soundlibs" % "jorbis" % "0.0.17-3",
-    libraryDependencies += "net.liftweb" %% "lift-json" % "3.1.1",
+    libraryDependencies += "net.liftweb"   %% "lift-json" % "3.1.1",
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.0" % "test"
   )
   .dependsOn(coreJVM % "test->test;compile->compile", jvmShared)

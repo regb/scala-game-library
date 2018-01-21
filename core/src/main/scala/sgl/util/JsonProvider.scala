@@ -188,13 +188,6 @@ trait JsonProvider {
       }
     }
 
-    object JInt {
-      def unapply(v: JValue): Option[Int] = v match {
-        case JNumber(n) => if(n == math.floor(n) && !n.isInfinite) Some(n.toInt) else None
-        case _ => None
-      }
-    }
-
   }
   val Json: Json
 

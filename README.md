@@ -2,19 +2,18 @@
 
 Scala Game Library (tentatively abbreviated as SGL) is a library for developing
 cross-platform 2D video games in Scala. It provides a high-level API for
-building 2D games, and can deploy to Desktop, Android, and HTML5. Other platforms,
-including iOS and consoles are on the roadmap.
+building 2D games, and can export games to the Desktop, Android, and the web.
+More platforms, including iOS and consoles, are on the roadmap.
 
 SGL is still in development, but is intended to provide an extensive toolkit to
-build games, with a core abstraction on top of platform-specific features, as
-well as offering an out-of-the-box implementation for many common features
-needed in games, such as physics, collision detection, tilemaps, and scenes
-management.
+build games, with a core abstraction on top of platform-specific features, and
+an out-of-the-box implementation for many common features needed in games, such
+as physics, collision detection, tilemaps, and scenes management.
 
 ## Features
 
 The main selling point of SGL is to provide a platform-independent Scala game framework
-to build games and then deploy them to any platform. You can get started by writing
+to build games, and then deploy them to any platform. You can get started by writing
 a core generic game implementation and configure any backend with a few lines of Scala.
 Then, you can iterate by running the AWT backend, which is as straighforward as:
 
