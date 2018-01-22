@@ -124,11 +124,14 @@ lazy val helloCoreJVM = helloCore.jvm
 lazy val helloCoreJS = helloCore.js
 lazy val helloCoreNative = helloCore.native
 
+lazy val helloAssets = file("./examples/hello/assets")
+
 lazy val helloDesktopAWT = (project in file("./examples/hello/desktop-awt"))
   .settings(helloCommonSettings: _*)
   .settings(noPublishSettings: _*)
   .settings(
-    name := "hello-desktop-awt"
+    name := "hello-desktop-awt",
+    unmanagedResourceDirectories in Compile := Seq(helloAssets)
   )
   .dependsOn(coreJVM, desktopAWT, helloCoreJVM)
 
@@ -149,8 +152,9 @@ lazy val helloDesktopNative = (project in file("./examples/hello/desktop-native"
   .settings(scalaVersion := scalaNativeVer)
   .settings(
     name := "hello-desktop-native",
+    unmanagedResourceDirectories in Compile := Seq(helloAssets),
     if(isLinux(OS))
-      nativeLinkingOptions ++= Seq("-lGL", "-lSDL2", "-lSDL2_image")
+      nativeLinkingOptions ++= Seq("-lGL")
     else if(isMac(OS))
       nativeLinkingOptions ++= Seq("-framework", "OpenGL")
     else
