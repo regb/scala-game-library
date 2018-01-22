@@ -148,9 +148,9 @@ lazy val helloDesktopNative = (project in file("./examples/hello/desktop-native"
   .settings(noPublishSettings: _*)
   .settings(scalaVersion := scalaNativeVer)
   .settings(
-    name := "sgl-test-native",
+    name := "hello-desktop-native",
     if(isLinux(OS))
-      nativeLinkingOptions += "-lGL"
+      nativeLinkingOptions ++= Seq("-lGL", "-lSDL2", "-lSDL2_image")
     else if(isMac(OS))
       nativeLinkingOptions ++= Seq("-framework", "OpenGL")
     else
@@ -248,7 +248,7 @@ lazy val snakeDesktopNative = (project in file("./examples/snake/desktop-native"
   .settings(noPublishSettings: _*)
   .settings(scalaVersion := scalaNativeVer)
   .settings(
-    name := "sgl-snake-desktop-native",
+    name := "snake-desktop-native",
     if(isLinux(OS))
       nativeLinkingOptions += "-lGL"
     else if(isMac(OS))
