@@ -11,10 +11,6 @@ lazy val commonSettings = Seq(
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 )
 
-lazy val commonNativeSettings = Seq(
-  scalaVersion  := scalaNativeVer
-)
-
 lazy val core = (crossProject(JSPlatform, JVMPlatform, NativePlatform).crossType(CrossType.Pure) in file("./core"))
   .settings(commonSettings: _*)
   .settings(
@@ -58,7 +54,7 @@ lazy val opengl = ghProject("git://github.com/regb/scalanative-graphics-bindings
 lazy val desktopNative = (project in file("./desktop-native"))
   .enablePlugins(ScalaNativePlugin)
   .settings(commonSettings: _*)
-  .settings(commonNativeSettings: _*)
+  .settings(scalaVersion := scalaNativeVer)
   .settings(
     name := "sgl-desktop-native"
   )
@@ -106,6 +102,109 @@ lazy val noPublishSettings = Seq(
   publishLocal := {}
 )
 
+lazy val helloCommonSettings = Seq(
+  version        := "1.0",
+  scalaVersion   := scalaVer,
+  scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
+)
+
+lazy val helloCore = (crossProject(JSPlatform, JVMPlatform, NativePlatform).crossType(CrossType.Pure) in file("./examples/hello/core"))
+  .settings(helloCommonSettings: _*)
+  .settings(noPublishSettings: _*)
+  .settings(name := "hello-core")
+  .jvmSettings(
+    exportJars := true
+  )
+  .nativeSettings(scalaVersion := scalaNativeVer)
+  .jvmConfigure(_.dependsOn(coreJVM))
+  .jsConfigure(_.dependsOn(coreJS))
+  .nativeConfigure(_.dependsOn(coreNative))
+
+lazy val helloCoreJVM = helloCore.jvm
+lazy val helloCoreJS = helloCore.js
+lazy val helloCoreNative = helloCore.native
+
+lazy val helloDesktopAWT = (project in file("./examples/hello/desktop-awt"))
+  .settings(helloCommonSettings: _*)
+  .settings(noPublishSettings: _*)
+  .settings(
+    name := "hello-desktop-awt"
+  )
+  .dependsOn(coreJVM, desktopAWT, helloCoreJVM)
+
+lazy val helloHtml5 = (project in file("./examples/hello/html5"))
+  .enablePlugins(ScalaJSPlugin)
+  .settings(helloCommonSettings: _*)
+  .settings(noPublishSettings: _*)
+  .settings(
+    name := "hello-html5",
+    scalaJSUseMainModuleInitializer := true
+  )
+  .dependsOn(coreJS, html5, helloCoreJS)
+
+lazy val helloDesktopNative = (project in file("./examples/hello/desktop-native"))
+  .enablePlugins(ScalaNativePlugin)
+  .settings(helloCommonSettings: _*)
+  .settings(noPublishSettings: _*)
+  .settings(scalaVersion := scalaNativeVer)
+  .settings(
+    name := "sgl-test-native",
+    if(isLinux(OS))
+      nativeLinkingOptions += "-lGL"
+    else if(isMac(OS))
+      nativeLinkingOptions ++= Seq("-framework", "OpenGL")
+    else
+      ???
+  )
+  .dependsOn(coreNative, desktopNative, helloCoreNative)
+
+////Android cannot run on Java8 so we stick with 2.11. We
+////need to build core separately for the right version
+//
+//val scalaAndroidVer = "2.11.8"
+//
+//
+//val commonAndroidSettings = Seq(
+//    scalaVersion  := scalaAndroidVer,
+//    scalacOptions += "-target:jvm-1.7",
+//    javacOptions ++= Seq("-source", "1.7", "-target", "1.7"),
+//    exportJars    := true
+//)
+//
+//
+//lazy val coreAndroid = (project in file("./core"))
+//  .settings(commonSettings: _*)
+//  .settings(commonAndroidSettings: _*)
+//  .settings(
+//    name         := "sgl-test-core",
+//    target       := baseDirectory.value / ".android" / "target"
+//  )
+//  .dependsOn(sglCoreAndroid)
+//
+//lazy val android = (project in file("./android"))
+//  .enablePlugins(AndroidApp)
+//  .settings(commonSettings: _*)
+//  .settings(commonAndroidSettings: _*)
+//  .settings(
+//    name := "sgl-test-android",
+//    useProguard := true,
+//    proguardOptions ++= Seq(
+//        "-dontobfuscate",
+//        "-dontoptimize",
+//        "-keepattributes Signature",
+//        "-dontwarn scala.collection.**", // required from Scala 2.11.3
+//        "-dontwarn scala.collection.mutable.**", // required from Scala 2.11.0
+//        "-dontwarn android.webkit.**", //required by adcolony
+//        "-dontwarn com.immersion.**", //required by adcolony
+//        "-dontnote com.immersion.**", //required by adcolony
+//        "-ignorewarnings",
+//        "-keep class scala.Dynamic",
+//        "-keep class test.**"
+//    ),
+//    platformTarget := "android-23"
+//  )
+//  .dependsOn(sglCoreAndroid, sglAndroid, coreAndroid)
+
 lazy val snakeCommonSettings = Seq(
   version        := "1.0",
   scalaVersion   := scalaVer,
@@ -139,8 +238,7 @@ lazy val snakeHtml5 = (project in file("./examples/snake/html5"))
   .settings(noPublishSettings: _*)
   .settings(
     name := "snake-html5",
-    scalaJSUseMainModuleInitializer := true,
-    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.1"
+    scalaJSUseMainModuleInitializer := true
   )
   .dependsOn(coreJS, html5, snakeCoreJS)
 
@@ -148,7 +246,7 @@ lazy val snakeDesktopNative = (project in file("./examples/snake/desktop-native"
   .enablePlugins(ScalaNativePlugin)
   .settings(snakeCommonSettings: _*)
   .settings(noPublishSettings: _*)
-  .settings(commonNativeSettings: _*)
+  .settings(scalaVersion := scalaNativeVer)
   .settings(
     name := "sgl-snake-desktop-native",
     if(isLinux(OS))
