@@ -44,7 +44,7 @@ trait MainScreenComponent extends ViewportComponent {
     //val viewport = new Viewport(WindowWidth, WindowHeight/2)
     val viewport = new Viewport(WindowWidth, WindowHeight)
     viewport.setCamera(0, 0, Width, Height)
-    viewport.scalingStrategy = Viewport.Extend
+    viewport.scalingStrategy = Viewport.Fit
 
     private val characterBitmap = LoadingScreen.characterBitmap.get
     private val characterFrames = Array(

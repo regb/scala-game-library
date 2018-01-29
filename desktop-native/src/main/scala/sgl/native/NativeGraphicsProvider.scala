@@ -72,8 +72,6 @@ trait NativeGraphicsProvider extends GraphicsProvider {
     object NativeFontCompanion extends FontCompanion {
       override def create(family: String, style: Style, size: Int): Font = ???
   
-      def toAWTStyle(style: Style): Int = ???
-  
       override val Default: Font = NativeFont()
       override val DefaultBold: Font = NativeFont()
       override val Monospace: Font = NativeFont()
@@ -110,7 +108,9 @@ trait NativeGraphicsProvider extends GraphicsProvider {
   
       override def withSave[A](body: => A): A = {
         glPushMatrix()
+        glPushAttrib(GL_SCISSOR_BIT)
         val res = body
+        glPopAttrib()
         glPopMatrix()
         res
       }
@@ -125,12 +125,11 @@ trait NativeGraphicsProvider extends GraphicsProvider {
       }
   
       override def scale(sx: Double, sy: Double): Unit = {
-        glScaled(sx, sy, 0d)
+        glScaled(sx, sy, 1d)
       }
   
       override def clipRect(x: Int, y: Int, width: Int, height: Int): Unit = {
-        val down = y+height
-        glScissor(x, down, width.toUInt, height.toUInt)
+        glScissor(x, y, width.toUInt, height.toUInt)
       }
   
       override def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit = {
