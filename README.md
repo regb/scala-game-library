@@ -6,21 +6,23 @@ building 2D games, and can export games to the Desktop, Android, and the web.
 More platforms, including iOS and consoles, are on the roadmap.
 
 SGL is still in development, but is intended to provide an extensive toolkit to
-build games, with a core abstraction on top of platform-specific features, and
-an out-of-the-box implementation for many common features needed in games, such
-as physics, collision detection, tilemaps, and scenes management.
+enable game development in Scala, with a layer of abstraction on top of the
+platform-specific functionalities, and an out-of-the-box implementation for
+many common features needed in games, such as physics, collision detection,
+tilemaps, and scenes management.
 
 ## Features
 
-The main selling point of SGL is to provide a platform-independent Scala game framework
-to build games, and then deploy them to any platform. You can get started by writing
-a core generic game implementation and configure any backend with a few lines of Scala.
-Then, you can iterate by running the AWT backend, which is as straighforward as:
+The main selling point of SGL is to provide a platform-independent Scala game
+framework to build games, and then deploy them to any platform. You can get
+started by writing a core generic game implementation, and then configure any
+backend with just a few lines of Scala.  You can iterate on your game by
+running the AWT backend, which is as straighforward as:
 
     sbt desktop-awt/run
 
-You can quickly iterate on your game without the need to spend a lot of time on
-deploying to your final platform such as mobile or console.
+Thus, you can quickly iterate on your game locally, without the need to waste a
+lot of time deploying to your target platform, such as mobile or console.
 
 The current implementation provides the following backends:
 
