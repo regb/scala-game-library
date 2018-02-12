@@ -99,6 +99,16 @@ trait GraphicsHelpersComponent {
 
     /** Animation helper class
       *
+      * This class has no internal state, and is meant to be the simplest notion
+      * of an animation: encapsulate a series of frames to play over a duration.
+      * The main method, currentFrame, takes a time parameter that is the amount of
+      * time spent since the beginning of this animation (at 0). We do not store
+      * the current elapsed time within the animation so that this object can be share
+      * and used in several place in parallel.
+      * 
+      * @param frameDuration the number of milliseconds to play each frame.
+      * @param frames The (immutable, please don't update the array) sequence of frames to play.
+      * @param playMode The mode to play the animation.
       */
     class Animation(
       var frameDuration: Long,
@@ -106,7 +116,14 @@ trait GraphicsHelpersComponent {
       var playMode: Animation.PlayMode = Animation.Normal
     ) {
 
-      /** Return the current frame for the animation
+      /** Return the current frame for the animation.
+        *
+        * The current frame is based on the relative amount of time
+        * elpased (passed as a parameter) since the starting time
+        * of the animation. The animation has no notion of current time
+        * and you could ask for currentFrame with non-increasing time
+        * values and get as a result the frame to play if you were at that
+        * point in the animation.
         *
         * @param time the total elapsed time since the beginning of the animation.
         */
@@ -134,8 +151,8 @@ trait GraphicsHelpersComponent {
         frames(frameIndex)
       }
 
-      /** If a single run (no loop) of the animation is completed */
-      def isCompleted(time: Long): Boolean = time > animationDuration
+      /** If a single run (no loop) of the animation is finished. */
+      def isFinished(time: Long): Boolean = time > animationDuration
 
       /** The duration of the entire animation
         *
