@@ -128,9 +128,18 @@ trait GraphicsHelpersComponent {
         * @param time the total elapsed time since the beginning of the animation.
         */
       def currentFrame(time: Long): BitmapRegion = {
-        val frameNumber: Int = ((time/frameDuration) % Int.MaxValue).toInt
+        frames(currentFrameIndex(time))
+      }
 
-        val frameIndex = playMode match {
+      /** Returns the index of the current frame of the animation.
+        *
+        * The current index can be convenient when the code needs to
+        * move the animated object depending on which frame is currently
+        * playing.
+        */
+      def currentFrameIndex(time: Long): Int = {
+        val frameNumber: Int = ((time/frameDuration) % Int.MaxValue).toInt
+        playMode match {
           case Animation.Normal =>
             math.min(frames.size - 1, frameNumber)
           case Animation.Reversed =>
@@ -147,8 +156,6 @@ trait GraphicsHelpersComponent {
               frames.length - (index % frames.size) - 1
             }
         }
-
-        frames(frameIndex)
       }
 
       /** If a single run (no loop) of the animation is finished. */
