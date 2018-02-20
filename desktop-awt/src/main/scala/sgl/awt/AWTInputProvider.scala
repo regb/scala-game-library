@@ -19,6 +19,8 @@ trait AWTInputProvider extends InputProvider {
   }
 
   private def keyEventKey(e: KeyEvent): Option[Input.Keys.Key] = e.getKeyCode match {
+    case KeyEvent.VK_SPACE => Some(Input.Keys.Space)
+
     case KeyEvent.VK_LEFT => Some(Input.Keys.Left)
     case KeyEvent.VK_UP => Some(Input.Keys.Up)
     case KeyEvent.VK_RIGHT => Some(Input.Keys.Right)
