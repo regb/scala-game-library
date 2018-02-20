@@ -25,9 +25,9 @@ trait AWTInputProvider extends InputProvider {
     case KeyEvent.VK_DOWN => Some(Input.Keys.Down)
 
     case KeyEvent.VK_A => Some(Input.Keys.A)
-    case KeyEvent.VK_B => Some(Input.Keys.A)
-    case KeyEvent.VK_C => Some(Input.Keys.A)
-    case KeyEvent.VK_D => Some(Input.Keys.A)
+    case KeyEvent.VK_B => Some(Input.Keys.B)
+    case KeyEvent.VK_C => Some(Input.Keys.C)
+    case KeyEvent.VK_D => Some(Input.Keys.D)
     case KeyEvent.VK_E => Some(Input.Keys.E)
     case KeyEvent.VK_F => Some(Input.Keys.F)
     case KeyEvent.VK_G => Some(Input.Keys.G)
