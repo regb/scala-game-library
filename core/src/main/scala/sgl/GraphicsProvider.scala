@@ -211,7 +211,7 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
         * source rect to a dest rect, but we only support aligned rectangle
         * and symmetric scaling.
         */
-      def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f): Unit
+      def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f, alpha: Float = 1f): Unit
 
       def drawRect(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit
 

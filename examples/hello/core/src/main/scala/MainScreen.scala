@@ -99,7 +99,7 @@ trait MainScreenComponent extends ViewportComponent {
         canvas.drawRect(0, 0, Width, Height, Graphics.defaultPaint.withColor(Color.rgb(204, 242, 204)))
         canvas.drawCircle(autoX.toInt, autoY.toInt, dp2px(50), Graphics.defaultPaint.withColor(Color.Black))
 
-        canvas.drawBitmap(characterAnimation.currentFrame(totalTime), x.toInt, y.toInt)
+        canvas.drawBitmap(characterAnimation.currentFrame(totalTime), x.toInt, y.toInt, 1f, 0.5f)
       }
     }
 

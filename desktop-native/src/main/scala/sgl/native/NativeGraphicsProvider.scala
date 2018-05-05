@@ -159,7 +159,10 @@ trait NativeGraphicsProvider extends GraphicsProvider {
         drawBitmap(bitmap, x, y, 0, 0, bitmap.width, bitmap.height, s)
       }
 
-      override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f): Unit = {
+      override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f, alpha: Float = 1f): Unit = {
+
+        // TODO: transparency not implemented.
+        require(alpha == 1f)
   
         glColor4f(1f,1f,1f,1f)
   
