@@ -85,6 +85,29 @@ SGL is currently spllited into the following sub-projects:
 These projects are defined in the [built.sbt](build.sbt) file and have their
 sources in each corresponding subdirectory.
 
+## Versioning Strategy
+
+For a long time, the only way to use SGL was to declare direct source
+dependencies. That proved relatively unsuccessful and most of the Scala
+community seems to belive that binary dependencies is the way to go. Since SGL
+is still an early prototype, I wasn't very keen on publishing a stable version
+as a binary that people could just depend on through Maven.
+
+Nevertheless, to encourage more people to try SGL, I will start officially
+releasing on Sonatype. The first release will be `0.0.1`, with the intent to be
+clear that this is a highly experimental version. Future versions will simply
+increase the last digit, i.e. `0.0.2` and then `0.0.3`. As long as SGL stays in
+the `0.0` version line, there will be no guarantee on backward compatibility,
+and each new version could break absolutely everything the previous version
+introduced.  This is all in the name of velocity and innovation, of course. If you
+do give a chance to SGL `0.0.X`, just be aware that there will be bug, and updates
+will likely break your code. You must be willing to actively engage with the
+developers of SGL.
+
+The eventual goal is to reach `0.1`, which at that point will be a more stable
+release and future updates would hopefully better respect backward
+compatibility.
+
 ## Getting Started
 
 There are minimal working projects in the [examples](examples/) folder. Cloning
