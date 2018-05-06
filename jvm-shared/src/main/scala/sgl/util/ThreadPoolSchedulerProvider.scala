@@ -1,6 +1,7 @@
 package sgl.util
 
 import java.util.concurrent.Executors
+import java.io.{StringWriter, PrintWriter}
 import scala.collection.mutable.Queue
 
 trait ThreadPoolSchedulerProvider extends SchedulerProvider {
@@ -102,6 +103,10 @@ trait ThreadPoolSchedulerProvider extends SchedulerProvider {
               } catch {
                 case (e: Throwable) => {
                   logger.error(s"Unexpected error while executing task ${task.name}: ${e.getMessage}")
+                  val sw = new StringWriter()
+                  val pw = new PrintWriter(sw, true)
+                  e.printStackTrace(pw)
+                  logger.error(sw.toString)
                 }
               }
             }
