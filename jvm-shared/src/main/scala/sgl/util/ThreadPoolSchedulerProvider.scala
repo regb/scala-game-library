@@ -95,9 +95,15 @@ trait ThreadPoolSchedulerProvider extends SchedulerProvider {
             case None => Thread.sleep(50)
             case Some(task) => {
               logger.debug("Executing some ChunkedTask from the task queue.")
-              task.doRun(5l)
-              if(task.status != ChunkedTask.Completed)
-                taskQueueLock.synchronized { tasks.enqueue(task) }
+              try {
+                task.doRun(5l)
+                if(task.status != ChunkedTask.Completed)
+                  taskQueueLock.synchronized { tasks.enqueue(task) }
+              } catch {
+                case (e: Throwable) => {
+                  logger.error(s"Unexpected error while executing task ${task.name}: ${e.getMessage}")
+                }
+              }
             }
           }
         }
