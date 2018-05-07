@@ -29,31 +29,34 @@ trait NativeGraphicsProvider extends GraphicsProvider {
     override def loadImage(path: ResourcePath): Loader[Bitmap] = {
       Zone { implicit z =>
         val surface = IMG_Load(toCString(path.path))
-        //println("w: " + surface.w + "h: " + surface.h + " Bpp: " + surface.format.BytesPerPixel + " bpp: " + surface.format.BitsPerPixel)
-        val width = surface.w
-        val height = surface.h
-
-        val test: UByte = (SDL_MapRGB(surface.format, 0xAA.toUByte, 0xBB.toUByte, 0XCC.toUByte) & 0xFF.toUInt).toUByte
-        //val sourceFormat = if(surface.format.BitsPerPixel == 8.toUByte) GL_COLOR_INDEX else GL_BGR
-        val sourceFormat = if(surface.format.BytesPerPixel == 4.toUByte) {
-          if(test == 0xAA.toUByte) GL_RGBA else GL_BGRA
+        if(surface == null) {
+          Loader.failed(new Exception("Error while loading image %s: %s".format(path.path, fromCString(SDL_GetError()))))
         } else {
-          if(test == 0xAA.toUByte) GL_RGB else GL_BGR
+          val width = surface.w
+          val height = surface.h
+
+          val test: UByte = (SDL_MapRGB(surface.format, 0xAA.toUByte, 0xBB.toUByte, 0XCC.toUByte) & 0xFF.toUInt).toUByte
+          //val sourceFormat = if(surface.format.BitsPerPixel == 8.toUByte) GL_COLOR_INDEX else GL_BGR
+          val sourceFormat = if(surface.format.BytesPerPixel == 4.toUByte) {
+            if(test == 0xAA.toUByte) GL_RGBA else GL_BGRA
+          } else {
+            if(test == 0xAA.toUByte) GL_RGB else GL_BGR
+          }
+
+          val textureId: Ptr[GLuint] = stackalloc[GLuint]
+          glGenTextures(1.toUInt, textureId)
+          glBindTexture(GL_TEXTURE_2D, !textureId)
+
+          glTexImage2D(GL_TEXTURE_2D, 0, surface.format.BytesPerPixel.toInt, 
+                       surface.w.toUInt, surface.h.toUInt, 0, sourceFormat,
+                       GL_UNSIGNED_BYTE, surface.pixels)
+
+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+          SDL_FreeSurface(surface)
+          val texture = OpenGLTextureBitmap(!textureId, width, height)
+          Loader.successful(texture)
         }
-
-        val textureId: Ptr[GLuint] = stackalloc[GLuint]
-        glGenTextures(1.toUInt, textureId)
-        glBindTexture(GL_TEXTURE_2D, !textureId)
-
-        glTexImage2D(GL_TEXTURE_2D, 0, surface.format.BytesPerPixel.toInt, 
-                     surface.w.toUInt, surface.h.toUInt, 0, sourceFormat,
-                     GL_UNSIGNED_BYTE, surface.pixels)
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-        SDL_FreeSurface(surface)
-        val texture = OpenGLTextureBitmap(!textureId, width, height)
-        Loader.successful(texture)
       }
     }
 
@@ -161,10 +164,7 @@ trait NativeGraphicsProvider extends GraphicsProvider {
 
       override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f, alpha: Float = 1f): Unit = {
 
-        // TODO: transparency not implemented.
-        require(alpha == 1f)
-  
-        glColor4f(1f,1f,1f,1f)
+        glColor4f(1f, 1f, 1f, alpha)
   
         val sxf: Float = sx/bitmap.width.toFloat
         val syf: Float = sy/bitmap.height.toFloat
