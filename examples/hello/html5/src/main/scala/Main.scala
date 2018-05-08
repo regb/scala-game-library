@@ -6,8 +6,6 @@ import sgl.html5.util._
 import sgl.html5.themes._
 import sgl._
 
-import scala.scalajs.js.annotation.JSExport
-
 object Main extends core.AbstractApp with Html5App 
   with InputHelpersComponent with Html5VerboseConsoleLoggingProvider with GameLoopStatisticsComponent {
 
