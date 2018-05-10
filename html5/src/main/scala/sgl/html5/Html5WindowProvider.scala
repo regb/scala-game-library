@@ -1,14 +1,32 @@
 package sgl
 package html5
 
+import org.scalajs.dom
+
 trait Html5WindowProvider extends WindowProvider {
-  this: Html5App =>
+  self: Html5App =>
 
-  override def WindowWidth: Int = this.htmlCanvas.width
-  override def WindowHeight: Int = this.htmlCanvas.height
+  class HtmlWindow extends AbstractWindow {
+    override def width: Int = self.htmlCanvas.width
+    override def height: Int = self.htmlCanvas.height
 
-  override def dpi: Int = 160
+    /*
+     * As far as I can understand, a CSS pixel is defined
+     * to be 1/96 of an inch, or basically it is similar
+     * too a DIP but such that you can fit 96 of them in an inch
+     * instead of 160. Another way to understand it is that it is
+     * basically defined to match the historical standard
+     * desktop ppi of 96. The concept of devicePixelRatio was
+     * introduced to be a multiplier to go from CSS pixel to device pixels
+     * in new high dpi mobile screens. To get to the actual ppi thus
+     * all we need to do is to multiply 96 by the devicePixelRatio.
+     */
+    override def xppi: Float = (96*dom.window.devicePixelRatio).toFloat
+    override def yppi: Float = (96*dom.window.devicePixelRatio).toFloat
+    override def ppi: Float = (96*dom.window.devicePixelRatio).toFloat
 
-  override def density: Float = 1f
+  }
+  type Window = HtmlWindow
+  override val Window = new HtmlWindow
 
 }

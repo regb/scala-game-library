@@ -9,7 +9,7 @@ import sgl.native.util._
 
 
 /** Wire backend to the App here */
-object Main extends AbstractApp with NativeApp
+object Main extends NativeApp with AbstractApp
   with InputHelpersComponent with VerboseStdErrLoggingProvider with GameLoopStatisticsComponent {
 
   override val TargetFps = Some(60)

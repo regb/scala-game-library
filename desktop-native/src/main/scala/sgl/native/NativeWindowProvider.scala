@@ -11,6 +11,40 @@ trait NativeWindowProvider extends WindowProvider {
 
   val frameDimension: (Int, Int)
 
+  class NativeWindow extends AbstractWindow {
+    override def width: Int = frameDimension._1
+    override def height: Int = frameDimension._2
+
+    // TODO: should refresh when Window is resized or dpis changes.
+    private var _xppi: Float = 0f
+    private var _yppi: Float = 0f
+    private var _ppi: Float = 0f
+    private def computePPIs(): Unit = {
+      val ddpi: Ptr[CFloat] = stackalloc[CFloat]
+      val hdpi: Ptr[CFloat] = stackalloc[CFloat]
+      val vdpi: Ptr[CFloat] = stackalloc[CFloat]
+      SDL_GetDisplayDPI(0, ddpi, hdpi, vdpi)
+      _xppi = !hdpi
+      _yppi = !vdpi
+      _ppi = !ddpi
+    }
+
+    override def xppi: Float = if(_xppi != 0f) _xppi else {
+      computePPIs()
+      _xppi
+    }
+    override def yppi: Float = if(_yppi != 0f) _yppi else {
+      computePPIs()
+      _yppi
+    }
+    override def ppi: Float = if(_ppi != 0f) _ppi else {
+      computePPIs()
+      _ppi
+    }
+  }
+  type Window = NativeWindow
+  override val Window = new NativeWindow
+
   ///** The name of the window */
   //val windowTitle: String
 
@@ -21,19 +55,5 @@ trait NativeWindowProvider extends WindowProvider {
   //case class ResizableWIndowDimension(width: Int, height: Int)
   //val WindowDimension: WindowDimension
 
-  override def WindowWidth: Int = frameDimension._1
-  override def WindowHeight: Int = frameDimension._2
-
-  override def dpi: Int = {
-    val ddpi: Ptr[CFloat] = stackalloc[CFloat]
-    //val hdpi: Ptr[CFloat] = stackalloc[CFloat]
-    //val vdpi: Ptr[CFloat] = stackalloc[CFloat]
-    //SDL_GetDisplayDPI(0, ddpi, hdpi, vdpi)
-    SDL_GetDisplayDPI(0, ddpi, null, null)
-    //println("ddpi: " + !ddpi + ". hdpi: " + !hdpi + ". vdpi: " + !vdpi)
-    Math.round(!ddpi)
-  }
-
-  override def density: Float = 1f
 
 }

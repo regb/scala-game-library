@@ -208,7 +208,7 @@ trait Html5GraphicsProvider extends GraphicsProvider {
 
       override def drawColor(color: Color): Unit = {
         context.fillStyle = color
-        context.fillRect(0, 0, WindowWidth, WindowHeight)
+        context.fillRect(0, 0, Window.width, Window.height)
       }
 
       override def clearRect(x: Int, y: Int, width: Int, height: Int): Unit = {

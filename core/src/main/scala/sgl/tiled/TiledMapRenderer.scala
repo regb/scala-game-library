@@ -40,9 +40,9 @@ trait TiledMapRendererComponent {
     //      lower/upper bound and expand into the view port?
     private def render(canvas: Graphics.Canvas, tileMapLayer: TileLayer): Unit = {
       val i1 = camera.y / tileMap.tileHeight
-      val i2 = (camera.y + WindowHeight - 1) / tileMap.tileHeight
+      val i2 = (camera.y + Window.height - 1) / tileMap.tileHeight
       val j1 = camera.x / tileMap.tileWidth
-      val j2 = (camera.x + WindowWidth - 1) / tileMap.tileWidth
+      val j2 = (camera.x + Window.width - 1) / tileMap.tileWidth
       for(i <- i1 to i2) {
         for(j <- j1 to j2) {
           if(i < tileMapLayer.tiles.size && j < tileMapLayer.tiles(i).size) {

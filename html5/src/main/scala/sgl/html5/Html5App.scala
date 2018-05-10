@@ -11,8 +11,8 @@ import org.scalajs.dom
 import dom.html
 
 trait Html5App extends GameApp 
-                  with Html5GraphicsProvider with Html5InputProvider with Html5AudioProvider
-                  with Html5WindowProvider with Html5SystemProvider with SingleThreadSchedulerProvider {
+                  with Html5WindowProvider with Html5SystemProvider with Html5GraphicsProvider 
+                  with Html5InputProvider with Html5AudioProvider with SingleThreadSchedulerProvider {
 
   val theme: Theme
 

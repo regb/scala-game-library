@@ -10,7 +10,7 @@ import sgl.html5.util._
 
 import scala.scalajs.js.annotation.JSExport
 
-object Main extends core.AbstractApp with Html5App 
+object Main extends Html5App with core.AbstractApp 
   with Html5VerboseConsoleLoggingProvider
   //with NoLoggingProvider
   with InputHelpersComponent {

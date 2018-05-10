@@ -9,7 +9,7 @@ import sgl.awt.util._
 
 
 /** Wire backend to the App here */
-object Main extends AbstractApp with AWTApp
+object Main extends AWTApp with AbstractApp
   with InputHelpersComponent with VerboseStdErrLoggingProvider with GameLoopStatisticsComponent {
 
   override val TargetFps = Some(60)

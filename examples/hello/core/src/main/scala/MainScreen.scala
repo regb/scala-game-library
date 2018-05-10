@@ -12,6 +12,7 @@ trait MainScreenComponent extends ViewportComponent {
   with LoggingProvider with GraphicsHelpersComponent =>
 
   import Graphics.{Bitmap, Canvas, Color, BitmapRegion, Animation, RichCanvas}
+  import Window.dp2px
 
   private implicit val LogTag = Logger.Tag("main-screen")
 
@@ -41,8 +42,8 @@ trait MainScreenComponent extends ViewportComponent {
     val Width = 480
     val Height = 320
 
-    //val viewport = new Viewport(WindowWidth, WindowHeight/2)
-    val viewport = new Viewport(WindowWidth, WindowHeight)
+    //val viewport = new Viewport(Window.width, Window.height/2)
+    val viewport = new Viewport(Window.width, Window.height)
     viewport.setCamera(0, 0, Width, Height)
     viewport.scalingStrategy = Viewport.Fit
 
@@ -93,9 +94,9 @@ trait MainScreenComponent extends ViewportComponent {
     }
 
     override def render(canvas: Canvas): Unit = {
-      canvas.drawRect(0, 0, WindowWidth, WindowHeight, Graphics.defaultPaint.withColor(Color.rgb(0, 0, 0)))
+      canvas.drawRect(0, 0, Window.width, Window.height, Graphics.defaultPaint.withColor(Color.rgb(0, 0, 0)))
       viewport.withViewport(canvas){
-        canvas.drawRect(0, 0, WindowWidth, WindowHeight, Graphics.defaultPaint.withColor(Color.rgb(0, 0, 200)))
+        canvas.drawRect(0, 0, Window.width, Window.height, Graphics.defaultPaint.withColor(Color.rgb(0, 0, 200)))
         canvas.drawRect(0, 0, Width, Height, Graphics.defaultPaint.withColor(Color.rgb(204, 242, 204)))
         canvas.drawCircle(autoX.toInt, autoY.toInt, dp2px(50), Graphics.defaultPaint.withColor(Color.Black))
 

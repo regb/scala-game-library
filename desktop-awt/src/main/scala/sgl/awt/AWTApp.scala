@@ -43,6 +43,10 @@ trait AWTApp extends GameApp
     lifecycleListener.startup()
     lifecycleListener.resume()
     //TODO: pause on minimize window ?
+
+    println("xppi: " + Window.xppi)
+    println("yppi: " + Window.yppi)
+    println("ppi: " + Window.ppi)
   }
 
   private var gameLoop: GameLoop = null
@@ -104,7 +108,7 @@ trait AWTApp extends GameApp
 
     var running = true
 
-    private val backBuffer = new BufferedImage(WindowWidth, WindowHeight, BufferedImage.TYPE_INT_RGB)
+    private val backBuffer = new BufferedImage(Window.width, Window.height, BufferedImage.TYPE_INT_RGB)
 
     override def run(): Unit = {
       var lastTime: Long = java.lang.System.nanoTime
