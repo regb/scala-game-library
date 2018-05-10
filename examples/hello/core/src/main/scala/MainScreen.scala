@@ -48,11 +48,12 @@ trait MainScreenComponent extends ViewportComponent {
     viewport.scalingStrategy = Viewport.Fit
 
     private val characterBitmap = LoadingScreen.characterBitmap.get
+    private val characterWidth = characterBitmap.width/4
     private val characterFrames = Array(
-      BitmapRegion(characterBitmap, 0, 0, dp2px(48), dp2px(68)),
-      BitmapRegion(characterBitmap, dp2px(48), 0, dp2px(48), dp2px(68)),
-      BitmapRegion(characterBitmap, dp2px(96), 0, dp2px(48), dp2px(68)),
-      BitmapRegion(characterBitmap, dp2px(144), 0, dp2px(48), dp2px(68))
+      BitmapRegion(characterBitmap, 0*characterWidth, 0, characterWidth, characterBitmap.height),
+      BitmapRegion(characterBitmap, 1*characterWidth, 0, characterWidth, characterBitmap.height),
+      BitmapRegion(characterBitmap, 2*characterWidth, 0, characterWidth, characterBitmap.height),
+      BitmapRegion(characterBitmap, 3*characterWidth, 0, characterWidth, characterBitmap.height)
     )
     val characterAnimation = new Animation(200, characterFrames, Animation.Loop)
 
