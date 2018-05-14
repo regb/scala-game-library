@@ -203,9 +203,21 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
       def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit
 
       /** draw the bitmap at x and y with a scaling factor. */
-      def drawBitmap(bitmap: Bitmap, x: Int, y: Int, s: Float): Unit
+      def drawBitmap(bitmap: Bitmap, x: Int, y: Int, s: Float): Unit =
+        drawBitmap(bitmap, x, y, 0, 0, bitmap.width, bitmap.height, s, 1f)
 
-      /** draw a selected rectangle in the bitmap at x and y.
+      /** draw the bitmap at x and y with a scaling factor and alpha transparency. */
+      def drawBitmap(bitmap: Bitmap, x: Int, y: Int, s: Float, alpha: Float): Unit =
+        drawBitmap(bitmap, x, y, 0, 0, bitmap.width, bitmap.height, s, alpha)
+
+      /** draw a selected rectangle from the bitmap at canvas position dx and dy.
+        *
+        * The dx and dy are the destination coordinates to draw in the canvas,
+        * the sx and sy are the source coordinates without the bitmap (in bitmap
+        * coordinates) and the width and height are the (non-scaled) width and height
+        * that we want to draw out of the bitmap. The rendered graphics will have
+        * width and height s*width and h*width. s is the scaling factor between 0 and 1 factor
+        * and alpha is the transparency between 0 and 1 (with 1 being fully opaque).
         *
         * This is slightly simpler than the more general drawing from a
         * source rect to a dest rect, but we only support aligned rectangle
