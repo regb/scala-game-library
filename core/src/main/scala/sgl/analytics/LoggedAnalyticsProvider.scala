@@ -10,53 +10,51 @@ import util.LoggingProvider
   * collect the logs to extract the data, but more likely this can be used when
   * one does not wish (or can't) to send analytics data.
   */
-trait LoggedAnalyticsProvider extends AnalyticsProvider { this:
-GameStateComponent with LoggingProvider =>
+trait LoggedAnalyticsProvider extends AnalyticsProvider {
+  this: GameStateComponent with LoggingProvider =>
 
   class LoggedAnalytics extends Analytics {
 
     implicit val tag = Logger.Tag("analytics")
 
-    // TODO: log more details
-
     override def logCustomEvent(name: String, params: EventParams): Unit = {
-      logger.info("Ignoring event to log: " + name)
+      logger.info(s"${name}: ${params}")
     }
 
     override def logLevelUpEvent(level: Long): Unit = {
-      logger.info("Ignoring event to log: Level Up")
+      logger.info(s"level_up: {level=${level}}")
     }
     override def logLevelStartEvent(level: String): Unit = {
-      logger.info("Ignoring event to log: Level start")
+      logger.info(s"level_start: {level=${level}}")
     }
     override def logLevelEndEvent(level: String, success: Boolean): Unit = {
-      logger.info("Ignoring event to log: Level end")
+      logger.info(s"level_end: {level=${level}, success=${success}}")
     }
     override def logShareEvent(itemId: Option[String]): Unit = {
-      logger.info("Ignoring event to log: Share")
+      logger.info(s"share: {item_id=${itemId}}")
     }
     override def logGameOverEvent(score: Option[Long], map: Option[String]): Unit = {
-      logger.info("Ignoring event to log: Game Over")
+      logger.info(s"game_over: {score=${score}, map=${map}}")
     }
     override def logBeginTutorialEvent(): Unit = {
-      logger.info("Ignoring event to log: Begin Tutorial")
+      logger.info(s"begin_tutorial")
     }
     override def logCompleteTutorialEvent(): Unit = {
-      logger.info("Ignoring event to log: Complete Tutorial")
+      logger.info(s"complete_tutorial")
     }
     override def logUnlockAchievementEvent(achievement: String): Unit = {
-      logger.info("Ignoring event to log: unlock achievement")
+      logger.info(s"unlock_achievement: {achievement=${achievement}}")
     }
     override def logPostScoreEvent(score: Long, level: Option[Long], character: Option[String]): Unit = {
-      logger.info("Ignoring event to log: Post Score")
+      logger.info(s"post_score: {score=${score}, level=${level}, character=${character}}")
     }
 
     override def setGameScreen(gameScreen: GameScreen): Unit = {
-      logger.info("Ignoring new game screen to log: " + gameScreen)
+      logger.info(s"setting current game screen: $gameScreen")
     }
 
     override def setPlayerProperty(name: String, value: String): Unit = {
-      logger.info("Ignoring new player property: " + name)
+      logger.info(s"setting player property ${name}=${value}")
     }
   }
 
