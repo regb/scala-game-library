@@ -56,9 +56,12 @@ lazy val desktopNative = (project in file("./desktop-native"))
   .settings(commonSettings: _*)
   .settings(scalaVersion := scalaNativeVer)
   .settings(
-    name := "sgl-desktop-native"
+    name := "sgl-desktop-native",
+    libraryDependencies += "com.regblanc" %%% "native-sdl2" % "0.1",
+    libraryDependencies += "com.regblanc" %%% "native-sdl2-image" % "0.1",
+    libraryDependencies += "com.regblanc" %%% "native-opengl" % "0.1"
   )
-  .dependsOn(coreNative, sdl2, sdl2Image, opengl)
+  .dependsOn(coreNative)
 
 lazy val html5 = (project in file("./html5"))
   .enablePlugins(ScalaJSPlugin)
