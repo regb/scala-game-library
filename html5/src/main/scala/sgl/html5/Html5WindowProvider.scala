@@ -6,7 +6,7 @@ import org.scalajs.dom
 trait Html5WindowProvider extends WindowProvider {
   self: Html5App =>
 
-  class HtmlWindow extends AbstractWindow {
+  class Html5Window extends AbstractWindow {
     override def width: Int = self.htmlCanvas.width
     override def height: Int = self.htmlCanvas.height
 
@@ -26,7 +26,7 @@ trait Html5WindowProvider extends WindowProvider {
     override def ppi: Float = (96*dom.window.devicePixelRatio).toFloat
 
   }
-  type Window = HtmlWindow
-  override val Window = new HtmlWindow
+  type Window = Html5Window
+  override val Window = new Html5Window
 
 }
