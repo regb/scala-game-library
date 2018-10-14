@@ -11,6 +11,15 @@ lazy val commonSettings = Seq(
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 )
 
+// Android cannot run on Java8 so we stick with 2.11 and Java7. We
+// need to build core separately for the right version.
+val commonAndroidSettings = Seq(
+    scalaVersion  := "2.11.8",
+    scalacOptions += "-target:jvm-1.7",
+    javacOptions ++= Seq("-source", "1.7", "-target", "1.7"),
+    exportJars    := true
+)
+
 lazy val core = (crossProject(JSPlatform, JVMPlatform, NativePlatform).crossType(CrossType.Pure) in file("./core"))
   .settings(commonSettings: _*)
   .settings(
@@ -28,9 +37,26 @@ lazy val coreJVM = core.jvm
 lazy val coreJS = core.js
 lazy val coreNative = core.native
 
+lazy val coreAndroid = (project in file("./core"))
+  .settings(commonSettings: _*)
+  .settings(commonAndroidSettings: _*)
+  .settings(
+    name         := "sgl-android-core",
+    target       := baseDirectory.value / ".android" / "target"
+  )
+
 lazy val jvmShared = (project in file("./jvm-shared"))
   .settings(commonSettings: _*)
   .dependsOn(coreJVM)
+
+lazy val jvmSharedAndroid = (project in file("./jvm-shared"))
+  .settings(commonSettings: _*)
+  .settings(commonAndroidSettings: _*)
+  .settings(
+    name   := "sgl-android-sharedjvm",
+    target := baseDirectory.value / ".android" / "target"
+  )
+  .dependsOn(coreAndroid)
 
 lazy val desktopAWT = (project in file("./desktop-awt"))
   .settings(commonSettings: _*)
@@ -134,6 +160,7 @@ lazy val helloDesktopAWT = (project in file("./examples/hello/desktop-awt"))
   .settings(noPublishSettings: _*)
   .settings(
     name := "hello-desktop-awt",
+    fork in run := true,
     unmanagedResourceDirectories in Compile := Seq(helloAssets)
   )
   .dependsOn(coreJVM, desktopAWT, helloCoreJVM)
@@ -165,53 +192,6 @@ lazy val helloDesktopNative = (project in file("./examples/hello/desktop-native"
   )
   .dependsOn(coreNative, desktopNative, helloCoreNative)
 
-////Android cannot run on Java8 so we stick with 2.11. We
-////need to build core separately for the right version
-//
-//val scalaAndroidVer = "2.11.8"
-//
-//
-//val commonAndroidSettings = Seq(
-//    scalaVersion  := scalaAndroidVer,
-//    scalacOptions += "-target:jvm-1.7",
-//    javacOptions ++= Seq("-source", "1.7", "-target", "1.7"),
-//    exportJars    := true
-//)
-//
-//
-//lazy val coreAndroid = (project in file("./core"))
-//  .settings(commonSettings: _*)
-//  .settings(commonAndroidSettings: _*)
-//  .settings(
-//    name         := "sgl-test-core",
-//    target       := baseDirectory.value / ".android" / "target"
-//  )
-//  .dependsOn(sglCoreAndroid)
-//
-//lazy val android = (project in file("./android"))
-//  .enablePlugins(AndroidApp)
-//  .settings(commonSettings: _*)
-//  .settings(commonAndroidSettings: _*)
-//  .settings(
-//    name := "sgl-test-android",
-//    useProguard := true,
-//    proguardOptions ++= Seq(
-//        "-dontobfuscate",
-//        "-dontoptimize",
-//        "-keepattributes Signature",
-//        "-dontwarn scala.collection.**", // required from Scala 2.11.3
-//        "-dontwarn scala.collection.mutable.**", // required from Scala 2.11.0
-//        "-dontwarn android.webkit.**", //required by adcolony
-//        "-dontwarn com.immersion.**", //required by adcolony
-//        "-dontnote com.immersion.**", //required by adcolony
-//        "-ignorewarnings",
-//        "-keep class scala.Dynamic",
-//        "-keep class test.**"
-//    ),
-//    platformTarget := "android-23"
-//  )
-//  .dependsOn(sglCoreAndroid, sglAndroid, coreAndroid)
-
 lazy val snakeCommonSettings = Seq(
   version        := "1.0",
   scalaVersion   := scalaVer,
@@ -235,7 +215,8 @@ lazy val snakeDesktopAWT = (project in file("./examples/snake/desktop-awt"))
   .settings(snakeCommonSettings: _*)
   .settings(noPublishSettings: _*)
   .settings(
-    name := "snake-desktop-awt"
+    name        := "snake-desktop-awt",
+    fork in run := true
   )
   .dependsOn(coreJVM, desktopAWT, snakeCoreJVM)
 

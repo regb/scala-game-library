@@ -10,7 +10,7 @@ import _root_.android.app.Activity
 import _root_.android.os.Bundle
 
 trait AndroidFirebaseAnalyticsProvider extends Activity with AnalyticsProvider {
-  this: GameStateComponent =>
+  self: GameStateComponent =>
 
   private var firebaseAnalytics: UFirebaseAnalytics = null
 
@@ -31,7 +31,7 @@ trait AndroidFirebaseAnalyticsProvider extends Activity with AnalyticsProvider {
       params.value.foreach(v => bundle.putDouble(UFirebaseAnalytics.Param.VALUE, v))
       params.itemId.foreach(id => bundle.putString(UFirebaseAnalytics.Param.ITEM_ID, id))
       params.score.foreach(s => bundle.putLong(UFirebaseAnalytics.Param.SCORE, s))
-      params.map.foreach(m => bundle.putString("level_map", m))
+      params.levelName.foreach(m => bundle.putString("level_map", m))
       params.character.foreach(c => bundle.putString(UFirebaseAnalytics.Param.CHARACTER, c))
       bundle
     }
@@ -40,11 +40,24 @@ trait AndroidFirebaseAnalyticsProvider extends Activity with AnalyticsProvider {
       firebaseAnalytics.logEvent(name, paramsToBundle(params))
     }
 
-    override def logLevelUpEvent(level: Option[Long]): Unit = {
+    override def logLevelUpEvent(level: Long): Unit = {
       val bundle = new Bundle
-      level.foreach(lvl => bundle.putLong(UFirebaseAnalytics.Param.LEVEL, lvl))
+      bundle.putLong(UFirebaseAnalytics.Param.LEVEL, level)
       firebaseAnalytics.logEvent(UFirebaseAnalytics.Event.LEVEL_UP, bundle)
     }
+
+    override def logLevelEndEvent(level: String, success: Boolean): Unit = {
+      val bundle = new Bundle
+      bundle.putString(UFirebaseAnalytics.Param.LEVEL_NAME, level)
+      bundle.putString(UFirebaseAnalytics.Param.SUCCESS, if(success) "1" else "0")
+      firebaseAnalytics.logEvent(UFirebaseAnalytics.Event.LEVEL_END, bundle)
+    }
+    override def logLevelStartEvent(level: String): Unit = {
+      val bundle = new Bundle
+      bundle.putString(UFirebaseAnalytics.Param.LEVEL_NAME, level)
+      firebaseAnalytics.logEvent(UFirebaseAnalytics.Event.LEVEL_START, bundle)
+    }
+
     override def logShareEvent(itemId: Option[String]): Unit = {
       val bundle = new Bundle
       itemId.foreach(id => bundle.putString(UFirebaseAnalytics.Param.ITEM_ID, id))
@@ -63,6 +76,12 @@ trait AndroidFirebaseAnalyticsProvider extends Activity with AnalyticsProvider {
       firebaseAnalytics.logEvent(UFirebaseAnalytics.Event.TUTORIAL_COMPLETE, new Bundle)
     }
 
+    override def logUnlockAchievementEvent(achievementId: String): Unit = {
+      val bundle = new Bundle
+      bundle.putString(UFirebaseAnalytics.Param.ACHIEVEMENT_ID, achievementId)
+      firebaseAnalytics.logEvent(UFirebaseAnalytics.Event.UNLOCK_ACHIEVEMENT, bundle)
+    }
+
     override def logPostScoreEvent(score: Long, level: Option[Long], character: Option[String]): Unit = {
       val bundle = new Bundle
       level.foreach(lvl => bundle.putLong(UFirebaseAnalytics.Param.LEVEL, lvl))
@@ -71,8 +90,12 @@ trait AndroidFirebaseAnalyticsProvider extends Activity with AnalyticsProvider {
       firebaseAnalytics.logEvent(UFirebaseAnalytics.Event.POST_SCORE, bundle)
     }
 
-    override def logGameScreen(gameScreen: GameScreen): Unit = {
-      //TODO: maybe just log an event?
+    override def setGameScreen(gameScreen: GameScreen): Unit = {
+      firebaseAnalytics.setCurrentScreen(self, gameScreen.name, null)
+    }
+
+    override def setPlayerProperty(name: String, value: String): Unit = {
+      firebaseAnalytics.setUserProperty(name, value)
     }
   }
 

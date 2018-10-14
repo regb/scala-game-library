@@ -239,6 +239,8 @@ trait AnalyticsProvider { this: GameStateComponent =>
     override def logLevelUpEvent(level: Long): Unit = {
       analytics.foreach(_.logLevelUpEvent(level))
     }
+    // TODO: level up as in player level but level levelStart as in map level..
+    //       not good and we need to fix these names!
     override def logLevelStartEvent(level: String): Unit = {
       analytics.foreach(_.logLevelStartEvent(level))
     }
