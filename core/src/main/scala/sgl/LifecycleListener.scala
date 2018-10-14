@@ -64,10 +64,15 @@ trait LifecycleListener {
   //def resize(width: Int, height: Int)
 }
 
-
 object SilentLifecyclieListener extends LifecycleListener {
   override def startup(): Unit = {}
   override def resume(): Unit = {}
   override def pause(): Unit = {}
   override def shutdown(): Unit = {}
 } 
+
+trait LifecycleListenerProvider {
+
+  val lifecycleListener: LifecycleListener = SilentLifecyclieListener
+
+}
