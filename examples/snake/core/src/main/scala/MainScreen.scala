@@ -16,8 +16,10 @@ trait MainScreenComponent {
   val NbRows = 30
   val NbCols = 30
 
-  val TotalWidth = NbCols*20
-  val TotalHeight = NbRows*20
+  val squareSize = 20
+
+  val TotalWidth = NbCols*squareSize
+  val TotalHeight = NbRows*squareSize
 
   private implicit val LogTag = Logger.Tag("main-screen")
 
@@ -86,7 +88,7 @@ trait MainScreenComponent {
     }
 
     def drawSquare(canvas: Canvas, point: Point, paint: Paint) = {
-      canvas.drawRect(point.x.toInt * 20, point.y.toInt * 20, 20, 20, paint)
+      canvas.drawRect(point.x.toInt * squareSize, point.y.toInt * squareSize, squareSize, squareSize, paint)
     }
 
     def drawSnake(canvas: Canvas): Unit = {
@@ -98,9 +100,8 @@ trait MainScreenComponent {
       drawSquare(canvas, apple, applePaint)
     }
 
-
     override def render(canvas: Canvas): Unit = {
-      canvas.drawRect(0, 0, WindowWidth, WindowHeight, defaultPaint.withColor(Color.Black))
+      canvas.drawRect(0, 0, Window.width, Window.height, defaultPaint.withColor(Color.Black))
       drawApple(canvas)
       drawSnake(canvas)
     }

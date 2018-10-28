@@ -144,10 +144,14 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
         canvas.drawBitmap(bitmap.bitmap, src, dst, bitmapPaint)
       }
       
-      override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f): Unit = {
+      override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f, alpha: Float = 1f): Unit = {
+        // Save and restore alpha to avoid allocating a fresh bitmap paint here.
+        val prevAlpha = bitmapPaint.getAlpha
+        bitmapPaint.setAlpha((alpha*255).toInt)
         val src = new AndroidRect(sx, sy, sx+width, sy+height)
         val dst = new AndroidRect(dx, dy, dx + (s*width).toInt, dy + (s*height).toInt)
         canvas.drawBitmap(bitmap.bitmap, src, dst, bitmapPaint)
+        bitmapPaint.setAlpha(prevAlpha)
       }
 
 

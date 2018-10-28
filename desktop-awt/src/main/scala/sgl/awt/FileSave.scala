@@ -10,6 +10,8 @@ class FileSave(filename: String) extends AbstractSave {
   //      some implicit param to get the type and have the type info being
   //      part of the serialization, to make sure we don't parse back Int as String
 
+  // TODO: this is not very safe as it uses ':' as a separator and it wouldn't handle such characters in name or value.
+  //       It also doesn't work with empty strings.
   override def putString(name: String, value: String): Unit = {
     val rawLines: List[String] = try {
       Source.fromFile(filename).getLines().toList

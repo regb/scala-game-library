@@ -81,7 +81,7 @@ trait NativeApp extends GameApp
 
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-    glOrtho(0f, frameDimension._1, frameDimension._2, 0f, 1f, -1f)
+    glOrtho(0f, frameDimension._1, frameDimension._2, 0f, -1f, 1f)
 
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()

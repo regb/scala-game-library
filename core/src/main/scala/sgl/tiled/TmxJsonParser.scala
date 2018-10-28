@@ -16,10 +16,10 @@ trait TmxJsonParserComponent {
   
       val json = jsonParse(rawJson)
   
-      val JInt(width) = json \ "width"
-      val JInt(height) = json \ "height"
-      val JInt(tileWidth) = json \ "tilewidth"
-      val JInt(tileHeight) = json \ "tileheight"
+      val AsInt(width) = json \ "width"
+      val AsInt(height) = json \ "height"
+      val AsInt(tileWidth) = json \ "tilewidth"
+      val AsInt(tileHeight) = json \ "tileheight"
   
       val orientation: Orientation = (json \ "orientation") match {
         case JString("orthogonal") => Orthogonal
@@ -48,14 +48,14 @@ trait TmxJsonParserComponent {
           case _ => false //default
         }
         val hexSideLength = (json \ "hexsidelength") match {
-          case JInt(length) => length.toInt
+          case AsInt(length) => length.toInt
           case _ => 0 //only defined for hex, so we just assign a default value if not present
         }
   
         Stagger(axis, isEven, hexSideLength)
       }
   
-      val JInt(nextObjectId) = json \ "nextobjectid"
+      val AsInt(nextObjectId) = json \ "nextobjectid"
   
   
       def parseLayer(layer: JValue): Layer = {
@@ -65,7 +65,7 @@ trait TmxJsonParserComponent {
         //we don't parse x/y coordinates, as apparently they are always 0
   
         val visible: Boolean = (layer \ "visible") match {
-          case JBool(v) => v
+          case JBoolean(v) => v
           case _ => true
         }
         val opacity: Double = jsonToDouble(layer \ "opacity").getOrElse(1)
@@ -76,13 +76,13 @@ trait TmxJsonParserComponent {
         if(tpe == "tilelayer") {
           //width and height are present (only in tilelayer),
           //but should apparently always be the same as top level
-          val JInt(layerWidth) = layer \ "width"
-          val JInt(layerHeight) = layer \ "height"
+          val AsInt(layerWidth) = layer \ "width"
+          val AsInt(layerHeight) = layer \ "height"
           assert(layerWidth == width)
           assert(layerHeight == height)
   
           val JArray(data) = layer \ "data"
-          var rawTiles: List[Int] = data.collect{ case JInt(i) => i.toInt }
+          var rawTiles: List[Int] = data.collect{ case AsInt(i) => i.toInt }
   
           val rows = new Array[Array[Int]](height.toInt)
           var r = 0
@@ -140,22 +140,22 @@ trait TmxJsonParserComponent {
       }
   
       def parseTileSet(tileset: JValue): TileSet = {
-        val JInt(firstGlobalId) = tileset \ "firstgid"
+        val AsInt(firstGlobalId) = tileset \ "firstgid"
         val JString(name) = tileset \ "name"
         val JString(image) = tileset \ "image"
   
         //those are optional in the format, and not really needed for games
-        //val JInt(width) = tileset \ "imagewidth"
-        //val JInt(height) = tileset \ "imageheight"
+        //val AsInt(width) = tileset \ "imagewidth"
+        //val AsInt(height) = tileset \ "imageheight"
   
-        val JInt(tileWidth) = tileset \ "tilewidth"
-        val JInt(tileHeight) = tileset \ "tileheight"
+        val AsInt(tileWidth) = tileset \ "tilewidth"
+        val AsInt(tileHeight) = tileset \ "tileheight"
   
-        val JInt(nbColumns) = tileset \ "columns"
-        val JInt(tileCount) = tileset \ "tilecount"
+        val AsInt(nbColumns) = tileset \ "columns"
+        val AsInt(tileCount) = tileset \ "tilecount"
   
-        val JInt(margin) = tileset \ "margin"
-        val JInt(spacing) = tileset \ "spacing"
+        val AsInt(margin) = tileset \ "margin"
+        val AsInt(spacing) = tileset \ "spacing"
   
         TileSet(firstGlobalId=firstGlobalId.toInt, name=name,
                 image=image,
@@ -185,9 +185,12 @@ trait TmxJsonParserComponent {
              stagger=stagger)
     }
   
+    // TODO: we probably want to provide .as[T] (.as[Double] for example)
+    // in the api to return this Option instead of having to use
+    // extractors.
     private def jsonToDouble(json: JValue): Option[Double] = json match {
-      case JDouble(v) => Some(v)
-      case JInt(v) => Some(v.toDouble) //assuming that for coordinates this cannot overflow
+      case JNumber(v) => Some(v)
+      //case AsInt(v) => Some(v.toDouble) //assuming that for coordinates this cannot overflow
       case _ => None
     }
   }

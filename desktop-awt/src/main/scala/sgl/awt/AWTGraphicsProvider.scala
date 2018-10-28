@@ -4,7 +4,7 @@ package awt
 import sgl.util._
 import awt.util._
 
-import java.awt.{Image, Graphics, Graphics2D, Color}
+import java.awt.{Image, Graphics, Graphics2D, Color, AlphaComposite}
 import javax.imageio.ImageIO
 import java.awt.FontMetrics
 
@@ -125,8 +125,14 @@ trait AWTGraphicsProvider extends GraphicsProvider {
       override def drawBitmap(bitmap: Bitmap, x: Int, y: Int, s: Float): Unit = {
         graphics.drawImage(bitmap.img, x, y, x + (s*bitmap.width).toInt, y + (s*bitmap.height).toInt, 0, 0, bitmap.width, bitmap.height, null)
       }
-      override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f): Unit = {
+      override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f, alpha: Float = 1f): Unit = {
+        val ac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha)
+        graphics.setComposite(ac)
         graphics.drawImage(bitmap.img, dx, dy, dx + (s*width).toInt, dy + (s*height).toInt, sx, sy, sx + width, sy + height, null)
+
+        // Reset default ac.
+        val dac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f)
+        graphics.setComposite(dac)
       }
 
       override def drawRect(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {

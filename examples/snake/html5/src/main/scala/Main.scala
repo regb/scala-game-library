@@ -10,11 +10,12 @@ import sgl.html5.util._
 
 import scala.scalajs.js.annotation.JSExport
 
-@JSExport
-object Main extends core.AbstractApp with Html5App 
+object Main extends Html5App with core.AbstractApp 
   with Html5VerboseConsoleLoggingProvider
   //with NoLoggingProvider
   with InputHelpersComponent {
+
+  override val GameCanvasID: String = "my_canvas"
 
   //We should not force the fps on Html5 and just let
   //requestAnimationFrame do its best

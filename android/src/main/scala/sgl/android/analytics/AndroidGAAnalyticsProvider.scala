@@ -38,14 +38,36 @@ trait AndroidGAAnalyticsProvider extends Activity with AnalyticsProvider {
       )
     }
 
-    override def logLevelUpEvent(level: Option[Long]): Unit = {
+    override def logLevelUpEvent(level: Long): Unit = {
       val builder = new HitBuilders.EventBuilder()
         .setCategory("Progression")
         .setAction("Level Up")
-      val event = level.fold(builder)(lvl => builder.setLabel(lvl.toString))
-                       .build()
+      val event = builder.setLabel(level.toString).build()
       tracker.send(event)
     }
+    override def logLevelEndEvent(level: String, success: Boolean): Unit = {
+      if(success) {
+        val builder = new HitBuilders.EventBuilder()
+          .setCategory("Progression")
+          .setAction("Level Completed")
+        val event = builder.setLabel(level.toString).build()
+        tracker.send(event)
+      } else {
+        val builder = new HitBuilders.EventBuilder()
+          .setCategory("Progression")
+          .setAction("Level Failed")
+        val event = builder.setLabel(level.toString).build()
+        tracker.send(event)
+      }
+    }
+    override def logLevelStartEvent(level: String): Unit = {
+      val builder = new HitBuilders.EventBuilder()
+        .setCategory("Progression")
+        .setAction("Level Started")
+      val event = builder.setLabel(level.toString).build()
+      tracker.send(event)
+    }
+
     override def logShareEvent(itemId: Option[String]): Unit = {
       val builder = new HitBuilders.EventBuilder()
         .setCategory("Social")
@@ -78,6 +100,13 @@ trait AndroidGAAnalyticsProvider extends Activity with AnalyticsProvider {
         .setAction("Complete Tutorial")
       tracker.send(builder.build())
     }
+    override def logUnlockAchievementEvent(achievementId: String): Unit = {
+      val builder = new HitBuilders.EventBuilder()
+        .setCategory("Progression")
+        .setAction("Unlock Achievement")
+      val event = builder.setLabel(achievementId).build()
+      tracker.send(event)
+    }
     override def logPostScoreEvent(score: Long, level: Option[Long], character: Option[String]): Unit = {
       val builder = new HitBuilders.EventBuilder()
         .setCategory("Progression")
@@ -87,13 +116,16 @@ trait AndroidGAAnalyticsProvider extends Activity with AnalyticsProvider {
       tracker.send(event)
     }
 
-    override def logGameScreen(gameScreen: GameScreen): Unit = {
+    def setGameScreen(gameScreen: GameScreen): Unit = {
       //TODO: this might be persisted and used for following events logging
       //      in practice this should be fine as they should all relate to the
       //      latest game screen logged, but in weird cases (custom game screen logging)
       //      this would not hold and we need to make it more explicit in the interface
       tracker.setScreenName(gameScreen.name)
       tracker.send(new HitBuilders.ScreenViewBuilder().build())
+    }
+    def setPlayerProperty(name: String,value: String): Unit = {
+      // TODO
     }
 
   }

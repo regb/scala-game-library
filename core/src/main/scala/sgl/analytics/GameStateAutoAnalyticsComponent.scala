@@ -1,7 +1,7 @@
 package sgl
 package analytics
 
-/** A GameStateComponent that automates analytics
+/** A GameStateComponent that automates analytics.
   *
   * This extends default game state implementation with
   * an implementation that automatically tracks game screen
@@ -23,11 +23,11 @@ trait GameStateAutoAnalyticsComponent extends GameStateComponent {
 
   class GameStateAutoAnalytics extends GameState {
     override def pushScreen(screen: GameScreen): Unit = {
-      Analytics.logGameScreen(screen)
+      Analytics.setGameScreen(screen)
       super.pushScreen(screen)
     }
     override def newScreen(screen: GameScreen): Unit = {
-      Analytics.logGameScreen(screen)
+      Analytics.setGameScreen(screen)
       super.newScreen(screen)
     }
   }

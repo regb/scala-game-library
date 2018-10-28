@@ -2,4 +2,32 @@ TODO
 ====
 
 * Separate core into core and desktop backend
-    Seems like there could be several different kind of desktop, but they would share stuff like FileSystemSave. Alternatively there could be one Desktop, but with several provider of Sound (OpenAL, Java) and grahics (OpenGL, AWT). And let the user compose the cake as he wants.
+Seems like there could be several different kind of desktop, but they would
+share stuff like FileSystemSave. Alternatively there could be one Desktop, but
+with several provider of Sound (OpenAL, Java) and grahics (OpenGL, AWT). And
+let the user compose the cake as he wants.
+
+* HTTP server embeded for debugging.
+
+It is very convenient to have a way to re-configure the game live, and an
+HTTP server would provide a simple, high-level, protocol to do so. Devs can
+create their own API on top of HTTP for arbitrary changes to the game, and
+they can use name-value parameters (or the json module (or simple name-value parameters).
+
+SGL should provide a generic, lilghtweight, HTTP server provider,
+with the option to not include it in release mode. The actual protocol should
+be a separate concern. By default, we could also provide a ConfigProvider
+interface, which would have two main implementations:
+    * An implementation with constant, compile-time, values. This could be
+    used for quick iteration and on the release build.
+    * An implementation where the value is set from an HTTP protocol. This would
+    be used in dev mode to tweak some configuration at run time (could be mostly
+    primitive types: int, double, string). We would provide an implementation
+    based on the HTTP server module, so this would only be injected in build where 
+    we also inject the HTTP module.
+Because of the second implementation, the Config module would need to provide
+some sort of callback on each config value, meaning that the client should be
+notified when a new value is set and should update the game with that new value.
+Obviously, not all configurations need to be set through this style of config,
+only these that can be modified at runtime, without restarting the game,
+successfully.

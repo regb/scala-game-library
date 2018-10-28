@@ -11,15 +11,28 @@ import org.scalajs.dom
 import dom.html
 
 trait Html5App extends GameApp 
-                  with Html5GraphicsProvider with Html5InputProvider with Html5AudioProvider
-                  with Html5WindowProvider with Html5SystemProvider with SingleThreadSchedulerProvider {
+                  with Html5WindowProvider with Html5SystemProvider with Html5GraphicsProvider 
+                  with Html5InputProvider with Html5AudioProvider with SingleThreadSchedulerProvider {
 
   val theme: Theme
 
+  /** The ID attribute of the HTML5 canvas to use for the game.
+    *
+    * If the main function of the game is called, then the game will
+    * automatically find the game canvas identified by this ID (using
+    * a regular getElementById). The canvas will be used as the main
+    * rendering area.
+    */
+  val GameCanvasID: String
+
   var htmlCanvas: html.Canvas = null
 
+  def main(args: Array[String]): Unit = {
+    run(js.Dynamic.global.document.getElementById(GameCanvasID).asInstanceOf[html.Canvas])
+  }
+
   @JSExport
-  def main(canvas: html.Canvas): Unit = {
+  def run(canvas: html.Canvas): Unit = {
 
     theme.init(canvas)
 

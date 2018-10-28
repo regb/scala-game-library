@@ -168,6 +168,25 @@ trait SceneGraphComponent {
     var x: Float, var y: Float, var width: Float, var height: Float
   ) {
 
+    // TODO: Here's a use case to consider:
+    //   Each SceneNode is a UI button of 10x10, we want to
+    //   have them next to each other and react on clicks (hit).
+    //   However, they also have a light highlight aura when
+    //   selected, which would typically be 12x12 and expand around.
+    //   Because we trim the drawing to 10x10, a part of the aura
+    //   will be drawn outside the rect and thus trimmed. We also
+    //   don't want this aura to be clickable, so the client cannot
+    //   simply create a SceneNode of 12x12 and handle the logic
+    //   (which would become cumbersome anyway).
+    //
+    //   Idea: How about adding optional fields to set the drawing area?
+    //   This drawing area could expand on all direction but would still
+    //   be zero-based. So when implementing the rendering of the node,
+    //   the client can draw at -1 for the aura, and this part will not
+    //   be trimmed. We would handle the trimming to trim outside of this
+    //   expanded area still, but hit tests would be centered on the real
+    //   content.
+
     private[SceneGraphComponent] var parent: SceneNode = null
 
     //TODO: support for rotation, need to store origin inside the SceneNode coordinate system

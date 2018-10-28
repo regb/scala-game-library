@@ -23,6 +23,9 @@ abstract class ChunkedTask {
    * are singly-threaded (such as Javascript).
    */
 
+  /** A name used to identify the task, mostly for logging and debugging */
+  val name: String
+
   // TODO: Priority for scheduling?
   // val priority: Priority
 

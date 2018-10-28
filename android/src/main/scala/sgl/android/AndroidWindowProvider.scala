@@ -9,11 +9,20 @@ trait AndroidWindowProvider extends WindowProvider {
 
   var gameView: GameView = null
 
-  override def WindowHeight = gameView.getHeight
-  override def WindowWidth = gameView.getWidth
+  class AndroidWindow extends AbstractWindow {
+    override def height = gameView.getHeight
+    override def width = gameView.getWidth
 
-  private val BaseDensity: Double = 160
-  override def dpi: Int = gameView.getResources.getDisplayMetrics.densityDpi
-  override def density: Float = gameView.getResources.getDisplayMetrics.density
+    // TODO: seems like xdpi and ydpi are not too consistent accross devices and thus
+    //       not safe to use.
+    override def xppi: Float = gameView.getResources.getDisplayMetrics.xdpi
+    override def yppi: Float = gameView.getResources.getDisplayMetrics.ydpi
+
+    // densityDPI returns an approximate value (160, 240, 320, ...) but it
+    // seems to be stable and probably good enough.
+    override def ppi: Float = gameView.getResources.getDisplayMetrics.densityDpi
+  }
+  type Window = AndroidWindow
+  override val Window = new AndroidWindow
 
 }

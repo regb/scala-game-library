@@ -16,43 +16,38 @@ trait NativeGraphicsProvider extends GraphicsProvider {
 
   object NativeGraphics extends Graphics {
 
-    //override def loadImage(path: System.ResourcePath): Loader[Bitmap] = {
-    //  //val path = c"/home/reg/vcs/games/sgl/examples/test/native/src/main/resources/drawable/character.png"
-    //  val surface = IMG_Load(toCString(path.path))
-    //  val texture = SDL_CreateTextureFromSurface(renderer, surface)
-    //  SDL_FreeSurface(surface)
-    //  val w: Ptr[CInt] = stackalloc[CInt]
-    //  val h: Ptr[CInt] = stackalloc[CInt]
-    //  SDL_QueryTexture(texture, null, null, w, h)
-    //  Loader.successful(SDLTextureBitmap(texture, !w, !h))
-    //}
     override def loadImage(path: ResourcePath): Loader[Bitmap] = {
-      val surface = IMG_Load(toCString(path.path))
-      //println("w: " + surface.w + "h: " + surface.h + " Bpp: " + surface.format.BytesPerPixel + " bpp: " + surface.format.BitsPerPixel)
-      val width = surface.w
-      val height = surface.h
+      Zone { implicit z =>
+        val surface = IMG_Load(toCString(path.path))
+        if(surface == null) {
+          Loader.failed(new Exception("Error while loading image %s: %s".format(path.path, fromCString(SDL_GetError()))))
+        } else {
+          val width = surface.w
+          val height = surface.h
 
-      val test: UByte = (SDL_MapRGB(surface.format, 0xAA.toUByte, 0xBB.toUByte, 0XCC.toUByte) & 0xFF.toUInt).toUByte
-      //val sourceFormat = if(surface.format.BitsPerPixel == 8.toUByte) GL_COLOR_INDEX else GL_BGR
-      val sourceFormat = if(surface.format.BytesPerPixel == 4.toUByte) {
-        if(test == 0xAA.toUByte) GL_RGBA else GL_BGRA
-      } else {
-        if(test == 0xAA.toUByte) GL_RGB else GL_BGR
+          val test: UByte = (SDL_MapRGB(surface.format, 0xAA.toUByte, 0xBB.toUByte, 0XCC.toUByte) & 0xFF.toUInt).toUByte
+          //val sourceFormat = if(surface.format.BitsPerPixel == 8.toUByte) GL_COLOR_INDEX else GL_BGR
+          val sourceFormat = if(surface.format.BytesPerPixel == 4.toUByte) {
+            if(test == 0xAA.toUByte) GL_RGBA else GL_BGRA
+          } else {
+            if(test == 0xAA.toUByte) GL_RGB else GL_BGR
+          }
+
+          val textureId: Ptr[GLuint] = stackalloc[GLuint]
+          glGenTextures(1.toUInt, textureId)
+          glBindTexture(GL_TEXTURE_2D, !textureId)
+
+          glTexImage2D(GL_TEXTURE_2D, 0, surface.format.BytesPerPixel.toInt, 
+                       surface.w.toUInt, surface.h.toUInt, 0, sourceFormat,
+                       GL_UNSIGNED_BYTE, surface.pixels)
+
+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+          SDL_FreeSurface(surface)
+          val texture = OpenGLTextureBitmap(!textureId, width, height)
+          Loader.successful(texture)
+        }
       }
-
-      val textureId: Ptr[GLuint] = stackalloc[GLuint]
-      glGenTextures(1.toUInt, textureId)
-      glBindTexture(GL_TEXTURE_2D, !textureId)
-
-      glTexImage2D(GL_TEXTURE_2D, 0, surface.format.BytesPerPixel.toInt, 
-                   surface.w.toUInt, surface.h.toUInt, 0, sourceFormat,
-                   GL_UNSIGNED_BYTE, surface.pixels)
-
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-      SDL_FreeSurface(surface)
-      val texture = OpenGLTextureBitmap(!textureId, width, height)
-      Loader.successful(texture)
     }
 
     case class OpenGLTextureBitmap(texture: GLuint, width: Int, height: Int) extends AbstractBitmap
@@ -69,8 +64,6 @@ trait NativeGraphicsProvider extends GraphicsProvider {
   
     object NativeFontCompanion extends FontCompanion {
       override def create(family: String, style: Style, size: Int): Font = ???
-  
-      def toAWTStyle(style: Style): Int = ???
   
       override val Default: Font = NativeFont()
       override val DefaultBold: Font = NativeFont()
@@ -108,7 +101,9 @@ trait NativeGraphicsProvider extends GraphicsProvider {
   
       override def withSave[A](body: => A): A = {
         glPushMatrix()
+        glPushAttrib(GL_SCISSOR_BIT)
         val res = body
+        glPopAttrib()
         glPopMatrix()
         res
       }
@@ -123,12 +118,11 @@ trait NativeGraphicsProvider extends GraphicsProvider {
       }
   
       override def scale(sx: Double, sy: Double): Unit = {
-        glScaled(sx, sy, 0d)
+        glScaled(sx, sy, 1d)
       }
   
       override def clipRect(x: Int, y: Int, width: Int, height: Int): Unit = {
-        val down = y+height
-        glScissor(x, down, width.toUInt, height.toUInt)
+        glScissor(x, y, width.toUInt, height.toUInt)
       }
   
       override def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit = {
@@ -158,9 +152,9 @@ trait NativeGraphicsProvider extends GraphicsProvider {
         drawBitmap(bitmap, x, y, 0, 0, bitmap.width, bitmap.height, s)
       }
 
-      override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f): Unit = {
-  
-        glColor4f(1f,1f,1f,1f)
+      override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f, alpha: Float = 1f): Unit = {
+
+        glColor4f(1f, 1f, 1f, alpha)
   
         val sxf: Float = sx/bitmap.width.toFloat
         val syf: Float = sy/bitmap.height.toFloat
