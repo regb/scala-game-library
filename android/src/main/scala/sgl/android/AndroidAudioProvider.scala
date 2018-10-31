@@ -15,6 +15,10 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
 
   private implicit val LogTag = Logger.Tag("sgl-audio-provider")
 
+  // Callbacks to the audio module can come from the Activity lifecycle
+  // so we want to make sure there is no concurrency going on there.
+  private object AudioLocker
+
   /*
    * TODO: could add runtime logic to release pool when some number of sounds
    *       are not used. Should be transparent and reallocate the pool with needed
@@ -96,16 +100,21 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
 
 
   private var loadedMusics: List[Music] = List()
-  def addLoadedMusic(music: Music): Unit = synchronized {
+  def addLoadedMusic(music: Music): Unit = AudioLocker.synchronized {
     loadedMusics ::= music
   }
-  def clearLoadedMusic(music: Music): Unit = synchronized {
+  def clearLoadedMusic(music: Music): Unit = AudioLocker.synchronized {
     loadedMusics = loadedMusics.filterNot(_ == music)
   }
 
   class Music(path: String) extends AbstractMusic {
 
     var player: MediaPlayer = null
+
+    // The trick of using a backup player is due to a bug in Android
+    // when looping the tune. There is a noticeable gap at the time of
+    // looping, so we need to swap between two players to prevent
+    // the player from noticing the gap.
     var backupPlayer: MediaPlayer = null
 
     private var androidVolume: Float = 1f
@@ -113,41 +122,56 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
     private var shouldLoop = false
 
     //load asset from path and prepare the mp
-    private def loadAndPrepare(mp: MediaPlayer): Unit = {
+    private def loadAndPrepare(mp: MediaPlayer): Unit = AudioLocker.synchronized {
       val am = self.getAssets()
       val afd = am.openFd(path)
       mp.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength())
-      mp.prepare() //TODO: we should use async repareAsync with onPreparedListener
+      // Good practices is probably to use prepareAsync, however it is mostly relevant
+      // when streaming data, and the blocking nature should be negligeable as long
+      // as we use local files. Given that this is a game engine, data should always
+      // be packed in the assets of the game, so synchronous prepare() is fine.
+      mp.prepare()
+
+      // We reset the volume to what it should be.
+      mp.setVolume(androidVolume, androidVolume)
     }
 
 
-    def preparePlayer(): Unit = {
-      player = new MediaPlayer
-      loadAndPrepare(player)
+    def preparePlayer(): Unit = AudioLocker.synchronized {
+      if(!activityPaused) {
+        // Only do that if not in pause, if we are paused, then the onResume
+        // call will take care of reseting the right state and calling back
+        // this.
+        player = new MediaPlayer
+        loadAndPrepare(player)
 
-      if(shouldLoop)
-        prepareBackupPlayer()
-    }
-
-    def prepareBackupPlayer(): Unit = {
-      backupPlayer = new MediaPlayer
-      loadAndPrepare(backupPlayer)
-
-      player.setNextMediaPlayer(backupPlayer)
-      player.setOnCompletionListener(onCompletionListener)
-    }
-
-    private val onCompletionListener = new MediaPlayer.OnCompletionListener {
-      override def onCompletion(mp: MediaPlayer): Unit = {
-        mp.stop()
-        mp.release()
-        player = backupPlayer
-        player.setVolume(androidVolume, androidVolume)
-        prepareBackupPlayer();
+        if(shouldLoop)
+          prepareBackupPlayer()
       }
     }
 
-    def prepareIfIdle(): Unit = {
+    def prepareBackupPlayer(): Unit = AudioLocker.synchronized {
+      if(!activityPaused) {
+        backupPlayer = new MediaPlayer
+        loadAndPrepare(backupPlayer)
+
+        player.setNextMediaPlayer(backupPlayer)
+        player.setOnCompletionListener(onCompletionListener)
+      }
+    }
+
+    private val onCompletionListener = new MediaPlayer.OnCompletionListener {
+      override def onCompletion(mp: MediaPlayer): Unit = AudioLocker.synchronized {
+        if(!activityPaused) {
+          mp.stop()
+          mp.release()
+          player = backupPlayer
+          prepareBackupPlayer()
+        }
+      }
+    }
+
+    def prepareIfIdle(): Unit = AudioLocker.synchronized {
       if(state == Idle) {
         preparePlayer()
         state = Ready
@@ -164,47 +188,59 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
 
     var state: State = Idle
 
-    override def play(): Unit = {
+    override def play(): Unit = AudioLocker.synchronized {
       prepareIfIdle()
-      if(state == Stopped)
+      if(state == Stopped && !activityPaused)
         player.prepare()
 
-      player.start()
+      // We only guard the player.start() call if we are paused,
+      // because we want to set the internal state to the right
+      // one (game code might call play() only once, and if it
+      // happened while racing with onPause then we want to resume
+      // playing when calling onResume). We must guard the player.start()
+      // as player could be null if we are paused (and we don't want to
+      // play if we are paused).
+      if(!activityPaused)
+        player.start()
       state = Playing
     }
-    override def pause(): Unit = {
+    override def pause(): Unit = AudioLocker.synchronized {
       prepareIfIdle()
-      if(state == Playing)
+      if(state == Playing && !activityPaused)
         player.pause()
       state = Paused
     }
-    override def stop(): Unit = {
+    override def stop(): Unit = AudioLocker.synchronized {
       //TODO: what to do with backupPlayer?
       prepareIfIdle()
-      if(state == Playing || state == Paused)
+      if(!activityPaused && (state == Playing || state == Paused))
         player.stop()
       state = Stopped
     }
 
-    override def setLooping(isLooping: Boolean): Unit = {
+    override def setLooping(isLooping: Boolean): Unit = AudioLocker.synchronized {
       shouldLoop = true
 
       if(state != Idle)
         prepareBackupPlayer()
     }
 
-    override def setVolume(volume: Float): Unit = {
+    override def setVolume(volume: Float): Unit = AudioLocker.synchronized {
       prepareIfIdle()
 
       //Android API seems to use some log based scaling, one way to map the
       //linear parameter of SGL is as follows
       //androidVolume = 1 - (math.log(100f-volume*100f)/math.log(100f)).toFloat
       androidVolume = volume
-      
-      player.setVolume(androidVolume, androidVolume)
+
+      if(!activityPaused) {
+        player.setVolume(androidVolume, androidVolume)
+        if(backupPlayer != null)
+          backupPlayer.setVolume(androidVolume, androidVolume)
+      }
     }
 
-    override def dispose(): Unit = {
+    override def dispose(): Unit = AudioLocker.synchronized {
       if(player != null) {
         player.release()
         player = null
@@ -218,56 +254,69 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
     }
   }
 
-  override def loadMusicFromResource(path: String): Music = {
+  override def loadMusicFromResource(path: String): Music = AudioLocker.synchronized {
     val music = new Music(path)
     addLoadedMusic(music)
     music
   }
 
+  // Store whether the onPause callback was received, if yes, we need
+  // to be careful within the Music code to not modify the current state.
+  // Such races could happen since the main thread of the game can still
+  // be running for a bit in parallel to the call to onPause.
+  private var activityPaused = false
   /*
    * we need to stop the music on pause and release the media players.
    */
   override def onPause(): Unit = {
     super.onPause()
-    loadedMusics.foreach(music => {
-      if(music.player != null) {
-        //we directly set player, so that music keeps all the current state info
-        music.player.stop()
-        music.player.release()
-        music.player = null
-      }
-      if(music.backupPlayer != null) {
-        music.backupPlayer.release()
-        music.backupPlayer = null
-      }
-    })
+    AudioLocker.synchronized {
+      loadedMusics.foreach(music => {
+        if(music.player != null) {
+          //we directly set player, so that music keeps all the current state info
+          music.player.stop()
+          music.player.release()
+          music.player = null
+        }
+        if(music.backupPlayer != null) {
+          music.backupPlayer.release()
+          music.backupPlayer = null
+        }
+      })
+      activityPaused = true
+    }
   }
   override def onResume(): Unit = {
     super.onResume()
     logger.info("resume called")
-
-    loadedMusics.foreach(music => music.state match {
-      case music.Idle => ()
-      case music.Ready =>
-        music.preparePlayer()
-      case music.Playing =>
-        music.preparePlayer()
-        music.player.start()
-      case music.Paused =>
-        music.preparePlayer()
-      case music.Stopped => ()
-      case music.Released => ()
-    })
+    
+    AudioLocker.synchronized {
+      activityPaused = false
+      loadedMusics.foreach(music => music.state match {
+        case music.Idle => ()
+        case music.Ready =>
+          music.preparePlayer()
+        case music.Playing =>
+          music.preparePlayer()
+          music.player.start()
+        case music.Paused =>
+          music.preparePlayer()
+        case music.Stopped => ()
+        case music.Released => ()
+      })
+    }
   }
 
   override def onDestroy(): Unit = {
     super.onDestroy()
-    loadedMusics.foreach(music => {
-      if(music.player != null) {
-        music.player.stop()
-        music.player.release()
-      }
-    })
+    AudioLocker.synchronized {
+      loadedMusics.foreach(music => {
+        if(music.player != null) {
+          music.player.stop()
+          music.player.release()
+        }
+      })
+    }
   }
 
 }
