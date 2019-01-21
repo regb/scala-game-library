@@ -20,11 +20,13 @@ import util._
  *
  * The current design goal is to clearly separate events from state. State
  * can be provided as a global, always available, data structure. So it
- * should be provided directly in the InputProvider component, and could
- * be queried at any time during update, since there should not be any
- * notion of who consumed the state first (unlike events).
- *
- *
+ * should be provided directly in the InputProvider (but actually implemented
+ * in the InputHelper) component, and could be queried at any time during update,
+ * since there should not be any notion of who consumed the state first (unlike events).
+ * State are typically whether a key is currently pressed or not, so it can remain
+ * active for several frames. Events are one-off occurence, when the key is pressed
+ * down and then nothing for several frames, until it is released, where there
+ * would be another single event.
  */
 
 /** Provider for input handling 
@@ -34,7 +36,7 @@ import util._
   * only collects lowest level events, such as mouse down and up, and not derived
   * event such as mouse pressed (down + up in a given interval). It also distinguishes
   * each kind of device (mouse vs touch), and does not abstract one as the other. That
-  * job can be performed by a layer on top. The design principle here is to expose the
+  * job can be performed by a layer on top. The design principles here is to expose the
   * real core of the events, and then build any simplification/abstraction as separate
   * modules on top. That seeems like a cleaner design, and will simplify the implementation
   * of input providers backends.
@@ -47,6 +49,13 @@ import util._
   * behind in term of updating/rendering, it's better to let it decide how to handle
   * inputs that should have been handled a few frames ago (rather than just drop them from the
   * queue).
+  *
+  * The implementation of the input state is provided in another trait, the
+  * InputHelpers, and is thus optional. It is a natural consequence of the above design,
+  * as we do not want to necessarily force the handling of all events all the time, nor
+  * the update of the global state. That layer is also a natural place for providing
+  * higher-level events that require some buffering/history (another word for state),
+  * such as tap (touch down and up, with a reasonable time in between) and scroll events.
   */
 trait InputProvider {
   self: LoggingProvider =>
@@ -109,15 +118,35 @@ trait InputProvider {
     //middle button scrolled, amount +/- depending on direction
     case class MouseScrolledEvent(amount: Int) extends MouseInputEvent
 
-    //touch events, Moved means that the cursor is currently touching (different interpretation
-    //from the mouse, where it just means moving and not necessarly pressed). The pointer is
-    //the id of the pointer that is touching, to support multi-touch
+    /*
+     * Touch events: Moved means that the cursor is currently touching (different interpretation
+     * from the mouse, where it just means moving and not necessarly pressed). The pointer is
+     * the id of the pointer that is touching, to support multi-touch.
+     *
+     * These seem to be the three fundamental sorts of events coming from a touch device.
+     * Events such as dragged/scrolled can be built on top of them by detecting a
+     * combination of Down and Moved. The argument for not exposing these higher-level
+     * events is that their interpretation is subjective, in particular the duration
+     * of the down-move-up sequence might indicate either a click or a dragged event,
+     * depending on sensitivity/settings required by the gameplay or the user. On the
+     * other hand, the 3 basic type of events are fundamentally non controversial and
+     * can be expose safely in the core API.
+     */
+
     sealed trait TouchInputEvent extends InputEvent
     case class TouchMovedEvent(x: Int, y: Int, pointer: Int) extends TouchInputEvent
     case class TouchDownEvent(x: Int, y: Int, pointer: Int) extends TouchInputEvent
     case class TouchUpEvent(x: Int, y: Int, pointer: Int) extends TouchInputEvent
 
-    /** Abstraction on top of mouse and touch
+    /*
+     * Then, on top of these primitive events, we should provide some higher-level
+     * abstractions, mostly in the form of Extractors, which can interepret
+     * these events as a more convenient concept from the gameplay point of view.
+     * These here will be limited to abstractions that only depend on the current
+     * event and not a sequence of events to be interpreted.
+     */
+
+    /** Abstraction on top of mouse and touch.
       *
       * Provide an extractor that can transparently handle mouse and touch
       * events.
@@ -242,26 +271,3 @@ trait InputProvider {
   }
 
 }
-
-//object Events {
-//  /*
-//   * Touch events
-//   */
-//  var touchPoint: Option[(Int, Int)] = None
-//  var touchScrollVector: Option[(Float, Float)] = None
-//
-//  //set in the frame where the touch is first down, and then up
-//  var touchDown: Option[(Int, Int)] = None
-//  var touchUp: Option[(Int, Int)] = None
-//
-//  var mouseClick: Option[(Int, Int)] = None
-//  var mouseDown: Option[(Int, Int)] = None
-//  var mouseUp: Option[(Int, Int)] = None
-//    object PointingDevice {
-//      //events
-//      def click: Option[(Int, Int)] = inputs.mouseClick.orElse(inputs.touchPoint)
-//      def down: Option[(Int, Int)] = inputs.mouseDown.orElse(inputs.touchDown)
-//      def up: Option[(Int, Int)] = inputs.mouseUp.orElse(inputs.touchUp)
-//      def drag: Option[(Float, Float)] = inputs.touchScrollVector
-//
-//}

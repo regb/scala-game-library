@@ -22,4 +22,11 @@ package object scene {
     * UI elements such as buttons and textfield.
     */
 
+  // TODO: Offer a ScrollPane kind of container, which would provide
+  //       a default scrollable background (by touch and mouse scroll).
+  //       This would be great for building level menus. More details on
+  //       the design are within the Fish Escape source code (in the level menu).
+  //       This might in particular be a good point to expose a touch scroll API,
+  //       instead of within the core input handling system. Mostly because it's
+  //       not clear what is a scroll action versus a click/touch action.
 }
