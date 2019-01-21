@@ -144,6 +144,15 @@ trait InputProvider {
      * these events as a more convenient concept from the gameplay point of view.
      * These here will be limited to abstractions that only depend on the current
      * event and not a sequence of events to be interpreted.
+     *
+     * One difficult abstraction is sequence of events, such as scrolling with
+     * the finger or dragging with the mouse. Besides needing some history state,
+     * there's some challenge in processing the inputs. In a traditional game loop
+     * architecture, the inputs will be processed once per frame, but the issue is
+     * they will all appear as if they arrived just on the frame boundary, although they
+     * were happening all throughout the frame. This is common for a sequence of
+     * moved mouse or pointer, because without the exact timestamp of each of them
+     * it becomes difficult to tell the velocity of the move.
      */
 
     /** Abstraction on top of mouse and touch.
