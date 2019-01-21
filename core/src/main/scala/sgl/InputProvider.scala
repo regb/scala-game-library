@@ -159,6 +159,15 @@ trait InputProvider {
       *
       * Provide an extractor that can transparently handle mouse and touch
       * events.
+      *
+      * Note that this does not expose left/right clicks of the mouse, they
+      * both look as if they came from the same pointer. There are good reasons
+      * for that, in particular it would not be clear how to handle the
+      * PointerMovedEvent when we do not know which pointer we should use
+      * (the left one or the right one?). This does lead to some unexpected
+      * sequences such as down-moved-moved-down-up-moved-up coming from the
+      * same mouse pointer, due to the possibility of clicking both left and
+      * right buttons.
       */
     object PointerDownEvent {
       def unapply(event: InputEvent): Option[(Int, Int, Int)] = event match {
