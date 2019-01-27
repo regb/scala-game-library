@@ -43,6 +43,16 @@ trait AWTGraphicsProvider extends GraphicsProvider {
     object AWTFontCompanion extends FontCompanion {
       import java.awt.Font._
 
+      override def load(path: ResourcePath): Loader[Font] = {
+        FutureLoader {
+          val res = getClass.getClassLoader.getResourceAsStream(path.path)
+          if(res == null) {
+            throw new java.io.FileNotFoundException("Resource " + path + " not found.")
+          }
+          AWTFont(createFont(TRUETYPE_FONT, res))
+        }
+      }
+
       override def create(family: String, style: Style, size: Int): Font =
         AWTFont(new java.awt.Font(family, toAWTStyle(style), size))
 

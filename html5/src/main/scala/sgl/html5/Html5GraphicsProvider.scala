@@ -59,6 +59,11 @@ trait Html5GraphicsProvider extends GraphicsProvider {
 
       override def create(family: String, style: Style, size: Int): Font = Html5Font(family, style, size)
 
+      // TODO: Font loading is quite complicated in the web, so we default to a standard
+      //       font for now until we manage to implement that. I know, it's bad to lie,
+      //       but the alternative is to throw an error which would break games that
+      //       could otherwise run fine except for fonts.
+      override def load(path: ResourcePath): Loader[Font] = Loader.successful(Default)
 
       def toCssStyle(s: Font.Style): String = s match {
         case Bold => "bold"

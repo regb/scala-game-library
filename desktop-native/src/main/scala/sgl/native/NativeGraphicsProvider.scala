@@ -64,6 +64,8 @@ trait NativeGraphicsProvider extends GraphicsProvider {
   
     object NativeFontCompanion extends FontCompanion {
       override def create(family: String, style: Style, size: Int): Font = ???
+
+      override def load(path: ResourcePath): Loader[Font] = ???
   
       override val Default: Font = NativeFont()
       override val DefaultBold: Font = NativeFont()

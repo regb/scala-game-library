@@ -53,6 +53,10 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
       override def create(family: String, style: Style, size: Int): Font =
         AndroidFont(Typeface.create(family, toAndroidStyle(style)), size)
 
+      override def load(path: ResourcePath): Loader[Font] = FutureLoader {
+        AndroidFont(Typeface.createFromAsset(self.getAssets(), path.path), 14)
+      }
+
       def toAndroidStyle(style: Style): Int = style match {
         case Normal => Typeface.NORMAL
         case Bold => Typeface.BOLD

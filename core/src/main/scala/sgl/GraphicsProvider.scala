@@ -32,7 +32,15 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
     abstract class FontCompanion {
       def create(family: String, style: Style, size: Int): Font
 
-      //def createFromResource(path: String): Font
+      /** Load a font from a resource.
+        *
+        * This only supports TrueType fonts (.ttf) or
+        * OpenType font (.otf). In principle we could
+        * support Type1 font but they seemed outdated
+        * and inferior so the support doesn't seem worth
+        * it.
+        */
+      def load(path: ResourcePath): Loader[Font]
 
       val Default: Font
       val DefaultBold: Font
