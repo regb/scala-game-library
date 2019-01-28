@@ -33,7 +33,7 @@ import scala.util.{Try, Success, Failure}
   * assumes that some thread pool is available to dispatch the work, which might
   * be a bit of a stretch on some platforms.
   */
-trait Loader[A] {
+trait Loader[+A] {
 
   /** Schedule a callback to be execute when loaded
     *
