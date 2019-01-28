@@ -52,7 +52,9 @@ trait GameStateComponent {
     def loadingRender(canvas: Graphics.Canvas): Unit = {}
 
     private[sgl] var preloaders: List[Loader[_]] = List()
-    def addPreloading[A](l: Loader[A]) = preloaders ::= l
+    def addPreloading[A](ls: Loader[_]*) = {
+      preloaders = preloaders ++ ls
+    }
 
     private[sgl] var _isLoading = true
 
@@ -110,21 +112,38 @@ trait GameStateComponent {
 
   }
 
-  /*
-   * A LoadingScreen is a screen dedicated to loading assets. Typically the game would
-   * show a progress bar and/or a splash screen with the game logo. This is intended
-   * as a way to load a large amount of resources in memory, which could take several
-   * seconds.
-   *
-   * By contrast, the built-in preload feature from each GameScreen is meant
-   * as a very short "last minute" loading for the screen, and should be used to load
-   * very few assets and that are truly unique to that level. One particular example would
-   * be level data (map, tilemap) for a platformer/puzzle game, where we need to load the 
-   * current level for the current screen. Such loading should be extermely light and
-   * only take a few frames, so that we don't need to display anything.
-   */
-  abstract class LoadingScreen[A](val loaders: Seq[Loader[A]]) extends GameScreen {
-    import scala.collection.mutable.HashSet
+  /** A LoadingScreen is a screen dedicated to loading assets.
+    *
+    * Typically the game would show a progress bar and/or a splash screen with
+    * the game logo.  This is intended as a way to load a large amount of
+    * resources in memory, which could take several seconds.
+    *
+    * By contrast, the built-in preload feature from each GameScreen is meant as
+    * a very short "last minute" loading for the screen, and should be used to
+    * load very few assets and that are truly unique to that level. One
+    * particular example would be level data (map, tilemap) for a
+    * platformer/puzzle game, where we need to load the current level for the
+    * current screen. Such loading should be extermely light and only take a few
+    * frames, so that we don't need to display anything. Another, spot on, example
+    * is to actually use the preload for the splash screen background to display
+    * while loading the rest of the resources.
+    */
+  abstract class LoadingScreen[A](val loaders: Seq[Loader[A]]) extends
+  GameScreen { import scala.collection.mutable.HashSet
+
+    /** The minimal duration that we should display the loading screen.
+      *
+      * This lets the game use this loading screen as a way to show
+      * a splash screen for enough time, for branding purposes.
+      * Of course, it's nice if loading is fast enough that we do
+      * not need a splash screen, so in some sense setting a minimum
+      * duration is something negative as we want the fastest possible
+      * load time. On the other hand, a splash screen can serve as a
+      * quick and nice title screen for a game, and this parameter
+      * let us combine both loading and displaying a screen for
+      * some minimum amount of time.
+      */
+    protected val minDuration: Long = 0
 
     private var loadingErrors: HashSet[Loader[A]] = new HashSet()
 
@@ -158,9 +177,29 @@ trait GameStateComponent {
       */
     protected def percentageLoaded: Double = 1 - (_remaining.size.toDouble/loaders.size.toDouble)
 
+    /** Compute the percentage of progress towards loading.
+      *
+      * Essentially this is similar to percentageLoaded but
+      * it also takes into account the minDuration. It returns
+      * the lower of the two percentage, which can be used
+      * to display a progress bar. The idea is that even if the
+      * entire resources are loaded, we probably don't want to
+      * show a full progress bar while we know that the duration
+      * is only half-way through the minDuration. 
+      */
+    protected def percentageProgress: Double = {
+      val percentageDuration: Double = {
+        if(minDuration == 0) 1d else (totalDuration / minDuration.toDouble).min(1d)
+      }
+      percentageDuration min percentageLoaded
+    }
+
     override def name: String = "Loading Screen"
 
+    private var totalDuration = 0l
+
     override def update(dt: Long): Unit = {
+      totalDuration += dt
       for(loader <- _remaining.toSet[Loader[A]]) {
         if(loader.isLoaded) {
           _remaining.remove(loader)
@@ -169,7 +208,7 @@ trait GameStateComponent {
           }
         }
       }
-      if(_remaining.isEmpty && !loadingError) {
+      if(totalDuration >= minDuration && _remaining.isEmpty && !loadingError) {
         gameState.newScreen(nextScreen)
       }
     }
