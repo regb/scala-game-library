@@ -2,6 +2,8 @@ package sgl
 package scene
 package ui
 
+import scala.collection.mutable.HashSet
+
 trait ScrollPaneComponent {
   this: SceneGraphComponent with ViewportComponent
   with GraphicsProvider with InputProvider with SystemProvider =>
@@ -82,6 +84,13 @@ trait ScrollPaneComponent {
     private var scrollingVelocityX = 0f
     private var scrollingVelocityY = 0f
 
+    // TODO: feels like we are duplicating some of the work that is done in the
+    //       StepGraph for tracking down events. This is necessary since hit only
+    //       returns the Pane and not the children nodes, and we need to forward
+    //       all the events in the hierarchy.
+    private var downNode: Option[SceneNode] = None
+    // TODO: This will eventually require more duplication for supporting the notifyPointerEnter
+
     override def notifyDown(x: Int, y: Int): Boolean = {
       prevX = x
       prevY = y
@@ -91,7 +100,8 @@ trait ScrollPaneComponent {
 
       val wx = x + cameraX.toInt
       val wy = y + cameraY.toInt
-      root.hit(wx, wy).forall(node => node.notifyDown(wx, wy))
+      downNode = root.hit(wx, wy)
+      downNode.forall(node => node.notifyDown(wx, wy))
     }
 
     override def notifyMoved(x: Int, y: Int): Unit = {
@@ -102,6 +112,15 @@ trait ScrollPaneComponent {
         prevX = x
         prevY = y
         clipTargetCamera()
+
+        val wx = x + cameraX.toInt
+        val wy = y + cameraY.toInt
+        downNode.foreach(node => {
+          if(node.hit(wx, wy).isEmpty) {
+            downNode = None
+            node.notifyPointerLeave()
+          }
+        })
       }
     }
 
@@ -110,6 +129,9 @@ trait ScrollPaneComponent {
       scrollingVelocityX = 0.25f*(cameraX - targetCameraX)
       scrollingVelocityY = 0.25f*(cameraY - targetCameraY)
 
+      // No matter what was the down node (this or some other one because
+      // we moved) we should clear the down node now.
+      downNode = None
       val wx = x + cameraX.toInt
       val wy = y + cameraY.toInt
       root.hit(wx, wy).forall(node => node.notifyUp(wx, wy))
@@ -120,6 +142,24 @@ trait ScrollPaneComponent {
       scrollingVelocityX = 0.25f*(cameraX - targetCameraX)
       scrollingVelocityY = 0.25f*(cameraY - targetCameraY)
     }
+
+    /* 
+     * We set the clickCondition to filter click events on the ScrollPane
+     * to only these that would be valid for the underlying nodes.
+     * The goal is to prevent a quick scroll to be interpreted as a click
+     * on a node (while not forgetting to interpret legitimate click events).
+     * We then use the notifyClick of this ScrollPane to forward to the underlying
+     * nodes.
+     */
+    override def clickCondition(dx: Int, dy: Int, duration: Long): Boolean = {
+      duration < 500 && dx < 3 && dx > -3 && dy < 3 && dy > -3
+    }
+    override def notifyClick(x: Int, y: Int): Boolean = {
+      val wx = x + cameraX.toInt
+      val wy = y + cameraY.toInt
+      root.hit(wx, wy).forall(node => node.notifyClick(wx, wy))
+    }
+
 
     override def update(dt: Long): Unit = {
       if(pressed) {

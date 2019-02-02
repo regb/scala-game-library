@@ -19,15 +19,14 @@ trait ScreensComponent {
 
     val viewport = new Viewport(Window.width, Window.height)
 
-    val scene = new SceneGraph(Window.width, 3*Window.height, viewport)
+    val scene = new SceneGraph(Window.width, Window.height, viewport)
 
     val levelsPane = new ScrollPane(0, 0, Window.width, Window.height, Window.width, 3*Window.height)
     scene.addNode(levelsPane)
 
-    class Button(i: Int, _x: Int, _y: Int) extends SceneNode(_x, _y, 100, 30) with Clickable {
+    class Button(i: Int, _x: Int, _y: Int) extends SceneNode(_x, _y, 100, 30) {
       private var pressed = false 
       override def notifyDown(x: Int, y: Int): Boolean = {
-        super.notifyDown(x, y)
         println(s"button $i down at ($x, $y)")
         pressed = true
         true
@@ -38,7 +37,6 @@ trait ScreensComponent {
       }
 
       override def notifyUp(x: Int, y: Int): Boolean = {
-        super.notifyUp(x, y)
         println(s"button $i up at ($x, $y)")
         pressed = false
         true
