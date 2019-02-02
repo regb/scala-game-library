@@ -246,6 +246,37 @@ lazy val snakeDesktopNative = (project in file("./examples/snake/desktop-native"
   )
   .dependsOn(coreNative, desktopNative, snakeCoreNative)
 
+lazy val menuCommonSettings = Seq(
+  version        := "1.0",
+  scalaVersion   := scalaVer,
+  scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
+)
+
+lazy val menuCore = (crossProject(JSPlatform, JVMPlatform, NativePlatform).crossType(CrossType.Pure) in file("./examples/menu/core"))
+  .settings(menuCommonSettings: _*)
+  .settings(noPublishSettings: _*)
+  .settings(name := "menu-core")
+  .jvmSettings(
+    exportJars := true
+  )
+  .nativeSettings(scalaVersion := scalaNativeVer)
+  .jvmConfigure(_.dependsOn(coreJVM))
+  .jsConfigure(_.dependsOn(coreJS))
+  .nativeConfigure(_.dependsOn(coreNative))
+
+lazy val menuCoreJVM = menuCore.jvm
+lazy val menuCoreJS = menuCore.js
+lazy val menuCoreNative = menuCore.native
+
+lazy val menuDesktopAWT = (project in file("./examples/menu/desktop-awt"))
+  .settings(menuCommonSettings: _*)
+  .settings(noPublishSettings: _*)
+  .settings(
+    name := "menu-desktop-awt",
+    fork in run := true
+  )
+  .dependsOn(coreJVM, desktopAWT, menuCoreJVM)
+
 lazy val OS = sys.props("os.name").toLowerCase
 lazy val LinuxName = "Linux"
 lazy val MacName = "Mac OS X"

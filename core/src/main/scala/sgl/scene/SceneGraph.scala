@@ -10,40 +10,45 @@ trait SceneGraphComponent {
 
   /** The main container element to organize a scene
     *
-    * Is somewhat similar to a GameScreen interface, but is meant to
+    * It is somewhat similar to a GameScreen interface, but is meant to
     * build a hierarchy of objects, providing chained input processing
     * and rendering into local coordinates.
     *
-    * This can automatically organize collection of SceneNode elements,
-    * spirtes, etc, with automatically calling their update method, and
-    * render them in their own local coordinates.
+    * This can automatically organize collection of SceneNode elements, sprites,
+    * etc, with calling their update method, and rendering them in their own
+    * local coordinates.
     *
-    * Should be well suited to build GUI such as Game Menus, HUD, and also
+    * This should be well suited to build GUI such as Game Menus, HUD, and also
     * for simple gameplay screen.
     *
     * Another difference with GameScreen is that this exposes an Event system
-    * for the objects in the graph. The goal is really to provide a higher
-    * level (likely less efficient) abstraction on top of the core providers
-    * of graphics and game features.
+    * for the objects in the graph. The goal is really to provide a higher-level
+    * (likely less efficient) abstraction on top of the core providers of
+    * graphics and other platform features.
     */
   class SceneGraph(width: Int, height: Int, val viewport: Viewport) {
 
     private var downEvents: HashMap[Int, (SceneNode, Long)] = new HashMap
 
-    /** Process an input event
+    /** Process an input event in the graph.
       *
       * Each input you wish to handle in the Scene must be processed by the SceneGraph 
       * in order to dispatch it to the right node. The SceneGraph returns true if
-      * the event was handled by some node, false if ignored. In most case, the
-      * caller will want to stop processing an event further if it was processed (typically if the
-      * caller organizes a HUD on top of its own game map, then processInput will return true if the HUD 
-      * intercepts the input event, and thus the caller should consider it as intercepted).
+      * the event was handled by some node, false if ignored.
+      *
+      * In most case, the caller will want to stop processing an event further if it was processed
+      * (typically if the caller organizes a HUD on top of its own game map). When that's the case
+      * the caller can use the returned value from the SceneGraph and if it is true, it means the
+      * input was hit and handled by some of the graph nodes, thus it can be considered as intercepted
+      * and not processed further.
       */
     def processInput(input: Input.InputEvent): Boolean = {
       val hitPosition: Option[(Int, Int)] = input match {
         case MouseDownEvent(x, y, _) => Some(viewport.screenToWorld(x, y))
+        case MouseMovedEvent(x, y) => Some(viewport.screenToWorld(x, y))
         case MouseUpEvent(x, y, _) => Some(viewport.screenToWorld(x, y))
         case TouchDownEvent(x, y, _) => Some(viewport.screenToWorld(x, y))
+        case TouchMovedEvent(x, y, _) => Some(viewport.screenToWorld(x, y))
         case TouchUpEvent(x, y, _) => Some(viewport.screenToWorld(x, y))
         case _ => None
       }
@@ -82,6 +87,13 @@ trait SceneGraphComponent {
             val (wx, wy) = viewport.screenToWorld(x, y)
             downEvents(p) = (node, System.millis)
             node.notifyDown(wx, wy)
+
+          case MouseMovedEvent(x, y) =>
+            val (wx, wy) = viewport.screenToWorld(x, y)
+            node.notifyMoved(wx, wy)
+          case TouchMovedEvent(x, y, p) =>
+            val (wx, wy) = viewport.screenToWorld(x, y)
+            node.notifyMoved(wx, wy)
 
           case MouseUpEvent(x, y, _) =>
             val (wx, wy) = viewport.screenToWorld(x, y)
@@ -233,6 +245,7 @@ trait SceneGraphComponent {
     def notifyDown(x: Int, y: Int): Boolean = false
     def notifyUp(x: Int, y: Int): Boolean = false
 
+    def notifyMoved(x: Int, y: Int): Unit = ()
 
     /* Essentially I don't know how to design the event system, so I just add
      * the simplest thing that works for the current game I'm working on, which
@@ -242,6 +255,13 @@ trait SceneGraphComponent {
      * else the event will be sent higher in the hierarchy.
      * Coordinates are local to the node (this.x + x would be local to the parent).
      */
+     // TODO: click should only be notified when the pointer is pretty much at the same
+     //       point to when it went down. Reasons are that a natural click is down-up,
+     //       without any move in between. We can tolerate a few pixels of move, due
+     //       to small imprecsision. We should make the tolerance a parameter configurable
+     //       by the client. Also, with such implementation, buttons will work nicely on
+     //       top of scrollable pane, because we want the event to tickle down to the scrolling
+     //       pane and not be interecepted by a button click.
     def notifyClick(x: Int, y: Int): Boolean = false
 
     // Rule to determine if a click duration (down to up, in ms) from
@@ -319,6 +339,32 @@ trait SceneGraphComponent {
       els.foreach(el => gr.addNode(el))
       gr
     }
+  }
+
+  trait Clickable extends SceneNode {
+
+    //def notifyClick(x: Int, y: Int): Boolean
+
+    private var downPos: Option[(Int, Int)] = None
+
+    override def notifyDown(x: Int, y: Int): Boolean = {
+      downPos = Some((x, y))
+      super.notifyDown(x, y)
+    }
+
+    override def notifyPointerLeave(): Unit = {
+      downPos = None
+      super.notifyPointerLeave()
+    }
+
+    override def notifyUp(x: Int, y: Int): Boolean = {
+      if(downPos.nonEmpty) {
+        notifyClick(x, y)
+        downPos = None
+      }
+      super.notifyUp(x, y)
+    }
+
   }
 
 }

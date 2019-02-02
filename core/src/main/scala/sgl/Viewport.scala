@@ -5,13 +5,16 @@ trait ViewportComponent {
 
   import Viewport._
 
-  class Viewport(private var screenWidth: Int, private var screenHeight: Int) {
+  class Viewport(screenWidth: Int, screenHeight: Int) {
   
     // Top-left position of the camera clip.
-    private var cameraX: Int = 0
-    private var cameraY: Int = 0
+    private var _cameraX: Int = 0
+    private var _cameraY: Int = 0
     private var cameraWidth: Int = screenWidth
     private var cameraHeight: Int = screenHeight
+
+    def cameraX: Int = _cameraX
+    def cameraY: Int = _cameraY
 
     // Could have a mapping from camera-world coordinates to screen coordinates
     // maybe something like 1 unit = X px
@@ -37,8 +40,8 @@ trait ViewportComponent {
     def height: Int = screenHeight
   
     def setCamera(x: Int, y: Int, w: Int, h: Int): Unit = {
-      cameraX = x
-      cameraY = y
+      _cameraX = x
+      _cameraY = y
       val newDim = w != cameraWidth || h != cameraHeight
       cameraWidth = w
       cameraHeight = h
@@ -47,8 +50,8 @@ trait ViewportComponent {
     }
   
     def translateCamera(dx: Int, dy: Int): Unit = {
-      cameraX += dx
-      cameraY += dy
+      _cameraX += dx
+      _cameraY += dy
     }
 
     // Update fields that store the details of the scaling.
@@ -104,7 +107,7 @@ trait ViewportComponent {
   
     def withViewport(canvas: Graphics.Canvas)(body: => Unit): Unit = {
       canvas.withSave{
-        canvas.translate(cameraX, cameraY)
+        canvas.translate(_cameraX, _cameraY)
         // TODO: screenX and screenY would allow to handle viewport as sub-part of the screen
         //       (like split-screen)
         canvas.clipRect(0, 0, screenWidth, screenHeight)
