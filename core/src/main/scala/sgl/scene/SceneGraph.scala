@@ -281,9 +281,10 @@ trait SceneGraphComponent {
       * still be considered a click under these conditions. If it returns
       * false, then it means that no click event will be notified on the node.
       *
-      * @default true, which means that as long as there is a down followed by
-      *   an up event, on the same node, it will generate a click event for this
-      *   node.
+      * Default implementation always returns true, which means that as long as
+      * there is a down followed by an up event, on the same node, it will
+      * generate a click event for this node. Override if you want to fine tune
+      * the behaviour.
       */
     def clickCondition(dx: Int, dy: Int, duration: Long): Boolean = true
 
