@@ -26,6 +26,31 @@ trait ScrollPaneComponent {
     * nodes captures an event, the pane itself will interecept it and notify
     * the event. This is by opposition to a SceneGroup which also behave as some
     * sort of nodes container, but will not interecept events outside the nodes.
+    *
+    * A ScrollPane handles events and forward them to their elements according to
+    * the following rules. It first tries to intercept any scrolling action and
+    * only apply it to itself without forwarding it below. That means that the down/moved/up
+    * sequence of events that could potentially touch a node in the pane will never
+    * be seen by that node. However, when the action does not look like a scrolling
+    * move, it will send the pointer down, pointer up, and potentially click event to
+    * the selected node. This procedures involves a good deal of estimation, because
+    * the first step of a scroll involve a down event and the last step involve an up
+    * event. To handle that, the ScrollPane will delay the initial down event and determine
+    * if this is a scroll or not, and if it so, it will never forward the down event. However,
+    * if the player does not start scrolling right away (within a few 10s of ms), then the
+    * down event will be sent to the node. At this point, the player might start scrolling
+    * anyway, which will be interpreted as a loss of focus for the selected node, which
+    * will be sent an up event (event though there was no actual up event from the player).
+    * There will also not be any click event there, the intent being that the node gets a
+    * down event to update its state (display a pressed state), then an up event to reset its
+    * state, but no click event so no action taken. If the player does a regular click action,
+    * the sequence on the selected node will be down-up-click, and an action can be taken
+    * on the click event.
+    *
+    * Nodes contained in the ScrollPane should thus expect to see down and up events, and
+    * potentially no click event afterwards. The up event should be seen as the cancel
+    * of the down event. The node could also see a sequence of down-pointerleave, without
+    * an up event. An up event does not literally means that the player lifted the pointer.
     */
   class ScrollPane(_x: Int, _y: Int, 
                    screenWidth: Int, screenHeight: Int,
@@ -54,25 +79,6 @@ trait ScrollPaneComponent {
       targetCameraY = cameraY
     }
 
-    /* Returns the ScrollPane if it is hit and potentially some children nodes.
-     *
-     * Since the pane is just a rectangular transparent element, it will use
-     * the default bounding box to check if it is being hit. On top of that, we
-     * also send the hit to children nodes, and returns the topmost in the
-     * stack.
-     *
-     * Contrary to the behaviour of most nodes that only return the hit node if
-     * it is the most visible one (on top of a stack), in the case of the
-     * ScrollPane we need to also return the pane itself, so that it can properly
-     * handle scroll events (drag and drop) that would otherwise be intercepted by
-     * a floating button.
-     */
-    //override def hit(x: Int, y: Int): Seq[SceneNode] = {
-    //  val wx = x + cameraX
-    //  val wy = y + cameraY
-    //  super.hit(x, y) +: root.hit(wx, wy)
-    //}
-
     /*
      * For smooth scrolling, we use a system of delayed
      * camera, where the scrolling set the target and
@@ -100,12 +106,30 @@ trait ScrollPaneComponent {
     private var scrollingVelocityX = 0f
     private var scrollingVelocityY = 0f
 
-    // TODO: feels like we are duplicating some of the work that is done in the
-    //       StepGraph for tracking down events. This is necessary since hit only
-    //       returns the Pane and not the children nodes, and we need to forward
-    //       all the events in the hierarchy.
-    private var downNode: Option[SceneNode] = None
-    // TODO: This will eventually require more duplication for supporting the notifyPointerEnter
+    /*
+     * Store a down event on a children node before actually notifying the event.
+     * The idea is to try to determine if the event should be forwarded to the
+     * node or intercepted by the scrolling layer as a scroll event. If this
+     * down event is part of a scrolling motion, it should not even notify the
+     * underlying node that was touched by it. On the other hand, if we don't
+     * have additional scrolling motion, then we need to notify it (with a small
+     * delay). The coordinates are stored in the world coordinates.
+     */
+    private var delayedDownNode: Option[(SceneNode, (Int, Int, Long))] = None
+    private var downNode: Option[(SceneNode, (Int, Int, Long))] = None
+    /*
+     * TODO: There is a general feeling of duplication with some of the work done in
+     *   the SceneGraph event handling. The StepGraph is also tracking down events.
+     *   This is necessary since hit only returns the Pane and not the children nodes,
+     *   and we need to forward the down/up/click events to them. That said, there is
+     *   also some special handling happening only for the ScrollPane, such as the
+     *   notion of delaying the down event to try to determine if this is a down event
+     *   or it is just part of the scrolling move and should thus not be forwarded to
+     *   the nodes. That code probably needs to live in the ScrollPane only, so maybe
+     *   it is fine to have that duplication.
+     * TODO: This will eventually require more duplication for supporting the 
+     *   notifyPointerEnter.
+     */
 
     override def notifyDown(x: Int, y: Int): Boolean = {
       prevX = x
@@ -116,8 +140,8 @@ trait ScrollPaneComponent {
 
       val wx = x + cameraX.toInt
       val wy = y + cameraY.toInt
-      downNode = root.hit(wx, wy)
-      downNode.forall(node => node.notifyDown(wx, wy))
+      delayedDownNode = root.hit(wx, wy).map(n => (n, (wx, wy, 0l)))
+      true
     }
 
     override def notifyMoved(x: Int, y: Int): Unit = {
@@ -131,12 +155,13 @@ trait ScrollPaneComponent {
 
         val wx = x + cameraX.toInt
         val wy = y + cameraY.toInt
-        downNode.foreach(node => {
-          if(node.hit(wx, wy).isEmpty) {
+        downNode.orElse(delayedDownNode).foreach{ case (node, _) => {
+          if(!node.hit(wx, wy).exists(_ == node)) {
             downNode = None
+            delayedDownNode = None
             node.notifyPointerLeave()
           }
-        })
+        }}
       }
     }
 
@@ -147,16 +172,40 @@ trait ScrollPaneComponent {
 
       // No matter what was the down node (this or some other one because
       // we moved) we should clear the down node now.
-      downNode = None
       val wx = x + cameraX.toInt
       val wy = y + cameraY.toInt
-      root.hit(wx, wy).forall(node => node.notifyUp(wx, wy))
+      delayedDownNode.foreach{ case (node, (ox, oy, _)) => {
+        // If there is an up event before we have decided on what to do
+        // with the delayed down event, it probably means that the down
+        // event was relevant to the underlying element because
+        // going up that quickly is unlikely to be a scroll move.
+        // So we first notify the down event, mostly for consistency.
+        node.notifyDown(ox, oy)
+        // Then it is safe to notify the up event on the same node, because
+        // If we had moved outside of the initial down node the delayedDownNode
+        // would have been cleared by the notifyMoved event.
+        node.notifyUp(wx, wy)
+        delayedDownNode = None
+      }}
+      downNode.foreach{ case (node, _) => {
+        // If the downNode is still active, it means the pointer is still within
+        // it so we should just notify up.
+        node.notifyUp(wx, wy)
+        downNode = None
+      }}
+      true
     }
 
     override def notifyPointerLeave(): Unit = {
       pressed = false
       scrollingVelocityX = 0.25f*(cameraX - targetCameraX)
       scrollingVelocityY = 0.25f*(cameraY - targetCameraY)
+
+      downNode.orElse(delayedDownNode).foreach{ case (node, _) => {
+        downNode = None
+        delayedDownNode = None
+        node.notifyPointerLeave()
+      }}
     }
 
     /* 
@@ -168,16 +217,38 @@ trait ScrollPaneComponent {
      * nodes.
      */
     override def clickCondition(dx: Int, dy: Int, duration: Long): Boolean = {
-      duration < 500 && dx < 3 && dx > -3 && dy < 3 && dy > -3
+      duration < 700 && dx < 3 && dx > -3 && dy < 3 && dy > -3
     }
+
     override def notifyClick(x: Int, y: Int): Boolean = {
       val wx = x + cameraX.toInt
       val wy = y + cameraY.toInt
       root.hit(wx, wy).forall(node => node.notifyClick(wx, wy))
     }
 
-
     override def update(dt: Long): Unit = {
+      delayedDownNode = delayedDownNode.map{ case (n, (x,y,d)) => (n, (x,y,d+dt)) }
+      delayedDownNode.foreach{ case e@(node, (ox, oy, duration)) => {
+        if(duration > 80) {
+          if(clickCondition((prevX+cameraX-ox).toInt, (prevY+cameraY-oy).toInt, duration)) {
+            node.notifyDown(ox, oy)
+            downNode = Some(e)
+          }
+          delayedDownNode = None
+        }
+      }}
+      // Proactively check if we are about to lose the click focus, and if
+      // so, remove the down node and notify an up event, but no click event.
+      downNode = downNode.map{ case (n, (x,y,d)) => (n, (x,y,d+dt)) }
+      downNode.foreach{ case (node, (ox, oy, duration)) => {
+        val wx = (prevX+cameraX).toInt
+        val wy = (prevY+cameraY).toInt
+        if(!clickCondition(wx-ox, wy-oy, duration)) {
+          node.notifyUp(wx, wy)
+          downNode = None
+        }
+      }}
+
       if(pressed) {
         cameraX += 0.25f*(targetCameraX - cameraX)
         cameraY += 0.25f*(targetCameraY - cameraY)
