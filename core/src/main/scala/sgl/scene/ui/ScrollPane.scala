@@ -38,19 +38,35 @@ trait ScrollPaneComponent {
     private var cameraX = 0f
     private var cameraY = 0f
 
-    /** Returns the ScrollPane if it is hit and potentially some children nodes.
+    /** Set the scroll pane camera.
       *
-      * Since the pane is just a rectangular transparent element, it will use
-      * the default bounding box to check if it is being hit. On top of that, we
-      * also send the hit to children nodes, and returns the topmost in the
-      * stack.
-      *
-      * Contrary to the behaviour of most nodes that only return the hit node if
-      * it is the most visible one (on top of a stack), in the case of the
-      * ScrollPane we need to also return the pane itself, so that it can properly
-      * handle scroll events (drag and drop) that would otherwise be intercepted by
-      * a floating button.
+      * The camera is the top-left point where the visible
+      * part of the pane should be placed. By default it
+      * is set on (0,0), but can be manually moved with
+      * this method. The rectangle show is then (x,y) with
+      * lengths (screenWidth, screenHeight).
       */
+    def setCamera(x: Int, y: Int): Unit = {
+      cameraX = x
+      cameraY = y
+      clipCamera()
+      targetCameraX = cameraX
+      targetCameraY = cameraY
+    }
+
+    /* Returns the ScrollPane if it is hit and potentially some children nodes.
+     *
+     * Since the pane is just a rectangular transparent element, it will use
+     * the default bounding box to check if it is being hit. On top of that, we
+     * also send the hit to children nodes, and returns the topmost in the
+     * stack.
+     *
+     * Contrary to the behaviour of most nodes that only return the hit node if
+     * it is the most visible one (on top of a stack), in the case of the
+     * ScrollPane we need to also return the pane itself, so that it can properly
+     * handle scroll events (drag and drop) that would otherwise be intercepted by
+     * a floating button.
+     */
     //override def hit(x: Int, y: Int): Seq[SceneNode] = {
     //  val wx = x + cameraX
     //  val wy = y + cameraY
