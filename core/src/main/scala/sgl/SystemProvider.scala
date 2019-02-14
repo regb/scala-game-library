@@ -55,6 +55,9 @@ trait SystemProvider {
       */
     def millis(): Long
 
+    // TODO: nanos too? Probably useful to expose when trying to measure
+    //       perf.
+
     /*
      * Checks if a resource is present in the resources.
      * NOTE: Commented out for now, as I'm not sure there is a good use case for

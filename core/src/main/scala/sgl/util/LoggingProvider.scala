@@ -108,6 +108,17 @@ trait LoggingProvider {
       */
     def logLevel: LogLevel
 
+
+    // TODO: Maybe the log function should be public and the logLevel
+    //       could be NoLOgging (unlike the comment below). Hiding it
+    //       does not seem to bring much, and there are use cases where
+    //       the clients want to log differently the same line given
+    //       some current conditions (that are not just the logger config).
+    //       One such case is recursive search function, which would like
+    //       to log top level recursion but the more deep they go the less
+    //       verbose they should be due to how unreadable the logs would
+    //       become.
+
     /** Output the string with given level and tag
       *
       * The level is the importance of the message, and should never be 
