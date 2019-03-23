@@ -3,13 +3,60 @@ package sgl.util
 // Not too sure how to export these functionalities, but for
 // a start we will just have a static object with one function
 // per tweening style (linear, quadratic, or any other crazy shapes).
+
+/** Utils for standard tweening/easing effects.
+  *
+  * Tweening/easing is used as a way to interpolate intermediate state between
+  * a starting and a final state. Typically, it can be used to interpolate a
+  * movement from X to Y, by choosing how quickly and with what kind of effect
+  * the object should be moved. The simplest kind of tweening is a linear
+  * tweening, which will make the object move at constant speed. Because linear
+  * tweening is moving at constant speed, it is technically not a form of
+  * easing, which should accelerate/decelerate in order to smooth out the
+  * velocity from a starting point to an end point (in most cases, from
+  * velocity 0 to velocity 0 again, in which case linear tweening wouldn't look
+  * very natural).
+  *
+  * These utils are abstracting on the mathematical formulas, providing a
+  * consistent immutable interface (a simple function) with the wanted
+  * duration, a start and end state, and the current elapsed time, and will
+  * return the point between start and end for the given elapsed time. Using
+  * formulas that can give the right state for any current time is a much
+  * superior alternative to trying to keep the current position in the game
+  * state from frame to frame, as it will naturally correct any rounding issues
+  * over time (by recomputing) and ensure that the start and end points will be
+  * exact. Besides, some types of easing are mathematically tricky so it makes
+  * sense to rely on well-known formulas.
+  *
+  * Besides linear, the other tweening effects are easing, which will move at
+  * different velocity depending on the time in the animation. The standard
+  * terminology is to use ease in and ease out, with ease in meaning that the
+  * animation starts slow and accelerate, and ease out meaning that the animation
+  * starts fast and slows down towards the end. So, for example, easeInQuad is
+  * a quadratic tweening, which will start slowly and accelerate, meaning that
+  * if we go from 0 to 1, at half of the animation it would be at 0.25 only and
+  * cover the remaining 0.75 in the second half of the animation. Sometimes,
+  * both are combined, so easeInOut, means that the animation would starts slow,
+  * accelerate towards the middle, and then decelerate again from the middle
+  * until the end.
+  **/
 object TweeningEquations {
 
-  // General signature of a tweening function: (elapsed, start, end, duration) => position.
+  // General signature of a tweening function: (duration, start, end) => (duration) => position.
   // The returned position is between start and end, depending on how much elapsed time
   // until the total duration. Abstracting the sort of tweening would be useful for writing
   // the main engine code and tweaking the exact tweening functions.
-  type TweeningFunction = (Int, Double, Double, Int) => Double
+  // The reasoning for such signature is that we will typically choose parameters for the
+  // tweening function (total duration, start and end position) and then query with the
+  // same parameters several times as the animation progresses (with different elapsed time).
+  // One note about this interface, in the end, it can all be reduced to a [0,1] interval,
+  // with the idea that the time/duration is the input between [0,1], the output is
+  // the tweening effect between [0,1], which is used to apply to the start/end. For example,
+  // a quad tweening could be a function from [0,1] to [0,1], with equation x => x*x, so
+  // for 0.5 (half) it returns 0.25. Then the result X can be used in a standard interpolation
+  // (1-X)*A + X*B (or A + X(B-A) if that's easier to read) to get from A to B. With that
+  // observation, another interface would be really just a function (Double) => Double.
+  type TweeningFunction = ((Int, Double, Double) => (Int)) => Double
 
   /*
    * One design consideration is what to do when the elapsed time is out of bound
@@ -50,11 +97,72 @@ object TweeningEquations {
    * than an increasing one.
    */
   
-  def linear(elapsed: Int, start: Double, end: Double, duration: Int): Double = {
+  def linear(duration: Int, start: Double, end: Double)(elapsed: Int): Double = {
     require(duration > 0)
     if(elapsed <= 0) start
     else if(elapsed >= duration) end
     else start + (elapsed/duration.toDouble)*(end-start)
   }
 
+  def easeInQuad(duration: Int, start: Double, end: Double)(elapsed: Int): Double = {
+    if(elapsed <= 0) start
+    else if(elapsed >= duration) end
+    else {
+      val progress = elapsed/duration.toDouble
+      start + (progress*progress)*(end-start)
+    }
+  }
+  def easeOutQuad(duration: Int, start: Double, end: Double)(elapsed: Int): Double = {
+    if(elapsed <= 0) start
+    else if(elapsed >= duration) end
+    else {
+      val inverseProgress = (duration-elapsed)/duration.toDouble  // 1 -> 0.5 -> 0
+      val normalizedQuad = 1 - inverseProgress*inverseProgress  // 0 -> 0.75 -> 1
+      start + normalizedQuad*(end-start)
+    }
+  }
+  def easeInOutQuad(duration: Int, start: Double, end: Double)(elapsed: Int): Double = {
+    if(elapsed <= 0) start
+    else if(elapsed >= duration) end
+    else {
+      val progress = elapsed/(duration*0.5)
+      if(progress < 1) {
+        start + progress*progress*0.5*(end-start)
+      } else { // progress is 1 -> 1.5 -> 2
+        val newProgress = progress - 1  // 0 -> 0.5 -> 1
+        val inverseProgress = 1 - newProgress  // 1 -> 0.5 -> 0
+        val normalizedQuad = 1 - inverseProgress*inverseProgress  // 0 -> 0.75 -> 1
+        (start + 0.5*(end-start)) + normalizedQuad*0.5*(end-start)
+      }
+    }
+  }
+  // TODO: easeOutInQuad
+
+  def easeInCube(duration: Int, start: Double, end: Double)(elapsed: Int): Double = {
+    if(elapsed <= 0) start
+    else if(elapsed >= duration) end
+    else {
+      val progress = elapsed/duration.toDouble
+      start + (progress*progress*progress)*(end-start)
+    }
+  }
+  def easeOutCube(duration: Int, start: Double, end: Double)(elapsed: Int): Double = {
+    if(elapsed <= 0) start
+    else if(elapsed >= duration) end
+    else {
+      val inverseProgress = (duration-elapsed)/duration.toDouble  // 1 -> 0.5 -> 0
+      val normalizedCube = 1 - inverseProgress*inverseProgress*inverseProgress  // 0 -> 0.875 -> 1
+      start + normalizedCube*(end-start)
+    }
+  }
+  // TODO: easeInOutCube and easeOutInCube
+
+
+  // TODO: some sort of bounces, there is a easeInElastic floating around the web as a starting
+  //       point. Also easeInBounce. Note that these are likely to need addition parameters (bounce
+  //       parameters, etc), so they could be defined as 
+  //                (Params) => (Int, Double, Double) => Int => Double
+  //       sine-based functions are nice to, an easeInOut with sin/cos should also be a standard.
+  //       basically sine is another smooth curve (as quad and cube) so it should be added with
+  //       the same cases. Also add exp (and maybe circle) based curve.
 }
