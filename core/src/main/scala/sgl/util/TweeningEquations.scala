@@ -178,7 +178,7 @@ object TweeningEquations {
     * quadratic). It is an out easing because the sine function between 0 and
     * PI/2 goes up slightly faster first before flattening.
     */
-  def easeOutSineNormalized(t: Double): Double = {
+  private def easeOutSineNormalized(t: Double): Double = {
     math.sin(t*math.Pi/2)
   }
   def easeOutSine: TweeningFunction = easeGeneric(easeOutSineNormalized)
@@ -189,7 +189,7 @@ object TweeningEquations {
     * from -1 to 0, and is then shifted by +1 to bring back to the normalized
     * area.
     */
-  def easeInSineNormalized(t: Double): Double = {
+  private def easeInSineNormalized(t: Double): Double = {
     math.sin(t*math.Pi/2 + 1.5*math.Pi) + 1
   }
   def easeInSine: TweeningFunction = easeGeneric(easeInSineNormalized)
@@ -216,8 +216,11 @@ object TweeningEquations {
     * should be good enough. One standard in the web is to use A=10, which we can
     * suggest as default, but the function can be made general in any case. The
     * base of the exponent can be anything, 2 or e are standard as well.
+    * TODO: maybe the mapping should be from -infinity to +infinity for the input, and
+    *       then the output is from 0 to +infinity but we just want to map it to 0-1, this
+    *       might give a better true exponential shape.
     */
-  def easeInExpNormalized(b: Double = 2, a: Double = 10)(t: Double): Double = {
+  private def easeInExpNormalized(b: Double = 2, a: Double = 10)(t: Double): Double = {
     math.pow(b, a*(t-1))
   }
   def easeInExp: TweeningFunction = easeGeneric(easeInExpNormalized())
@@ -231,7 +234,7 @@ object TweeningEquations {
     * is it quickly goes towards 0 and then flattens. Taking 1 - this will tend
     * get the 0 to 1 with the out shape.
     */
-  def easeOutExpNormalized(b: Double = 2, a: Double = 10)(t: Double): Double = {
+  private def easeOutExpNormalized(b: Double = 2, a: Double = 10)(t: Double): Double = {
     1 - math.pow(b, -a*t)
   }
   def easeOutExp: TweeningFunction = easeGeneric(easeOutExpNormalized())
@@ -243,4 +246,57 @@ object TweeningEquations {
   //       easing that we want: an elastic based on sine, and an easing that overshoot and
   //       slowy go back to end coming from above (elastic oscillates many times, the other one
   //       just go once over and come back to halt).
+
+  /** Compute an elastic easing effect by using a sine function.
+    *
+    * The idea is to start at 0 and end at 1, while oscillating slightly over 1
+    * through the course of the move. The oscilliation gets dampened more and
+    * more, which is achieved through an amplifier that becomes smaller and
+    * smaller as we reach toward the end of the animation.
+    *
+    * As it is an ease-out, it starts strong and quickly overshoots 1, then
+    * slows down as it osciliates toward the end state of 1. Parameters that
+    * can be controled are the strength of the amplification (a) and the
+    * frequency of the period (p). Let us try to derive the mathematical
+    * formula to accomplish this effect.
+    *
+    * Let t be [0,1], then cos(t * (2*Pi)) will have exactly one cycle,
+    * starting at 1, and ending at 1 with a full period (going all the way down
+    * to -1).  Let's introduce the repetition (period) p, now cos(t * p*(2*Pi))
+    * is going to be how many times we cycle entirely. So if p=2, we will
+    * double the number of cycles, so a more intense oscilliation.
+    *
+    * At this point, we have a simple function that osciliate and we can choose
+    * how often it does it. But we need to combine it somehow to generate an
+    * easing effect that starts from 0, end at 1, and is going from strong to
+    * weak. Going from strong to weak can be controlled by changing the
+    * amplitude of the signal, and this change can be done using something
+    * similar to the exponential easing function. The final insight, to go from
+    * 0 to 1, is that the amplitude will naturally start strong and end close
+    * to 0, so at the end since the amplitude is 0, we will need the function
+    * to return the final point, or 1 +/- A*cos. Since the amplitude is strong
+    * when we start (in practice, that is 1), and the cos starts at 1, we want
+    * to do 1 - A*cos to start at 0 and end at 1.
+    *
+    * The amplitude should be computed to start at 1 and go to 0 in an
+    * exponential way, which can be done by math.pow(2, -A*t). A can be set to
+    * control how quickly we want to get to low amplitude, but 10 seems to be a
+    * good default.  Note that A can be set anywhere larger than 0, but the
+    * smallest values will mean that the amplitude will be very strong for a
+    * very long time, and essentially it will make it look like the value at 1
+    * might still be quite far from 1 because the amplitude is still large. In
+    * practice 7 seems to be the minimum below which the end of the animation
+    * can look bad (discrete jump to bridge the final state). Note that since
+    * the amplitude is always between [0,1], the ease effect will go very fast
+    * slightly above 1 (with a theoretical max of 2 due to the cos, but with
+    * realistic value it's more like 1.4) and then slightly below again.
+    *
+    * Let's put everything together, the function is 1 - math.pow(2,
+    * -A*t)*math.cos(t*P*(2*math.Pi)) with A (default 10) and P (default 2)
+    * that can be played with to get stronger amplitude and more cycles.
+    */
+  private def easeOutElasticNormalized(a: Double = 10, p: Double = 2)(t: Double): Double =
+    1 - math.pow(2, -a*t)*math.cos(t*p*(2*math.Pi))
+  def easeOutElastic(a: Double = 10, p: Double = 2): TweeningFunction = easeGeneric(easeOutElasticNormalized(a, p))
+
 }

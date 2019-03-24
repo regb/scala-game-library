@@ -113,6 +113,17 @@ class TweeningEquationsSuite extends FunSuite {
     assert(easeOutExp(100, 0.5, 1.5)(50) > 1)
   }
 
+  test("easeElastic tweening starting and ending values with no or total elapsed time") {
+    assert(easeOutElastic()(100, 0.5, 1.5)(0) === 0.5)
+    assert(easeOutElastic()(100, 0.5, 1.5)(100) === 1.5)
+  }
+  test("easeElastic tweening near-end points are close to end value") {
+    assert(easeOutElastic()(100, 0.5, 1.5)(1) > 0.5)
+    assert(easeOutElastic()(100, 0.5, 1.5)(1) < 0.6)
+    assert(easeOutElastic()(100, 0.5, 1.5)(99) < 1.6)  // can be slightly over.
+    assert(easeOutElastic()(100, 0.5, 1.5)(99) > 1.4)
+  }
+
   // TODO: general test that covers many points and ensures they are all within bounds
   //       to apply to all but the few easing that go out of bounds sometimes.
 }
