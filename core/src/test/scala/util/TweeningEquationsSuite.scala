@@ -21,6 +21,10 @@ class TweeningEquationsSuite extends FunSuite {
     assert(linear(100, 0.5, 1.5)(50) === 1.0)
     assert(linear(90, 0, 3)(60) === 2d)
   }
+  test("linear tweening all points within bounds") {
+    testPointsWithinBounds(linear, 100, -2, 2)
+    testPointsWithinBounds(linear, 100, -2, 2)
+  }
 
   test("easeQuad tweening starting and ending values with no or total elapsed time") {
     assert(easeInQuad(100, 0.5, 1.5)(0) === 0.5)
@@ -49,6 +53,10 @@ class TweeningEquationsSuite extends FunSuite {
     assert(easeInOutQuad(100, 0, 1)(50) === 0.5)
     assert(easeInOutQuad(100, 0, 1)(75) === 0.875)
   }
+  test("easeQuad tweening all points within bounds") {
+    testPointsWithinBounds(easeOutQuad, 100, -2, 2)
+    testPointsWithinBounds(easeInQuad, 100, -2, 2)
+  }
 
   test("easeCube tweening starting and ending values with no or total elapsed time") {
     assert(easeInCube(100, 0.5, 1.5)(0) === 0.5)
@@ -69,6 +77,10 @@ class TweeningEquationsSuite extends FunSuite {
     assert(easeOutCube(100, 0, 1)(50) === 0.875)
     assert(easeOutCube(100, 0, 100)(50) === 87.5)
     assert(easeOutCube(100, 100, 200)(50) === 187.5)
+  }
+  test("easeCube tweening all points within bounds") {
+    testPointsWithinBounds(easeOutCube, 100, -2, 2)
+    testPointsWithinBounds(easeInCube, 100, -2, 2)
   }
 
   test("easeSine tweening starting and ending values with no or total elapsed time") {
@@ -91,6 +103,10 @@ class TweeningEquationsSuite extends FunSuite {
     assert(easeOutSine(100, 0.5, 1.5)(50) > 1)
     assert(easeInSine(100, 0.5, 1.5)(50) < 1)
   }
+  test("easeSine tweening all points within bounds") {
+    testPointsWithinBounds(easeOutSine, 100, -2, 2)
+    testPointsWithinBounds(easeInSine, 100, -2, 2)
+  }
 
   test("easeExp tweening starting and ending values with no or total elapsed time") {
     assert(easeInExp(100, 0.5, 1.5)(0) === 0.5)
@@ -112,6 +128,10 @@ class TweeningEquationsSuite extends FunSuite {
     assert(easeInExp(100, 0.5, 1.5)(50) < 1)
     assert(easeOutExp(100, 0.5, 1.5)(50) > 1)
   }
+  test("easeExp tweening all points within bounds") {
+    testPointsWithinBounds(easeInExp, 100, -2, 2)
+    testPointsWithinBounds(easeOutExp, 100, -2, 2)
+  }
 
   test("easeElastic tweening starting and ending values with no or total elapsed time") {
     assert(easeOutElastic()(100, 0.5, 1.5)(0) === 0.5)
@@ -124,6 +144,10 @@ class TweeningEquationsSuite extends FunSuite {
     assert(easeOutElastic()(100, 0.5, 1.5)(99) > 1.4)
   }
 
-  // TODO: general test that covers many points and ensures they are all within bounds
-  //       to apply to all but the few easing that go out of bounds sometimes.
+  private def testPointsWithinBounds(f: TweeningFunction, duration: Int, start: Double, end: Double): Unit = {
+    val fn = f(duration, start, end)
+    for(t <- 0 to duration) {
+      assert(fn(t) >= start && fn(t) <= end)
+    }
+  }
 }
