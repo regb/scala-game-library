@@ -70,4 +70,49 @@ class TweeningEquationsSuite extends FunSuite {
     assert(easeOutCube(100, 0, 100)(50) === 87.5)
     assert(easeOutCube(100, 100, 200)(50) === 187.5)
   }
+
+  test("easeSine tweening starting and ending values with no or total elapsed time") {
+    assert(easeOutSine(100, 0.5, 1.5)(0) === 0.5)
+    assert(easeOutSine(100, 0.5, 1.5)(100) === 1.5)
+    assert(easeInSine(100, 0.5, 1.5)(0) === 0.5)
+    assert(easeInSine(100, 0.5, 1.5)(100) === 1.5)
+  }
+  test("easeSine tweening near-end points are close to end value") {
+    assert(easeOutSine(100, 0.5, 1.5)(99) < 1.5)
+    assert(easeOutSine(100, 0.5, 1.5)(99) > 1.4)
+    assert(easeOutSine(100, 0.5, 1.5)(1) > 0.5)
+    assert(easeOutSine(100, 0.5, 1.5)(1) < 0.6)
+    assert(easeInSine(100, 0.5, 1.5)(99) < 1.5)
+    assert(easeInSine(100, 0.5, 1.5)(99) > 1.4)
+    assert(easeInSine(100, 0.5, 1.5)(1) > 0.5)
+    assert(easeInSine(100, 0.5, 1.5)(1) < 0.6)
+  }
+  test("easeSine tweening intermediate points") {
+    assert(easeOutSine(100, 0.5, 1.5)(50) > 1)
+    assert(easeInSine(100, 0.5, 1.5)(50) < 1)
+  }
+
+  test("easeExp tweening starting and ending values with no or total elapsed time") {
+    assert(easeInExp(100, 0.5, 1.5)(0) === 0.5)
+    assert(easeInExp(100, 0.5, 1.5)(100) === 1.5)
+    assert(easeOutExp(100, 0.5, 1.5)(0) === 0.5)
+    assert(easeOutExp(100, 0.5, 1.5)(100) === 1.5)
+  }
+  test("easeExp tweening near-end points are close to end value") {
+    assert(easeInExp(100, 0.5, 1.5)(99) < 1.5)
+    assert(easeInExp(100, 0.5, 1.5)(99) > 1.4)
+    assert(easeInExp(100, 0.5, 1.5)(1) > 0.5)
+    assert(easeInExp(100, 0.5, 1.5)(1) < 0.6)
+    assert(easeOutExp(100, 0.5, 1.5)(99) < 1.5)
+    assert(easeOutExp(100, 0.5, 1.5)(99) > 1.4)
+    assert(easeOutExp(100, 0.5, 1.5)(1) > 0.5)
+    assert(easeOutExp(100, 0.5, 1.5)(1) < 0.6)
+  }
+  test("easeExp tweening intermediate points") {
+    assert(easeInExp(100, 0.5, 1.5)(50) < 1)
+    assert(easeOutExp(100, 0.5, 1.5)(50) > 1)
+  }
+
+  // TODO: general test that covers many points and ensures they are all within bounds
+  //       to apply to all but the few easing that go out of bounds sometimes.
 }

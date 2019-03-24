@@ -56,7 +56,7 @@ object TweeningEquations {
   // for 0.5 (half) it returns 0.25. Then the result X can be used in a standard interpolation
   // (1-X)*A + X*B (or A + X(B-A) if that's easier to read) to get from A to B. With that
   // observation, another interface would be really just a function (Double) => Double.
-  type TweeningFunction = ((Int, Double, Double) => (Int)) => Double
+  type TweeningFunction = (Int, Double, Double) => (Int) => Double
 
   /*
    * One design consideration is what to do when the elapsed time is out of bound
@@ -157,12 +157,90 @@ object TweeningEquations {
   }
   // TODO: easeInOutCube and easeOutInCube
 
+  // Here's the idea of implementating the insight around how all functions can
+  // be reduced to a normalized [0,1] operation.
+  private def easeGeneric(easeNormalized: (Double) => Double): TweeningFunction = {
+    def f(duration: Int, start: Double, end: Double)(elapsed: Int): Double = {
+      if(elapsed <= 0) start
+      else if(elapsed >= duration) end
+      else {
+        val x = easeNormalized(elapsed/duration.toDouble)
+        start + x*(end-start)
+      }
+    }
+    f
+  }
 
-  // TODO: some sort of bounces, there is a easeInElastic floating around the web as a starting
-  //       point. Also easeInBounce. Note that these are likely to need addition parameters (bounce
-  //       parameters, etc), so they could be defined as 
-  //                (Params) => (Int, Double, Double) => Int => Double
-  //       sine-based functions are nice to, an easeInOut with sin/cos should also be a standard.
-  //       basically sine is another smooth curve (as quad and cube) so it should be added with
-  //       the same cases. Also add exp (and maybe circle) based curve.
+  /** Compute the normalized easeOutSine.
+    *
+    * The sine-based ease-out uses the sine function curve between 0 and PI/2,
+    * which is a very light easing (almost linear, even less strong than
+    * quadratic). It is an out easing because the sine function between 0 and
+    * PI/2 goes up slightly faster first before flattening.
+    */
+  def easeOutSineNormalized(t: Double): Double = {
+    math.sin(t*math.Pi/2)
+  }
+  def easeOutSine: TweeningFunction = easeGeneric(easeOutSineNormalized)
+  /** Compute the normalized easeInSine.
+    *
+    * Just as the easeOutSine, this is based on the sine function curve, but
+    * here it is the portion between [3PI/2, 2PI], which has an ease-in shape
+    * from -1 to 0, and is then shifted by +1 to bring back to the normalized
+    * area.
+    */
+  def easeInSineNormalized(t: Double): Double = {
+    math.sin(t*math.Pi/2 + 1.5*math.Pi) + 1
+  }
+  def easeInSine: TweeningFunction = easeGeneric(easeInSineNormalized)
+  //TODO: easeInOutSine and easeOutInSine
+
+
+  /** Compute the normalized easeInExp.
+    *
+    * This is based on an exponential function, hence is a much stronger
+    * acceleration and deceleration than any of the polynomial-based functions.
+    * The idea is still to go from 0 to 1. An exponential function
+    * traditionnaly tend to 0 when put at -infinity, pass by 1 at point 0, (
+    * pass by the base at point 1), and tend to +infinity as the input goes to
+    * +infinity. The idea is to bring back this function into the [0,1]
+    * interval.
+    *
+    * For ease-in, the shape of the exponential good from -infinity to 0, and
+    * it goes from 0 to 1, which are output values that we want. So we just
+    * need to map the input 0 to -infinity and 1 to 0 and then apply the
+    * standard exponential function on the mapping. We can take A*(t-1), which
+    * grows to -A when t is 0 and is 0 when t is 1. Now it's worth noting that the
+    * exponential is quickly going to 0 as the exponent becomes small, in fact even
+    * e^(-3) is already extremely close to 0, so A can be anything > 3 and it
+    * should be good enough. One standard in the web is to use A=10, which we can
+    * suggest as default, but the function can be made general in any case. The
+    * base of the exponent can be anything, 2 or e are standard as well.
+    */
+  def easeInExpNormalized(b: Double = 2, a: Double = 10)(t: Double): Double = {
+    math.pow(b, a*(t-1))
+  }
+  def easeInExp: TweeningFunction = easeGeneric(easeInExpNormalized())
+  /** Compute the normalized easeInExp.
+    *
+    * Most of the reasoning behind the easeInExp applies here. But we just want
+    * to flip the curve, so still from -infinity to 0, but we want to flip the x/y
+    * axis. This could be accomplished by bringing a log, but it can also be done
+    * by tweaking the equation a bit. Essentially, we can make the equation going
+    * from 1 to 0 instead of 0 to 1, by using -A*t, it would keep the shape, that
+    * is it quickly goes towards 0 and then flattens. Taking 1 - this will tend
+    * get the 0 to 1 with the out shape.
+    */
+  def easeOutExpNormalized(b: Double = 2, a: Double = 10)(t: Double): Double = {
+    1 - math.pow(b, -a*t)
+  }
+  def easeOutExp: TweeningFunction = easeGeneric(easeOutExpNormalized())
+  //TODO: easeInOutExp and easeOutInExp
+
+  // TODO: We need a bounce easing, where the state goes to end, then back up a bit, then
+  //       again to end, then back less, etc until stopping at end (like a ball bouncing on
+  //       the floor. This would never go over end, and that is in contrast to the following
+  //       easing that we want: an elastic based on sine, and an easing that overshoot and
+  //       slowy go back to end coming from above (elastic oscillates many times, the other one
+  //       just go once over and come back to halt).
 }
