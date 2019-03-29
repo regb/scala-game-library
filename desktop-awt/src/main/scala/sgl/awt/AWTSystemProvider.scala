@@ -23,6 +23,9 @@ trait AWTSystemProvider extends SystemProvider {
     override def loadText(path: ResourcePath): Loader[Array[String]] = {
       FutureLoader {
         val is = getClass.getClassLoader.getResourceAsStream(path.path)
+        if(is == null) {
+          throw new ResourceNotFoundException(path.path)
+        }
         scala.io.Source.fromInputStream(is).getLines.toArray
       }
     }
@@ -30,6 +33,9 @@ trait AWTSystemProvider extends SystemProvider {
     override def loadBinary(path: ResourcePath): Loader[Array[Byte]] = {
       FutureLoader {
         val is = getClass.getClassLoader.getResourceAsStream(path.path)
+        if(is == null) {
+          throw new ResourceNotFoundException(path.path)
+        }
         val bis = new java.io.BufferedInputStream(is)
         val bytes = new scala.collection.mutable.ListBuffer[Byte]
         var b: Int = 0

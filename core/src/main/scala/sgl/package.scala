@@ -30,4 +30,6 @@
   */
 package object sgl {
 
+  final case class ResourceNotFoundException(path: String) extends Exception(s"Resource <$path> not found")
+
 }

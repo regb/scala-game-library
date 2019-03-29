@@ -18,7 +18,7 @@ trait AWTGraphicsProvider extends GraphicsProvider {
         //TODO: understand and explain why getResource on getClassLoader needs relative path
         val url = getClass.getClassLoader.getResource(path.path)
         if(url == null) {
-          throw new java.io.FileNotFoundException("Resource " + path + " not found.")
+          throw new ResourceNotFoundException(path.path)
         }
         val bi = ImageIO.read(url)
         AWTBitmap(bi)
@@ -47,7 +47,7 @@ trait AWTGraphicsProvider extends GraphicsProvider {
         FutureLoader {
           val res = getClass.getClassLoader.getResourceAsStream(path.path)
           if(res == null) {
-            throw new java.io.FileNotFoundException("Resource " + path + " not found.")
+            throw new ResourceNotFoundException(path.path)
           }
           AWTFont(createFont(TRUETYPE_FONT, res))
         }

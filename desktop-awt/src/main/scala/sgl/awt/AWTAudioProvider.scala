@@ -154,6 +154,9 @@ trait AWTAudioProvider extends AudioProvider {
 
   override def loadSoundFromResource(path: String): Sound = {
     val url = getClass.getClassLoader.getResource(path)
+    if(url == null) {
+      throw new ResourceNotFoundException(path)
+    }
     new Sound(url)
   }
 
@@ -212,6 +215,9 @@ trait AWTAudioProvider extends AudioProvider {
     //  new Music(url)
     //} else {
       val url = getClass.getClassLoader.getResource(path)
+      if(url == null) {
+        throw new ResourceNotFoundException(path)
+      }
       new Music(url)
   }
 
