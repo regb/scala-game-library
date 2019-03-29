@@ -1,13 +1,13 @@
-TODO
-====
+# TODO
 
-* Separate core into core and desktop backend
+## Separate core into core and desktop backend
+
 Seems like there could be several different kind of desktop, but they would
 share stuff like FileSystemSave. Alternatively there could be one Desktop, but
 with several provider of Sound (OpenAL, Java) and grahics (OpenGL, AWT). And
 let the user compose the cake as he wants.
 
-* HTTP server embeded for debugging.
+## HTTP server embeded for debugging.
 
 It is very convenient to have a way to re-configure the game live, and an
 HTTP server would provide a simple, high-level, protocol to do so. Devs can
@@ -31,3 +31,14 @@ notified when a new value is set and should update the game with that new value.
 Obviously, not all configurations need to be set through this style of config,
 only these that can be modified at runtime, without restarting the game,
 successfully.
+
+## Resource generator for assets
+
+Kind of like on Android, it would be good to have all assets within the assets/ folder
+automatically generate some object.Field -> Id mapping (with sbt), and then have
+the load methods take the ID instead of the string path. This would make basically the
+assets a compile time concept.
+
+This will need to be balanced with having the option to load assets from local
+disk, which can be convenient for development (compile once, then run many
+times with various art/sound) and for modding.
