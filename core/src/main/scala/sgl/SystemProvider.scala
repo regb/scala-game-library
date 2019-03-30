@@ -174,6 +174,11 @@ trait SystemProvider {
   /* TODO: Why not root  instead of prefix? */
   def ResourcesRoot: ResourcePath = ResourcesPrefix
 
+  // TODO: And why even a resource prefix in the first place? Why not have clients just write
+  //        "audio" / "music.wav" ?
+  //       Additional questions is whether the "audio" directory should be implicit from the
+  //       load method? how about the extension?
+
 
   //TODO: alternative is to provide a conversion from resource to wrapper with the / method
   //TODO: how to allow ResourcePath to be = String while still providing the '/' method ?

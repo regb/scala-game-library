@@ -5,7 +5,7 @@ import javax.sound.sampled._
 import java.io.File
 
 trait AWTAudioProvider extends AudioProvider {
-
+  this: AWTSystemProvider =>
 
   private def setClipVolume(clip: Clip, volume: Float): Unit = {
     if(clip.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
@@ -133,7 +133,8 @@ trait AWTAudioProvider extends AudioProvider {
   }
 
   override def loadSoundFromResource(path: String): Sound = {
-    val url = getClass.getClassLoader.getResource(path)
+    val localAsset = if(DynamicResourcesEnabled) findDynamicResource(StringPath(path)) else None
+    val url = localAsset.map(_.toURI.toURL).getOrElse(getClass.getClassLoader.getResource(path))
     if(url == null) {
       throw new ResourceNotFoundException(path)
     }
@@ -184,7 +185,8 @@ trait AWTAudioProvider extends AudioProvider {
     override def dispose(): Unit = {}
   }
   override def loadMusicFromResource(path: String): Music = {
-    val url = getClass.getClassLoader.getResource(path)
+    val localAsset = if(DynamicResourcesEnabled) findDynamicResource(StringPath(path)) else None
+    val url = localAsset.map(_.toURI.toURL).getOrElse(getClass.getClassLoader.getResource(path))
     if(url == null) {
       throw new ResourceNotFoundException(path)
     }

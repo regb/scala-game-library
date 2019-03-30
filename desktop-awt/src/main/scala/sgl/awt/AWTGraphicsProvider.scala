@@ -15,8 +15,8 @@ trait AWTGraphicsProvider extends GraphicsProvider {
 
     override def loadImage(path: ResourcePath): Loader[Bitmap] = {
       FutureLoader {
-        //TODO: understand and explain why getResource on getClassLoader needs relative path
-        val url = getClass.getClassLoader.getResource(path.path)
+        val localAsset = if(DynamicResourcesEnabled) findDynamicResource(path) else None
+        val url = localAsset.map(_.toURI.toURL).getOrElse(getClass.getClassLoader.getResource(path.path))
         if(url == null) {
           throw new ResourceNotFoundException(path.path)
         }
