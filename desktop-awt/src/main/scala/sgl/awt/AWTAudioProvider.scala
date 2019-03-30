@@ -2,20 +2,23 @@ package sgl
 package awt
 
 import javax.sound.sampled._
-import javax.sound.sampled.DataLine.Info
 import java.io.File
 
 trait AWTAudioProvider extends AudioProvider {
 
 
   private def setClipVolume(clip: Clip, volume: Float): Unit = {
-    val gainControl = clip.getControl(FloatControl.Type.MASTER_GAIN).asInstanceOf[FloatControl]
-    val width: Float = gainControl.getMaximum-gainControl.getMinimum
+    if(clip.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
+      val gainControl = clip.getControl(FloatControl.Type.MASTER_GAIN).asInstanceOf[FloatControl]
+      val width: Float = gainControl.getMaximum-gainControl.getMinimum
 
-    //TODO: figure out how to properly control the volume
-    val db: Float = 20f*math.log10(volume).toFloat
-    //val value = width*volume + gainControl.getMinimum
-    gainControl.setValue(db)
+      //TODO: figure out how to properly control the volume
+      val db: Float = 20f*math.log10(volume).toFloat
+      //val value = width*volume + gainControl.getMinimum
+      gainControl.setValue(db)
+    } else {
+      // TODO: what should we do then?
+    }
   }
 
   /*
@@ -83,30 +86,15 @@ trait AWTAudioProvider extends AudioProvider {
     private def instantiateFreshClip(volume: Float): Clip = synchronized {
       //TODO: could we do some stuff in constructor and only generate the clip each time?
       val audioStream: AudioInputStream = AudioSystem.getAudioInputStream(url)
-      val outFormat = convertOutFormat(audioStream.getFormat)
-      val convertedStream = AudioSystem.getAudioInputStream(outFormat, audioStream)
-      val clip = AudioSystem.getClip
+      val format = convertOutFormat(audioStream.getFormat)
+      val convertedStream = AudioSystem.getAudioInputStream(format, audioStream)
+
+      val info = new DataLine.Info(classOf[Clip], format)
+      val clip = AudioSystem.getLine(info).asInstanceOf[Clip]
+
       clip.open(convertedStream)
       setClipVolume(clip, volume)
       clip
-
-      //TODO: the following should be able to initialize one byte array, and then it should
-      //      be safe to read from it for each created clip. But we have issues with big audio,
-      //      files that lead to negative size (overflow).
-      //val audioStream: AudioInputStream = AudioSystem.getAudioInputStream(url)
-      //val outFormat = convertOutFormat(audioStream.getFormat)
-      //val convertedStream = AudioSystem.getAudioInputStream(outFormat, audioStream)
-
-      //val size = (outFormat.getFrameSize * convertedStream.getFrameLength).toInt
-      //val data = new Array[Byte](size)
-      //val info = new DataLine.Info(classOf[Clip], outFormat, size)
-      //convertedStream.read(data, 0, size)
-
-      ////val clip = AudioSystem.getClip
-      //val clip = AudioSystem.getLine(info).asInstanceOf[Clip]
-      //clip.open(outFormat, data, 0, size)
-      //setClipVolume(clip, volume)
-      //clip
     }
 
     override def play(volume: Float): PlayedSound = synchronized {
@@ -141,14 +129,6 @@ trait AWTAudioProvider extends AudioProvider {
       clipPool.setClipPaused(id, false)
     }
     
-    //override def setLooping(id: PlayedSound, isLooping: Boolean): Unit = {
-    //  if(isLooping) {
-    //    clipPool(id).loop(Clip.LOOP_CONTINUOUSLY)
-    //  } else {
-    //    clipPool(id).loop(0)
-    //  }
-    //}
-
     override def dispose(): Unit = {}
   }
 
@@ -166,13 +146,11 @@ trait AWTAudioProvider extends AudioProvider {
 
     //first we convert the input stream (that could be encoded such as vorbis) to a PCM
     //based encoding, so that java can play it.
-    private val outFormat = convertOutFormat(audioStream.getFormat)
-    //private val info = new Info(classOf[SourceDataLine], outFormat)
-    //private val dataline = AudioSystem.getLine(info).asInstanceOf[SourceDataLine]
+    private val format = convertOutFormat(audioStream.getFormat)
 
-    private val convertedStream = AudioSystem.getAudioInputStream(outFormat, audioStream)
-
-    private val clip = AudioSystem.getClip
+    private val convertedStream = AudioSystem.getAudioInputStream(format, audioStream)
+    private val info = new DataLine.Info(classOf[Clip], format)
+    private val clip = AudioSystem.getLine(info).asInstanceOf[Clip]
     clip.open(convertedStream)
 
     private var isPlaying = false
@@ -206,21 +184,17 @@ trait AWTAudioProvider extends AudioProvider {
     override def dispose(): Unit = {}
   }
   override def loadMusicFromResource(path: String): Music = {
-    //if(path.endsWith("ogg")) {
-    //  import com.jcraft.jorbis.VorbisFile
-    //  val url = getClass.getClassLoader.getResource(path)
-    //  val is = new java.io.FileInputStream(new java.io.File(url.toURI))
-    //  val file = new VorbisFile(is, null, 0)
-
-    //  new Music(url)
-    //} else {
-      val url = getClass.getClassLoader.getResource(path)
-      if(url == null) {
-        throw new ResourceNotFoundException(path)
-      }
-      new Music(url)
+    val url = getClass.getClassLoader.getResource(path)
+    if(url == null) {
+      throw new ResourceNotFoundException(path)
+    }
+    new Music(url)
   }
 
+  // I think the reason we need to convert the format is that some formats simply
+  // cannot be played as such by java, but bringing them back into something
+  // supported here should help. But I really don't remember why this was done
+  // and I don't know much about Audio handling anyway.
   private def convertOutFormat(inFormat: AudioFormat): AudioFormat = {
     val ch = inFormat.getChannels()
     val rate = inFormat.getSampleRate()
