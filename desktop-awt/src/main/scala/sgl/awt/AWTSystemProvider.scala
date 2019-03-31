@@ -26,7 +26,7 @@ trait AWTSystemProvider extends SystemProvider {
         val localAsset = if(DynamicResourcesEnabled) findDynamicResource(path) else None
         val is = localAsset.map(a => new java.io.FileInputStream(a)).getOrElse(getClass.getClassLoader.getResourceAsStream(path.path))
         if(is == null) {
-          throw new ResourceNotFoundException(path.path)
+          throw new ResourceNotFoundException(path)
         }
         scala.io.Source.fromInputStream(is).getLines.toArray
       }
@@ -37,7 +37,7 @@ trait AWTSystemProvider extends SystemProvider {
         val localAsset = if(DynamicResourcesEnabled) findDynamicResource(path) else None
         val is = localAsset.map(a => new java.io.FileInputStream(a)).getOrElse(getClass.getClassLoader.getResourceAsStream(path.path))
         if(is == null) {
-          throw new ResourceNotFoundException(path.path)
+          throw new ResourceNotFoundException(path)
         }
         val bis = new java.io.BufferedInputStream(is)
         val bytes = new scala.collection.mutable.ListBuffer[Byte]

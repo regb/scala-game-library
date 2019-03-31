@@ -33,7 +33,7 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
       val resources = self.getResources
       val drawableId = resources.getIdentifier(filename, "drawable", self.getPackageName())
       if(drawableId == 0) { // 0 is returned when no resource if found.
-        throw new ResourceNotFoundException(path.path)
+        throw new ResourceNotFoundException(path)
       }
       val opts = new BitmapFactory.Options
       opts.inPreferredConfig = NativeBitmap.Config.ARGB_8888
@@ -58,6 +58,7 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
         AndroidFont(Typeface.create(family, toAndroidStyle(style)), size)
 
       override def load(path: ResourcePath): Loader[Font] = FutureLoader {
+        // TODO: check for missing resources and throw exception.
         AndroidFont(Typeface.createFromAsset(self.getAssets(), path.path), 14)
       }
 

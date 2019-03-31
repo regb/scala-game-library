@@ -29,7 +29,7 @@ trait AndroidSystemProvider extends SystemProvider {
         scala.io.Source.fromInputStream(is).getLines.toArray
       } catch {
         case (e: java.io.IOException) =>
-          throw new ResourceNotFoundException(path.path)
+          throw new ResourceNotFoundException(path)
       }
     }
 
@@ -46,7 +46,7 @@ trait AndroidSystemProvider extends SystemProvider {
         bytes.toArray
       } catch {
         case (e: java.io.IOException) =>
-          throw new ResourceNotFoundException(path.path)
+          throw new ResourceNotFoundException(path)
       }
     }
 

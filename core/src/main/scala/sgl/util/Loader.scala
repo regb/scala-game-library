@@ -199,8 +199,6 @@ class DefaultLoader[A] extends Loader[A] with LoaderPromise[A] {
     }
   }
 
-
-
   override def isLoaded: Boolean = isCompleted
 
   override def onLoad[U](f: (Try[A]) => U): Unit = v match {

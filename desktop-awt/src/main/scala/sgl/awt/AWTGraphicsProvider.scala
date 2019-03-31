@@ -18,7 +18,7 @@ trait AWTGraphicsProvider extends GraphicsProvider {
         val localAsset = if(DynamicResourcesEnabled) findDynamicResource(path) else None
         val url = localAsset.map(_.toURI.toURL).getOrElse(getClass.getClassLoader.getResource(path.path))
         if(url == null) {
-          throw new ResourceNotFoundException(path.path)
+          throw new ResourceNotFoundException(path)
         }
         val bi = ImageIO.read(url)
         AWTBitmap(bi)
@@ -47,7 +47,7 @@ trait AWTGraphicsProvider extends GraphicsProvider {
         FutureLoader {
           val res = getClass.getClassLoader.getResourceAsStream(path.path)
           if(res == null) {
-            throw new ResourceNotFoundException(path.path)
+            throw new ResourceNotFoundException(path)
           }
           AWTFont(createFont(TRUETYPE_FONT, res))
         }
