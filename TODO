@@ -42,3 +42,11 @@ assets a compile time concept.
 This will need to be balanced with having the option to load assets from local
 disk, which can be convenient for development (compile once, then run many
 times with various art/sound) and for modding.
+
+On a similar note, we should be able to have multiple versions of the same
+assets (multiple resolution of a graphics, or multiple audio format for the
+same file) and the one that gets packaged in each backend should depend on a
+config which choose the best. Maybe Android supports better one kind of audio
+format, and iOS another kind, so we would have both versions as two extensions
+of the same asset in the shared asset folder, but we would package only the
+best one into the binary for each platform.
