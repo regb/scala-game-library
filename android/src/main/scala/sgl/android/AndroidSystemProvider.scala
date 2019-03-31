@@ -23,21 +23,31 @@ trait AndroidSystemProvider extends SystemProvider {
     override def millis(): Long = java.lang.System.currentTimeMillis
 
     override def loadText(path: ResourcePath): Loader[Array[String]] = FutureLoader {
-      val am = self.getAssets()
-      val is = am.open(path.path)
-      scala.io.Source.fromInputStream(is).getLines.toArray
+      try {
+        val am = self.getAssets()
+        val is = am.open(path.path)
+        scala.io.Source.fromInputStream(is).getLines.toArray
+      } catch {
+        case (e: java.io.IOException) =>
+          throw new ResourceNotFoundException(path.path)
+      }
     }
 
     override def loadBinary(path: ResourcePath): Loader[Array[Byte]] = FutureLoader {
-      val am = self.getAssets()
-      val is = am.open(path.path)
-      val bis = new java.io.BufferedInputStream(is)
-      val bytes = new scala.collection.mutable.ListBuffer[Byte]
-      var b: Int = 0
-      while({ b = bis.read; b != -1}) {
-        bytes.append(b.toByte)
+      try {
+        val am = self.getAssets()
+        val is = am.open(path.path)
+        val bis = new java.io.BufferedInputStream(is)
+        val bytes = new scala.collection.mutable.ListBuffer[Byte]
+        var b: Int = 0
+        while({ b = bis.read; b != -1}) {
+          bytes.append(b.toByte)
+        }
+        bytes.toArray
+      } catch {
+        case (e: java.io.IOException) =>
+          throw new ResourceNotFoundException(path.path)
       }
-      bytes.toArray
     }
 
     override def openWebpage(uri: URI): Unit = {

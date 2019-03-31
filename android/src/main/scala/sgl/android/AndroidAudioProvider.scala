@@ -91,10 +91,15 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
     }
   }
   override def loadSoundFromResource(path: String): Sound = {
-    val am = self.getAssets()
-    val afd = am.openFd(path)
-    val soundId = soundPool.load(afd, 1)
-    new Sound(soundId)
+    try {
+      val am = self.getAssets()
+      val afd = am.openFd(path)
+      val soundId = soundPool.load(afd, 1)
+      new Sound(soundId)
+    } catch {
+      case (e: java.io.IOException) =>
+        throw new ResourceNotFoundException(path)
+    }
   }
 
 
@@ -255,9 +260,14 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
   }
 
   override def loadMusicFromResource(path: String): Music = AudioLocker.synchronized {
-    val music = new Music(path)
-    addLoadedMusic(music)
-    music
+    try {
+      val music = new Music(path)
+      addLoadedMusic(music)
+      music
+    } catch {
+      case (e: java.io.IOException) =>
+        throw new ResourceNotFoundException(path)
+    }
   }
 
   // Store whether the onPause callback was received, if yes, we need
