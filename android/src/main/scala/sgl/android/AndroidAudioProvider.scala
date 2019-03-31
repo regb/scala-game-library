@@ -8,6 +8,8 @@ import _root_.android.media.SoundPool
 import _root_.android.media.AudioManager
 import _root_.android.media.AudioAttributes
 
+import _root_.android.os.Build
+
 import sgl.util._
 
 trait AndroidAudioProvider extends Activity with AudioProvider {
@@ -45,17 +47,24 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
     *       interface that would ensure play is only called on loaded resources.
     */
 
-  private val soundPool = new SoundPool(10, AudioManager.STREAM_MUSIC, 0)
-  //constructor above is deprecated, but I don't want to require API 21 just for
-  //the compiler to be happy... WTF Google, really ?
-  //private val attrs = new AudioAttributes.Builder()
-  //                                       .setUsage(AudioAttributes.USAGE_GAME)
-  //                                       .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-  //                                       .build()
-  //private val soundPool = new SoundPool.Builder()
-  //                                     .setMaxStreams(10)
-  //                                     .setAudioAttributes(attrs)
-  //                                     .build()
+
+  private val maxSimultaneousSounds = 10
+
+  private var soundPool: SoundPool = null
+  private def initSoundPool(): Unit = {
+    if(soundPool == null) {
+      soundPool = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        val attrs = new AudioAttributes.Builder()
+                                      .setUsage(AudioAttributes.USAGE_GAME)
+                                      .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                                      .build()
+        new SoundPool.Builder().setAudioAttributes(attrs).setMaxStreams(maxSimultaneousSounds).build()
+      } else {
+        new SoundPool(maxSimultaneousSounds, AudioManager.STREAM_MUSIC, 0)
+      }
+    }
+  }
+
   class Sound(soundId: Int) extends AbstractSound {
     
     type PlayedSound = Int
@@ -64,12 +73,26 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
       //TODO: not clear if the volume needs to go through this logarithmic scaling
       //      but it is needed for MediaPlayer at least
       //val androidVolume = 1 - (math.log(100f-volume*100f)/math.log(100f)).toFloat
-      soundPool.play(soundId, volume, volume, 1, 0, 1f)
+      var sid = soundPool.play(soundId, volume, volume, 1, 0, 1f)
+      if(sid == 0) {
+        // The play method returns 0 if the call failed.
+        // TODO: We probably want to update the interafce so that we can return an error here?
+        sid
+      } else {
+        sid
+      }
     }
     override def loop(volume: Float): PlayedSound = {
-      val id = this.play(volume)
-      soundPool.setLoop(id, -1)
-      id
+      // Use higher priority than in play method, because we want looped sound to usually
+      // stay in the system longer (could be a game loop).
+      var sid = soundPool.play(soundId, volume, volume, 3, -1, 1f)
+      if(sid == 0) {
+        // The play method returns 0 if the call failed.
+        // TODO: We probably want to update the interafce so that we can return an error here?
+        sid
+      } else {
+        sid
+      }
     }
 
     override def stop(id: PlayedSound): Unit = {
@@ -91,10 +114,16 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
     }
   }
   override def loadSoundFromResource(path: String): Sound = {
+    // We are essentilally initing the sound pool only once for the system. But because the
+    // cake initialization is sometimes a bit hard to predict, moving this here makes it
+    // easier to track when the initialization code happens.
+    initSoundPool()
+
     try {
       val am = self.getAssets()
       val afd = am.openFd(path)
       val soundId = soundPool.load(afd, 1)
+      afd.close()
       new Sound(soundId)
     } catch {
       case (e: java.io.IOException) =>
