@@ -1,6 +1,8 @@
 package sgl
 package analytics
 
+import sgl.util.LoggingProvider
+
 /** A GameStateComponent that automates analytics.
   *
   * This extends default game state implementation with
@@ -17,7 +19,7 @@ package analytics
   * fine grained way to track game screens, if necessary.
   */
 trait GameStateAutoAnalyticsComponent extends GameStateComponent {
-  this: GraphicsProvider with AnalyticsProvider =>
+  this: GraphicsProvider with SystemProvider with LoggingProvider with AnalyticsProvider =>
 
   override val gameState: GameState = new GameStateAutoAnalytics
 

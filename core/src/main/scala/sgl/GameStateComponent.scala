@@ -3,9 +3,16 @@ package sgl
 import util._
 
 trait GameStateComponent {
-  this: GraphicsProvider =>
+  this: GraphicsProvider with SystemProvider with LoggingProvider =>
 
   abstract class GameScreen {
+
+    /** A default implicit log tag to use in any game screen.
+      *
+      * Override this log tag to use a more precise tag of
+      * your own.
+      */
+    implicit val logTag = Logger.Tag("game-screen")
 
     /** A title that summarizes the screen
       *
@@ -128,8 +135,13 @@ trait GameStateComponent {
     * is to actually use the preload for the splash screen background to display
     * while loading the rest of the resources.
     */
-  abstract class LoadingScreen[A](val loaders: Seq[Loader[A]]) extends
-  GameScreen { import scala.collection.mutable.HashSet
+  abstract class LoadingScreen[A](val loaders: Seq[Loader[A]]) extends GameScreen {
+    // TODO: How about using a Map[String, Loader] instead of the list? This
+    // probably would match better with the clients use case of loading a bunch
+    // of resources and then using them, because a Seq is difficult to extract
+    // from the calling side.
+ 
+    import scala.collection.mutable.HashSet
 
     /** The minimal duration that we should display the loading screen.
       *
@@ -198,6 +210,13 @@ trait GameStateComponent {
 
     private var totalDuration = 0l
 
+    /** Control whether to exit on loading error.
+      *
+      * If true, the screen automatically exit the application at the
+      * end of loading, if there is any failed loaders.
+      */
+    protected val exitOnError = true
+
     override def update(dt: Long): Unit = {
       totalDuration += dt
       for(loader <- _remaining.toSet[Loader[A]]) {
@@ -208,7 +227,18 @@ trait GameStateComponent {
           }
         }
       }
-      if(totalDuration >= minDuration && _remaining.isEmpty && !loadingError) {
+      if(totalDuration >= minDuration && _remaining.isEmpty) {
+        if(loadingError) {
+          logger.error("Failed to load all resources.")
+          // TODO: would be nice to identify the resource beyond just the loader. Maybe that
+          // would be better if we take a Map[String, Loader] in the constructor?
+          loadingErrors.foreach(loader => loader.value.get match {
+            case scala.util.Failure(e) => logger.error("Failed to load resource: " + e + "\n" + e.getStackTrace.mkString("\n"))
+            case _ => () // Not supposed to happen, just add the case to make the compiler happy.
+          })
+          if(exitOnError)
+            System.exit()
+        }
         gameState.newScreen(nextScreen)
       }
     }
