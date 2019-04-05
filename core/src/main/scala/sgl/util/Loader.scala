@@ -163,6 +163,10 @@ object Loader {
 
 }
 
+// A LoaderPromise is a way to explicitly complete a loader with a success/failure
+// value. It can be used when a value is loaded in an asynchronous way, to set the
+// result in the callback. This interface should typically not be made visible to
+// the clients of the Loader, which is why it is not part of the Loader itself.
 trait LoaderPromise[A] {
 
   def loader: Loader[A]
@@ -181,6 +185,10 @@ trait LoaderPromise[A] {
 
 }
 
+// The default implementation of a Loader. It combines with the LoaderPromise,
+// so the implementation can complete the loading by calling success/failure
+// in a callback function. But it can be returned as a Loader, which only
+// expose APIs to use the loader, and not complete it.
 class DefaultLoader[A] extends Loader[A] with LoaderPromise[A] {
 
   private var v: Option[Try[A]] = None

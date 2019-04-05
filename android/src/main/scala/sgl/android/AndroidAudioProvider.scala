@@ -12,6 +12,8 @@ import _root_.android.os.Build
 
 import sgl.util._
 
+import scala.collection.mutable.HashMap
+
 trait AndroidAudioProvider extends Activity with AudioProvider {
   self: AndroidSystemProvider with AndroidWindowProvider with LoggingProvider =>
 
@@ -52,6 +54,7 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
     private val maxSimultaneousSounds = 10
 
     private var soundPool: SoundPool = null
+    private var soundPoolOnLoadCompleteListener: SoundPoolOnLoadCompleteListener = null
     private def initSoundPool(): Unit = {
       if(soundPool == null) {
         soundPool = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -62,6 +65,44 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
           new SoundPool.Builder().setAudioAttributes(attrs).setMaxStreams(maxSimultaneousSounds).build()
         } else {
           new SoundPool(maxSimultaneousSounds, AudioManager.STREAM_MUSIC, 0)
+        }
+
+
+        soundPoolOnLoadCompleteListener = new SoundPoolOnLoadCompleteListener
+        soundPool.setOnLoadCompleteListener(soundPoolOnLoadCompleteListener)
+      }
+    }
+
+    private class SoundPoolOnLoadCompleteListener extends SoundPool.OnLoadCompleteListener {
+
+      private object lock
+
+      // These contains the waiting callbacks or onLoadCompleted calls, and are synchronized to be
+      // applied on the proper callback. Whenever a callback is matched, we also remove it from
+      // the map, because sampleId could be reused in the future.
+      private val callbacks: HashMap[Int, (Int) => Unit] = new HashMap()
+      private val loadCompleted: HashMap[Int, Int] = new HashMap()
+
+      override def onLoadComplete(soundPool: SoundPool, sampleId: Int, status: Int): Unit = lock.synchronized {
+        callbacks.remove(sampleId) match {
+          case None => {
+            loadCompleted(sampleId) = status
+          }
+          case Some(callback) => callback(status)
+        }
+      }
+
+      // Add a callback function for on onLoadComplete function. The callback is registered
+      // with the streamId, which is only obtained after a call to load, so there is a
+      // (small) chance that the onLoadComplete has alreaddy been called before we register.
+      // If that happened, we should make sure we call the callback immediately (from the
+      // same thread). This is why we need to store the loadCompleted events as well.
+      def addCallbackOnStreamLoaded(sampleId: Int, callback: (Int) => Unit): Unit = lock.synchronized {
+        loadCompleted.remove(sampleId) match {
+          case None => {
+            callbacks(sampleId) = callback
+          }
+          case Some(status) => callback(status)
         }
       }
     }
@@ -117,21 +158,31 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
       }
 
     }
-    override def loadSound(path: ResourcePath): Loader[Sound] = FutureLoader {
+    override def loadSound(path: ResourcePath): Loader[Sound] = {
       // We are essentilally initing the sound pool only once for the system. But because the
       // cake initialization is sometimes a bit hard to predict, moving this here makes it
       // easier to track when the initialization code happens.
       initSoundPool()
+
+      val loader = new DefaultLoader[Sound]()
 
       try {
         val am = self.getAssets()
         val afd = am.openFd(path.path)
         val soundId = soundPool.load(afd, 1)
         afd.close()
-        new Sound(soundId, 0, 1f, null)
+
+        soundPoolOnLoadCompleteListener.addCallbackOnStreamLoaded(soundId, (status: Int) => {
+          if(status == 0) {
+            loader.success(new Sound(soundId, 0, 1f, null))
+          } else {
+            loader.failure(new RuntimeException(s"Sound ${path} failed to load with status: ${status}"))
+          }
+        })
+        loader
       } catch {
         case (e: java.io.IOException) =>
-          throw new ResourceNotFoundException(path)
+          loader.failure(new ResourceNotFoundException(path))
       }
     }
 
