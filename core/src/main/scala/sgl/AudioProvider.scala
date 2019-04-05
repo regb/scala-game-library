@@ -22,7 +22,17 @@ trait AudioProvider {
 
   trait Audio {
 
-    /** Represents data for short sound
+    // TODO: It seems both AWT and Android has some sort of implementation
+    // based on a pool of sounds with a maximum number in flights. Based on
+    // that, it seems like we should make the max number of PlayedSound an
+    // explicit parameter of the interface, to avoid surprise for the
+    // clients.
+    // Maybe:
+    //   val MaxPlayingSounds: Int = 10 ?
+    // With the option of overriding in the game. We should document the
+    // drawbacks of increasing and what are reasonable values.
+ 
+    /** Represents a short sound loaded and ready to play.
       *
       * A Sound class should be able to load a short sound
       * data, and generate a fresh, independent PlayedSound for
@@ -34,106 +44,89 @@ trait AudioProvider {
       * played.
       *
       * The Sound itself must be disposed when the game no longer
-      * plans to play sound from it.
+      * plans to play sounds from it. Typically, a game would load
+      * a bunch of sounds specific to a level when loading the level,
+      * then play them at appropriate time, and call dispose on each
+      * of them when leaving the level.
       */
     abstract class AbstractSound {
   
-      /*
-       * Why using this PlayedSound index type instead of returing a
-       * PlayedSound object with methods for looping and stopping?
-       * Not too sure, one reason could be to avoid GC, as the PlayedSound
-       * could be a simple integer, and not need to allocate a new object
-       * on top. Although, I'm not sure how well this works with Integer boxing,
-       * probably needed to instatiate the abstract type.
-       *
-       * If we had an actual class, we would have to worry about its lifecycle,
-       * maybe having to add explicit dispose methods, while this is transparent
-       * in the indexing method here, no need to worry about the lifecycle of a
-       * playedsound.
-       *
-       * Maybe from a conceptual point of view, it is nice to have the Sound
-       * organizing everything.
-       */
       type PlayedSound
   
-      //we might want to distinguished between played sound and looping sound, as some
-      //operation seems to make sense for a sound started as looping
-      //type LoopingSound
-  
-  
-      /** Start playing an instance of the Sound
+      /** Start playing an instance of the Sound.
         *
-        * Return a PlayedSound object, which can be used to
-        * do further manipulation on the sound currently being
-        * played
+        * Return a PlayedSound object, which can be used to do further
+        * manipulation on the sound currently being played. The call
+        * can potentially fail, so it returns an Option.
         *
         * A Sound can be started many times, it will be overlaid. Each
         * time a different PlayedSound will be returned.
-        */
-      def play(volume: Float): PlayedSound
-  
-      def play(): PlayedSound = play(1f)
-  
-      def loop(volume: Float): PlayedSound
-      def loop(): PlayedSound = loop(1f)
-  
-      /*
-       * Lifecycle of a PlayedSound is to be playing, pausing and the resuming,
-       * and finally stopping. When stopping, it is considered to be cleaned up, and
-       * will no longer be resumable.
-       */
-  
-      /** Pause the PlayedSound instance
         *
-        * Can then resume it to keep playing. Has no effect
-        * if already paused or stoped. If the sound is stopped
-        * or finished, calling pause will not revive it, it will
-        * still be collected.
+        * @param volume volume value, from 0.0 to 1.0, act as a multiplier on
+        *   the system current volume.
         */
-      def pause(id: PlayedSound): Unit
-      def resume(id: PlayedSound): Unit
-  
-      /** Stop the PlayedSound instance
-        *
-        * Once stopped, it can no longer be resumed.
-        * The memory might be reused for future sounds,
-        * so it is unsafe to keep using it.
-        */
-      def stop(id: PlayedSound): Unit
-  
-      //TODO, probably should be part of the play method
-      //def setPitch(id: PlayedSound): Unit
-  
-  
-      /* 
-       * we used to have that, but I don't see a good use case for short sounds,
-       * the main use case where we would want to loop is for a background sound, and
-       * we would just stop it when we no longer need it. Some effects could be done
-       * with a loop for a few seconds for sure, but again, we would just stop it at
-       * the end. Also there is not much
-       * reasons to start looping in the middle of a PlayedSound, especially since
-       * most of them are too short.
-       * Besides, this would be unsafe as PlayedSound are allowed to be disposed
-       * as soon as they are no longer being played.
-       */
-      //def setLooping(id: PlayedSound, isLooping: Boolean): Unit
-  
-      /*
-       * However, I can think of a use case for stopping to loop, which would be when
-       * a sound effect can be done with looping a short effect, for a fixed time (maybe 5
-       * seconds). At the end of the time, if we want to smoothly terminate, we should not
-       * call stop, but actually finish the current looping step, and only finish at the
-       * end of the sound. For that reason, we should provide a different interface for
-       * sounds started as loops.
-       */
-      //def endLoop(id: LoopingSound): Unit
+      def play(volume: Float): Option[PlayedSound]
+      def play(): Option[PlayedSound] = play(1f)
 
-      // TODO: Provide a good way to build a looping sounds (X-repeat) from the Sound
-      // class. It probably makes sense to be able to build a sound effect out of a
-      // file that just require 2-3 times repeat, and that would be more efficient than
-      // having to export the looped sound in the file. In general, sound effects could
-      // also be made by combining several sounds, so maybe we can provide an API for
-      // that as well?
+      /** Returns a cloned version of the Sound but in a different play configuration.
+        *
+        * This method gives us a way to combine a primitive Sound into a
+        * looped effect. The idea is that some sound effect can be accomplished
+        * by looping a basic sound N times, and it is more efficient to just
+        * store one iteration of the loop (both in resources and then loaded in
+        * memory) but then to use some looped behaviour logic when playing.
+        *
+        * Using a different rate can let you reuse the same sound resource in several
+        * context.
+        *
+        * After calling withConfig, you end up with two independent Sound
+        * instance in your system, and you must dispose both, or you can
+        * dispose one of them and keep using the other one. Typically, you
+        * might want to load the sound sample, call withConfig to get the play
+        * configuration, and then dispose the original as you are only planning
+        * to use the custom version from now on. Although it looks like we end
+        * up with using double the resources with both Sound object, it's
+        * likely that the underlying backend actually optimizes memory to only
+        * load the primitve sound once, and just keep track of the settings and
+        * disposed state.
+        *
+        * @param loop the number of times the sound should be looped (-1 for
+        *   infinity, 0 for regular play, any other positive numbers for number
+        *   of repeats)
+        * @param rate from 0.5 to 2, the play speed (from half to twice as fast
+        *   as the original).
+        */
+      def withConfig(loop: Int, rate: Float): Sound
+  
+      /** Returns a cloned version of the sound but in a looped state.
+        *
+        * Of course the effect could be accomplished by just wrapping some logic
+        * around the Sound class (by playing 3 times in a row). But first that
+        * would require to detect when the sound effect is completed, and then
+        * it's also additional logic that needs to run, while most backends
+        * actually support natively the concept of looping a sound, so it
+        * probably makes sense to offer this feature in the Sound API directly.
+        *
+        * Note that the API only allows to clone a Sound to get a looped
+        * version instead of actually setting the looped state. It is a
+        * deliberate design, as usually immutability is better, and in the case
+        * of sound effects, it's very likely that you want to build the proper
+        * sound configuration from the sound file and then just play it as is,
+        * instead of changing the state in each frame. This also give you the
+        * ability to use the same sound file, load it only once, and combine it
+        * in several different sound instances (you couldn't do that if you had
+        * to set the state of the sound, unless you are willing to set the
+        * state before every call to play).
+        */
+      def looped(n: Int): Sound = withConfig(n, 1f)
+      def looped: Sound = looped(-1)
+
+      // An interesting extension to the looped interface is how to combine several
+      // sounds together. This has the same challenge to detect when the sound is over,
+      // and the same argument that it is more efficient to store just a few independent
+      // primitive sounds and combine them together. However, backends might not always
+      // support such an API, so we won't expose it for now. It also seems like a less
+      // common case than looping a sound.
   
       /** Free up resources associated with this Sound.
         *
@@ -144,12 +137,41 @@ trait AudioProvider {
         */
       def dispose(): Unit
   
-      //TODO: if use case shows up, this would pause ALL currently played sound of this Sound
-      //      A good use case would be when a level completes, we would want to stop all instances
-      //      of the sounds that we used in the level.
-      //def pause(): Unit
-      //def resume(): Unit
-      //def stop(): Unit
+      /** Pause the PlayedSound instance.
+        *
+        * Can then resume it. Has no effect if already paused or stoped. If the
+        * sound is stopped or finished, calling pause will not revive it.
+        */
+      def pause(id: PlayedSound): Unit
+
+      /** Resume a paused PlayedSound instance. */
+      def resume(id: PlayedSound): Unit
+  
+      /** Stop the PlayedSound instance.
+        *
+        * Once stopped, it can no longer be resumed.
+        * The memory might be reused for future sounds,
+        * so it is unsafe to keep using it.
+        */
+      def stop(id: PlayedSound): Unit
+
+      /** Set the looping state of the specific PlayedSound instance within that sound.
+        *
+        * This is a way to set the looping state of a sound once it started to play.
+        * It will not affect the Sound state itself. There are not many use cases
+        * for such a method, but one is to smoothly terminate a looped sound
+        * by completing the current loop instead of abruptly stopping in the middle
+        * of the loop sequence (Say you use the Sound as a five seconds loop effect,
+        * made of 5 times a 1 second effect, and a game event forces you to stop the
+        * sound effect, you may want to call setLooping(id, false) instead of pause(id),
+        * in order to have a smooth transition).
+        *
+        * It is not clear what is a reasonable use case for setLooping(id, true), but
+        * this seems like a relatively cheap general interface to provide, and maybe
+        * there are decent use cases.
+        */
+      def setLooping(id: PlayedSound, isLooping: Boolean): Unit
+  
     }
     type Sound <: AbstractSound
 

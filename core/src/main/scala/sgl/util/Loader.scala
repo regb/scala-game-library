@@ -102,10 +102,11 @@ trait Loader[+A] {
     */
   def isLoaded: Boolean
 
-  /** The current value
+  /** The current value.
     *
-    * If not yet loaded, this will be None. If loaded
-    * it becomes Some of the value.
+    * If not yet loaded, this will be None. If loaded it returns Some. The
+    * actual content of the Option is a Try, as the loading could have
+    * succeeded or failed.
     */
   def value: Option[Try[A]]
 

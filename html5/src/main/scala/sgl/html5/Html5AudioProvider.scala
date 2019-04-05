@@ -13,15 +13,14 @@ trait Html5AudioProvider extends AudioProvider {
 
       type PlayedSound = Int
 
-      override def play(volume: Float): PlayedSound = 0
-      override def loop(volume: Float): PlayedSound = 0
+      override def play(volume: Float): Option[PlayedSound] = None
+      override def withConfig(loop: Int, rate: Float): Sound = this
+      override def dispose(): Unit = {}
 
       override def stop(id: PlayedSound): Unit = {}
-
       override def pause(id: PlayedSound): Unit = {}
       override def resume(id: PlayedSound): Unit = {}
-      
-      override def dispose(): Unit = {}
+      override def setLooping(id: PlayedSound, isLooping: Boolean): Unit = {}
     }
 
     /** Not supported. */

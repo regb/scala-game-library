@@ -66,34 +66,37 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
       }
     }
 
-    class Sound(soundId: Int) extends AbstractSound {
+    class Sound(soundId: Int, loop: Int, rate: Float, parent: Sound) extends AbstractSound {
+
+      private var children: List[Sound] = Nil
+
+      var isDisposed = false
       
       type PlayedSound = Int
 
-      override def play(volume: Float): PlayedSound = {
-        //TODO: not clear if the volume needs to go through this logarithmic scaling
-        //      but it is needed for MediaPlayer at least
-        //val androidVolume = 1 - (math.log(100f-volume*100f)/math.log(100f)).toFloat
-        var sid = soundPool.play(soundId, volume, volume, 1, 0, 1f)
+      override def play(volume: Float): Option[PlayedSound] = {
+        // SoundPool.play use the volume as a multiplier for the global volume, so
+        // it matches our abstract sound interface.
+        var sid = soundPool.play(soundId, volume, volume, 1, loop, rate)
         if(sid == 0) {
-          // The play method returns 0 if the call failed.
-          // TODO: We probably want to update the interafce so that we can return an error here?
-          sid
+          None
         } else {
-          sid
+          Some(sid)
         }
       }
-      override def loop(volume: Float): PlayedSound = {
-        // Use higher priority than in play method, because we want looped sound to usually
-        // stay in the system longer (could be a game loop).
-        var sid = soundPool.play(soundId, volume, volume, 3, -1, 1f)
-        if(sid == 0) {
-          // The play method returns 0 if the call failed.
-          // TODO: We probably want to update the interafce so that we can return an error here?
-          sid
-        } else {
-          sid
-        }
+
+      override def withConfig(loop: Int, rate: Float): Sound = {
+        val s = new Sound(soundId, loop, rate, this)
+        children ::= s
+        s
+      }
+
+      // dispose is not thread safe!
+      override def dispose(): Unit = {
+        isDisposed = true
+        if((parent == null || parent.isDisposed) && 
+           children.forall(_.isDisposed))
+          soundPool.unload(soundId)
       }
 
       override def stop(id: PlayedSound): Unit = {
@@ -105,14 +108,14 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
       override def resume(id: PlayedSound): Unit = {
         soundPool.resume(id)
       }
-
-      //override def setLooping(id: PlayedSound, isLooping: Boolean): Unit = {
-      //  soundPool.setLoop(id, if(isLooping) -1 else 0)
-      //}
-
-      override def dispose(): Unit = {
-        soundPool.unload(soundId)
+      override def setLooping(id: PlayedSound, isLooping: Boolean): Unit = {
+        // TODO: verify that setting a loop of 0 actually completes the current
+        // loop iteration and does not abruptly stop the sound (this would be
+        // an interpretation of the interface if they consider that the sound
+        // already played enough iterations).
+        soundPool.setLoop(id, if(isLooping) -1 else 0) 
       }
+
     }
     override def loadSound(path: ResourcePath): Loader[Sound] = FutureLoader {
       // We are essentilally initing the sound pool only once for the system. But because the
@@ -125,7 +128,7 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
         val afd = am.openFd(path.path)
         val soundId = soundPool.load(afd, 1)
         afd.close()
-        new Sound(soundId)
+        new Sound(soundId, 0, 1f, null)
       } catch {
         case (e: java.io.IOException) =>
           throw new ResourceNotFoundException(path)

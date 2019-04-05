@@ -7,7 +7,7 @@ import javax.sound.sampled._
 import java.io.File
 
 trait AWTAudioProvider extends AudioProvider {
-  this: AWTSystemProvider =>
+  this: AWTSystemProvider with LoggingProvider =>
 
   object AWTAudio extends Audio {
 
@@ -74,16 +74,20 @@ trait AWTAudioProvider extends AudioProvider {
       def getClip(index: Int): Clip = {
         pool(index)
       }
-      def apply(index: Int) = getClip(index)
+      def apply(index: Int): Clip = getClip(index)
     }
     private val clipPool = new ClipPool
   
   
-    class Sound(url: java.net.URL) extends AbstractSound {
-  
-      private var clipLooping: Array[Boolean] = Array.fill(10)(false)
-      //kind of cheating on the size because we know the clip pool implementation,
-      //but hey, they are both private to this file so that's sort of okay
+    class Sound(url: java.net.URL, loop: Int, rate: Float) extends AbstractSound {
+      require(loop >= -1)
+      require(rate >= 0.5 && rate <= 2)
+      // TODO: implement support for rate, for now we log a warning so that the
+      // user knows that it isn't implemented in this backend (but would work in
+      // a different backend).
+      if(rate != 1f) {
+        logger.warning("Playback rate not supported, only supports 1f")(Logger.Tag("awt-audio-provider"))
+      }
   
       type PlayedSound = Int
   
@@ -101,22 +105,19 @@ trait AWTAudioProvider extends AudioProvider {
         clip
       }
   
-      override def play(volume: Float): PlayedSound = synchronized {
+      override def play(volume: Float): Option[PlayedSound] = synchronized {
         val clip = instantiateFreshClip(volume)
         val clipIndex = clipPool.addClip(clip)
-        clip.start()
-        clipIndex
+        start(clip)
+        Some(clipIndex)
       }
-      override def loop(volume: Float): PlayedSound = synchronized {
-        val clip = instantiateFreshClip(volume)
-        val clipIndex = clipPool.addClip(clip)
-        clipLooping(clipIndex) = true
-        clip.loop(Clip.LOOP_CONTINUOUSLY)
-        clipIndex
+
+      override def withConfig(loop: Int, rate: Float): Sound = {
+        new Sound(url, loop, rate)
       }
+      override def dispose(): Unit = {}
   
       override def stop(id: PlayedSound): Unit = {
-        clipLooping(id) = false
         clipPool(id).stop()
         clipPool(id).close()
       }
@@ -126,14 +127,25 @@ trait AWTAudioProvider extends AudioProvider {
         clipPool(id).stop()
       }
       override def resume(id: PlayedSound): Unit = {
-        if(clipLooping(id))
-          clipPool(id).loop(Clip.LOOP_CONTINUOUSLY)
-        else
-          clipPool(id).start()
+        start(clipPool(id))
         clipPool.setClipPaused(id, false)
       }
+      override def setLooping(id: PlayedSound, isLooping: Boolean): Unit = {
+        clipPool(id).loop(if(isLooping) -1 else 0)
+      }
+
+      // Start the Clip, based on its current state (this resumes
+      // the clip at the same place if it was stopped but not closed.
+      private def start(clip: Clip): Unit = {
+        if(loop == 1) {
+          clip.start()
+        } else if(loop == -1) {
+          clip.loop(Clip.LOOP_CONTINUOUSLY)
+        } else {
+          clip.loop(loop)
+        }
+      }
       
-      override def dispose(): Unit = {}
     }
   
     override def loadSound(path: ResourcePath): Loader[Sound] = FutureLoader {
@@ -142,7 +154,7 @@ trait AWTAudioProvider extends AudioProvider {
       if(url == null) {
         throw new ResourceNotFoundException(path)
       }
-      new Sound(url)
+      new Sound(url, 0, 1f)
     }
   
     class Music(url: java.net.URL) extends AbstractMusic {
