@@ -7,14 +7,15 @@
 // on it but I'm too lazy to look for it.
 
 val commonSettings = Seq(
-  version        := "0.0.1",
-  organization   := "com.regblanc.sgl",
-  scalaVersion   := "2.11.8",
-  scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-target:jvm-1.7"),
-  javacOptions  ++= Seq("-source", "1.7", "-target", "1.7"),
-  exportJars     := true,
-  platformTarget := "android-28",
-  useProguard := true,
+  version         := "0.0.1",
+  organization    := "com.regblanc.sgl",
+  scalaVersion    := "2.11.8",
+  scalacOptions  ++= Seq("-unchecked", "-deprecation", "-feature", "-target:jvm-1.7"),
+  javacOptions   ++= Seq("-source", "1.7", "-target", "1.7"),
+  exportJars      := true,
+  resolvers       += "GoogleAndroid" at "https://maven.google.com/",
+  platformTarget  := "android-28",
+  useProguard     := true,
   proguardOptions ++= Seq(
       "-dontobfuscate",
       "-dontoptimize",
@@ -27,8 +28,6 @@ val commonSettings = Seq(
       "-keep class test.**"
   )
 )
-
-resolvers += "GoogleAndroid" at "https://maven.google.com/"
 
 // This package contains only the implementation of the core game engine. The
 // goal is to be able to add as few dependencies (no firebase or google play)
@@ -50,7 +49,7 @@ lazy val androidCore = (project in file("core"))
   .settings(commonSettings: _*)
   .settings(
     name := "sgl-android-core",
-    libraryDependencies += "com.regblanc.sgl" %% "sgl-core-android" % "0.0.1",
+    libraryDependencies += "com.regblanc.sgl" %% "sgl-core-android"      % "0.0.1",
     libraryDependencies += "com.regblanc.sgl" %% "sgl-jvmshared-android" % "0.0.1"
   )
 
@@ -59,12 +58,8 @@ lazy val androidFirebase = (project in file("firebase"))
   .settings(commonSettings: _*)
   .settings(
     name := "sgl-android-firebase",
-    libraryDependencies += "com.regblanc.sgl" %% "sgl-android-core" % "0.0.1",
-    libraryDependencies += "com.google.firebase"     % "firebase-core"           % "16.0.0",
-    libraryDependencies += "com.google.android.gms"  % "play-services-ads"       % "16.0.0",
-    libraryDependencies += "com.google.android.gms"  % "play-services-drive"     % "16.0.0",
-    libraryDependencies += "com.google.android.gms"  % "play-services-games"     % "16.0.0",
-    libraryDependencies += "com.google.android.gms"  % "play-services-plus"      % "16.0.0"
+    libraryDependencies += "com.regblanc.sgl"   %% "sgl-android-core" % "0.0.1",
+    libraryDependencies += "com.google.firebase" % "firebase-core"    % "16.0.8"
   )
   .dependsOn(androidCore)
 
@@ -73,11 +68,8 @@ lazy val androidGoogleAnalytics = (project in file("google-analytics"))
   .settings(commonSettings: _*)
   .settings(
     name := "sgl-android-google-analytics",
-    libraryDependencies += "com.regblanc.sgl" %% "sgl-android-core" % "0.0.1",
-    libraryDependencies += "com.google.android.gms"  % "play-services-ads"       % "16.0.0",
-    libraryDependencies += "com.google.android.gms"  % "play-services-drive"     % "16.0.0",
-    libraryDependencies += "com.google.android.gms"  % "play-services-games"     % "16.0.0",
-    libraryDependencies += "com.google.android.gms"  % "play-services-analytics" % "16.0.0"
+    libraryDependencies += "com.regblanc.sgl"      %% "sgl-android-core"        % "0.0.1",
+    libraryDependencies += "com.google.android.gms" % "play-services-analytics" % "16.0.8"
   )
   .dependsOn(androidCore)
 
@@ -86,10 +78,7 @@ lazy val androidGooglePlay = (project in file("google-play"))
   .settings(commonSettings: _*)
   .settings(
     name := "sgl-android-google-play",
-    libraryDependencies += "com.regblanc.sgl" %% "sgl-android-core" % "0.0.1",
-    libraryDependencies += "com.google.android.gms"  % "play-services-ads"       % "16.0.0",
-    libraryDependencies += "com.google.android.gms"  % "play-services-drive"     % "16.0.0",
-    libraryDependencies += "com.google.android.gms"  % "play-services-games"     % "16.0.0",
-    libraryDependencies += "com.google.android.gms"  % "play-services-analytics" % "16.0.0"
+    libraryDependencies += "com.regblanc.sgl"      %% "sgl-android-core"    % "0.0.1",
+    libraryDependencies += "com.google.android.gms" % "play-services-games" % "17.0.0"
   )
   .dependsOn(androidCore)
