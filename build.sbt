@@ -37,23 +37,25 @@ lazy val coreJVM = core.jvm
 lazy val coreJS = core.js
 lazy val coreNative = core.native
 
+// We need to build the core classes for a different JVM version for Android.
 lazy val coreAndroid = (project in file("./core"))
   .settings(commonSettings: _*)
   .settings(commonAndroidSettings: _*)
   .settings(
-    name         := "sgl-android-core",
+    name         := "sgl-core-android",
     target       := baseDirectory.value / ".android" / "target"
   )
 
 lazy val jvmShared = (project in file("./jvm-shared"))
   .settings(commonSettings: _*)
+  .settings(name := "sgl-jvmshared")
   .dependsOn(coreJVM)
 
 lazy val jvmSharedAndroid = (project in file("./jvm-shared"))
   .settings(commonSettings: _*)
   .settings(commonAndroidSettings: _*)
   .settings(
-    name   := "sgl-android-sharedjvm",
+    name   := "sgl-jvmshared-android",
     target := baseDirectory.value / ".android" / "target"
   )
   .dependsOn(coreAndroid)

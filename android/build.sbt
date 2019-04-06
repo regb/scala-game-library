@@ -12,35 +12,84 @@ val commonSettings = Seq(
   scalaVersion   := "2.11.8",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-target:jvm-1.7"),
   javacOptions  ++= Seq("-source", "1.7", "-target", "1.7"),
-  exportJars     := true
+  exportJars     := true,
+  platformTarget := "android-28",
+  useProguard := true,
+  proguardOptions ++= Seq(
+      "-dontobfuscate",
+      "-dontoptimize",
+      "-keepattributes Signature",
+      "-dontwarn scala.collection.**", // required from Scala 2.11.3
+      "-dontwarn scala.collection.mutable.**", // required from Scala 2.11.0
+      "-ignorewarnings",
+      "-keep class scala.Dynamic",
+      "-keep class scala.concurrent.*",
+      "-keep class test.**"
+  )
 )
 
 resolvers += "GoogleAndroid" at "https://maven.google.com/"
 
-lazy val android = (project in file("."))
+// This package contains only the implementation of the core game engine. The
+// goal is to be able to add as few dependencies (no firebase or google play)
+// as necessary.  Besides being just the right thing to do, this started as a
+// way to try to make sure nothing was collecting the Android Advertising ID,
+// which Google somehow kept complaining about in my games, even though I only
+// use their own library and explicitly disabled any collection (and not even
+// use the analytics of advertising parts of the packages).  But it seems that
+// just by having the libraries packaged, we are asking for trouble, so this
+// split will go the extra mile.
+
+// Notice that the name is sgl-android-core, and
+// it depends on sgl-core-android. The naming convention is that sgl-core is
+// the abstract interface, sgl-core-android is the abstract interface compiled
+// for the Android platform, and sgl-android-core is the android implementaiton
+// of the abstract core.
+lazy val androidCore = (project in file("core"))
   .enablePlugins(AndroidLib)
   .settings(commonSettings: _*)
   .settings(
-    name := "sgl-android",
+    name := "sgl-android-core",
+    libraryDependencies += "com.regblanc.sgl" %% "sgl-core-android" % "0.0.1",
+    libraryDependencies += "com.regblanc.sgl" %% "sgl-jvmshared-android" % "0.0.1"
+  )
+
+lazy val androidFirebase = (project in file("firebase"))
+  .enablePlugins(AndroidLib)
+  .settings(commonSettings: _*)
+  .settings(
+    name := "sgl-android-firebase",
     libraryDependencies += "com.regblanc.sgl" %% "sgl-android-core" % "0.0.1",
-    libraryDependencies += "com.regblanc.sgl" %% "sgl-android-sharedjvm" % "0.0.1",
     libraryDependencies += "com.google.firebase"     % "firebase-core"           % "16.0.0",
     libraryDependencies += "com.google.android.gms"  % "play-services-ads"       % "16.0.0",
     libraryDependencies += "com.google.android.gms"  % "play-services-drive"     % "16.0.0",
     libraryDependencies += "com.google.android.gms"  % "play-services-games"     % "16.0.0",
-    libraryDependencies += "com.google.android.gms"  % "play-services-plus"      % "16.0.0",
-    libraryDependencies += "com.google.android.gms"  % "play-services-analytics" % "16.0.0",
-    platformTarget := "android-28",
-    useProguard := true,
-    proguardOptions ++= Seq(
-        "-dontobfuscate",
-        "-dontoptimize",
-        "-keepattributes Signature",
-        "-dontwarn scala.collection.**", // required from Scala 2.11.3
-        "-dontwarn scala.collection.mutable.**", // required from Scala 2.11.0
-        "-ignorewarnings",
-        "-keep class scala.Dynamic",
-        "-keep class scala.concurrent.*",
-        "-keep class test.**"
-    )
+    libraryDependencies += "com.google.android.gms"  % "play-services-plus"      % "16.0.0"
   )
+  .dependsOn(androidCore)
+
+lazy val androidGoogleAnalytics = (project in file("google-analytics"))
+  .enablePlugins(AndroidLib)
+  .settings(commonSettings: _*)
+  .settings(
+    name := "sgl-android-google-analytics",
+    libraryDependencies += "com.regblanc.sgl" %% "sgl-android-core" % "0.0.1",
+    libraryDependencies += "com.google.android.gms"  % "play-services-ads"       % "16.0.0",
+    libraryDependencies += "com.google.android.gms"  % "play-services-drive"     % "16.0.0",
+    libraryDependencies += "com.google.android.gms"  % "play-services-games"     % "16.0.0",
+    libraryDependencies += "com.google.android.gms"  % "play-services-analytics" % "16.0.0"
+  )
+  .dependsOn(androidCore)
+
+lazy val androidGooglePlay = (project in file("google-play"))
+  .enablePlugins(AndroidLib)
+  .settings(commonSettings: _*)
+  .settings(
+    name := "sgl-android-google-play",
+    libraryDependencies += "com.regblanc.sgl" %% "sgl-android-core" % "0.0.1",
+    libraryDependencies += "com.google.android.gms"  % "play-services-ads"       % "16.0.0",
+    libraryDependencies += "com.google.android.gms"  % "play-services-drive"     % "16.0.0",
+    libraryDependencies += "com.google.android.gms"  % "play-services-games"     % "16.0.0",
+    libraryDependencies += "com.google.android.gms"  % "play-services-analytics" % "16.0.0"
+  )
+  .dependsOn(androidCore)
