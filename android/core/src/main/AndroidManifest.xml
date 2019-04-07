@@ -4,6 +4,6 @@
     <uses-sdk android:minSdkVersion="16"
               android:targetSdkVersion="28"/>
 
-    <application/>
+    <application android:isGame="true"/>
 
 </manifest>
