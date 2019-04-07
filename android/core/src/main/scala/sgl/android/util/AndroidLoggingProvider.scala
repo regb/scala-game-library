@@ -39,3 +39,10 @@ trait AndroidVerboseLoggingProvider extends AndroidLoggingProvider {
   }
   override val logger = VerboseLogLogger
 }
+
+trait AndroidTracingLoggingProvider extends AndroidLoggingProvider {
+  case object TracingLogLogger extends LogLogger {
+    override val logLevel: Logger.LogLevel = Logger.Trace
+  }
+  override val logger = TracingLogLogger
+}

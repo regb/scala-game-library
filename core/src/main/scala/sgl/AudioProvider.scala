@@ -184,26 +184,76 @@ trait AudioProvider {
      * with low RAM it might be streamed directly from disk.
      */
     abstract class AbstractMusic {
+
+      /** Play the music.
+        * 
+        * If the music was just loaded or stopped, it will play from
+        * the beginning. If the music has been paused before, it will
+        * start from the same position (essentially a resume). If the
+        * music is already playing, nothing will happen.
+        *
+        * If the music has completed, we can call play again and it
+        * will start from the beginning (a completed music behave
+        * like a stopped one).
+        *
+        * Note that the play() function returns immediately, and the
+        * sound may or may not start right away. Calling play is a cheap
+        * operation and the system will do its best to follow up with
+        * the music as quickly as possible, but it will not block
+        * the current thread. Essentially, there is no way to control
+        * exactly which frame will actually play the music.
+        */
       def play(): Unit
+
+      /** Pause the music.
+        *
+        * It stops playing the music. If play() is call after that, it will
+        * resume from the paused point. You can chain that with a call
+        * to stop(), which will have the same effect as if you stopped
+        * the music while playing. If the music is already paused or
+        * stopped, this has no effect.
+        */
       def pause(): Unit
+
+      /** Stop the music.
+        *
+        * This stops playing the music but does not release resources.
+        * If play() is called after, the music starts again from the
+        * beginning, as it if was just loaded. You must still call
+        * dispose() after if you wish to release the resources because you
+        * won't be playing this anymore. Calling stop() on a non-started
+        * music has no effect. Calling stop() on a paused music moves
+        * it back to the beginning so it cannot be resumed from the previous
+        * point anymore.
+        */
       def stop(): Unit
   
-      /** Set the volume of the music
+      /** Set the volume of the music.
         *
-        * The volume is between 0 and 1, with
-        * 0 meaning the lowest available value, and 1 the
-        * highest.
-        *
-        * The progression from 0 to 1 should be linear. It seems
-        * like some system use some sort of logarithmic scale, but
-        * I don't really know why, so this function will take the
-        * simpler approach to have a linear scale from 0 to 1, with
-        * 0.5 being 50% of max volume.
+        * The volume should be between 0 and 1, and it will act
+        * as a multiplier to the current volume settings in
+        * the device (so 1 will be at max and 0 will be silent).
         */
       def setVolume(volume: Float): Unit
   
+      /** Set the music to be looping or not.
+        *
+        * This can be used in any state (except disposed) and will
+        * change the music to looping. When the music is completed
+        * it starts over from the beginning if it is in the looping
+        * state, forever. Setting this to false at any point will
+        * complete the current loop and stop at the end (as would
+        * a regular play() on a non-looping music).
+        */
       def setLooping(isLooping: Boolean): Unit
   
+      /** Release all the resources associated with this music.
+        *  
+        * You should call dispose when you don't plan to use the
+        * music anymore. You should stop the music before disposing it.
+        * After a call to dispose, it is not safe to use any of the
+        * methods.
+        */
       def dispose(): Unit
     }
     type Music <: AbstractMusic
