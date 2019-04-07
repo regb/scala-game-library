@@ -10,7 +10,8 @@ import _root_.android.os.Bundle
 import _root_.android.util.AttributeSet
 import _root_.android.view.View
 import _root_.android.view.SurfaceView
-import _root_.android.view.SurfaceHolder;
+import _root_.android.view.SurfaceHolder
+import _root_.android.view.WindowManager
 
 /** Activity providing all providers implementation for Android.
   *
@@ -26,6 +27,14 @@ trait AndroidApp extends Activity with GameApp
                     with GameStateComponent {
 
   this: LoggingProvider =>
+
+  /** Control if the screen should always stay on.
+    *
+    * Control the flag FLAG_KEEP_SCREEN_ON, if set to true, as long as we are
+    * within the game activity, the app will not go to sleep (probably what the
+    * player expect). Active by default, override to change.
+    */
+  val KeepScreenOn: Boolean = true
 
   // The following flags are used to track the application state. It
   // is not very clear what is the relationship between activity lifecycle
@@ -89,6 +98,9 @@ trait AndroidApp extends Activity with GameApp
     gameState.newScreen(startingScreen)
 
     this.registerInputsListeners()
+
+    if(KeepScreenOn)
+      getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
     //lifecycle of SGL
     lifecycleListener.startup()
