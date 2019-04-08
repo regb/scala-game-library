@@ -192,7 +192,7 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
     // resource used to load the player, but will be used for the backup player
     // needed for seemless looping.
     class Music(path: ResourcePath) extends AbstractMusic 
-      with MediaPlayer.OnPreparedListener with MediaPlayer.OnCompletionListener {
+      with MediaPlayer.OnPreparedListener with MediaPlayer.OnCompletionListener with MediaPlayer.OnErrorListener {
       
       // Lock just for this music object. The Music class should be careful to
       // never get a lock on the AudioLocker, as the onPause/onResume method
@@ -377,6 +377,27 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
         }
       }
 
+      override def onError(mp: MediaPlayer, what: Int, extra: Int): Boolean = thisMusicLocker.synchronized {
+        // If for some reason the error is for none of our players, just ignore it.
+        if(mp != mainPlayer && mp != backupPlayer)
+          return false
+
+        logger.error("Media Player <%s> operation returned error what=%d, extra=%d".format(if(mp == mainPlayer) "main" else "backup", what, extra))
+
+        // TODO: maybe we can try to recover from the error, typically if the server died we should
+        // reinit everything. But we need to be carefull to not end up in a crash loop.
+        //if(what == MediaPlayer.MEDIA_ERROR_SERVER_DIED) {
+
+        //}
+
+        // For now, Let's just freeze the player, so that the app doesn't not crash but just
+        // ignore all the calls. It should work well even in the resume call, but maybe
+        // we need to factor out this concept of "freezing" instead of just calling the
+        // pause callback.
+        freezeOnPause()
+        false
+      }
+
       override def play(): Unit = thisMusicLocker.synchronized {
         if(state == Released)
           throw new RuntimeException("Trying to play a released resource")
@@ -475,6 +496,7 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
         mp.setVolume(androidVolume, androidVolume)
         mp.setOnPreparedListener(this)
         mp.setOnCompletionListener(this)
+        mp.setOnErrorListener(this)
         mp
       }
 
