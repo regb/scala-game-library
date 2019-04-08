@@ -290,8 +290,10 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
 
           mainPlayerPrepared = true
           // Then we must start playing if play was called.
-          if(state == WaitPlaying || state == Playing)
+          if(state == WaitPlaying) {
             mainPlayer.start()
+            state = Playing
+          }
 
         } else if(mp == backupPlayer) { // otherwise, the backup player just go ready.
           logger.debug("Backup player is prepared.")
@@ -370,6 +372,7 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
             state = PlayingComplete
           }
         } else {
+          logger.debug("Playback completed. Player is not set for looping, transitionning to PlayingComplete state.")
           state = PlayingComplete
         }
       }
@@ -507,6 +510,7 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
       // for the pause call to set the state but not touch the mainPlayer
       // if it is null).
       def freezeOnPause(): Unit = thisMusicLocker.synchronized {
+        logger.trace("freezeOnPause called")
         if(mainPlayer != null) {
           if(state == Playing)
             mainPlayer.stop()
@@ -521,6 +525,7 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
       // When onResume is called, we still have the internal state, but need to
       // restore the player to the right state.
       def unfreezeOnResume(): Unit = thisMusicLocker.synchronized {
+        logger.trace("unfreezeOnResume called")
         state match {
           case Idle =>
             initPlayersAfterFreeze()
