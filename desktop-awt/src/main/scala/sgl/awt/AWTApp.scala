@@ -35,6 +35,7 @@ trait AWTApp extends GameApp
     })
 
     this.registerInputListeners()
+    this.Audio.init()
 
     gameState.newScreen(startingScreen)
 

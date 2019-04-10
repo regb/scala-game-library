@@ -3,11 +3,15 @@ package awt
 
 import sgl.util._
 
-import javax.sound.sampled._
+import javax.sound.sampled.{AudioSystem, Clip, AudioFormat, AudioInputStream, FloatControl, DataLine, UnsupportedAudioFileException}
+
 import java.io.File
+import java.nio.ByteOrder
 
 trait AWTAudioProvider extends AudioProvider {
   this: AWTSystemProvider with LoggingProvider =>
+  
+  private implicit val LogTag = Logger.Tag("sgl-awt-audio")
 
   object AWTAudio extends Audio {
 
@@ -86,7 +90,7 @@ trait AWTAudioProvider extends AudioProvider {
       // user knows that it isn't implemented in this backend (but would work in
       // a different backend).
       if(rate != 1f) {
-        logger.warning("Playback rate not supported, only supports 1f")(Logger.Tag("awt-audio-provider"))
+        logger.warning("Playback rate not supported, only supports 1f")
       }
   
       type PlayedSound = Int
@@ -159,13 +163,25 @@ trait AWTAudioProvider extends AudioProvider {
   
     class Music(url: java.net.URL) extends AbstractMusic {
       private val audioStream: AudioInputStream = AudioSystem.getAudioInputStream(url)
+      logger.debug("Parsed music resource as AudioInputStream: format=<%s> frame_length=%d".format(audioStream.getFormat, audioStream.getFrameLength))
   
-      //first we convert the input stream (that could be encoded such as vorbis) to a PCM
-      //based encoding, so that java can play it.
-      private val format = convertOutFormat(audioStream.getFormat)
+      //first we try to convert the input stream (that could be encoded such as vorbis) to a PCM
+      //based encoding, so that java can play it without trouble.
+      //private val format = convertOutFormat(audioStream.getFormat)
+
+      logger.debug("Native byte order is " + ByteOrder.nativeOrder)
+      val isNativeBigEndian = ByteOrder.nativeOrder == ByteOrder.BIG_ENDIAN
+      val availablePCMFormats = AudioSystem.getTargetFormats(AudioFormat.Encoding.PCM_SIGNED, audioStream.getFormat)
+      logger.debug("Found %d possible PCM formats to be converted to.".format(availablePCMFormats.size))
+      availablePCMFormats.foreach(f => logger.debug("Possible format: " + f))
+      val pcmFormat = availablePCMFormats.find(_.isBigEndian == isNativeBigEndian).getOrElse{
+        throw new ResourceFormatUnsupportedException(null)
+      }
+      logger.debug("Using format: " + pcmFormat)
   
-      private val convertedStream = AudioSystem.getAudioInputStream(format, audioStream)
-      private val info = new DataLine.Info(classOf[Clip], format)
+      private val convertedStream = AudioSystem.getAudioInputStream(pcmFormat, audioStream)
+      logger.debug("Converted AudioInputStream: format=<%s> frame_length=%d".format(convertedStream.getFormat, convertedStream.getFrameLength))
+      private val info = new DataLine.Info(classOf[Clip], convertedStream.getFormat)
       private val clip = AudioSystem.getLine(info).asInstanceOf[Clip]
       clip.open(convertedStream)
   
@@ -200,12 +216,18 @@ trait AWTAudioProvider extends AudioProvider {
       override def dispose(): Unit = {}
     }
     override def loadMusic(path: ResourcePath): Loader[Music] = FutureLoader {
+      logger.info("Loading music resource: " + path.path)
       val localAsset = if(DynamicResourcesEnabled) findDynamicResource(path) else None
       val url = localAsset.map(_.toURI.toURL).getOrElse(getClass.getClassLoader.getResource(path.path))
       if(url == null) {
         throw new ResourceNotFoundException(path)
       }
-      new Music(url)
+      try {
+        new Music(url)
+      } catch {
+        case (_: UnsupportedAudioFileException) =>
+          throw new ResourceFormatUnsupportedException(path)
+      }
     }
   
     // I think the reason we need to convert the format is that some formats simply
@@ -216,6 +238,14 @@ trait AWTAudioProvider extends AudioProvider {
       val ch = inFormat.getChannels()
       val rate = inFormat.getSampleRate()
       new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, rate, 16, ch, ch * 2, rate, false)
+    }
+
+    // TODO: would be nice that the init functions are part of the cake initialization, with
+    //  the explicit interface that the call order is not well defined.
+    def init(): Unit = {
+      logger.info("Initializing AWT audio system.")
+      val mixersInfo = AudioSystem.getMixerInfo()
+      mixersInfo.foreach(mi => logger.debug("Found available mixer: " + mi))
     }
   
     //TODO: wraps internal (javax.sound) exception with some interface (AudioProvider) exceptions

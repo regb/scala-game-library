@@ -7,11 +7,12 @@ import scene._
 import util._
 
 trait MainScreenComponent extends ViewportComponent {
-  this: GraphicsProvider with InputProvider with SystemProvider with WindowProvider 
+  this: GraphicsProvider with InputProvider with SystemProvider with WindowProvider with AudioProvider
   with GameStateComponent with InputHelpersComponent with GameLoopStatisticsComponent
   with LoggingProvider with GraphicsHelpersComponent =>
 
   import Graphics.{Bitmap, Canvas, Color, BitmapRegion, Animation, RichCanvas}
+  import Audio.Music
   import Window.dp2px
 
   private implicit val LogTag = Logger.Tag("main-screen")
@@ -20,15 +21,23 @@ trait MainScreenComponent extends ViewportComponent {
     override def name: String = "Loading Screen"
 
     var characterBitmap: Option[Bitmap] = None
+    var music: Option[Music] = None
 
     private var characterBitmapLoader: Loader[Bitmap] = null
+    private var musicLoader: Loader[Music] = null
 
     override def update(dt: Long): Unit = {
       if(characterBitmapLoader == null) {
         characterBitmapLoader = Graphics.loadImage(ResourcesPrefix / "drawable" / "character.png")
       }
-      if(characterBitmapLoader.isLoaded) {
+      if(musicLoader == null) {
+        //musicLoader = Audio.loadMusic(ResourcesPrefix / "audio" / "music.wav")
+        musicLoader = Audio.loadMusic(ResourcesPrefix / "audio" / "music.ogg")
+      }
+      if(characterBitmapLoader.isLoaded && musicLoader.isLoaded) {
         characterBitmap = Some(characterBitmapLoader.value.get.get)
+        music = Some(musicLoader.value.get.get)
+        music.foreach(_.play())
         gameState.newScreen(new MainScreen)
       }
     }

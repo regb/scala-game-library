@@ -176,6 +176,16 @@ trait SystemProvider {
 
   case class ResourceNotFoundException(path: ResourcePath) extends Exception("Resource " + path.toString + " not found")
 
+  /** The resource file format is unsupported.
+    *
+    * This exception is thrown when trying to load a resource format
+    * that is not understood by the system. It could be either an error
+    * (trying to load sound with a loadBitmap), or a file format not supported
+    * on the back (a valid format but that the current backend implementation
+    * is not able to support).
+    */
+  case class ResourceFormatUnsupportedException(path: ResourcePath) extends Exception("File format of resource " + path.toString + " not supported")
+
   // TODO: And why even a resource prefix in the first place? Why not have clients just write
   //        "audio" / "music.wav" ?
   //       Additional questions is whether the "audio" directory should be implicit from the
