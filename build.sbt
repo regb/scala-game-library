@@ -75,11 +75,6 @@ lazy val desktopAWT = (project in file("./desktop-awt"))
 
 def ghProject(repo: String, version: String, name: String) = ProjectRef(uri(s"${repo}#${version}"), name)
 
-val graphicsBindingsCommit = "24206662e972bfc4f77cd3abc38502ea0ce92db0"
-lazy val sdl2 = ghProject("git://github.com/regb/scalanative-graphics-bindings.git", graphicsBindingsCommit, "sdl2")
-lazy val sdl2Image = ghProject("git://github.com/regb/scalanative-graphics-bindings.git", graphicsBindingsCommit, "sdl2Image")
-lazy val opengl = ghProject("git://github.com/regb/scalanative-graphics-bindings.git", graphicsBindingsCommit, "opengl")
-
 lazy val desktopNative = (project in file("./desktop-native"))
   .enablePlugins(ScalaNativePlugin)
   .settings(commonSettings: _*)
