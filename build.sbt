@@ -65,12 +65,9 @@ lazy val desktopAWT = (project in file("./desktop-awt"))
   .settings(
     name                := "sgl-desktop-awt",
 
-    // Add .oog support by using jorbis (transitive dependency) as a service provider
-    //libraryDependencies += "com.googlecode.soundlibs" % "tritonus-share" % "0.3.7.4", // vorbisspi depends on tritonus-share, and apparently we need to make sure it's using this version.
+    // Add .ogg support by using jorbis (transitive dependency) as a service provider
     libraryDependencies += "com.googlecode.soundlibs" % "vorbisspi" % "1.0.3-2", 
-    // Additional audio format can be added in the game with a standard java API sound provider.
-    //libraryDependencies += "com.googlecode.soundlibs" % "jorbis" % "0.0.17-3",
-    //libraryDependencies += "com.googlecode.soundlibs" % "soundlibs" % "1.4",
+    // Additional audio format can be added in the game build config, with a standard spi for java sound API.
     libraryDependencies += "net.liftweb"   %% "lift-json" % "3.1.1",
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.0" % "test"
   )

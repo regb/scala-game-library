@@ -175,6 +175,13 @@ trait AudioProvider {
     }
     type Sound <: AbstractSound
 
+    /** Load a sound from a resource.
+      *
+      * The Loader completes when the file is fully loaded, prepared, and ready
+      * to play. The Loader can fail with ResourceNotFoundException or
+      * ResourceFormatUnsupportedException. The format supports varies per
+      * platform and configuration.
+      */
     def loadSound(path: ResourcePath): Loader[Sound]
   
     /*
@@ -258,6 +265,13 @@ trait AudioProvider {
     }
     type Music <: AbstractMusic
 
+    /** Load a music from a resource.
+      *
+      * The Loader completes when the file is fully loaded, prepared, and ready
+      * to play. The Loader can fail with ResourceNotFoundException or
+      * ResourceFormatUnsupportedException. The format supports varies per
+      * platform and configuration.
+      */
     def loadMusic(path: ResourcePath): Loader[Music]
 
   }

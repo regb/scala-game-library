@@ -8,6 +8,33 @@ import javax.sound.sampled.{AudioSystem, Clip, AudioFormat, AudioInputStream, Fl
 import java.io.File
 import java.nio.ByteOrder
 
+/** AudioProvider implementation for the official Java Sound API.
+  *
+  * This implements the sgl.AudioProvider module using the standard Java Sound
+  * API.  The Java API is relatively low level, but the complexity is hidden
+  * away by the AudioProvider interface. A standard Java runtime will only
+  * provide support for PCM data, so it is unable to understand popular formats
+  * such as Vorbis (.ogg) and MP3. The Java Sound API provides hooks in the
+  * form of SPI for third party to add support for any audio format. We tried
+  * to implement the AudioProvider interface in an independent way from the
+  * audio format, so that it should be possible to add support for any audio
+  * format just by including the service provider into the classpath.  By
+  * default, the official SGL package will include jorbis and vorbisspi, which
+  * is a service provider that adds support for Vorbis files. So Vorbis should
+  * be supported out of the box, and any other format (such as mp3) can be
+  * added just by adding the service providers into the class path when
+  * building the game for this backend.
+  *
+  * In that particular implementation, we actually load Music objects entirely
+  * in memory, so there is not much advantage to using Sound vs Music. The
+  * choice is made mostly to simplify the backend implementation (the Java API
+  * is a bit complex to approach and we wanted to share one implementation
+  * across Sound and Music), but also motivated by the fact that memory
+  * resources on desktop are much less constrained than on other platforms and
+  * this is the one place where we can afford such a choice. It's also likely
+  * that the AWT backend is used for development more than production, so using
+  * extra memory is an ok trade-off.
+  */
 trait AWTAudioProvider extends AudioProvider {
   this: AWTSystemProvider with LoggingProvider =>
   
@@ -161,49 +188,7 @@ trait AWTAudioProvider extends AudioProvider {
       new Sound(url, 0, 1f)
     }
   
-    class Music(url: java.net.URL) extends AbstractMusic {
-      private val audioStream: AudioInputStream = AudioSystem.getAudioInputStream(url)
-      logger.debug("Parsed music resource as AudioInputStream: format=<%s> frame_length=%d".format(audioStream.getFormat, audioStream.getFrameLength))
-  
-      //first we try to convert the input stream (that could be encoded such as vorbis) to a PCM
-      //based encoding, so that java can play it without trouble.
-      //private val format = convertOutFormat(audioStream.getFormat)
-
-      logger.debug("Native byte order is " + ByteOrder.nativeOrder)
-      val isNativeBigEndian = ByteOrder.nativeOrder == ByteOrder.BIG_ENDIAN
-      val availablePCMFormats = AudioSystem.getTargetFormats(AudioFormat.Encoding.PCM_SIGNED, audioStream.getFormat)
-      logger.debug("Found %d possible PCM formats to be converted to.".format(availablePCMFormats.size))
-      availablePCMFormats.foreach(f => logger.debug("Possible format: " + f))
-      val pcmFormat = availablePCMFormats.find(
-        f => f.isBigEndian == isNativeBigEndian &&
-             f.getSampleSizeInBits == 16 &&
-             f.getChannels == audioStream.getFormat.getChannels
-      ).getOrElse{
-        throw new ResourceFormatUnsupportedException(null)
-      }
-      logger.debug("Using format: " + pcmFormat)
-  
-      private val convertedStream0 = AudioSystem.getAudioInputStream(pcmFormat, audioStream)
-      logger.debug("Converted AudioInputStream: format=<%s> frame_length=%d".format(convertedStream0.getFormat, convertedStream0.getFrameLength))
-
-      val data = new java.io.ByteArrayOutputStream
-      val buffer = new Array[Byte](convertedStream0.getFormat.getFrameSize * 10000)
-      var n = convertedStream0.read(buffer)
-      while(n != -1) {
-        data.write(buffer, 0, n)
-        n = convertedStream0.read(buffer)
-      }
-      val dataArray = data.toByteArray
-      val computedFrameLength = dataArray.length/convertedStream0.getFormat.getFrameSize
-      logger.debug("data length recomputed from reading the file: %d bytes".format(computedFrameLength))
-
-      val convertedStream = new AudioInputStream(new java.io.ByteArrayInputStream(dataArray), convertedStream0.getFormat, computedFrameLength)
-      logger.debug("Converted AudioInputStream: format=<%s> frame_length=%d".format(convertedStream.getFormat, convertedStream.getFrameLength))
-
-      private val info = new DataLine.Info(classOf[Clip], convertedStream.getFormat)
-      private val clip = AudioSystem.getLine(info).asInstanceOf[Clip]
-      clip.open(convertedStream)
-  
+    class Music(clip: Clip) extends AbstractMusic {
       private var isPlaying = false
       private var shouldLoop = false
   
@@ -236,16 +221,137 @@ trait AWTAudioProvider extends AudioProvider {
     }
     override def loadMusic(path: ResourcePath): Loader[Music] = FutureLoader {
       logger.info("Loading music resource: " + path.path)
+      val clip = loadClip(path)
+      new Music(clip)
+    }
+
+    private def tryGetClip(format: AudioFormat): Option[Clip] = try {
+      val info = new DataLine.Info(classOf[Clip], format)
+      val clip = AudioSystem.getLine(info).asInstanceOf[Clip]
+      Some(clip)
+    } catch {
+      case (_: IllegalArgumentException) => {
+        // The AudioSystem.getLine throws the IllegalArgumentException if there
+        // no support for playing such a format.
+        None
+      }
+    }
+
+    private def findPlayableFormat(fromFormat: AudioFormat): Option[Clip] = {
+      logger.debug("Looking for a useable audio format to convert " + fromFormat + " to.")
+
+      val availablePCMFormats = AudioSystem.getTargetFormats(AudioFormat.Encoding.PCM_SIGNED, fromFormat)
+      availablePCMFormats.foreach(f => logger.debug("Possible format: " + f))
+      val useableFormats = availablePCMFormats.flatMap(f => {
+        logger.debug("Attempting to get a clip for format " + f)
+        val c = tryGetClip(f)
+        logger.debug("Got clip: " + c)
+        c
+      })
+
+      // Now let's try to pick the best out of these.
+      logger.debug("Native byte order is " + ByteOrder.nativeOrder)
+      def sameEndian(f: AudioFormat) = f.isBigEndian == (ByteOrder.nativeOrder == ByteOrder.BIG_ENDIAN)
+      def sameChannels(f: AudioFormat) = f.getChannels == fromFormat.getChannels
+      def sameSampleRate(f: AudioFormat) = f.getSampleRate == fromFormat.getSampleRate
+      def standardSampleSize(f: AudioFormat) = f.getSampleSizeInBits == 16
+
+      useableFormats.find(f => sameEndian(f.getFormat) && sameChannels(f.getFormat) && standardSampleSize(f.getFormat) && sameSampleRate(f.getFormat))
+      .orElse(useableFormats.find(f => sameEndian(f.getFormat) && sameChannels(f.getFormat) && standardSampleSize(f.getFormat)))
+      .orElse(useableFormats.find(f => sameEndian(f.getFormat) && standardSampleSize(f.getFormat)))
+      .orElse(useableFormats.find(f => sameEndian(f.getFormat)))
+      //.orElse(useableFormats.headOption) It seems like using a different endian encoding just gonna
+      // make a horrible sound, so let's stop there.
+    }
+
+    private def convertStream(audioStream: AudioInputStream, format: AudioFormat): AudioInputStream = {
+      val convertedStream0 = AudioSystem.getAudioInputStream(format, audioStream)
+      logger.debug("Converted AudioInputStream: format=<%s> frame_length=%d".format(convertedStream0.getFormat, convertedStream0.getFrameLength))
+
+      // Sometimes the converted stream has a frame length of -1, which seems wrong as it
+      // should be in a well-defined PCM format with a known number of bytes per frames and thus
+      // a known number of frames. The clip then seems to fail on some platforms (OpenJDK with icedtea
+      // pulse audio implementation) when trying to open the audio stream (with a negative array
+      // exception which can clearly be traced to that negative frame length). So the trick here
+      // is to actually manually compute the frame length and create a new AudioInputStream with
+      // the same data but with the correct frame length.
+
+      if(convertedStream0.getFrameLength != -1) // If it's not -1, no need for this hack.
+        return convertedStream0
+
+      val data = new java.io.ByteArrayOutputStream
+      val frameSize = {
+        val tmp = convertedStream0.getFormat.getFrameSize
+        if(tmp == AudioSystem.NOT_SPECIFIED) 1 else tmp
+      }
+      // Let's make the read buffer a large multiple of the frame size, 10'000 seems fine.
+      // We need to read integral amount of frames, but we can read a lot of them to make
+      // the process faster.
+      val buffer = new Array[Byte](frameSize * 10000)
+      // read returns the number of bytes read, not the number of frames.
+      var n = convertedStream0.read(buffer)
+      while(n != -1) {
+        data.write(buffer, 0, n)
+        n = convertedStream0.read(buffer)
+      }
+
+      val dataArray = data.toByteArray
+      val computedFrameLength = dataArray.length/frameSize
+      logger.debug("data length recomputed from reading the file: %d bytes".format(computedFrameLength))
+      val convertedStream = new AudioInputStream(new java.io.ByteArrayInputStream(dataArray), convertedStream0.getFormat, computedFrameLength)
+      logger.debug("Converted AudioInputStream: format=<%s> frame_length=%d".format(convertedStream.getFormat, convertedStream.getFrameLength))
+      convertedStream
+    }
+  
+    // load a clip for the resource and open it with the audio stream.  Throws
+    // ResourceFormatUnsupportedException if the audio system is unable to deal
+    // with the format, and ResourceNotFoundException if there's no resource
+    // for that path.
+    private def loadClip(path: ResourcePath): Clip = {
       val localAsset = if(DynamicResourcesEnabled) findDynamicResource(path) else None
       val url = localAsset.map(_.toURI.toURL).getOrElse(getClass.getClassLoader.getResource(path.path))
       if(url == null) {
         throw new ResourceNotFoundException(path)
       }
-      try {
-        new Music(url)
+      // We first try to load the resource as an AudioInputStream. The default java sound api
+      // only provides support for simple PCM representation. If additional service providers
+      // are installed, then it could handle additional formats (such as ogg and mp3). If it
+      // fails to load, it throws an UnsupportedAudioFileException that we catch
+      // below and transform into a ResourceFormatUnsupportedException for the user.
+      val resourceAudioStream: AudioInputStream = try {
+        AudioSystem.getAudioInputStream(url)
       } catch {
         case (_: UnsupportedAudioFileException) =>
           throw new ResourceFormatUnsupportedException(path)
+      }
+      logger.debug("Parsed resource as AudioInputStream: format=<%s> frame_length=%d".format(resourceAudioStream.getFormat, resourceAudioStream.getFrameLength))
+
+      tryGetClip(resourceAudioStream.getFormat)
+        .map((c: Clip) => {
+          c.open(resourceAudioStream)
+          c
+        }).getOrElse{
+        // This is expected to happen with any non PCM format, we will need to convert it to a PCM
+        // based encoding. Java sound system can only play PCM by default.
+        logger.debug("Failed to open a clip for the native resource format, attempting to convert.")
+
+        val clip: Clip = findPlayableFormat(resourceAudioStream.getFormat).getOrElse{
+          throw new ResourceFormatUnsupportedException(path)
+        }
+        logger.debug("Using format: " + clip.getFormat)
+
+        try {
+          val convertedStream = convertStream(resourceAudioStream, clip.getFormat)
+          clip.open(convertedStream)
+        } catch {
+          case (_: IllegalArgumentException) => {
+            // I don't think this can happen with the checks before, but just in case we wrap that
+            // againg.
+            throw new ResourceFormatUnsupportedException(path)
+          }
+        }
+
+        clip
       }
     }
   
@@ -265,6 +371,11 @@ trait AWTAudioProvider extends AudioProvider {
       logger.info("Initializing AWT audio system.")
       val mixersInfo = AudioSystem.getMixerInfo()
       mixersInfo.foreach(mi => logger.debug("Found available mixer: " + mi))
+
+      // TODO: Should we figure out the best mixer? Then should we add some global control 
+      //  for volume (like a Audio.setMasterVolume) that would apply to all the audio playing?
+      //  If so, we need to figure out how to make sure every clip feeds into the same mixer,
+      //  and not just load clips independently of a mixer.
     }
   
     //TODO: wraps internal (javax.sound) exception with some interface (AudioProvider) exceptions
