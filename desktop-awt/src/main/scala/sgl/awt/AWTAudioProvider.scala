@@ -174,13 +174,32 @@ trait AWTAudioProvider extends AudioProvider {
       val availablePCMFormats = AudioSystem.getTargetFormats(AudioFormat.Encoding.PCM_SIGNED, audioStream.getFormat)
       logger.debug("Found %d possible PCM formats to be converted to.".format(availablePCMFormats.size))
       availablePCMFormats.foreach(f => logger.debug("Possible format: " + f))
-      val pcmFormat = availablePCMFormats.find(_.isBigEndian == isNativeBigEndian).getOrElse{
+      val pcmFormat = availablePCMFormats.find(
+        f => f.isBigEndian == isNativeBigEndian &&
+             f.getSampleSizeInBits == 16 &&
+             f.getChannels == audioStream.getFormat.getChannels
+      ).getOrElse{
         throw new ResourceFormatUnsupportedException(null)
       }
       logger.debug("Using format: " + pcmFormat)
   
-      private val convertedStream = AudioSystem.getAudioInputStream(pcmFormat, audioStream)
+      private val convertedStream0 = AudioSystem.getAudioInputStream(pcmFormat, audioStream)
+      logger.debug("Converted AudioInputStream: format=<%s> frame_length=%d".format(convertedStream0.getFormat, convertedStream0.getFrameLength))
+
+      val data = new java.io.ByteArrayOutputStream
+      val buffer = new Array[Byte](convertedStream0.getFormat.getFrameSize * 10000)
+      var n = convertedStream0.read(buffer)
+      while(n != -1) {
+        data.write(buffer, 0, n)
+        n = convertedStream0.read(buffer)
+      }
+      val dataArray = data.toByteArray
+      val computedFrameLength = dataArray.length/convertedStream0.getFormat.getFrameSize
+      logger.debug("data length recomputed from reading the file: %d bytes".format(computedFrameLength))
+
+      val convertedStream = new AudioInputStream(new java.io.ByteArrayInputStream(dataArray), convertedStream0.getFormat, computedFrameLength)
       logger.debug("Converted AudioInputStream: format=<%s> frame_length=%d".format(convertedStream.getFormat, convertedStream.getFrameLength))
+
       private val info = new DataLine.Info(classOf[Clip], convertedStream.getFormat)
       private val clip = AudioSystem.getLine(info).asInstanceOf[Clip]
       clip.open(convertedStream)
