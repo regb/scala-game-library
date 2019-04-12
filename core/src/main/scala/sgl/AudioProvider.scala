@@ -1,6 +1,6 @@
 package sgl
 
-import sgl.util._
+import sgl.util.Loader
 
 /** Provides platform-specific Audio module.
   *
@@ -277,4 +277,54 @@ trait AudioProvider {
   }
   val Audio: Audio
 
+}
+
+
+/** A Fake AudioProvider that implements the AudioProvider interface.
+  *
+  * This AudioProvider does not do anything, but it can be used on
+  * a platform that has no support for Audio (yet), or if the Audio
+  * support is somehow broken. It will let the game compile and
+  * use the Audio regularly, but will simply not play any audio.
+  * It will still validate some arguments (valid ranges), so it could help
+  * in catching programming errors.
+  *
+  * Just mix in this trait if you want to disable sound entirely, without
+  * any change to the rest of the code. It can make sense while debugging
+  * (to limit the amount of systems running) or for some automated testing
+  * (no need for audio there).
+  */
+trait FakeAudioProvider extends AudioProvider {
+  this: SystemProvider =>
+
+  object FakeAudio extends Audio {
+
+    class Sound extends AbstractSound {
+
+      type PlayedSound = Int
+
+      override def play(volume: Float): Option[PlayedSound] = None
+      override def withConfig(loop: Int, rate: Float): Sound = this
+      override def dispose(): Unit = {}
+
+      override def stop(id: PlayedSound): Unit = {}
+      override def pause(id: PlayedSound): Unit = {}
+      override def resume(id: PlayedSound): Unit = {}
+      override def setLooping(id: PlayedSound, isLooping: Boolean): Unit = {}
+    }
+
+    override def loadSound(path: ResourcePath): Loader[Sound] = Loader.successful(new Sound)
+
+    class Music extends AbstractMusic {
+      override def play(): Unit = {}
+      override def pause(): Unit = {}
+      override def stop(): Unit = {}
+      override def setVolume(volume: Float): Unit = {}
+      override def setLooping(isLooping: Boolean): Unit = {}
+      override def dispose(): Unit = {}
+    }
+
+    override def loadMusic(path: ResourcePath): Loader[Music] = Loader.successful(new Music)
+  }
+  override val Audio = FakeAudio
 }
