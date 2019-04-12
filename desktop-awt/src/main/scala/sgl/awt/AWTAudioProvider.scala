@@ -42,20 +42,6 @@ trait AWTAudioProvider extends AudioProvider {
 
   object AWTAudio extends Audio {
 
-    private def setClipVolume(clip: Clip, volume: Float): Unit = {
-      if(clip.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
-        val gainControl = clip.getControl(FloatControl.Type.MASTER_GAIN).asInstanceOf[FloatControl]
-        val width: Float = gainControl.getMaximum-gainControl.getMinimum
-  
-        //TODO: figure out how to properly control the volume
-        val db: Float = 20f*math.log10(volume).toFloat
-        //val value = width*volume + gainControl.getMinimum
-        gainControl.setValue(db)
-      } else {
-        // TODO: what should we do then?
-      }
-    }
-  
     /*
      * Tries to automatically close clips when used.
      * This can only accept up to 10 running sounds
@@ -66,8 +52,8 @@ trait AWTAudioProvider extends AudioProvider {
      */
     private class ClipPool {
   
-      //kill index is the index of which element will be killed
-      //if nothing can be freed. Rotates on each kill.
+      // kill index is the index of which element will be killed
+      // if nothing can be freed. Rotates on each kill.
       private var killIndex = 0
   
       private var pool: Array[Clip] = Array.fill(10)(null)
@@ -94,10 +80,10 @@ trait AWTAudioProvider extends AudioProvider {
         }
       }
   
-      //we need this as we do not want to free a clip that
-      //was marked paused by the user, but the .running method
-      //of the clip will return false as Clip has no notion
-      //of being paused vs stopped
+      // we need this as we do not want to free a clip that
+      // was marked paused by the user, but the .running method
+      // of the clip will return false as Clip has no notion
+      // of being paused vs stopped
       def setClipPaused(index: Int, isPaused: Boolean): Unit = {
         paused(index) = isPaused
       }
@@ -117,7 +103,7 @@ trait AWTAudioProvider extends AudioProvider {
       // user knows that it isn't implemented in this backend (but would work in
       // a different backend).
       if(rate != 1f) {
-        logger.warning("Playback rate not supported, only supports 1f")
+        logger.warning("Playback rate not supported, only supports unmodified rate of 1f.")
       }
   
       type PlayedSound = Int
@@ -225,6 +211,10 @@ trait AWTAudioProvider extends AudioProvider {
       new Music(clip)
     }
 
+    // Try to get a clip that can play the AudioFormat. Returns
+    // None if there is clip in the AudioSystem, Some(clip) otherwise.
+    // The clip is not opened, so it's essentially not using resources
+    // yet, when you commit to a particular clip you must open it.
     private def tryGetClip(format: AudioFormat): Option[Clip] = try {
       val info = new DataLine.Info(classOf[Clip], format)
       val clip = AudioSystem.getLine(info).asInstanceOf[Clip]
@@ -235,6 +225,10 @@ trait AWTAudioProvider extends AudioProvider {
         // no support for playing such a format.
         None
       }
+      case (_: Exception) => None
+      // TODO we should handle LineUnavailableException, which indicates that no line are
+      //    currently available due to resource constraints, but not that the system cannot
+      //    handle the format. Maybe we can do better than just returning None in that case.
     }
 
     private def findPlayableFormat(fromFormat: AudioFormat): Option[Clip] = {
@@ -264,8 +258,11 @@ trait AWTAudioProvider extends AudioProvider {
       // make a horrible sound, so let's stop there.
     }
 
-    private def convertStream(audioStream: AudioInputStream, format: AudioFormat): AudioInputStream = {
-      val convertedStream0 = AudioSystem.getAudioInputStream(format, audioStream)
+    // convertStream converts the audioStream into the targetFormat. Typically we need
+    // to do that as Java Sound API can only play a limited number of formats, and the
+    // resource could be in formats that are not supported.
+    private def convertStream(audioStream: AudioInputStream, targetFormat: AudioFormat): AudioInputStream = {
+      val convertedStream0 = AudioSystem.getAudioInputStream(targetFormat, audioStream)
       logger.debug("Converted AudioInputStream: format=<%s> frame_length=%d".format(convertedStream0.getFormat, convertedStream0.getFrameLength))
 
       // Sometimes the converted stream has a frame length of -1, which seems wrong as it
@@ -354,11 +351,47 @@ trait AWTAudioProvider extends AudioProvider {
         clip
       }
     }
+
+    private def setClipVolume(clip: Clip, volume: Float): Unit = {
+      // volume is a float between 0 and 1, and is meant to be a linear
+      // modification of the normal sound (see official AudioProvider API
+      // documentation for setVolume. The idea is that we will never need to
+      // amplify sound (which is anyway not necessarily safe as some frames can
+      // get clipped and it would distort the sound), but only to reduce it
+      // linearly (0.5 being half and 0 being silent). The Java Sound API (and
+      // apparently audio professionals) actually express the sound in terms of
+      // gains (increments) in decibels, which is a logarithmic scale. A value
+      // of 0db means no increment, so that would be 1f for us. A positive
+      // value means some increments and we don't want to do it ever. We need
+      // to convert from decibels to volume, and there's some math being that,
+      // but the formula is (from official java documentation):
+      //    linearScala = pow(10.0, gainDB/20.0)
+      // So we just need to use the inverse.
+      if(clip.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
+        val gainControl = clip.getControl(FloatControl.Type.MASTER_GAIN).asInstanceOf[FloatControl]
+        logger.debug("Clip supports MASTER_GAIN control with values ranging from %f to %f".format(gainControl.getMinimum, gainControl.getMaximum))
   
-    // I think the reason we need to convert the format is that some formats simply
-    // cannot be played as such by java, but bringing them back into something
-    // supported here should help. But I really don't remember why this was done
-    // and I don't know much about Audio handling anyway.
+        val gainDB: Float = {
+          // Formula explained above, but it basically brings our linear volume modifier
+          // into the logarithmic scale of the decibel.
+          val tmp = 20f*math.log10(volume).toFloat
+          // For good measure, let us clip to the minimum, even though in practice I observed that
+          // we could set any negative db. Note that the maximum is always 0, so we don't need to
+          // check for the getMaximum (we don't want to amplify the sound).
+          tmp max gainControl.getMinimum
+        }
+        logger.debug("Setting MASTER_GAIN control with gain %fdb converted from volume=%.2f".format(gainDB, volume))
+        gainControl.setValue(gainDB)
+      } else {
+        logger.warning("Clip does not support control for setting MASTER_GAIN. Ignoring setVolume.")
+      }
+
+      // TODO: there is a FloatControl.Type.VOLUME, but it does not appear to be supported
+      //       by the Clip that I tried, and online resources always suggest to use MASTER_GAIN.
+      //       But I would like to understand why.
+      //       I'm thinking that VOLUME is maybe for things like output port (speaker) only?
+    }
+  
     private def convertOutFormat(inFormat: AudioFormat): AudioFormat = {
       val ch = inFormat.getChannels()
       val rate = inFormat.getSampleRate()
@@ -377,13 +410,6 @@ trait AWTAudioProvider extends AudioProvider {
       //  If so, we need to figure out how to make sure every clip feeds into the same mixer,
       //  and not just load clips independently of a mixer.
     }
-  
-    //TODO: wraps internal (javax.sound) exception with some interface (AudioProvider) exceptions
-    //      We should document that loading and playing can throw exception (if file missing, wrong
-    //      format, etc) so that people can still understand error in terms of interface without
-    //      having to delve into the backend implementations, and for consistent exception handling
-    //      accross platforms (still better to keep playing, even if no sound). As this is an exceptional
-    //      event, we probably prefer the usage of Exception over Option for the return types.
   }
   override val Audio = AWTAudio
 

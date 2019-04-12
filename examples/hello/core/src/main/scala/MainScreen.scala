@@ -31,14 +31,15 @@ trait MainScreenComponent extends ViewportComponent {
         characterBitmapLoader = Graphics.loadImage(ResourcesPrefix / "drawable" / "character.png")
       }
       if(musicLoader == null) {
-        //musicLoader = Audio.loadMusic(ResourcesPrefix / "audio" / "music.wav")
-        musicLoader = Audio.loadMusic(ResourcesPrefix / "audio" / "music.ogg")
+        musicLoader = Audio.loadMusic(ResourcesPrefix / "audio" / "music.wav")
+        //musicLoader = Audio.loadMusic(ResourcesPrefix / "audio" / "music.ogg")
       }
       if(characterBitmapLoader.isLoaded && musicLoader.isLoaded) {
         characterBitmap = Some(characterBitmapLoader.value.get.get)
         music = Some(musicLoader.value.get.get)
         music.foreach(m => {
           m.setLooping(true)
+          m.setVolume(0.5f)
           m.play()
         })
         gameState.newScreen(new MainScreen)
