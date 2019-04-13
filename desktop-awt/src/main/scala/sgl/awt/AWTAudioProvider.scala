@@ -87,7 +87,8 @@ trait AWTAudioProvider extends AudioProvider {
         currentlyRunning += 1
         if(currentlyRunning > MaxRunningClip) {
           // TODO: We need to protect long-running loops, which would typically be smallest ones.
-          val oldestSound = pool.zipWithIndex.map(_._2).min
+          val oldestSound = pool.map(_._1).min
+          logger.debug("Killing oldest sound in the system: " + oldestSound)
           pool.remove(oldestSound).foreach(clip => {
             if(clip.isRunning)
               clip.stop()
@@ -130,8 +131,9 @@ trait AWTAudioProvider extends AudioProvider {
             clip.stop()
           if(clip.isOpen)
             clip.close()
+          currentlyRunning -=1
+          paused.remove(index)
         })
-        paused.remove(index)
       }
 
       // Whether the clip is currently paused. This means that it was
@@ -233,16 +235,19 @@ trait AWTAudioProvider extends AudioProvider {
       override def resume(id: PlayedSound): Unit = Locker.synchronized {
         start(id)
       }
-      override def setLooping(id: PlayedSound, isLooping: Boolean): Unit = {
-        // TODO: this will start the clip if it is paused, probably means that
-        //       we need to keep the looping state in the clip pool as well :/
-        clipPool.loop(id, if(isLooping) -1 else 0)
+      override def setLooping(id: PlayedSound, isLooping: Boolean): Unit = ???
+
+      override def endLoop(id: PlayedSound): Unit = {
+        // There's no way to start looping once the sound is started, so we only need
+        // to stop if the initial state was looping
+        if(loop != 0)
+          clipPool.loop(id, 0)
       }
 
       // Start the Clip, based on its current state (this resumes
       // the clip at the same place if it was stopped but not closed.
       private def start(id: PlayedSound): Unit = {
-        if(loop == 1)
+        if(loop == 0)
           clipPool.start(id)
         else
           clipPool.loop(id, loop)

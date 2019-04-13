@@ -23,6 +23,7 @@ trait MainScreenComponent extends ViewportComponent {
     var characterBitmap: Option[Bitmap] = None
     var music: Option[Music] = None
     var beep: Sound = _
+    var beepInfinite: Sound = _
 
     private var characterBitmapLoader: Loader[Bitmap] = null
     private var musicLoader: Loader[Music] = null
@@ -47,7 +48,8 @@ trait MainScreenComponent extends ViewportComponent {
           m.setVolume(0.5f)
           m.play()
         })
-        beep = beepLoader.value.get.get
+        beep = beepLoader.value.get.get.looped(2)
+        beepInfinite = beep.looped(-1)
         gameState.newScreen(new MainScreen)
       }
     }
@@ -90,6 +92,8 @@ trait MainScreenComponent extends ViewportComponent {
           val (wx, wy) = viewport.screenToWorld(x, y)
           this.x = wx
           this.y = wy
+        case Input.KeyDownEvent(Input.Keys.L) =>
+          LoadingScreen.beepInfinite.play()
         case _ => ()
       })
       totalTime += dt
