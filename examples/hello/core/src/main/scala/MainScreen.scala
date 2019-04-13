@@ -12,7 +12,7 @@ trait MainScreenComponent extends ViewportComponent {
   with LoggingProvider with GraphicsHelpersComponent =>
 
   import Graphics.{Bitmap, Canvas, Color, BitmapRegion, Animation, RichCanvas}
-  import Audio.Music
+  import Audio.{Music, Sound}
   import Window.dp2px
 
   private implicit val LogTag = Logger.Tag("main-screen")
@@ -22,19 +22,24 @@ trait MainScreenComponent extends ViewportComponent {
 
     var characterBitmap: Option[Bitmap] = None
     var music: Option[Music] = None
+    var beep: Sound = _
 
     private var characterBitmapLoader: Loader[Bitmap] = null
     private var musicLoader: Loader[Music] = null
+    private var beepLoader: Loader[Sound] = null
 
     override def update(dt: Long): Unit = {
       if(characterBitmapLoader == null) {
         characterBitmapLoader = Graphics.loadImage(ResourcesPrefix / "drawable" / "character.png")
       }
       if(musicLoader == null) {
-        musicLoader = Audio.loadMusic(ResourcesPrefix / "audio" / "music.wav")
-        //musicLoader = Audio.loadMusic(ResourcesPrefix / "audio" / "music.ogg")
+        //musicLoader = Audio.loadMusic(ResourcesPrefix / "audio" / "music.wav")
+        musicLoader = Audio.loadMusic(ResourcesPrefix / "audio" / "music.ogg")
       }
-      if(characterBitmapLoader.isLoaded && musicLoader.isLoaded) {
+      if(beepLoader == null) {
+        beepLoader = Audio.loadSound(ResourcesPrefix / "audio" / "beep.wav")
+      }
+      if(characterBitmapLoader.isLoaded && musicLoader.isLoaded && beepLoader.isLoaded) {
         characterBitmap = Some(characterBitmapLoader.value.get.get)
         music = Some(musicLoader.value.get.get)
         music.foreach(m => {
@@ -42,6 +47,7 @@ trait MainScreenComponent extends ViewportComponent {
           m.setVolume(0.5f)
           m.play()
         })
+        beep = beepLoader.value.get.get
         gameState.newScreen(new MainScreen)
       }
     }
@@ -80,6 +86,7 @@ trait MainScreenComponent extends ViewportComponent {
     override def update(dt: Long): Unit = {
       InputHelpers.processEvents(e => e match {
         case Input.PointerDownEvent(x, y, _) =>
+          LoadingScreen.beep.play()
           val (wx, wy) = viewport.screenToWorld(x, y)
           this.x = wx
           this.y = wy

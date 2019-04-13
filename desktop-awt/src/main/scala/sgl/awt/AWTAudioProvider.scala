@@ -3,10 +3,13 @@ package awt
 
 import sgl.util._
 
-import javax.sound.sampled.{AudioSystem, Clip, AudioFormat, AudioInputStream, FloatControl, DataLine, UnsupportedAudioFileException}
-
+import javax.sound.sampled.{AudioSystem, Clip, AudioFormat, AudioInputStream, 
+                            FloatControl, DataLine, UnsupportedAudioFileException,
+                            LineListener, LineEvent}
 import java.io.File
 import java.nio.ByteOrder
+
+import scala.collection.mutable.HashMap
 
 /** AudioProvider implementation for the official Java Sound API.
   *
@@ -42,61 +45,122 @@ trait AWTAudioProvider extends AudioProvider {
 
   object AWTAudio extends Audio {
 
-    /*
-     * Tries to automatically close clips when used.
-     * This can only accept up to 10 running sounds
-     * (in practice it seems bad to have too many Clip not
-     * closed, but not sure what is the real maximum). If
-     * at some point a clip is added and all 10 clips are
-     * still running, then one existing clip will be killed.
+    /* 
+     * ClipPool tracks all the clips from sound objects and expose methods to
+     * start/pause them. It holds an internal lock which makes it thread safe.
+     * The goal fo this pool is to limit the number of active clips, which
+     * means it could automatically kill (stop and close) any active clip if
+     * it needs to make space for a new clip. A call to addClip can have the
+     * effect of killing other clips.
+     *
+     * The pool is also useful as a way to centralize multiclip handling, which
+     * would have to be done in each instance of Sound otherwise, as each call
+     * to play create a new clip.
+     *
+     * The ClipPool encapsulates all state operations on Clips, because of the
+     * fact that a clip can be killed at anytime. It wouldn't be safe for a Sound
+     * to actually hold on to the Clip and do operations on it, it is better to
+     * do these operations through the clip pool, which synchronized, and safely
+     * ignore operations on killed/expired clips.
      */
     private class ClipPool {
+
+      // Let's make the clip pool safe to use concurrently. We use
+      // a local lock.
+      private object Locker
+
+      // monotonously increasing counter to identify clips.
+      private var counter = 0
   
       // kill index is the index of which element will be killed
-      // if nothing can be freed. Rotates on each kill.
-      private var killIndex = 0
+      // if nothing can be freed. Rotates on each kill. It's not a
+      // very fair way to kill, as null elements can sort of be
+      // stored randomly (just depends on who frees first), but it's
+      // also reasonably random as it moves around. Ideally we would
+      // like a formal oldest die first or some priority specified on
+      // the Sound class.
+      //private var killIndex = 0
   
-      private var pool: Array[Clip] = Array.fill(10)(null)
-      private var paused: Array[Boolean] = Array.fill(10)(false)
+      private val pool: HashMap[Int, Clip] = new HashMap
+      private val paused: HashMap[Int, Boolean] = new HashMap
   
-      def addClip(clip: Clip): Int = {
-        var found: Option[Int] = None
-        for(i <- 0 until 10 if found.isEmpty) {
-          if(pool(i) == null) {
-            pool(i) = clip
-            found = Some(i)
-          } else if(!pool(i).isRunning && !paused(i)) {
-            pool(i).close()
-            pool(i) = clip
-            found = Some(i)
-          }
-        }
-        found.getOrElse{
-          pool(killIndex).stop()
-          pool(killIndex).close()
-          pool(killIndex) = clip
-          killIndex = (killIndex+1)%10
-          killIndex
-        }
+      def addClip(clip: Clip): Int = Locker.synchronized {
+        pool(counter) = clip
+        paused(counter) = false
+        counter += 1
+        counter-1
+      }
+      //  var found: Option[Int] = None
+      //  pool.zipWIthIndex.find(_._1 == null) match {
+      //    case Some((_, i)) =>
+      //      pool(i) = clip
+      //      paused(i) = false
+      //      i
+      //    case None =>
+      //      // Kind of arbitrary but we kill at the current kill index.
+      //      pool(killIndex).stop()
+      //      pool(killIndex).close()
+      //      pool(killIndex) = clip
+      //      paused(killIndex) = false
+      //      val i = killIndex
+      //      killIndex = (killIndex+1)%10
+      //      i
+      //  }
+      //}
+
+      // Start the clip at the index. We should always do
+      // the operations through the clip pool, because it holds
+      // an internal lock for concurrency, and it can potentially
+      // kill a random clip (stop + close) at any point.
+      def start(index: Int): Unit = Locker.synchronized {
+        pool.get(index).foreach(clip => {
+          clip.start()
+          paused(index) = false
+        })
+      }
+      def loop(index: Int, n: Int): Unit = Locker.synchronized {
+        pool.get(index).foreach(clip => {
+          if(n == -1)
+            clip.loop(Clip.LOOP_CONTINUOUSLY)
+          else
+            clip.loop(n)
+          paused(index) = false
+        })
+      }
+
+      // close closes the clip (if there is one) and release the
+      // slot in the pool.
+      def close(index: Int): Unit = Locker.synchronized {
+        logger.debug("Closing clip at pool index " + index)
+        pool.remove(index).foreach(clip => {
+          if(clip.isRunning)
+            clip.stop()
+          if(clip.isOpen)
+            clip.close()
+        })
+        paused.remove(index)
+      }
+
+      // Whether the clip is currently paused. This means that it was
+      // manually paused (by calling stop) and not just not playing (as
+      // it would be when first opened).
+      def isPaused(index: Int): Boolean = Locker.synchronized {
+        paused.getOrElse(index, false)
       }
   
-      // we need this as we do not want to free a clip that
-      // was marked paused by the user, but the .running method
-      // of the clip will return false as Clip has no notion
-      // of being paused vs stopped
-      def setClipPaused(index: Int, isPaused: Boolean): Unit = {
-        paused(index) = isPaused
+      // stop the underlying clip. When stopped, the clip is not freed, it
+      // can be restarted from the same point. We track 
+      def stop(index: Int): Unit = Locker.synchronized {
+        pool.get(index).foreach(clip => {
+          if(clip.isRunning)
+            clip.stop()
+          paused(index) = true
+        })
       }
-  
-      def getClip(index: Int): Clip = {
-        pool(index)
-      }
-      def apply(index: Int): Clip = getClip(index)
     }
     private val clipPool = new ClipPool
   
-  
-    class Sound(url: java.net.URL, loop: Int, rate: Float) extends AbstractSound {
+    class Sound(audioInputStreamWrapper: AudioInputStreamWrapper, loop: Int, rate: Float) extends AbstractSound {
       require(loop >= -1)
       require(rate >= 0.5 && rate <= 2)
       // TODO: implement support for rate, for now we log a warning so that the
@@ -105,73 +169,89 @@ trait AWTAudioProvider extends AudioProvider {
       if(rate != 1f) {
         logger.warning("Playback rate not supported, only supports unmodified rate of 1f.")
       }
+
+      // A lock for this particular object, we will need to synchronize LineListener events
+      // with the change of state.
+      private object Locker
   
       type PlayedSound = Int
-  
-      private def instantiateFreshClip(volume: Float): Clip = synchronized {
-        //TODO: could we do some stuff in constructor and only generate the clip each time?
-        val audioStream: AudioInputStream = AudioSystem.getAudioInputStream(url)
-        val format = convertOutFormat(audioStream.getFormat)
-        val convertedStream = AudioSystem.getAudioInputStream(format, audioStream)
-  
-        val info = new DataLine.Info(classOf[Clip], format)
+
+      private def instantiateFreshClip(volume: Float): Clip = Locker.synchronized {
+        val audioStream = audioInputStreamWrapper.newAudioInputStream
+        val info = new DataLine.Info(classOf[Clip], audioStream.getFormat)
         val clip = AudioSystem.getLine(info).asInstanceOf[Clip]
-  
-        clip.open(convertedStream)
+        clip.open(audioStream)
+        // Volume can only be set once a Line is open, according to doc.
         setClipVolume(clip, volume)
         clip
       }
   
-      override def play(volume: Float): Option[PlayedSound] = synchronized {
+      override def play(volume: Float): Option[PlayedSound] = Locker.synchronized {
         val clip = instantiateFreshClip(volume)
         val clipIndex = clipPool.addClip(clip)
-        start(clip)
+        clip.addLineListener(new LineListener {
+          override def update(event: LineEvent): Unit = Locker.synchronized {
+            if(event.getType == LineEvent.Type.STOP) {
+              // STOP event is sent either when stop() was called or
+              // when the line reached the end of play. We need to check
+              // if this is paused, which would have been set for sure by
+              // the pause function before calling stop.
+              if(!clipPool.isPaused(clipIndex)) {
+                clipPool.close(clipIndex)
+              }
+            }
+            // We don't care about other events.
+          }
+        })
+        start(clipIndex)
         Some(clipIndex)
       }
 
       override def withConfig(loop: Int, rate: Float): Sound = {
-        new Sound(url, loop, rate)
+        new Sound(audioInputStreamWrapper, loop, rate)
       }
-      override def dispose(): Unit = {}
+
+      // TODO: close all remaining clips.
+      override def dispose(): Unit = Locker.synchronized {
+        
+      }
   
-      override def stop(id: PlayedSound): Unit = {
-        clipPool(id).stop()
-        clipPool(id).close()
+      override def stop(id: PlayedSound): Unit = Locker.synchronized {
+        clipPool.stop(id)
+        clipPool.close(id)
       }
   
-      override def pause(id: PlayedSound): Unit = {
-        clipPool.setClipPaused(id, true)
-        clipPool(id).stop()
+      override def pause(id: PlayedSound): Unit = Locker.synchronized {
+        clipPool.stop(id)
       }
-      override def resume(id: PlayedSound): Unit = {
-        start(clipPool(id))
-        clipPool.setClipPaused(id, false)
+      override def resume(id: PlayedSound): Unit = Locker.synchronized {
+        start(id)
       }
       override def setLooping(id: PlayedSound, isLooping: Boolean): Unit = {
-        clipPool(id).loop(if(isLooping) -1 else 0)
+        // TODO: this will start the clip if it is paused, probably means that
+        //       we need to keep the looping state in the clip pool as well :/
+        clipPool.loop(id, if(isLooping) -1 else 0)
       }
 
       // Start the Clip, based on its current state (this resumes
       // the clip at the same place if it was stopped but not closed.
-      private def start(clip: Clip): Unit = {
-        if(loop == 1) {
-          clip.start()
-        } else if(loop == -1) {
-          clip.loop(Clip.LOOP_CONTINUOUSLY)
-        } else {
-          clip.loop(loop)
-        }
+      private def start(id: PlayedSound): Unit = {
+        if(loop == 1)
+          clipPool.start(id)
+        else
+          clipPool.loop(id, loop)
       }
       
     }
   
     override def loadSound(path: ResourcePath): Loader[Sound] = FutureLoader {
-      val localAsset = if(DynamicResourcesEnabled) findDynamicResource(path) else None
-      val url = localAsset.map(_.toURI.toURL).getOrElse(getClass.getClassLoader.getResource(path.path))
-      if(url == null) {
-        throw new ResourceNotFoundException(path)
+      logger.info("Loading sound resource: " + path.path)
+      val resourceAudioStream = loadAudioInputStream(path)
+      val (convertedAudioStream, _) = convertToBestStream(resourceAudioStream).getOrElse{
+        throw new ResourceFormatUnsupportedException(path)
       }
-      new Sound(url, 0, 1f)
+      val wrapper = AudioInputStreamWrapper.fromAudioInputStream(convertedAudioStream)
+      new Sound(wrapper, 0, 1f)
     }
   
     class Music(clip: Clip) extends AbstractMusic {
@@ -258,53 +338,58 @@ trait AWTAudioProvider extends AudioProvider {
       // make a horrible sound, so let's stop there.
     }
 
-    // convertStream converts the audioStream into the targetFormat. Typically we need
-    // to do that as Java Sound API can only play a limited number of formats, and the
-    // resource could be in formats that are not supported.
-    private def convertStream(audioStream: AudioInputStream, targetFormat: AudioFormat): AudioInputStream = {
-      val convertedStream0 = AudioSystem.getAudioInputStream(targetFormat, audioStream)
-      logger.debug("Converted AudioInputStream: format=<%s> frame_length=%d".format(convertedStream0.getFormat, convertedStream0.getFrameLength))
+    // Wrap an AudioInputStream by storing the static array of bytes and the format.
+    // Can create fresh AudioInputStreams from that data. This is useful for Sound
+    // API as it lets us get a new fresh AudioInputStream for each call to play, and
+    // we cannot use the same base AudioInputStream (due to the state and the fact that
+    // playing it should consume it). The additional advantage of this is that it
+    // can encapsulate the code that reads the entire data stream and compute the
+    // proper frameLength, to work around the Java Sound API bug. The bug is that after
+    // converting to an AudioInputStream, the frameLength is sometimes -1, and it has
+    // the effect of crashing the OpenJDK Clip.open code. By computing it (after reading
+    // the entire content) and setting it correctly, we work around that bug.
+    private class AudioInputStreamWrapper(data: Array[Byte], format: AudioFormat) {
 
-      // Sometimes the converted stream has a frame length of -1, which seems wrong as it
-      // should be in a well-defined PCM format with a known number of bytes per frames and thus
-      // a known number of frames. The clip then seems to fail on some platforms (OpenJDK with icedtea
-      // pulse audio implementation) when trying to open the audio stream (with a negative array
-      // exception which can clearly be traced to that negative frame length). So the trick here
-      // is to actually manually compute the frame length and create a new AudioInputStream with
-      // the same data but with the correct frame length.
-
-      if(convertedStream0.getFrameLength != -1) // If it's not -1, no need for this hack.
-        return convertedStream0
-
-      val data = new java.io.ByteArrayOutputStream
-      val frameSize = {
-        val tmp = convertedStream0.getFormat.getFrameSize
+      private val frameSize = {
+        val tmp = format.getFrameSize
         if(tmp == AudioSystem.NOT_SPECIFIED) 1 else tmp
       }
-      // Let's make the read buffer a large multiple of the frame size, 10'000 seems fine.
-      // We need to read integral amount of frames, but we can read a lot of them to make
-      // the process faster.
-      val buffer = new Array[Byte](frameSize * 10000)
-      // read returns the number of bytes read, not the number of frames.
-      var n = convertedStream0.read(buffer)
-      while(n != -1) {
-        data.write(buffer, 0, n)
-        n = convertedStream0.read(buffer)
-      }
+      val frameLength = data.length/frameSize
 
-      val dataArray = data.toByteArray
-      val computedFrameLength = dataArray.length/frameSize
-      logger.debug("data length recomputed from reading the file: %d bytes".format(computedFrameLength))
-      val convertedStream = new AudioInputStream(new java.io.ByteArrayInputStream(dataArray), convertedStream0.getFormat, computedFrameLength)
-      logger.debug("Converted AudioInputStream: format=<%s> frame_length=%d".format(convertedStream.getFormat, convertedStream.getFrameLength))
-      convertedStream
+      def newAudioInputStream: AudioInputStream =
+        new AudioInputStream(new java.io.ByteArrayInputStream(data), format, frameLength)
+
     }
-  
-    // load a clip for the resource and open it with the audio stream.  Throws
-    // ResourceFormatUnsupportedException if the audio system is unable to deal
-    // with the format, and ResourceNotFoundException if there's no resource
-    // for that path.
-    private def loadClip(path: ResourcePath): Clip = {
+    private object AudioInputStreamWrapper {
+      // Extract an AudioInputStream wrapper from an AudioInputStream. This will
+      // read through the entire stream in order to extract the data and store it
+      // in the wrapper, so at the end of the call the stream will be at the end
+      // and should probably be discarded (or reset, if supported).
+      def fromAudioInputStream(stream: AudioInputStream): AudioInputStreamWrapper = {
+        val data = new java.io.ByteArrayOutputStream
+        val frameSize = {
+          val tmp = stream.getFormat.getFrameSize
+          if(tmp == AudioSystem.NOT_SPECIFIED) 1 else tmp
+        }
+        // Let's make the read buffer a large multiple of the frame size, 10'000 seems fine.
+        // We need to read integral amount of frames, but we can read a lot of them to make
+        // the process faster.
+        val buffer = new Array[Byte](frameSize * 10000)
+        // read returns the number of bytes read, not the number of frames.
+        var n = stream.read(buffer)
+        while(n != -1) {
+          data.write(buffer, 0, n)
+          n = stream.read(buffer)
+        }
+        new AudioInputStreamWrapper(data.toByteArray, stream.getFormat)
+      }
+    }
+
+    // Load the resource into an AudioInputStream. This will use the standard
+    // Java Sound API to parse the file and sound data. It will return the
+    // stream in the native format of the resource, or it throws exception if it
+    // cannot understand it.
+    private def loadAudioInputStream(path: ResourcePath): AudioInputStream = {
       val localAsset = if(DynamicResourcesEnabled) findDynamicResource(path) else None
       val url = localAsset.map(_.toURI.toURL).getOrElse(getClass.getClassLoader.getResource(path.path))
       if(url == null) {
@@ -321,33 +406,68 @@ trait AWTAudioProvider extends AudioProvider {
         case (_: UnsupportedAudioFileException) =>
           throw new ResourceFormatUnsupportedException(path)
       }
-      logger.debug("Parsed resource as AudioInputStream: format=<%s> frame_length=%d".format(resourceAudioStream.getFormat, resourceAudioStream.getFrameLength))
-
-      tryGetClip(resourceAudioStream.getFormat)
-        .map((c: Clip) => {
-          c.open(resourceAudioStream)
-          c
-        }).getOrElse{
-        // This is expected to happen with any non PCM format, we will need to convert it to a PCM
-        // based encoding. Java sound system can only play PCM by default.
+      logger.debug("Parsed resource <%s> as AudioInputStream: format=<%s> frame_length=%d".format(path, resourceAudioStream.getFormat, resourceAudioStream.getFrameLength))
+      resourceAudioStream
+    }
+    
+    // Attempt to convert the audioStream into the best AudioInputStream that
+    // can be played by the AudioSystem. Typically we need to do that as Java
+    // Sound API can only play a limited number of formats, and the resource
+    // could be in formats that are not supported.  As an example, this could
+    // convert a resource stream in a format like .ogg into a PCM_SIGNED stream
+    // that can be understood by Java. It returns None if it fails. It also
+    // returns the Clip that can play the stream, but the clip is not open yet.
+    // It could be opened by the returned AudioInputStream, but in some cases
+    // we don't want to (for Sound, we want to wait for a play event to
+    // instantiate a clip), and the AudioInputStream might also need some
+    // patching due to the negative frameLength bug (referred to at other
+    // places in this file).  Thie conversion does not apply the patch, it just
+    // does the basic Java Sound API conversion.
+    private def convertToBestStream(audioStream: AudioInputStream): Option[(AudioInputStream, Clip)] = {
+      tryGetClip(audioStream.getFormat).map(c =>
+        // If we can play the audio stream, let's return it without conversion.
+        (audioStream, c)
+      ).orElse{
+        // Otherwise we need to convert it to a PCM-based audio format that can
+        // be played by Java
         logger.debug("Failed to open a clip for the native resource format, attempting to convert.")
 
-        val clip: Clip = findPlayableFormat(resourceAudioStream.getFormat).getOrElse{
-          throw new ResourceFormatUnsupportedException(path)
-        }
-        logger.debug("Using format: " + clip.getFormat)
+        findPlayableFormat(audioStream.getFormat).map(clip => {
+          logger.debug("Using format for conversion: " + clip.getFormat)
+          val convertedStream = AudioSystem.getAudioInputStream(clip.getFormat, audioStream)
+          logger.debug("Converted AudioInputStream: format=<%s> frame_length=%d".format(convertedStream.getFormat, convertedStream.getFrameLength))
+          (convertedStream, clip)
+        })
+      }
+    }
 
-        try {
-          val convertedStream = convertStream(resourceAudioStream, clip.getFormat)
-          clip.open(convertedStream)
-        } catch {
-          case (_: IllegalArgumentException) => {
-            // I don't think this can happen with the checks before, but just in case we wrap that
-            // againg.
-            throw new ResourceFormatUnsupportedException(path)
-          }
-        }
+    // load a clip for the resource and open it with the audio stream.  Throws
+    // ResourceFormatUnsupportedException if the audio system is unable to deal
+    // with the format, and ResourceNotFoundException if there's no resource
+    // for that path.
+    private def loadClip(path: ResourcePath): Clip = {
+      val resourceAudioStream = loadAudioInputStream(path)
+      val (convertedAudioStream, clip) = convertToBestStream(resourceAudioStream).getOrElse{
+        throw new ResourceFormatUnsupportedException(path)
+      }
 
+      // Sometimes the converted stream has a frame length of -1, which seems wrong as it
+      // should be in a well-defined PCM format with a known number of bytes per frames and thus
+      // a known number of frames. The clip then seems to fail on some platforms (OpenJDK with icedtea
+      // pulse audio implementation) when trying to open the audio stream (with a negative array
+      // exception which can clearly be traced to that negative frame length). So the trick here
+      // is to actually manually compute the frame length and create a new AudioInputStream with
+      // the same data but with the correct frame length.
+      if(convertedAudioStream.getFrameLength != -1) {
+        // If it's not -1, no need for this hack.
+        clip.open(convertedAudioStream)
+        clip
+      } else {
+        val wrapper = AudioInputStreamWrapper.fromAudioInputStream(convertedAudioStream)
+        logger.debug("Data length recomputed from reading the file: %d bytes".format(wrapper.frameLength))
+        val finalStream = wrapper.newAudioInputStream
+        logger.debug("Converted AudioInputStream: format=<%s> frame_length=%d".format(finalStream.getFormat, finalStream.getFrameLength))
+        clip.open(finalStream)
         clip
       }
     }
@@ -392,12 +512,6 @@ trait AWTAudioProvider extends AudioProvider {
       //       I'm thinking that VOLUME is maybe for things like output port (speaker) only?
     }
   
-    private def convertOutFormat(inFormat: AudioFormat): AudioFormat = {
-      val ch = inFormat.getChannels()
-      val rate = inFormat.getSampleRate()
-      new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, rate, 16, ch, ch * 2, rate, false)
-    }
-
     // TODO: would be nice that the init functions are part of the cake initialization, with
     //  the explicit interface that the call order is not well defined.
     def init(): Unit = {

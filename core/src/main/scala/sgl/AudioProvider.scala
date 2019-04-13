@@ -134,6 +134,9 @@ trait AudioProvider {
         * the backend will be to load the Sound into some system data structure, which will
         * hold it in memory and ready to use. If a Sound is no longer necessary (for example
         * after completing a level), it should be disposed for recycling resources.
+        *
+        * Calling dispose() will stop and clean up every PlayedSound instances still running
+        * as well.
         */
       def dispose(): Unit
   
