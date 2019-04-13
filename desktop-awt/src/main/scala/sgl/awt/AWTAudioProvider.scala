@@ -65,6 +65,9 @@ trait AWTAudioProvider extends AudioProvider {
      */
     private class ClipPool {
 
+      private val MaxRunningClip = 10
+      private var currentlyRunning = 0
+
       // Let's make the clip pool safe to use concurrently. We use
       // a local lock.
       private object Locker
@@ -72,41 +75,31 @@ trait AWTAudioProvider extends AudioProvider {
       // monotonously increasing counter to identify clips.
       private var counter = 0
   
-      // kill index is the index of which element will be killed
-      // if nothing can be freed. Rotates on each kill. It's not a
-      // very fair way to kill, as null elements can sort of be
-      // stored randomly (just depends on who frees first), but it's
-      // also reasonably random as it moves around. Ideally we would
-      // like a formal oldest die first or some priority specified on
-      // the Sound class.
-      //private var killIndex = 0
-  
       private val pool: HashMap[Int, Clip] = new HashMap
       private val paused: HashMap[Int, Boolean] = new HashMap
   
       def addClip(clip: Clip): Int = Locker.synchronized {
         pool(counter) = clip
         paused(counter) = false
+        val id = counter
         counter += 1
-        counter-1
+
+        currentlyRunning += 1
+        if(currentlyRunning > MaxRunningClip) {
+          // TODO: We need to protect long-running loops, which would typically be smallest ones.
+          val oldestSound = pool.zipWithIndex.map(_._2).min
+          pool.remove(oldestSound).foreach(clip => {
+            if(clip.isRunning)
+              clip.stop()
+            if(clip.isOpen)
+              clip.close()
+          })
+          paused.remove(oldestSound)
+          currentlyRunning -=1
+        }
+
+        id
       }
-      //  var found: Option[Int] = None
-      //  pool.zipWIthIndex.find(_._1 == null) match {
-      //    case Some((_, i)) =>
-      //      pool(i) = clip
-      //      paused(i) = false
-      //      i
-      //    case None =>
-      //      // Kind of arbitrary but we kill at the current kill index.
-      //      pool(killIndex).stop()
-      //      pool(killIndex).close()
-      //      pool(killIndex) = clip
-      //      paused(killIndex) = false
-      //      val i = killIndex
-      //      killIndex = (killIndex+1)%10
-      //      i
-      //  }
-      //}
 
       // Start the clip at the index. We should always do
       // the operations through the clip pool, because it holds
