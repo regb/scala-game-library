@@ -268,7 +268,7 @@ trait AWTAudioProvider extends AudioProvider {
     class Music(clip: Clip) extends AbstractMusic {
       private var isPlaying = false
       private var shouldLoop = false
-  
+
       override def play(): Unit = {
         isPlaying = true
         if(shouldLoop)
@@ -294,7 +294,12 @@ trait AWTAudioProvider extends AudioProvider {
           clip.loop(0)
       }
   
-      override def dispose(): Unit = {}
+      override def dispose(): Unit = {
+        if(isPlaying)
+          clip.stop()
+        if(clip.isOpen)
+          clip.close()
+      }
     }
     override def loadMusic(path: ResourcePath): Loader[Music] = FutureLoader {
       logger.info("Loading music resource: " + path.path)
