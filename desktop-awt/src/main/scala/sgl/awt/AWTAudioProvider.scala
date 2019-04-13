@@ -9,7 +9,7 @@ import javax.sound.sampled.{AudioSystem, Clip, AudioFormat, AudioInputStream,
 import java.io.File
 import java.nio.ByteOrder
 
-import scala.collection.mutable.HashMap
+import scala.collection.mutable.{HashMap, HashSet}
 
 /** AudioProvider implementation for the official Java Sound API.
   *
@@ -65,12 +65,12 @@ trait AWTAudioProvider extends AudioProvider {
      */
     private class ClipPool {
 
-      private val MaxRunningClip = 10
-      private var currentlyRunning = 0
-
       // Let's make the clip pool safe to use concurrently. We use
       // a local lock.
       private object Locker
+
+      private val MaxRunningClip = 10
+      private var currentlyRunning = 0
 
       // monotonously increasing counter to identify clips.
       private var counter = 0
@@ -166,6 +166,8 @@ trait AWTAudioProvider extends AudioProvider {
       // A lock for this particular object, we will need to synchronize LineListener events
       // with the change of state.
       private object Locker
+
+      private val activeClips: HashSet[Int] = new HashSet
   
       type PlayedSound = Int
 
@@ -182,6 +184,7 @@ trait AWTAudioProvider extends AudioProvider {
       override def play(volume: Float): Option[PlayedSound] = Locker.synchronized {
         val clip = instantiateFreshClip(volume)
         val clipIndex = clipPool.addClip(clip)
+        activeClips.add(clipIndex)
         clip.addLineListener(new LineListener {
           override def update(event: LineEvent): Unit = Locker.synchronized {
             if(event.getType == LineEvent.Type.STOP) {
@@ -191,6 +194,7 @@ trait AWTAudioProvider extends AudioProvider {
               // the pause function before calling stop.
               if(!clipPool.isPaused(clipIndex)) {
                 clipPool.close(clipIndex)
+                activeClips.remove(clipIndex)
               }
             }
             // We don't care about other events.
@@ -204,9 +208,18 @@ trait AWTAudioProvider extends AudioProvider {
         new Sound(audioInputStreamWrapper, loop, rate)
       }
 
-      // TODO: close all remaining clips.
       override def dispose(): Unit = Locker.synchronized {
-        
+        logger.debug("Releasing resources associated with sound.")
+        activeClips.foreach(id => {
+          logger.debug("Releasing active sound instance: " + id)
+          clipPool.close(id)
+        })
+        activeClips.clear()
+
+        // We don't need to release the related Sound (from the withConfig) as eventhough they
+        // share the same underlying wrapper, this wrapper does not need to be released as
+        // memory will just be claimed back once all pointers get out of scope (through
+        // regular GC).
       }
   
       override def stop(id: PlayedSound): Unit = Locker.synchronized {
