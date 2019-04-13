@@ -6,7 +6,7 @@ import sgl.util._
 import javax.sound.sampled.{AudioSystem, Clip, AudioFormat, AudioInputStream, 
                             FloatControl, DataLine, UnsupportedAudioFileException,
                             LineListener, LineEvent}
-import java.io.File
+import java.io.{File, ByteArrayOutputStream}
 import java.nio.ByteOrder
 
 import scala.collection.mutable.{HashMap, HashSet}
@@ -364,7 +364,7 @@ trait AWTAudioProvider extends AudioProvider {
     // converting to an AudioInputStream, the frameLength is sometimes -1, and it has
     // the effect of crashing the OpenJDK Clip.open code. By computing it (after reading
     // the entire content) and setting it correctly, we work around that bug.
-    private class AudioInputStreamWrapper(data: Array[Byte], format: AudioFormat) {
+    private class AudioInputStreamWrapper(val data: Array[Byte], format: AudioFormat) {
 
       private val frameSize = {
         val tmp = format.getFrameSize
@@ -375,6 +375,74 @@ trait AWTAudioProvider extends AudioProvider {
       def newAudioInputStream: AudioInputStream =
         new AudioInputStream(new java.io.ByteArrayInputStream(data), format, frameLength)
 
+      // make a new AudioInputStreamWrapper with a custom playback rate. If
+      // rate is 1f, then return this. Rate can be any strictly positive value,
+      // but reasonable values are within 0.5-2. The operation is to interpolate
+      // the frames of the stream so that the playback rate is modified according
+      // to the rate. A rate of 2f, means double the play speed, which can be done
+      // by removing half the frames. In general, we will have to interpolate frames
+      // when rate is a non-integer value.
+      def withRate(rate: Float): Option[AudioInputStreamWrapper] = {
+        require(rate > 0)
+
+        if(rate == 1f)
+            return Some(this)
+
+        if(format.getEncoding != AudioFormat.Encoding.PCM_SIGNED || 
+           format.getFrameSize == AudioSystem.NOT_SPECIFIED ||
+           format.getSampleSizeInBits == AudioSystem.NOT_SPECIFIED ||
+           format.getSampleSizeInBits % 8 != 0)
+          // This is treading dangerous water, better not try to process the frames there.
+          return None
+
+        val newData = new ByteArrayOutputStream
+
+        val sampleSize = format.getSampleSizeInBits/8
+        val nbChannels = format.getChannels
+        for(f <- 0 until frameLength by 2) {
+          for(c <- 0 until nbChannels) {
+            val sample = readSample(f, c, sampleSize, format.isBigEndian())
+            if(f == 0) {
+              println("sample: " + sample)
+            }
+            writeSample(newData, sample, sampleSize, format.isBigEndian())
+          }
+        }
+
+        val res = Some(new AudioInputStreamWrapper(newData.toByteArray, format))
+        println("original: " + data(0) + ", " + data(1) + ", " + data(2) + ", " + data(3))
+        println("new: " + res.get.data(0) + ", " + res.get.data(1) + ", " + res.get.data(2) + ", " + res.get.data(3))
+        res
+      }
+
+      private def writeSample(out: ByteArrayOutputStream, sampleValue: Int, sampleSize: Int, isBigEndian: Boolean): Unit = {
+        for(i <- 0 until sampleSize) {
+          // compute byte i in the sampleValue.
+          val b = if(isBigEndian)
+            ((sampleValue >>> ((sampleSize-i-1)*8)) & 0xff)
+          else
+            ((sampleValue >>> (i*8)) & 0xff)
+          out.write(b)
+        }
+      }
+
+      // Read the sample at frame index from data. A frame contains the sample for each channel, so the
+      // X bytes for the frame are divided equally among the Y channels. We then convert the
+      // bytes into an Int, depending on the little/big endianness. This reads the sample for
+      // channel (as // a channel index value) from the frame.
+      private def readSample(frame: Int, channel: Int, sampleSize: Int, isBigEndian: Boolean): Int = {
+        var res: Int = 0
+        for(i <- 0 until sampleSize) {
+          val b = data(frame*frameSize + channel*sampleSize + i).toInt & 0xff
+          if(isBigEndian) {
+            res = res | (b << ((sampleSize-i-1)*8))
+          } else {
+            res = res | (b << (i*8))
+          }
+        }
+        res
+      }
+
     }
     private object AudioInputStreamWrapper {
       // Extract an AudioInputStream wrapper from an AudioInputStream. This will
@@ -382,7 +450,7 @@ trait AWTAudioProvider extends AudioProvider {
       // in the wrapper, so at the end of the call the stream will be at the end
       // and should probably be discarded (or reset, if supported).
       def fromAudioInputStream(stream: AudioInputStream): AudioInputStreamWrapper = {
-        val data = new java.io.ByteArrayOutputStream
+        val data = new ByteArrayOutputStream
         val frameSize = {
           val tmp = stream.getFormat.getFrameSize
           if(tmp == AudioSystem.NOT_SPECIFIED) 1 else tmp
@@ -397,6 +465,9 @@ trait AWTAudioProvider extends AudioProvider {
           data.write(buffer, 0, n)
           n = stream.read(buffer)
         }
+
+          for(i <- 0 until (n-8) by 8)
+            data.write(buffer, i, 4)
         new AudioInputStreamWrapper(data.toByteArray, stream.getFormat)
       }
     }
