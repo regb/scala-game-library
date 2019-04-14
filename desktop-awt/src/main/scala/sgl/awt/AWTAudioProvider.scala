@@ -3,11 +3,10 @@ package awt
 
 import sgl.util._
 
-import javax.sound.sampled.{AudioSystem, Clip, AudioFormat, AudioInputStream, 
-                            FloatControl, DataLine, UnsupportedAudioFileException,
-                            LineListener, LineEvent}
 import java.io.{File, ByteArrayOutputStream}
 import java.nio.ByteOrder
+
+import javax.sound.sampled.{AudioSystem, AudioInputStream, Clip, LineListener, LineEvent, UnsupportedAudioFileException}
 
 import scala.collection.mutable.{HashMap, HashSet}
 
@@ -40,6 +39,8 @@ import scala.collection.mutable.{HashMap, HashSet}
   */
 trait AWTAudioProvider extends AudioProvider {
   this: AWTSystemProvider with LoggingProvider =>
+
+  import JavaSoundHelpers._
   
   private implicit val LogTag = Logger.Tag("sgl-awt-audio")
 
@@ -166,37 +167,38 @@ trait AWTAudioProvider extends AudioProvider {
   
       type PlayedSound = Int
 
-      private def instantiateFreshClip(volume: Float): Clip = Locker.synchronized {
+      private def instantiateFreshClip(volume: Float): Option[Clip] = Locker.synchronized {
         val audioStream = audioInputStreamWrapper.newAudioInputStream
-        val info = new DataLine.Info(classOf[Clip], audioStream.getFormat)
-        val clip = AudioSystem.getLine(info).asInstanceOf[Clip]
-        clip.open(audioStream)
-        // Volume can only be set once a Line is open, according to doc.
-        setClipVolume(clip, volume)
-        clip
+        tryGetClip(audioStream.getFormat).map(clip => {
+          clip.open(audioStream)
+          // Volume can only be set once a Line is open, according to doc.
+          setClipVolume(clip, volume)
+          clip
+        })
       }
   
       override def play(volume: Float): Option[PlayedSound] = Locker.synchronized {
-        val clip = instantiateFreshClip(volume)
-        val clipIndex = clipPool.addClip(clip)
-        activeClips.add(clipIndex)
-        clip.addLineListener(new LineListener {
-          override def update(event: LineEvent): Unit = Locker.synchronized {
-            if(event.getType == LineEvent.Type.STOP) {
-              // STOP event is sent either when stop() was called or
-              // when the line reached the end of play. We need to check
-              // if this is paused, which would have been set for sure by
-              // the pause function before calling stop.
-              if(!clipPool.isPaused(clipIndex)) {
-                clipPool.close(clipIndex)
-                activeClips.remove(clipIndex)
+        instantiateFreshClip(volume).map(clip => {
+          val clipIndex = clipPool.addClip(clip)
+          activeClips.add(clipIndex)
+          clip.addLineListener(new LineListener {
+            override def update(event: LineEvent): Unit = Locker.synchronized {
+              if(event.getType == LineEvent.Type.STOP) {
+                // STOP event is sent either when stop() was called or
+                // when the line reached the end of play. We need to check
+                // if this is paused, which would have been set for sure by
+                // the pause function before calling stop.
+                if(!clipPool.isPaused(clipIndex)) {
+                  clipPool.close(clipIndex)
+                  activeClips.remove(clipIndex)
+                }
               }
+              // We don't care about other events.
             }
-            // We don't care about other events.
-          }
+          })
+          start(clipIndex)
+          clipIndex
         })
-        start(clipIndex)
-        Some(clipIndex)
       }
 
       override def withConfig(loop: Int, rate: Float): Sound = {
@@ -300,184 +302,28 @@ trait AWTAudioProvider extends AudioProvider {
     }
     override def loadMusic(path: ResourcePath): Loader[Music] = FutureLoader {
       logger.info("Loading music resource: " + path.path)
-      val clip = loadClip(path)
+      val resourceAudioStream = loadAudioInputStream(path)
+      val (convertedAudioStream, clip) = convertToBestStream(resourceAudioStream).getOrElse{
+        throw new ResourceFormatUnsupportedException(path)
+      }
+      // Sometimes the converted stream has a frame length of -1, which seems wrong as it
+      // should be in a well-defined PCM format with a known number of bytes per frames and thus
+      // a known number of frames. The clip then seems to fail on some platforms (OpenJDK with icedtea
+      // pulse audio implementation) when trying to open the audio stream (with a negative array
+      // exception which can clearly be traced to that negative frame length). So the trick here
+      // is to actually manually compute the frame length and create a new AudioInputStream with
+      // the same data but with the correct frame length.
+      if(convertedAudioStream.getFrameLength != -1) {
+        // If it's not -1, no need for this hack.
+        clip.open(convertedAudioStream)
+      } else {
+        val wrapper = AudioInputStreamWrapper.fromAudioInputStream(convertedAudioStream)
+        logger.debug("Data length recomputed from reading the file: %d bytes".format(wrapper.frameLength))
+        val finalStream = wrapper.newAudioInputStream
+        logger.debug("Converted AudioInputStream: format=<%s> frame_length=%d".format(finalStream.getFormat, finalStream.getFrameLength))
+        clip.open(finalStream)
+      }
       new Music(clip)
-    }
-
-    // Try to get a clip that can play the AudioFormat. Returns
-    // None if there is clip in the AudioSystem, Some(clip) otherwise.
-    // The clip is not opened, so it's essentially not using resources
-    // yet, when you commit to a particular clip you must open it.
-    private def tryGetClip(format: AudioFormat): Option[Clip] = try {
-      val info = new DataLine.Info(classOf[Clip], format)
-      val clip = AudioSystem.getLine(info).asInstanceOf[Clip]
-      Some(clip)
-    } catch {
-      case (_: IllegalArgumentException) => {
-        // The AudioSystem.getLine throws the IllegalArgumentException if there
-        // no support for playing such a format.
-        None
-      }
-      case (_: Exception) => None
-      // TODO we should handle LineUnavailableException, which indicates that no line are
-      //    currently available due to resource constraints, but not that the system cannot
-      //    handle the format. Maybe we can do better than just returning None in that case.
-    }
-
-    private def findPlayableFormat(fromFormat: AudioFormat): Option[Clip] = {
-      logger.debug("Looking for a useable audio format to convert " + fromFormat + " to.")
-
-      val availablePCMFormats = AudioSystem.getTargetFormats(AudioFormat.Encoding.PCM_SIGNED, fromFormat)
-      availablePCMFormats.foreach(f => logger.debug("Possible format: " + f))
-      val useableFormats = availablePCMFormats.flatMap(f => {
-        logger.debug("Attempting to get a clip for format " + f)
-        val c = tryGetClip(f)
-        logger.debug("Got clip: " + c)
-        c
-      })
-
-      // Now let's try to pick the best out of these.
-      logger.debug("Native byte order is " + ByteOrder.nativeOrder)
-      def sameEndian(f: AudioFormat) = f.isBigEndian == (ByteOrder.nativeOrder == ByteOrder.BIG_ENDIAN)
-      def sameChannels(f: AudioFormat) = f.getChannels == fromFormat.getChannels
-      def sameSampleRate(f: AudioFormat) = f.getSampleRate == fromFormat.getSampleRate
-      def standardSampleSize(f: AudioFormat) = f.getSampleSizeInBits == 16
-
-      useableFormats.find(f => sameEndian(f.getFormat) && sameChannels(f.getFormat) && standardSampleSize(f.getFormat) && sameSampleRate(f.getFormat))
-      .orElse(useableFormats.find(f => sameEndian(f.getFormat) && sameChannels(f.getFormat) && standardSampleSize(f.getFormat)))
-      .orElse(useableFormats.find(f => sameEndian(f.getFormat) && standardSampleSize(f.getFormat)))
-      .orElse(useableFormats.find(f => sameEndian(f.getFormat)))
-      //.orElse(useableFormats.headOption) It seems like using a different endian encoding just gonna
-      // make a horrible sound, so let's stop there.
-    }
-
-    // Wrap an AudioInputStream by storing the static array of bytes and the format.
-    // Can create fresh AudioInputStreams from that data. This is useful for Sound
-    // API as it lets us get a new fresh AudioInputStream for each call to play, and
-    // we cannot use the same base AudioInputStream (due to the state and the fact that
-    // playing it should consume it). The additional advantage of this is that it
-    // can encapsulate the code that reads the entire data stream and compute the
-    // proper frameLength, to work around the Java Sound API bug. The bug is that after
-    // converting to an AudioInputStream, the frameLength is sometimes -1, and it has
-    // the effect of crashing the OpenJDK Clip.open code. By computing it (after reading
-    // the entire content) and setting it correctly, we work around that bug.
-    private class AudioInputStreamWrapper(val data: Array[Byte], format: AudioFormat) {
-
-      private val frameSize = {
-        val tmp = format.getFrameSize
-        if(tmp == AudioSystem.NOT_SPECIFIED) 1 else tmp
-      }
-      val frameLength = data.length/frameSize
-
-      def newAudioInputStream: AudioInputStream =
-        new AudioInputStream(new java.io.ByteArrayInputStream(data), format, frameLength)
-
-      // make a new AudioInputStreamWrapper with a custom playback rate. If
-      // rate is 1f, then return this. Rate can be any strictly positive value,
-      // but reasonable values are within 0.5-2. The operation is to interpolate
-      // the frames of the stream so that the playback rate is modified according
-      // to the rate. A rate of 2f, means double the play speed, which can be done
-      // by removing half the frames. In general, we will have to interpolate frames
-      // when rate is a non-integer value.
-      def withRate(rate: Float): Option[AudioInputStreamWrapper] = {
-        require(rate > 0)
-
-        if(rate == 1f)
-            return Some(this)
-
-        if(format.getEncoding != AudioFormat.Encoding.PCM_SIGNED || 
-           format.getFrameSize == AudioSystem.NOT_SPECIFIED ||
-           format.getSampleSizeInBits == AudioSystem.NOT_SPECIFIED ||
-           format.getSampleSizeInBits % 8 != 0 ||
-           format.getSampleSizeInBits > 32) // TODO: easy to support by using Long instead of Int below.
-          // This is treading dangerous water, better not try to process the frames there.
-          return None
-
-        val newData = new ByteArrayOutputStream
-
-        val sampleSize = format.getSampleSizeInBits/8
-        val nbChannels = format.getChannels
-        var f: Float = 0f
-        println(frameLength)
-        while(f <= (frameLength-1)) {
-          val pf = f.toInt
-          val nf = f.ceil.toInt
-          for(c <- 0 until nbChannels) {
-            val ps = readSample(pf, c, sampleSize, format.isBigEndian())
-            val ns = readSample(nf, c, sampleSize, format.isBigEndian())
-            val interpolatedSample = interpolate(ps, ns, f - f.toInt)
-            writeSample(newData, interpolatedSample, sampleSize, format.isBigEndian())
-          }
-          f += rate
-        }
-
-        Some(new AudioInputStreamWrapper(newData.toByteArray, format))
-      }
-
-      // interpolate between s1 and s2, depending on the alpha (0 is s1, 1 is s2).
-      private def interpolate(s1: Int, s2: Int, alpha: Float): Int = {
-        s1 + ((s2-s1)*alpha).toInt
-      }
-
-      private def writeSample(out: ByteArrayOutputStream, sampleValue: Int, sampleSize: Int, isBigEndian: Boolean): Unit = {
-        for(i <- 0 until sampleSize) {
-          // compute byte i in the sampleValue.
-          val b = if(isBigEndian)
-            ((sampleValue >>> ((sampleSize-i-1)*8)) & 0xff)
-          else
-            ((sampleValue >>> (i*8)) & 0xff)
-          out.write(b)
-        }
-      }
-
-      // Read the sample at frame index from data. A frame contains the sample for each channel, so the
-      // X bytes for the frame are divided equally among the Y channels. We then convert the
-      // bytes into an Int, depending on the little/big endianness. This reads the sample for
-      // channel (as // a channel index value) from the frame.
-      private def readSample(frame: Int, channel: Int, sampleSize: Int, isBigEndian: Boolean): Int = {
-        var res: Int = 0
-        for(i <- 0 until sampleSize) {
-          val b = data(frame*frameSize + channel*sampleSize + i).toInt & 0xff
-          if(isBigEndian) {
-            res = res | (b << ((sampleSize-i-1)*8))
-          } else {
-            res = res | (b << (i*8))
-          }
-        }
-        // Finally, we have the integer over the last X bytes, we need to get it the right sign.
-        // We can do that by shifting away the leading 0s (they remained from the parts we haven't
-        // set with the | above) and then shifting back to position, which will properly introduce
-        // leading 0s if the number is negative.
-        (res << (32 - 8*sampleSize)) >> (8*sampleSize)
-      }
-
-    }
-    private object AudioInputStreamWrapper {
-      // Extract an AudioInputStream wrapper from an AudioInputStream. This will
-      // read through the entire stream in order to extract the data and store it
-      // in the wrapper, so at the end of the call the stream will be at the end
-      // and should probably be discarded (or reset, if supported).
-      def fromAudioInputStream(stream: AudioInputStream): AudioInputStreamWrapper = {
-        val data = new ByteArrayOutputStream
-        val frameSize = {
-          val tmp = stream.getFormat.getFrameSize
-          if(tmp == AudioSystem.NOT_SPECIFIED) 1 else tmp
-        }
-        // Let's make the read buffer a large multiple of the frame size, 10'000 seems fine.
-        // We need to read integral amount of frames, but we can read a lot of them to make
-        // the process faster.
-        val buffer = new Array[Byte](frameSize * 10000)
-        // read returns the number of bytes read, not the number of frames.
-        var n = stream.read(buffer)
-        while(n != -1) {
-          data.write(buffer, 0, n)
-          n = stream.read(buffer)
-        }
-
-          for(i <- 0 until (n-8) by 8)
-            data.write(buffer, i, 4)
-        new AudioInputStreamWrapper(data.toByteArray, stream.getFormat)
-      }
     }
 
     // Load the resource into an AudioInputStream. This will use the standard
@@ -505,6 +351,210 @@ trait AWTAudioProvider extends AudioProvider {
       resourceAudioStream
     }
     
+
+    // TODO: would be nice that the init functions are part of the cake initialization, with
+    //  the explicit interface that the call order is not well defined.
+    def init(): Unit = {
+      logger.info("Initializing AWT audio system.")
+      val mixersInfo = AudioSystem.getMixerInfo()
+      mixersInfo.foreach(mi => logger.debug("Found available mixer: " + mi))
+
+      // The byte order is important for various parts of the Audio system, we
+      // just log it out here for helping with debugging.
+      logger.debug("Detected native byte order to be " + ByteOrder.nativeOrder)
+
+      // TODO: Should we figure out the best mixer? Then should we add some global control 
+      //  for volume (like a Audio.setMasterVolume) that would apply to all the audio playing?
+      //  If so, we need to figure out how to make sure every clip feeds into the same mixer,
+      //  and not just load clips independently of a mixer.
+    }
+  }
+  override val Audio = AWTAudio
+
+  /** Provides function helpers to work with Java Sound API.
+    *
+    * The Java Sound API is quite complex and powerful, these hide some of
+    * the complexity away by performing operations that are needed for
+    * SGL. They also implement some work-around for compatiblity issues
+    * and adds some custom basic signal processing for controlling the
+    * sound.
+    */
+  private object JavaSoundHelpers {
+    import javax.sound.sampled.{AudioFormat, FloatControl, DataLine, LineEvent}
+  
+    // Try to get a clip that can play the AudioFormat. Returns
+    // None if there is clip in the AudioSystem, Some(clip) otherwise.
+    // The clip is not opened, so it's essentially not using resources
+    // yet, when you commit to a particular clip you must open it.
+    def tryGetClip(format: AudioFormat): Option[Clip] = try {
+      val info = new DataLine.Info(classOf[Clip], format)
+      val clip = AudioSystem.getLine(info).asInstanceOf[Clip]
+      Some(clip)
+    } catch {
+      case (_: IllegalArgumentException) => {
+        // The AudioSystem.getLine throws the IllegalArgumentException if there
+        // no support for playing such a format.
+        None
+      }
+      case (_: Exception) => None
+      // TODO we should handle LineUnavailableException, which indicates that no line are
+      //    currently available due to resource constraints, but not that the system cannot
+      //    handle the format. Maybe we can do better than just returning None in that case.
+    }
+  
+    def findPlayableFormat(fromFormat: AudioFormat): Option[Clip] = {
+      logger.debug("Looking for a useable audio format to convert " + fromFormat + " to.")
+  
+      val availablePCMFormats = AudioSystem.getTargetFormats(AudioFormat.Encoding.PCM_SIGNED, fromFormat)
+      availablePCMFormats.foreach(f => logger.debug("Possible format: " + f))
+      val useableFormats = availablePCMFormats.flatMap(f => {
+        logger.debug("Attempting to get a clip for format " + f)
+        val c = tryGetClip(f)
+        logger.debug("Got clip: " + c)
+        c
+      })
+  
+      // Now let's try to pick the best out of these.
+      def sameEndian(f: AudioFormat) = f.isBigEndian == (ByteOrder.nativeOrder == ByteOrder.BIG_ENDIAN)
+      def sameChannels(f: AudioFormat) = f.getChannels == fromFormat.getChannels
+      def sameSampleRate(f: AudioFormat) = f.getSampleRate == fromFormat.getSampleRate
+      def standardSampleSize(f: AudioFormat) = f.getSampleSizeInBits == 16
+  
+      useableFormats.find(f => sameEndian(f.getFormat) && sameChannels(f.getFormat) && standardSampleSize(f.getFormat) && sameSampleRate(f.getFormat))
+      .orElse(useableFormats.find(f => sameEndian(f.getFormat) && sameChannels(f.getFormat) && standardSampleSize(f.getFormat)))
+      .orElse(useableFormats.find(f => sameEndian(f.getFormat) && standardSampleSize(f.getFormat)))
+      .orElse(useableFormats.find(f => sameEndian(f.getFormat)))
+      //.orElse(useableFormats.headOption) It seems like using a different endian encoding just gonna
+      // make a horrible sound, so let's stop there.
+    }
+  
+    // Wrap an AudioInputStream by storing the static array of bytes and the format.
+    // Can create fresh AudioInputStreams from that data. This is useful for Sound
+    // API as it lets us get a new fresh AudioInputStream for each call to play, and
+    // we cannot use the same base AudioInputStream (due to the state and the fact that
+    // playing it should consume it). The additional advantage of this is that it
+    // can encapsulate the code that reads the entire data stream and compute the
+    // proper frameLength, to work around the Java Sound API bug. The bug is that after
+    // converting to an AudioInputStream, the frameLength is sometimes -1, and it has
+    // the effect of crashing the OpenJDK Clip.open code. By computing it (after reading
+    // the entire content) and setting it correctly, we work around that bug.
+    class AudioInputStreamWrapper(val data: Array[Byte], format: AudioFormat) {
+  
+      private val frameSize = {
+        val tmp = format.getFrameSize
+        if(tmp == AudioSystem.NOT_SPECIFIED) 1 else tmp
+      }
+      val frameLength = data.length/frameSize
+  
+      def newAudioInputStream: AudioInputStream =
+        new AudioInputStream(new java.io.ByteArrayInputStream(data), format, frameLength)
+  
+      // make a new AudioInputStreamWrapper with a custom playback rate. If
+      // rate is 1f, then return this. Rate can be any strictly positive value,
+      // but reasonable values are within 0.5-2. The operation is to interpolate
+      // the frames of the stream so that the playback rate is modified according
+      // to the rate. A rate of 2f, means double the play speed, which can be done
+      // by removing half the frames. In general, we will have to interpolate frames
+      // when rate is a non-integer value.
+      def withRate(rate: Float): Option[AudioInputStreamWrapper] = {
+        require(rate > 0)
+  
+        if(rate == 1f)
+            return Some(this)
+  
+        if(format.getEncoding != AudioFormat.Encoding.PCM_SIGNED || 
+           format.getFrameSize == AudioSystem.NOT_SPECIFIED ||
+           format.getSampleSizeInBits == AudioSystem.NOT_SPECIFIED ||
+           format.getSampleSizeInBits % 8 != 0 ||
+           format.getSampleSizeInBits > 32) // TODO: easy to support by using Long instead of Int below.
+          // This is treading dangerous water, better not try to process the frames there.
+          return None
+  
+        val newData = new ByteArrayOutputStream
+  
+        val sampleSize = format.getSampleSizeInBits/8
+        val nbChannels = format.getChannels
+        var f: Float = 0f
+        while(f <= (frameLength-1)) {
+          val pf = f.toInt
+          val nf = f.ceil.toInt
+          for(c <- 0 until nbChannels) {
+            val ps = readSample(pf, c, sampleSize, format.isBigEndian())
+            val ns = readSample(nf, c, sampleSize, format.isBigEndian())
+            val interpolatedSample = interpolate(ps, ns, f - f.toInt)
+            writeSample(newData, interpolatedSample, sampleSize, format.isBigEndian())
+          }
+          f += rate
+        }
+  
+        Some(new AudioInputStreamWrapper(newData.toByteArray, format))
+      }
+  
+      // interpolate between s1 and s2, depending on the alpha (0 is s1, 1 is s2).
+      private def interpolate(s1: Int, s2: Int, alpha: Float): Int = {
+        s1 + ((s2-s1)*alpha).toInt
+      }
+  
+      private def writeSample(out: ByteArrayOutputStream, sampleValue: Int, sampleSize: Int, isBigEndian: Boolean): Unit = {
+        for(i <- 0 until sampleSize) {
+          // compute byte i in the sampleValue.
+          val b = if(isBigEndian)
+            ((sampleValue >>> ((sampleSize-i-1)*8)) & 0xff)
+          else
+            ((sampleValue >>> (i*8)) & 0xff)
+          out.write(b)
+        }
+      }
+  
+      // Read the sample at frame index from data. A frame contains the sample for each channel, so the
+      // X bytes for the frame are divided equally among the Y channels. We then convert the
+      // bytes into an Int, depending on the little/big endianness. This reads the sample for
+      // channel (as // a channel index value) from the frame.
+      private def readSample(frame: Int, channel: Int, sampleSize: Int, isBigEndian: Boolean): Int = {
+        var res: Int = 0
+        for(i <- 0 until sampleSize) {
+          val b = data(frame*frameSize + channel*sampleSize + i).toInt & 0xff
+          if(isBigEndian) {
+            res = res | (b << ((sampleSize-i-1)*8))
+          } else {
+            res = res | (b << (i*8))
+          }
+        }
+        // Finally, we have the integer over the last X bytes, we need to get it the right sign.
+        // We can do that by shifting away the leading 0s (they remained from the parts we haven't
+        // set with the | above) and then shifting back to position, which will properly introduce
+        // leading 0s if the number is negative.
+        (res << (32 - 8*sampleSize)) >> (8*sampleSize)
+      }
+    }
+    object AudioInputStreamWrapper {
+      // Extract an AudioInputStream wrapper from an AudioInputStream. This will
+      // read through the entire stream in order to extract the data and store it
+      // in the wrapper, so at the end of the call the stream will be at the end
+      // and should probably be discarded (or reset, if supported).
+      def fromAudioInputStream(stream: AudioInputStream): AudioInputStreamWrapper = {
+        val data = new ByteArrayOutputStream
+        val frameSize = {
+          val tmp = stream.getFormat.getFrameSize
+          if(tmp == AudioSystem.NOT_SPECIFIED) 1 else tmp
+        }
+        // Let's make the read buffer a large multiple of the frame size, 10'000 seems fine.
+        // We need to read integral amount of frames, but we can read a lot of them to make
+        // the process faster.
+        val buffer = new Array[Byte](frameSize * 10000)
+        // read returns the number of bytes read, not the number of frames.
+        var n = stream.read(buffer)
+        while(n != -1) {
+          data.write(buffer, 0, n)
+          n = stream.read(buffer)
+        }
+  
+          for(i <- 0 until (n-8) by 8)
+            data.write(buffer, i, 4)
+        new AudioInputStreamWrapper(data.toByteArray, stream.getFormat)
+      }
+    }
+  
     // Attempt to convert the audioStream into the best AudioInputStream that
     // can be played by the AudioSystem. Typically we need to do that as Java
     // Sound API can only play a limited number of formats, and the resource
@@ -518,7 +568,7 @@ trait AWTAudioProvider extends AudioProvider {
     // patching due to the negative frameLength bug (referred to at other
     // places in this file).  Thie conversion does not apply the patch, it just
     // does the basic Java Sound API conversion.
-    private def convertToBestStream(audioStream: AudioInputStream): Option[(AudioInputStream, Clip)] = {
+    def convertToBestStream(audioStream: AudioInputStream): Option[(AudioInputStream, Clip)] = {
       tryGetClip(audioStream.getFormat).map(c =>
         // If we can play the audio stream, let's return it without conversion.
         (audioStream, c)
@@ -526,7 +576,7 @@ trait AWTAudioProvider extends AudioProvider {
         // Otherwise we need to convert it to a PCM-based audio format that can
         // be played by Java
         logger.debug("Failed to open a clip for the native resource format, attempting to convert.")
-
+  
         findPlayableFormat(audioStream.getFormat).map(clip => {
           logger.debug("Using format for conversion: " + clip.getFormat)
           val convertedStream = AudioSystem.getAudioInputStream(clip.getFormat, audioStream)
@@ -536,38 +586,7 @@ trait AWTAudioProvider extends AudioProvider {
       }
     }
 
-    // load a clip for the resource and open it with the audio stream.  Throws
-    // ResourceFormatUnsupportedException if the audio system is unable to deal
-    // with the format, and ResourceNotFoundException if there's no resource
-    // for that path.
-    private def loadClip(path: ResourcePath): Clip = {
-      val resourceAudioStream = loadAudioInputStream(path)
-      val (convertedAudioStream, clip) = convertToBestStream(resourceAudioStream).getOrElse{
-        throw new ResourceFormatUnsupportedException(path)
-      }
-
-      // Sometimes the converted stream has a frame length of -1, which seems wrong as it
-      // should be in a well-defined PCM format with a known number of bytes per frames and thus
-      // a known number of frames. The clip then seems to fail on some platforms (OpenJDK with icedtea
-      // pulse audio implementation) when trying to open the audio stream (with a negative array
-      // exception which can clearly be traced to that negative frame length). So the trick here
-      // is to actually manually compute the frame length and create a new AudioInputStream with
-      // the same data but with the correct frame length.
-      if(convertedAudioStream.getFrameLength != -1) {
-        // If it's not -1, no need for this hack.
-        clip.open(convertedAudioStream)
-        clip
-      } else {
-        val wrapper = AudioInputStreamWrapper.fromAudioInputStream(convertedAudioStream)
-        logger.debug("Data length recomputed from reading the file: %d bytes".format(wrapper.frameLength))
-        val finalStream = wrapper.newAudioInputStream
-        logger.debug("Converted AudioInputStream: format=<%s> frame_length=%d".format(finalStream.getFormat, finalStream.getFrameLength))
-        clip.open(finalStream)
-        clip
-      }
-    }
-
-    private def setClipVolume(clip: Clip, volume: Float): Unit = {
+    def setClipVolume(clip: Clip, volume: Float): Unit = {
       // volume is a float between 0 and 1, and is meant to be a linear
       // modification of the normal sound (see official AudioProvider API
       // documentation for setVolume. The idea is that we will never need to
@@ -607,19 +626,6 @@ trait AWTAudioProvider extends AudioProvider {
       //       I'm thinking that VOLUME is maybe for things like output port (speaker) only?
     }
   
-    // TODO: would be nice that the init functions are part of the cake initialization, with
-    //  the explicit interface that the call order is not well defined.
-    def init(): Unit = {
-      logger.info("Initializing AWT audio system.")
-      val mixersInfo = AudioSystem.getMixerInfo()
-      mixersInfo.foreach(mi => logger.debug("Found available mixer: " + mi))
-
-      // TODO: Should we figure out the best mixer? Then should we add some global control 
-      //  for volume (like a Audio.setMasterVolume) that would apply to all the audio playing?
-      //  If so, we need to figure out how to make sure every clip feeds into the same mixer,
-      //  and not just load clips independently of a mixer.
-    }
   }
-  override val Audio = AWTAudio
 
 }
