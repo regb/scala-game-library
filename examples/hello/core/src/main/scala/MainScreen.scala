@@ -48,8 +48,12 @@ trait MainScreenComponent extends ViewportComponent {
           m.setVolume(0.5f)
           m.play()
         })
-        beep = beepLoader.value.get.get.looped(2)
-        beepInfinite = beep.looped(-1)
+        val tmpBeep = beepLoader.value.get.get
+        beep = tmpBeep.withConfig(2, 0.6f)
+        beepInfinite = tmpBeep.looped(-1)
+        // If we don't plan to use the original sound (if we only used the various
+        // configs), we should dispose it.
+        tmpBeep.dispose() 
         gameState.newScreen(new MainScreen)
       }
     }

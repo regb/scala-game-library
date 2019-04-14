@@ -155,15 +155,8 @@ trait AWTAudioProvider extends AudioProvider {
     }
     private val clipPool = new ClipPool
   
-    class Sound(audioInputStreamWrapper: AudioInputStreamWrapper, loop: Int, rate: Float) extends AbstractSound {
+    class Sound(audioInputStreamWrapper: AudioInputStreamWrapper, loop: Int) extends AbstractSound {
       require(loop >= -1)
-      require(rate >= 0.5 && rate <= 2)
-      // TODO: implement support for rate, for now we log a warning so that the
-      // user knows that it isn't implemented in this backend (but would work in
-      // a different backend).
-      if(rate != 1f) {
-        logger.warning("Playback rate not supported, only supports unmodified rate of 1f.")
-      }
 
       // A lock for this particular object, we will need to synchronize LineListener events
       // with the change of state.
@@ -207,7 +200,12 @@ trait AWTAudioProvider extends AudioProvider {
       }
 
       override def withConfig(loop: Int, rate: Float): Sound = {
-        new Sound(audioInputStreamWrapper, loop, rate)
+        require(rate >= 0.5 && rate <= 2)
+        val stream =  audioInputStreamWrapper.withRate(rate).getOrElse{
+          logger.warning("Unable to apply the playback rate to the audio stream. Using data as such.")
+          audioInputStreamWrapper
+        }
+        new Sound(stream, loop)
       }
 
       override def dispose(): Unit = Locker.synchronized {
@@ -262,7 +260,7 @@ trait AWTAudioProvider extends AudioProvider {
         throw new ResourceFormatUnsupportedException(path)
       }
       val wrapper = AudioInputStreamWrapper.fromAudioInputStream(convertedAudioStream)
-      new Sound(wrapper, 0, 1f)
+      new Sound(wrapper, 0)
     }
   
     class Music(clip: Clip) extends AbstractMusic {
@@ -391,7 +389,8 @@ trait AWTAudioProvider extends AudioProvider {
         if(format.getEncoding != AudioFormat.Encoding.PCM_SIGNED || 
            format.getFrameSize == AudioSystem.NOT_SPECIFIED ||
            format.getSampleSizeInBits == AudioSystem.NOT_SPECIFIED ||
-           format.getSampleSizeInBits % 8 != 0)
+           format.getSampleSizeInBits % 8 != 0 ||
+           format.getSampleSizeInBits > 32) // TODO: easy to support by using Long instead of Int below.
           // This is treading dangerous water, better not try to process the frames there.
           return None
 
@@ -399,20 +398,26 @@ trait AWTAudioProvider extends AudioProvider {
 
         val sampleSize = format.getSampleSizeInBits/8
         val nbChannels = format.getChannels
-        for(f <- 0 until frameLength by 2) {
+        var f: Float = 0f
+        println(frameLength)
+        while(f <= (frameLength-1)) {
+          val pf = f.toInt
+          val nf = f.ceil.toInt
           for(c <- 0 until nbChannels) {
-            val sample = readSample(f, c, sampleSize, format.isBigEndian())
-            if(f == 0) {
-              println("sample: " + sample)
-            }
-            writeSample(newData, sample, sampleSize, format.isBigEndian())
+            val ps = readSample(pf, c, sampleSize, format.isBigEndian())
+            val ns = readSample(nf, c, sampleSize, format.isBigEndian())
+            val interpolatedSample = interpolate(ps, ns, f - f.toInt)
+            writeSample(newData, interpolatedSample, sampleSize, format.isBigEndian())
           }
+          f += rate
         }
 
-        val res = Some(new AudioInputStreamWrapper(newData.toByteArray, format))
-        println("original: " + data(0) + ", " + data(1) + ", " + data(2) + ", " + data(3))
-        println("new: " + res.get.data(0) + ", " + res.get.data(1) + ", " + res.get.data(2) + ", " + res.get.data(3))
-        res
+        Some(new AudioInputStreamWrapper(newData.toByteArray, format))
+      }
+
+      // interpolate between s1 and s2, depending on the alpha (0 is s1, 1 is s2).
+      private def interpolate(s1: Int, s2: Int, alpha: Float): Int = {
+        s1 + ((s2-s1)*alpha).toInt
       }
 
       private def writeSample(out: ByteArrayOutputStream, sampleValue: Int, sampleSize: Int, isBigEndian: Boolean): Unit = {
@@ -440,7 +445,11 @@ trait AWTAudioProvider extends AudioProvider {
             res = res | (b << (i*8))
           }
         }
-        res
+        // Finally, we have the integer over the last X bytes, we need to get it the right sign.
+        // We can do that by shifting away the leading 0s (they remained from the parts we haven't
+        // set with the | above) and then shifting back to position, which will properly introduce
+        // leading 0s if the number is negative.
+        (res << (32 - 8*sampleSize)) >> (8*sampleSize)
       }
 
     }

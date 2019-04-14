@@ -76,11 +76,21 @@ trait AudioProvider {
         * store one iteration of the loop (both in resources and then loaded in
         * memory) but then to use some looped behaviour logic when playing.
         *
-        * Using a different rate can let you reuse the same sound resource in several
-        * context.
+        * You can also control the playback rate of the sound. The rate is
+        * essentially how quickly we play the sound. If rate is 2f, then we
+        * play the sound twice as fast, and if it is 0.5, we play it at half
+        * speed. Valid values are from 0.5f to 2f. Controlling the rate is
+        * fundamentally a very simple signal processing, where the samples are
+        * interpolated/removed to match the rate. For example, with a rate of
+        * 2, all that happens is that 1 in every 2 sample is removed, which
+        * means that the final sound is only half the length. For a 0.5 rate,
+        * we interpolate new samples to make the sound longer (frame 0 is
+        * there, frame 1 is interpolated from frame 0 and 1, frame 2 is there
+        * again, etc). This also supports more general values such as 1.75f, in
+        * this case the interpolation generalizes to fractional frames.
         *
         * After calling withConfig, you end up with two independent Sound
-        * instance in your system, and you must dispose both, or you can
+        * instances in your system, and you must dispose both, or you can
         * dispose one of them and keep using the other one. Typically, you
         * might want to load the sound sample, call withConfig to get the play
         * configuration, and then dispose the original as you are only planning
