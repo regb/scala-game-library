@@ -149,12 +149,8 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
       override def resume(id: PlayedSound): Unit = {
         soundPool.resume(id)
       }
-      override def setLooping(id: PlayedSound, isLooping: Boolean): Unit = {
-        // TODO: verify that setting a loop of 0 actually completes the current
-        // loop iteration and does not abruptly stop the sound (this would be
-        // an interpretation of the interface if they consider that the sound
-        // already played enough iterations).
-        soundPool.setLoop(id, if(isLooping) -1 else 0) 
+      override def endLoop(id: PlayedSound): Unit = {
+        soundPool.setLoop(id, 0) 
       }
 
     }

@@ -233,7 +233,6 @@ trait AWTAudioProvider extends AudioProvider {
       override def resume(id: PlayedSound): Unit = Locker.synchronized {
         start(id)
       }
-      override def setLooping(id: PlayedSound, isLooping: Boolean): Unit = ???
 
       override def endLoop(id: PlayedSound): Unit = {
         // There's no way to start looping once the sound is started, so we only need

@@ -168,39 +168,23 @@ trait AudioProvider {
         */
       def stop(id: PlayedSound): Unit
 
-      /** Set the looping state of the specific PlayedSound instance within that sound.
+      /** End the loop of the specific PlayedSound instance within that sound.
         *
-        * This is a way to set the looping state of a sound once it started to
-        * play. It will not affect the parent Sound state itself. The method is only
-        * about changing the internal state of the PlayedSound, in particular
-        * if the PlayedSound is paused, calling setLooping will not resume it,
-        * it will remain paused until resume is called, at which point the
-        * sound starts playing again, but with a looping behavior. If the sound is
-        * currently playing without a loop, it will continue to loop forever. If
-        * the sound was already looping, this will not affect the internal state
-        * (if it was looping for a finite amount of steps, this won't make it
-        * loop forever). If the clip had already reached the end, the call will
-        * be ignored.
+        * This is a way to stop the looping but still completing the current loop
+        * iteration. It will not affect the parent Sound looping state itself.
+        * The effect of the method is not well defined on sound that are in any
+        * non-looping state (it should usually do the right thing, but calling it
+        * on a paused instance could restart the play). If the clip had already
+        * reached the end, the call will be ignored.
         *
-        * There are not many use cases for such a method, but one is to
-        * smoothly terminate a looped sound by completing the current loop
-        * instead of abruptly stopping in the middle of the loop sequence (Say
-        * you use the Sound as a five seconds loop effect, made of 5 times a 1
-        * second effect, and a game event forces you to stop the sound effect,
-        * you may want to call setLooping(id, false) instead of pause(id), in
-        * order to have a smooth transition).
-        *
-        * It is not clear what is a reasonable use case for setLooping(id,
-        * true), but this seems like a relatively cheap general interface to
-        * provide, and maybe there are decent use cases.
+        * One use case is to smoothly terminate a looped sound by completing
+        * the current loop instead of abruptly stopping in the middle of the
+        * loop sequence (Say you use the Sound as a five seconds loop effect,
+        * made of 5 times a 1 second effect, and a game event forces you to
+        * stop the sound effect, you may want to call endLoop(id) instead of
+        * stop(id), in order to have a smooth transition).
         */
-      def setLooping(id: PlayedSound, isLooping: Boolean): Unit
-      // TODO: probably want to revise this operation. The AWT-based implementation is probably
-      //       buggy despite my best effort to respect the contract. The use case seems so limited
-      //       and the special cases seem too many. Maybe we just want to offer a "endLoop", which
-      //       would be much better defined. Or maybe we just don't need such an operation?
-
-      def endLoop(id: PlayedSound): Unit = setLooping(id, false)
+      def endLoop(id: PlayedSound): Unit
   
     }
     type Sound <: AbstractSound
@@ -340,7 +324,7 @@ trait FakeAudioProvider extends AudioProvider {
       override def stop(id: PlayedSound): Unit = {}
       override def pause(id: PlayedSound): Unit = {}
       override def resume(id: PlayedSound): Unit = {}
-      override def setLooping(id: PlayedSound, isLooping: Boolean): Unit = {}
+      override def endLoop(id: PlayedSound): Unit = {}
     }
 
     override def loadSound(path: ResourcePath): Loader[Sound] = Loader.successful(new Sound)

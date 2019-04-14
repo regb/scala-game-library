@@ -20,7 +20,7 @@ trait Html5AudioProvider extends AudioProvider {
       override def stop(id: PlayedSound): Unit = {}
       override def pause(id: PlayedSound): Unit = {}
       override def resume(id: PlayedSound): Unit = {}
-      override def setLooping(id: PlayedSound, isLooping: Boolean): Unit = {}
+      override def endLoop(id: PlayedSound): Unit = {}
     }
 
     /** Not supported. */
