@@ -1,5 +1,26 @@
 # TODO
 
+## Backlog for 0.0.2
+
+There are many things that are highly annoying right now. But they will have to
+wait for 0.0.2, because 0.0.1 is used in a relatively large game, and we want
+to ship this first and then publish 0.0.1 as a stable version. But let's keep
+track of the things we notice while working on the game and that need to be
+addressed when going to 0.0.2.
+
+### Canvas points should be floating points
+
+We have countless .toInt all over the place, this is just not making sense. Canvas
+should support floating point numbers. Using ints was based on the theory that
+the canvas was a screen, and a screen was a matrix of pixels. But we have seen
+that with things such as canvas rotation/scaling, this does not hold when we
+are working with virtual canvases.
+
+### Solve the dp2px and multi-density problem
+
+We have too many calls to dp2px with all constants. We need to be able to use
+viewports and cameras as a way to do this conversion at a single point.
+
 ## Separate core into core and desktop backend
 
 Seems like there could be several different kind of desktop, but they would
