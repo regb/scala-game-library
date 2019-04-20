@@ -108,7 +108,7 @@ trait ParticleSystemComponent {
 
       val spawnRateMs: Float = config.spawnRate/1000f
       val spawnAmount = (spawnRateMs*dt + spawnCarry)
-      val particlesToSpawn = spawnAmount.toInt
+      val particlesToSpawn = if(age < config.duration) spawnAmount.toInt else 0
       spawnCarry = spawnAmount - particlesToSpawn
 
       val totalParticlesToSpawn = if(nextSpawnBurst.headOption.exists(age >= _._1)) {
