@@ -98,11 +98,19 @@ trait AWTGraphicsProvider extends GraphicsProvider {
     case class AWTCanvas(var graphics: Graphics2D, var width: Int, var height: Int) extends AbstractCanvas {
 
       override def withSave[A](body: => A): A = {
+        // Save current state.
         val oldGraphics: Graphics2D = graphics.create().asInstanceOf[Graphics2D]
-        //val transform = graphics.getTransform()
+        val oldWidth = this.width
+        val oldHeight = this.height
+
+        // Execute the body and bind the res.
         val res = body
-        //graphics.setTransform(transform)
-        graphics = oldGraphics
+
+        // Restore saved state.
+        this.graphics = oldGraphics
+        this.width = oldWidth
+        this.height = oldHeight
+
         res
       }
 
@@ -129,10 +137,8 @@ trait AWTGraphicsProvider extends GraphicsProvider {
 
       override def clipRect(x: Int, y: Int, width: Int, height: Int): Unit = {
         graphics.clipRect(x, y, width, height)
-        //I don't think we want to change the width/height on clipping
-        // TODO: or do we?
-        //this.width = width
-        //this.height = height
+        // According to doc of clipRect, we don't want to change the width/height on clipping.
+        // Not sure all the backends are respecting that though?
       }
 
       override def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit = {

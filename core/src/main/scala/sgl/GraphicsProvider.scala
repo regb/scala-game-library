@@ -112,8 +112,24 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
 
     trait AbstractCanvas {
 
-      //TODO: those don't make too much sense when we start translating the canvas
+      /** The width of the drawing area.
+        *
+        * This is the available width that one can draw in. It depends on the
+        * current transformation of the canvas, it could start as the Window.width
+        * but then through scaling of the canvas it might become smaller/larger.
+        * Note that when canvas.scale is called, the width is essentially scaled
+        * inversely because the scaling applies to the drawing and not the Canvas
+        * itself.
+        *
+        * The width remains stable with translations and rotation (a rotation means that
+        * the canvas is still the same rectangle from the drawing point of view, just
+        * rendered rotated).
+        */
       def width: Int
+      /** The height of the drawing area.
+        *
+        * Refer to width doc. Same comments apply here.
+        */
       def height: Int
       
       /*
@@ -177,10 +193,13 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
       //one reason to have the clipRect additive, is that this seems to be a feature mostly
       //relevant when recursively setting up sub element in their own local coordinates, and
       //in that case it makes sense anyway to wrap everything in a save/restore cycle
-      /** clip rendering area with the rectangle
+      /** clip rendering area with the rectangle.
         *
         * A call to clip is always additive with previous clips, and part of the current
         * canvas state. Only way to undo a clip is to restore the previous state.
+        *
+        * The clip also does not impact the canvas dimensions, it's more of a
+        * transparent layer that filters out draw calls outside of it.
         */
       def clipRect(x: Int, y: Int, width: Int, height: Int): Unit
 
