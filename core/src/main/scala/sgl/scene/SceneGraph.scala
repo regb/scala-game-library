@@ -8,7 +8,7 @@ trait SceneGraphComponent {
 
   import Input._
 
-  /** The main container element to organize a scene
+  /** The main container element to organize a scene.
     *
     * It is somewhat similar to a GameScreen interface, but is meant to
     * build a hierarchy of objects, providing chained input processing

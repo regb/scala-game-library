@@ -11,16 +11,18 @@ trait ScrollPaneComponent {
   /** A scrollable pane to hold SceneNodes.
     *
     * This is a SceneNode that can be part of a SceneGraph. It has an initial
-    * position (_x, _y), and will always occupy screenWidth and screenHeight
-    * dimensions. The worldWidth and worldHeight are the dimensions available
-    * to hold SceneNodes. It initially shows the portion of the visible world
-    * at the point (0,0) (top left camera).
+    * position (_x, _y), and will always occupy paneWidth and paneHeight
+    * dimensions within that container. The worldWidth and worldHeight are the
+    * inner dimensions available to hold SceneNodes. It initially shows the
+    * portion of the visible world at the point (0,0) (top left camera).
     *
-    * The ScrollPane is flexible in the sense that the screenWidth/screenHeight
-    * do not need to be the total screen dimensions, and thus it can be used
-    * as part of mosaic of other panes. If for some reason the worldWidth or
-    * worldHeight is smaller than the screenWidth/screenHeight, the pane will
-    * still behave as if it was using the screenWidth/screenHeight dimensions.
+    * The ScrollPane is flexible in the sense that the paneWidth/paneHeight
+    * do not need to match the screen dimensions, and thus it can be used
+    * as part of a mosaic of other panes. If for some reason the worldWidth or
+    * worldHeight is smaller than the paneWidth/paneHeight, the pane will
+    * still behave (from its parent point of view) as if it was using the
+    * paneWidth/paneHeight dimensions (it won't need scrolling and it will
+    * show its child nodes starting from the top left corner).
     *
     * A pane is a sort of transparent rectangular layer, so even if none of its
     * nodes captures an event, the pane itself will interecept it and notify
@@ -53,9 +55,9 @@ trait ScrollPaneComponent {
     * an up event. An up event does not literally means that the player lifted the pointer.
     */
   class ScrollPane(_x: Int, _y: Int, 
-                   screenWidth: Int, screenHeight: Int,
-                   worldWidth: Int, worldHeight: Int) extends SceneNode(_x, _y, screenWidth, screenHeight) {
-    require(screenWidth > 0 && worldWidth > 0 && screenHeight > 0 && worldHeight > 0)
+                   paneWidth: Int, paneHeight: Int,
+                   worldWidth: Int, worldHeight: Int) extends SceneNode(_x, _y, paneWidth, paneHeight) {
+    require(paneWidth > 0 && worldWidth > 0 && paneHeight > 0 && worldHeight > 0)
 
     private val root: SceneGroup = new SceneGroup(0, 0, worldWidth, worldHeight)
     def addNode(node: SceneNode): Unit = root.addNode(node)
@@ -69,7 +71,7 @@ trait ScrollPaneComponent {
       * part of the pane should be placed. By default it
       * is set on (0,0), but can be manually moved with
       * this method. The rectangle show is then (x,y) with
-      * lengths (screenWidth, screenHeight).
+      * lengths (paneWidth, paneHeight).
       */
     def setCamera(x: Int, y: Int): Unit = {
       cameraX = x
@@ -91,12 +93,12 @@ trait ScrollPaneComponent {
     private var targetCameraY = 0f
 
     private def clipCamera(): Unit = {
-      cameraX = (cameraX min (worldWidth - screenWidth)) max 0
-      cameraY = (cameraY min (worldHeight - screenHeight)) max 0
+      cameraX = (cameraX min (worldWidth - paneWidth)) max 0
+      cameraY = (cameraY min (worldHeight - paneHeight)) max 0
     }
     private def clipTargetCamera(): Unit = {
-      targetCameraX = (targetCameraX min (worldWidth - screenWidth)) max 0
-      targetCameraY = (targetCameraY min (worldHeight - screenHeight)) max 0
+      targetCameraX = (targetCameraX min (worldWidth - paneWidth)) max 0
+      targetCameraY = (targetCameraY min (worldHeight - paneHeight)) max 0
     }
 
     private var pressed = false
@@ -279,7 +281,7 @@ trait ScrollPaneComponent {
     override def render(canvas: Graphics.Canvas): Unit = {
       canvas.withSave {
         canvas.translate(-cameraX.toInt, -cameraY.toInt)
-        canvas.clipRect(cameraX.toInt, cameraY.toInt, cameraX.toInt + screenWidth.toInt, cameraY.toInt + screenHeight.toInt)
+        canvas.clipRect(cameraX.toInt, cameraY.toInt, cameraX.toInt + paneWidth.toInt, cameraY.toInt + paneHeight.toInt)
         root.render(canvas)
       }
     }

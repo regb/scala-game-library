@@ -290,14 +290,4 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
   }
   val Graphics: Graphics
 
-  /*
-   * We define everything within * the Graphics object, so that
-   * we get proper namespacing
-   * by Graphics package/object when mixing in all the components.
-   * if we would be to define everything at the toplevel (in the body of
-   * GraphicsProvider), then we are risking some name clashing, and generally
-   * it might make things more confusing on a component that mix-in a lot
-   * of the base components.
-   */
-
 }
