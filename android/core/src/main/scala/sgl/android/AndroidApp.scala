@@ -36,6 +36,15 @@ trait AndroidApp extends Activity with GameApp
     */
   val KeepScreenOn: Boolean = true
 
+  // TODO: Provide a config control for Portrait/Landscape/Locked, which is
+  //  optional (if not used, do nothing, which means that the user can just
+  //  configure its AndroidManifest). We should provide a way to give constraints
+  //  (min width, max width) under which to force which mode. For example, maybe
+  //  we force portrait for a phone (up to 500dp) but then we let portrait/landscape
+  //  if screen is larger, but we still lock it in place (no rotation). These combination
+  //  of constraints are impossible to specify in the AndroidManifest only, but we
+  //  can ensure them programatically.
+
   // The following flags are used to track the application state. It
   // is not very clear what is the relationship between activity lifecycle
   // calls (onResume, etc) and Surface callback calls (onSurfaceCreated, etc).
