@@ -120,11 +120,17 @@ trait AWTGraphicsProvider extends GraphicsProvider {
 
       override def scale(sx: Double, sy: Double): Unit = {
         graphics.scale(sx, sy)
+        // Scaling means that drawing will be scaled up, it has the inverse
+        // effect on the visible width/height of the canvas (they are scaled
+        // down by the same factors).
+        this.width = (width/sx).toInt
+        this.height = (height/sy).toInt
       }
 
       override def clipRect(x: Int, y: Int, width: Int, height: Int): Unit = {
         graphics.clipRect(x, y, width, height)
         //I don't think we want to change the width/height on clipping
+        // TODO: or do we?
         //this.width = width
         //this.height = height
       }
