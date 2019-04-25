@@ -9,8 +9,49 @@ import com.google.firebase.analytics.{FirebaseAnalytics => UFirebaseAnalytics, _
 import _root_.android.app.Activity
 import _root_.android.os.Bundle
 
-trait AndroidFirebaseAnalyticsProvider extends Activity with AnalyticsProvider {
-  self: GameStateComponent =>
+/** An AnalyticsProvider using Firebase Analytics for Android.
+  *
+  * You will need to setup a Firebase project with Firebase and associate your
+  * Android app with it, then at some point they will offer to download a
+  * "google-services.json" file which contain a bunch of config (in JSON) for
+  * your project and app. The file is meant for the standard Android Studio and
+  * won't work with SGL, but you can extract the relevant information by hand
+  * and configure it properly in your Android project.
+  *
+  * Firebase Analytics only requires one of these values, the App ID, which you
+  * can find in the Firebase console on the project's settings for the app. It
+  * looks like that:
+  *
+  *    1:1035469437089:android:73a4fb8297b2cd4f
+  * 
+  * The value is also in the google-services.json file, under the object
+  * client.client_info.mobilesdk_app_id.  Either way, once you figure out your
+  * own app id, you should provide it as an XML resource in the
+  * res/values/strings.xml resource file in your android project, for example:
+  *
+  *    <string name="google_app_id" translatable="false">1:1035469437089:android:73a4fb8297b2cd4f</string>
+  *
+  * Firebase uses a bunch of other values, but it doesn't seem like they are
+  * necessary to connect to Firebase Analytics, so you don't need to configure
+  * them in your project.
+  *
+  * See also this blog post for more in depth discussion of manually
+  * implementing the google-services.json:
+  *   https://medium.com/@samstern_58566/how-to-use-firebase-on-android-without-the-google-services-plugin-93ecc7dc6c4
+  *
+  * Alternatively you may want to install an SBT plugin that understands this
+  * file.
+  */
+trait AndroidFirebaseAnalyticsProvider extends Activity with AnalyticsProvider
+{ self: GameStateComponent =>
+
+  // TODO: Provide an override to set the google_app_id here and figure out
+  //       how to dynamically instantiate the FirebaseApp. That would make
+  //       the need for this value explicit (if the val is abstract) and remove
+  //       the need for a strings.xml value.
+  //       Or maybe not, FirebaseOptions could provide that but seems buggy?
+  //         https://github.com/firebase/quickstart-android/issues/458
+  //       In any case, the strings.xml is a fine way to initialize in most cases.
 
   private var firebaseAnalytics: UFirebaseAnalytics = null
 
