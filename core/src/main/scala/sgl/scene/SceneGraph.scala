@@ -318,25 +318,42 @@ trait SceneGraphComponent {
 
   }
   
-  /*
-   * Should consider the z-order of elements of the group.
-   * Latest added elements would be drawn on top.
-   */
+  /** A group of sceneNodes.
+    *
+    * The SceneGroup is itself a SceneNode, but one that doesn't render
+    * itself but instead group together a bunch of SceneNode. The
+    * main use case is to define a relative position for the group,
+    * and be able to render each subnode in their own local system (they
+    * can be render with top left at (0,0), making the description of the
+    * group easier.
+    *
+    * When there are overlapping nodes, the latest node to be added is
+    * considered on top, so it will intercept events first and it will
+    * be rendered last (to end up on top).
+    */
   class SceneGroup(_x: Float, _y: Float, w: Float, h: Float) extends SceneNode(_x, _y, w, h) {
   
-    //nodes are stored in reversed order to when they were added to the scene
+    // Nodes are stored in reversed order to when they were added to the scene
     private var nodes: List[SceneNode] = List()
   
+    /** Add a node on top of the other ones.
+      *
+      * The latest node added is considered topmost for rendering and
+      * event intersection.
+      */
     def addNode(node: SceneNode): Unit = {
       node.parent = this
       nodes ::= node
     }
   
+    // TODO: Should this be final? The render method is probably better as final
+    // because it's quite risky to override it (it's easy to misbehave and
+    // introduce bugs), but the update is much safer and easy to extend.
     override def update(dt: Long): Unit = {
       nodes.foreach(_.update(dt))
     }
   
-    override def render(canvas: Graphics.Canvas): Unit = {
+    final override def render(canvas: Graphics.Canvas): Unit = {
       canvas.withSave {
         canvas.translate(x.toInt, y.toInt)
         canvas.clipRect(0, 0, width.toInt, height.toInt)
@@ -347,7 +364,7 @@ trait SceneGraphComponent {
   
     //override def addAction(action: Action): Unit = ???
   
-    override def hit(x: Int, y: Int): Option[SceneNode] = {
+    final override def hit(x: Int, y: Int): Option[SceneNode] = {
       var found: Option[SceneNode] = None
       for(node <- nodes if found.isEmpty) {
         found = node.hit(x - this.x.toInt,y - this.y.toInt)
