@@ -82,3 +82,13 @@ lazy val androidGooglePlay = (project in file("google-play"))
     libraryDependencies += "com.google.android.gms" % "play-services-games" % "17.0.0"
   )
   .dependsOn(androidCore)
+
+lazy val androidGoogleAds = (project in file("google-ads"))
+  .enablePlugins(AndroidLib)
+  .settings(commonSettings: _*)
+  .settings(
+    name := "sgl-android-google-ads",
+    libraryDependencies += "com.regblanc.sgl"      %% "sgl-android-core"  % "0.0.1",
+    libraryDependencies += "com.google.android.gms" % "play-services-ads" % "17.0.0"
+  )
+  .dependsOn(androidCore)
