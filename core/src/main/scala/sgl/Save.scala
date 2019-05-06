@@ -1,11 +1,15 @@
 package sgl
 
-/** Provides a local save
+/** Provides a local save for the game progress.
   *
   * This is an abstraction over a local persistence system,
   * such as the file system on a Desktop, or something like
   * SharedPreferences on Android. It provides primitives to
   * save basic datatypes.
+  *
+  * This is a very basic typed key-value store. Names must
+  * be globally unique and you must use them with the right
+  * typed method, otherwise the system will fail to find them.
   */
 trait AbstractSave {
 
@@ -51,16 +55,78 @@ trait AbstractSave {
   def putString(name: String, value: String): Unit
   def getString(name: String): Option[String]
   def getStringOrElse(name: String, default: String): String = getString(name).getOrElse(default)
-
 }
 
 trait SaveComponent {
 
   type Save <: AbstractSave
 
-  val save: Save
+  /** The global Save object.
+    *
+    * If you just mix-in one SaveComponent, you get access to one
+    * global Save object which shares the key namespace for all
+    * persisted value. This is enough for small games but you may
+    * want to combine several saves into more structured persistence
+    * data for very large games.
+    */
+  val Save: Save
+
 }
 
+/*
+ * Since the Save abstraction is very primitive, We provide some helper
+ * classes for common pattern that can be
+ * implemented on top of the Save abstraction.
+ */
+
+abstract class SavedValue[A](name: String, default: A) {
+  protected def getOrElse(name: String, default: A): A
+  protected def _put(name: String, v: A): Unit
+
+  private var _value: Option[A] = None
+
+  final def get: A = _value.getOrElse{
+    val v = getOrElse(name, default)
+    _value = Some(v)
+    v
+  }
+
+  final def put(v: A): Unit = {
+    _value = Some(v)
+    _put(name, v)
+  }
+}
+
+/** A boolean-saved value with default and lazy loading.
+  *
+  * This implements a common pattern of reading a field name and defaulting
+  * to a default value if it is not there, then keeping that value in a
+  * lazy variable and persisting it when necessary. This saves on reading
+  * from the persistent store on each get (it only reads the first time).
+  *
+  * This also provide a clean way to group the most common data about
+  * a particular value that must be persisted (the key name and the default)
+  * and makes it more consie on the client side.
+  */
+case class BooleanSavedValue(save: AbstractSave, name: String, default: Boolean) extends SavedValue(name, default) {
+  protected override def getOrElse(name: String, default: Boolean): Boolean = save.getBooleanOrElse(name, default)
+  protected override def _put(name: String, v: Boolean): Unit = save.putBoolean(name, v)
+}
+/** A int-saved value with default and lazy loading. */
+case class IntSavedValue(save: AbstractSave, name: String, default: Int) extends SavedValue(name, default) {
+  protected override def getOrElse(name: String, default: Int): Int = save.getIntOrElse(name, default)
+  protected override def _put(name: String, v: Int): Unit = save.putInt(name, v)
+}
+/** A long-saved value with default and lazy loading. */
+case class LongSavedValue(save: AbstractSave, name: String, default: Long) extends SavedValue(name, default) {
+  protected override def getOrElse(name: String, default: Long): Long = save.getLongOrElse(name, default)
+  protected override def _put(name: String, v: Long): Unit = save.putLong(name, v)
+}
+/** A string-saved value with default and lazy loading. */
+case class StringSavedValue(save: AbstractSave, name: String, default: String) extends SavedValue(name, default) {
+  protected override def getOrElse(name: String, default: String): String = save.getStringOrElse(name, default)
+  protected override def _put(name: String, v: String): Unit = save.putString(name, v)
+}
 
 /** A placeholder implementation that does not save
   *
@@ -84,7 +150,7 @@ trait NoSaveComponent extends SaveComponent {
     override def getString(name: String): Option[String] = None
   }
   type Save = NoSave
-  override val save = new NoSave
+  override val Save = new NoSave
 }
 
 /** A save implementation that stores data in RAM.
@@ -115,5 +181,5 @@ trait MemorySaveComponent extends SaveComponent {
     override def getString(name: String): Option[String] = stringStore.get(name)
   }
   type Save = MemorySave
-  override val save = new MemorySave
+  override val Save = new MemorySave
 }
