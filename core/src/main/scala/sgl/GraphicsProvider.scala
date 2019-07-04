@@ -19,6 +19,8 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
       def withSize(size: Int): Font
       def withStyle(style: Font.Style): Font
 
+      //def size: Int
+
       def isBold(): Boolean
       def isItalic(): Boolean
     }
@@ -80,6 +82,8 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
       def Red: Color = rgb(255, 0, 0)
       def White: Color = rgb(255, 255, 255)
       def Yellow: Color = rgb(255, 255, 0)
+
+      def Transparent: Color = rgba(0, 0, 0, 0)
     }
     val Color: ColorCompanion
 
