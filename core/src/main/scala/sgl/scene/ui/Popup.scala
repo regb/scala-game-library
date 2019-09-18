@@ -15,8 +15,8 @@ trait PopupsComponent extends ButtonsComponent {
     * not centered, which gives the option to the inner node to implement a
     * transition to show up on screen.
     *
-    * The popup becomes visible as soon as it is added to the scene graph, the
-    * way to activate it is to add it to the scene whenever we need the popup
+    * The popup starts invisible and non-active (it is there, but should not be
+    * noticed). You can enable it by calling show()  whenever we need the popup
     * to show.
     *
     * The popup provides the base mecanism for showing something on screen, it
@@ -29,10 +29,15 @@ trait PopupsComponent extends ButtonsComponent {
 
     val backgroundColor = Color.Transparent
 
+    private var active = false
+
     // A popup always intecept clicks, so either the inner node processes the
     // click or otherwise the popup intercept the click (and does nothing).
     override def hit(x: Int, y: Int): Option[SceneNode] = {
-      inner.hit(x, y).orElse(Some(this))
+      if(active)
+        inner.hit(x, y).orElse(Some(this))
+      else
+        None
     }
 
     override def update(dt: Long): Unit = {
@@ -40,8 +45,17 @@ trait PopupsComponent extends ButtonsComponent {
     }
 
     override def render(canvas: Canvas): Unit = {
-      canvas.drawColor(backgroundColor)
-      inner.render(canvas)
+      if(active) {
+        canvas.drawColor(backgroundColor)
+        inner.render(canvas)
+      }
+    }
+
+    def show(): Unit = {
+      active = true
+    }
+    def hide(): Unit = {
+      active = false
     }
 
   }

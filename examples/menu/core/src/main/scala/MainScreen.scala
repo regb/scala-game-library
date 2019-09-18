@@ -43,25 +43,25 @@ trait ScreensComponent {
       val button = new LevelButton(i, 20, i*50)
       levelsPane.addNode(button)
     }
+    val dialog =
+      new DialogPopup(
+        Window.width, Window.height,
+        new Dialog(Window.dp2px(400),
+                   "Hey there, do you like the weather ok?",
+                   List(("Yes", () => { println("yes") }),
+                        ("Nope", () => { println("nope") }),
+                        ("Meh", () => { println("meh") })),
+                   Window.dp2px(36), Graphics.Color.White)
+      ) {
+        override val backgroundColor = Graphics.Color.rgba(0,0,0,150)
+      }
+    scene.addNode(dialog)
 
     def processInputs(): Unit = {
       Input.pollEvent() match {
         case Some(event) =>
           event match {
-            case Input.KeyDownEvent(Input.Keys.P) =>
-              scene.addNode(
-                new DialogPopup(
-                  Window.width, Window.height,
-                  new Dialog(Window.dp2px(400),
-                             "Hey there, do you like the weather ok?",
-                             List(("Yes", () => { println("yes") }),
-                                  ("Nope", () => { println("nope") }),
-                                  ("Meh", () => { println("meh") })),
-                             Window.dp2px(36), Graphics.Color.White)
-                ) {
-                  override val backgroundColor = Graphics.Color.rgba(0,0,0,150)
-                }
-              )
+            case Input.KeyDownEvent(Input.Keys.P) => dialog.show()
             case _ => scene.processInput(event)
           }
           processInputs()
