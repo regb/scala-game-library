@@ -58,6 +58,7 @@ trait PopupsComponent extends ButtonsComponent {
       active = false
     }
 
+    def visible(): Boolean = active
   }
 
   /** A simple SceneNode to implement a Dialog box.
@@ -78,12 +79,13 @@ trait PopupsComponent extends ButtonsComponent {
 
     val fillColor = Color.rgba(0,0,0,200)
     val outlineColor = Color.White
-    val buttonRegularTheme = ButtonTheme(
+    private val defaultButtonTheme = ButtonTheme(
       borderColor=Color.White,
       fillColor=Color.rgb(0,0,0),
       textColor=Color.White,
       textFont=Font.Default.withSize(fontSize))
-    val buttonPressedTheme = buttonRegularTheme.copy(
+    val buttonRegularTheme = defaultButtonTheme
+    val buttonPressedTheme = defaultButtonTheme.copy(
       fillColor=Color.rgb(150,150,150),
       textColor=Color.Black)
 
