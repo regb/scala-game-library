@@ -71,6 +71,44 @@ trait SaveComponent {
     */
   val Save: Save
 
+  /** A boolean-saved value with default and lazy loading.
+    *
+    * This implements a common pattern of reading a field name and defaulting
+    * to a default value if it is not there, then keeping that value in a
+    * lazy variable and persisting it when necessary. This saves on reading
+    * from the persistent store on each get (it only reads the first time).
+    *
+    * This also provide a clean way to group the most common data about
+    * a particular value that must be persisted (the key name and the default)
+    * and makes it more concise on the client side.
+    *
+    * Note that it implicitly depends on the Save object. The alternative would be
+    * to define these classes outside the SaveComponent, but then the constructore
+    * would need to receive the Save object as a parameter, and this is a sure way
+    * to end up with bad initialization order and thus null pointer exceptions. This
+    * comes from the fact that it is very tempting to define these SavedValues at the top
+    * level of the cake, given their static nature.
+    */
+  case class BooleanSavedValue(name: String, default: Boolean) extends SavedValue(name, default) {
+    protected override def getOrElse(name: String, default: Boolean): Boolean = Save.getBooleanOrElse(name, default)
+    protected override def _put(name: String, v: Boolean): Unit = Save.putBoolean(name, v)
+  }
+  /** A int-saved value with default and lazy loading. */
+  case class IntSavedValue(name: String, default: Int) extends SavedValue(name, default) {
+    protected override def getOrElse(name: String, default: Int): Int = Save.getIntOrElse(name, default)
+    protected override def _put(name: String, v: Int): Unit = Save.putInt(name, v)
+  }
+  /** A long-saved value with default and lazy loading. */
+  case class LongSavedValue(name: String, default: Long) extends SavedValue(name, default) {
+    protected override def getOrElse(name: String, default: Long): Long = Save.getLongOrElse(name, default)
+    protected override def _put(name: String, v: Long): Unit = Save.putLong(name, v)
+  }
+  /** A string-saved value with default and lazy loading. */
+  case class StringSavedValue(name: String, default: String) extends SavedValue(name, default) {
+    protected override def getOrElse(name: String, default: String): String = Save.getStringOrElse(name, default)
+    protected override def _put(name: String, v: String): Unit = Save.putString(name, v)
+  }
+
 }
 
 /*
@@ -78,7 +116,6 @@ trait SaveComponent {
  * classes for common pattern that can be
  * implemented on top of the Save abstraction.
  */
-
 abstract class SavedValue[A](name: String, default: A) {
   protected def getOrElse(name: String, default: A): A
   protected def _put(name: String, v: A): Unit
@@ -95,37 +132,6 @@ abstract class SavedValue[A](name: String, default: A) {
     _value = Some(v)
     _put(name, v)
   }
-}
-
-/** A boolean-saved value with default and lazy loading.
-  *
-  * This implements a common pattern of reading a field name and defaulting
-  * to a default value if it is not there, then keeping that value in a
-  * lazy variable and persisting it when necessary. This saves on reading
-  * from the persistent store on each get (it only reads the first time).
-  *
-  * This also provide a clean way to group the most common data about
-  * a particular value that must be persisted (the key name and the default)
-  * and makes it more consie on the client side.
-  */
-case class BooleanSavedValue(save: AbstractSave, name: String, default: Boolean) extends SavedValue(name, default) {
-  protected override def getOrElse(name: String, default: Boolean): Boolean = save.getBooleanOrElse(name, default)
-  protected override def _put(name: String, v: Boolean): Unit = save.putBoolean(name, v)
-}
-/** A int-saved value with default and lazy loading. */
-case class IntSavedValue(save: AbstractSave, name: String, default: Int) extends SavedValue(name, default) {
-  protected override def getOrElse(name: String, default: Int): Int = save.getIntOrElse(name, default)
-  protected override def _put(name: String, v: Int): Unit = save.putInt(name, v)
-}
-/** A long-saved value with default and lazy loading. */
-case class LongSavedValue(save: AbstractSave, name: String, default: Long) extends SavedValue(name, default) {
-  protected override def getOrElse(name: String, default: Long): Long = save.getLongOrElse(name, default)
-  protected override def _put(name: String, v: Long): Unit = save.putLong(name, v)
-}
-/** A string-saved value with default and lazy loading. */
-case class StringSavedValue(save: AbstractSave, name: String, default: String) extends SavedValue(name, default) {
-  protected override def getOrElse(name: String, default: String): String = save.getStringOrElse(name, default)
-  protected override def _put(name: String, v: String): Unit = save.putString(name, v)
 }
 
 /** A placeholder implementation that does not save
