@@ -57,12 +57,14 @@ trait AdsProvider {
 /** AdsProviders that doesn't show any ads.
   *
   * NoAdsProvider pretends that ads are loaded and ready to show, but doesn't
-  * actually load and show anything. This is a convenient way to make an add
+  * actually load and show anything. This is a convenient way to make an ads
   * free version if your app implements the ads logic, you can just inject this
   * backend instead of a working backend and it will look as if no ads were
   * shown.
   **/
 trait NoAdsProvider extends AdsProvider {
+
+  override val AlwaysPreload: Boolean = true
 
   object NoAds extends Ads {
     def loadInterstitial(): Unit = {}
