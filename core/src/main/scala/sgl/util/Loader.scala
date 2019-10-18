@@ -101,13 +101,11 @@ trait Loader[+A] {
   // can be useful to parallelization.
   def zip[B](that: Loader[B]): Loader[(A, B)] = flatMap(a => that.map(b => (a, b)))
 
-  /** Whether the loader has completed loading
+  /** Whether the loader has completed loading.
     *
     * Note that it doesn't mean that the loading was
     * successful, just that the operation completed.
-    * The actual result could still be failure to load
-    * TODO: maybe we are being too general here, and we should
-    *       have a simplified API.
+    * The actual result could still be failure to load.
     */
   def isLoaded: Boolean
 

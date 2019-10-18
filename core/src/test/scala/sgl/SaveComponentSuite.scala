@@ -31,7 +31,7 @@ class SaveComponentSuite extends FunSuite {
       }
     }
 
-    val value = new IntSavedValue(save.Save, "a", 42)
+    val value = new save.IntSavedValue("a", 42)
 
     assert(!getIntCalled)
     assert(value.get === 42)

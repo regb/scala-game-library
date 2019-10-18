@@ -48,8 +48,11 @@ lazy val coreAndroid = (project in file("./core"))
 
 lazy val jvmShared = (project in file("./jvm-shared"))
   .settings(commonSettings: _*)
-  .settings(name := "sgl-jvmshared")
-  .dependsOn(coreJVM)
+  .settings(
+    name := "sgl-jvmshared",
+    libraryDependencies += "org.scalatest" %%% "scalatest" % "3.0.0" % "test"
+  )
+  .dependsOn(coreJVM % "test->test;compile->compile")
 
 lazy val jvmSharedAndroid = (project in file("./jvm-shared"))
   .settings(commonSettings: _*)
