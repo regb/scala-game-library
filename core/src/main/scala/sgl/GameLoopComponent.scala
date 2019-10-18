@@ -93,6 +93,9 @@ trait GameLoopComponent {
     /*
      * compute the vals before update as it could modify the screen stack
      */
+    // TODO: Review how these are used and drawn, because in practice I never rely
+    //       on these non-opaque stack, and from a quick look at the code things
+    //       do not seem to work as intended.
     val currentScreen = gameState.screensStack.head
     val renderedScreens = gameState.screensStack.takeWhile(!_.isOpaque).reverse
     val lastOpaqueScreen = gameState.screensStack.find(_.isOpaque)
