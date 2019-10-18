@@ -111,7 +111,7 @@ trait AndroidApp extends Activity with GameApp
     if(KeepScreenOn)
       getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-    //lifecycle of SGL
+    // lifecycle of SGL
     lifecycleListener.startup()
   }
 
@@ -138,11 +138,11 @@ trait AndroidApp extends Activity with GameApp
   
     gameLoop = new GameLoop
     gameLoopThread = new Thread(gameLoop)
-    gameLoopThread.start
+    gameLoopThread.start()
     Scheduler.resume()
 
-    //TODO: maybe the lifecycle resume event should be more precise and take into account
-    //      things like surfaceReady and focus flags.
+    // TODO: maybe the lifecycle resume event should be more precise and take into account
+    //       things like surfaceReady and focus flags.
     lifecycleListener.resume()
   }
 

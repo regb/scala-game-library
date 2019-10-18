@@ -3,7 +3,7 @@ package sgl.util
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
 
-/** A loader backed by a Future.
+/** A Loader backed by a Future.
   *
   * We use Future infrastructure to perform the asynchronous loading on
   * JVM-based platform. This is not used on other platforms, as we want to have

@@ -32,6 +32,15 @@ import scala.util.{Try, Success, Failure}
   * the apply method, which execute the body in an Executor. This implicitly
   * assumes that some thread pool is available to dispatch the work, which might
   * be a bit of a stretch on some platforms.
+  *
+  * As a general advice, you should start the loading of the assets in the order
+  * in which you would like to have them available. Even though these will perform
+  * asynchronously to some extend, depending on the platform, it will usually try to
+  * prioritize the earliest loader that were initialized. Assuming the platform
+  * has only one thread of execution, then all loaders will go to the same thread, and
+  * they will very likely be loaded in the order in which they were created. However,
+  * you don't have too much guarantess on that, so the safest bet might be to not start
+  * loading new assets until the ones that you absolutely need are loaded.
   */
 trait Loader[+A] {
 

@@ -235,8 +235,6 @@ trait SceneGraphComponent {
       * the panel.
       */
     def hit(x: Int, y: Int): Option[SceneNode] = {
-      //println("computing hit on node: " + this + " at hit position: " + x + ", " + y)
-      //println(s"node is at (${this.x}, ${this.y}) with size ${this.width}x${this.height}")
       if(x >= this.x && x <= this.x + width &&
          y >= this.y && y <= this.y + height)
         Some(this)

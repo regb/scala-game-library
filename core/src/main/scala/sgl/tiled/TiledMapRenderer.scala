@@ -13,7 +13,6 @@ trait TiledMapRendererComponent {
     private val tileSetBitmaps: Vector[Loader[Graphics.Bitmap]] = tileMap.tileSets.map(
       ts => {
         val path = tileMapPrefix / ts.image
-        println("loading tileset: " + path)
         Graphics.loadImage(path)
       }
     )

@@ -175,7 +175,6 @@ trait TmxJsonParserComponent {
         }
         case _ => None
       }
-      println(color)
   
       val parsedLayers = layers map parseLayer
       val parsedTilesets =  tilesets map parseTileSet

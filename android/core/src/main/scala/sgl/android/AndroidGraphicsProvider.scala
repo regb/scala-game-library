@@ -26,7 +26,7 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
     }
     type Bitmap = AndroidBitmap
 
-    // TODO: export this as a queriyable metrics instead of printing.
+    // TODO: export this as a queriyable metric.
     private var totalBytes: Long = 0
     override def loadImage(path: ResourcePath): Loader[Bitmap] = FutureLoader {
       val filename = path.path.split("/")(1).dropRight(4)
@@ -38,9 +38,9 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
       val opts = new BitmapFactory.Options
       opts.inPreferredConfig = NativeBitmap.Config.ARGB_8888
       val bitmap = BitmapFactory.decodeResource(resources, drawableId, opts)
-      println(s"bitmap ${path}; config: ${bitmap.getConfig}; size: ${bitmap.getWidth}x${bitmap.getHeight}; byte count: ${bitmap.getByteCount}")
+      //println(s"bitmap ${path}; config: ${bitmap.getConfig}; size: ${bitmap.getWidth}x${bitmap.getHeight}; byte count: ${bitmap.getByteCount}")
       totalBytes += bitmap.getByteCount
-      println("total bytes used: " + totalBytes)
+      //println("total bytes used: " + totalBytes)
       AndroidBitmap(bitmap)
     }
 

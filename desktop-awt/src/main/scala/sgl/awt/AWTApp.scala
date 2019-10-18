@@ -66,28 +66,6 @@ trait AWTApp extends GameApp
     runningThread = null
   }
 
-  //private var image1: BufferedImage = null
-  //private var image2: BufferedImage = null
-  //private var flip: Boolean = true
-
-  //def getScreenCanvas: Canvas = {
-  //  //lazy initialization since width/height are not known during startup
-  //  if(image1 == null) {
-  //    image1 = new BufferedImage(WindowWidth, WindowHeight, BufferedImage.TYPE_INT_RGB)
-  //    image2 = new BufferedImage(WindowWidth, WindowHeight, BufferedImage.TYPE_INT_RGB)
-  //  }
-
-  //  flip = !flip
-  //  val g = if(flip) image1.getGraphics else image2.getGraphics
-  //  AWTCanvas(g.asInstanceOf[Graphics2D], gamePanel.getWidth, gamePanel.getHeight)
-  //}
-  //def releaseScreenCanvas(canvas: Canvas): Unit = {
-  //  val imageToDraw = if(flip) image1 else image2
-  //  val g = gamePanel.getGraphics
-  //  g.drawImage(imageToDraw, 0, 0, null)
-  //  g.dispose()
-  //}
-
   private class GameLoop extends Runnable {
 
     /*
