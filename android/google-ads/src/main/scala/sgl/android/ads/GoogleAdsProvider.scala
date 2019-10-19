@@ -24,35 +24,64 @@ trait GoogleAdsProvider extends Activity with AdsProvider {
 
   private var publisherInterstitialAd: PublisherInterstitialAd = null
 
+  private var isLoaded = false
+
   override def onCreate(bundle: Bundle): Unit = {
     super.onCreate(bundle)
 
     publisherInterstitialAd = new PublisherInterstitialAd(this)
     publisherInterstitialAd.setAdUnitId(AdUnitId.getOrElse(TestAdUnitId))
+    publisherInterstitialAd.setAdListener(new AdListener {
+      override def onAdLoaded(): Unit = {
+        isLoaded = true
+      }
+
+      override def onAdFailedToLoad(errorCode: Int): Unit = {
+        // Code to be executed when an ad request fails.
+      }
+
+      override def onAdOpened(): Unit = {
+        // Code to be executed when the ad is displayed.
+      }
+
+      override def onAdClicked(): Unit = {
+        // Code to be executed when the user clicks on an ad.
+      }
+
+      override def onAdLeftApplication(): Unit = {
+        // Code to be executed when the user has left the app.
+      }
+
+      override def onAdClosed(): Unit = {
+        if(AlwaysPreload)
+          publisherInterstitialAd.loadAd(new PublisherAdRequest.Builder().build())
+      }
+    })
 
     if(AlwaysPreload) {
       publisherInterstitialAd.loadAd(new PublisherAdRequest.Builder().build())
-      publisherInterstitialAd.setAdListener(new AdListener {
-        override def onAdClosed() {
-          publisherInterstitialAd.loadAd(new PublisherAdRequest.Builder().build())
-        }
-      })
     }
   }
 
   object GoogleAds extends Ads {
 
     override def loadInterstitial(): Unit = {
-      publisherInterstitialAd.loadAd(new PublisherAdRequest.Builder().build())
+      runOnUiThread(new Runnable {
+        override def run(): Unit = {
+          publisherInterstitialAd.loadAd(new PublisherAdRequest.Builder().build())
+        }
+      })
     }
 
-    override def isInterstitialLoaded(): Boolean = {
-      publisherInterstitialAd.isLoaded
-    }
+    override def isInterstitialLoaded: Boolean = isLoaded
 
     override def showInterstitial(): Boolean = {
-      if(publisherInterstitialAd.isLoaded) {
-        publisherInterstitialAd.show();
+      if(isLoaded) {
+        runOnUiThread(new Runnable {
+          override def run(): Unit = {
+            publisherInterstitialAd.show();
+          }
+        })
         true
       } else {
         false

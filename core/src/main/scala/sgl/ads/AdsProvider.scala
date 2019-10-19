@@ -28,12 +28,15 @@ trait AdsProvider {
     /** Show the interstitial ads.
       *
       * This will return true if the ads was shown, or false if it
-      * wasn't yet loaded (and thus not shown).
+      * wasn't yet loaded (and thus not shown). Note that it might show
+      * the ads in an asynchronous way, meaning that the function will
+      * return first and then the ads might get shown half a second
+      * later.
       */
     def showInterstitial(): Boolean
 
     /** Check if the interstitial is ready to be shown. */
-    def isInterstitialLoaded(): Boolean
+    def isInterstitialLoaded: Boolean
   }
 
   /** Ads provides the central controller for Ads displayed in the game.
