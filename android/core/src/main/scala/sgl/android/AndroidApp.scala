@@ -69,12 +69,6 @@ trait AndroidApp extends Activity with GameApp
     */
   var surfaceReady: Boolean = false
 
-  // TODO: maybe track the windowFocused state as well?
-  //       Need to understand what is a state with lost focus.
-  // var windowFocused: Boolean = false
-
-  def readyToRender: Boolean = appResumed && surfaceReady
-
   var gameLoop: GameLoop = null
   var gameLoopThread: Thread = null
 
@@ -103,8 +97,6 @@ trait AndroidApp extends Activity with GameApp
       // finish() does not stop the invokation of onCreate, but it will call onDestroy right after. So we do not return
       // in order to maintain the symmetry between onCreate and onDestroy.
     }
-
-    gameState.newScreen(startingScreen)
 
     this.registerInputsListeners()
 
@@ -158,6 +150,7 @@ trait AndroidApp extends Activity with GameApp
     lifecycleListener.pause()
   }
 
+
   // TODO: handle config changes in a way transparent to the framework.
   //       * The window size change should be already handled from the GameView surface
   //       * Orientation change should be notified somehow (isn't it just a height/width change?)
@@ -189,6 +182,15 @@ trait AndroidApp extends Activity with GameApp
         // callback and the surface is not necessarily ready yet. The rest of the loop
         // is safe to perform and will just sleep until the surface is actually ready.
         if(surfaceReady) {
+
+          if(gameState.screensStack.isEmpty) {
+            // This is the first time we run here and there's no game state yet, so
+            // let's initialize it.
+            // It's important to initialize the startingScreen only once all the Android
+            // system dependencies are ready (most notably, the surface).
+            gameState.newScreen(startingScreen)
+          }
+
           val androidCanvas = gameView.getHolder.lockCanvas
 
           val newTime = java.lang.System.nanoTime
