@@ -14,7 +14,7 @@ val commonSettings = Seq(
   javacOptions   ++= Seq("-source", "1.7", "-target", "1.7"),
   exportJars      := true,
   resolvers       += "GoogleAndroid" at "https://maven.google.com/",
-  platformTarget  := "android-28",
+  platformTarget  := "android-29",
   useProguard     := true,
   proguardOptions ++= Seq(
       "-dontobfuscate",
@@ -58,8 +58,8 @@ lazy val androidFirebase = (project in file("firebase"))
   .settings(commonSettings: _*)
   .settings(
     name := "sgl-android-firebase",
-    libraryDependencies += "com.regblanc.sgl"   %% "sgl-android-core" % "0.0.1",
-    libraryDependencies += "com.google.firebase" % "firebase-core"    % "16.0.8"
+    libraryDependencies += "com.regblanc.sgl"   %% "sgl-android-core"   % "0.0.1",
+    libraryDependencies += "com.google.firebase" % "firebase-analytics" % "17.2.0"
   )
   .dependsOn(androidCore)
 
@@ -89,6 +89,6 @@ lazy val androidGoogleAds = (project in file("google-ads"))
   .settings(
     name := "sgl-android-google-ads",
     libraryDependencies += "com.regblanc.sgl"      %% "sgl-android-core"  % "0.0.1",
-    libraryDependencies += "com.google.android.gms" % "play-services-ads" % "17.0.0"
+    libraryDependencies += "com.google.android.gms" % "play-services-ads" % "18.2.0"
   )
   .dependsOn(androidCore)
