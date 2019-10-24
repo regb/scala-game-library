@@ -59,6 +59,8 @@ trait GameStateComponent {
     def loadingRender(canvas: Graphics.Canvas): Unit = {}
 
     private[sgl] var preloaders: List[Loader[_]] = List()
+    // TODO: such API is not great as it shouldn't be called once the screen
+    //       has started rendering, we should move it to the constructor.
     def addPreloading[A](ls: Loader[_]*) = {
       preloaders = preloaders ++ ls
     }
@@ -67,6 +69,16 @@ trait GameStateComponent {
 
     def isLoading: Boolean = _isLoading
 
+    /** Hook called once the screen is loaded and ready to render.
+      *
+      * This is ensured to be called after the constructor of the screen
+      * but before the first call to update/render. Usually you should use
+      * the screen regular constructor for initizializing screen globals,
+      * but this hook will be called after the loaders added in the
+      * addPreloading call are finished loading, so it might be a better
+      * place for executing initialization code in case you need to preload
+      * something.
+      */
     def onLoaded(): Unit = {}
   
     /** Determine whether next screen on the stack should be rendered 
@@ -252,9 +264,12 @@ trait GameStateComponent {
       * loading is completed.
       *
       * The Screen will automatically invoke GameState.newScreen
-      * with the nextScreen when all resources are loaded.
+      * with the nextScreen when all resources are loaded. This
+      * is also the opportunity to do some work before the
+      * insertion of the new screen, such as releasing resources
+      * from the LoadingScreen.
       */
-    def nextScreen: GameScreen
+    def nextScreen(): GameScreen
 
   }
 
@@ -290,8 +305,19 @@ trait GameStateComponent {
     def pushScreen(screen: GameScreen): Unit = {
       screens ::= screen
     }
+    /** Remove the topmost screen of the game.
+      *
+      * This is useful if you want to implement a back feature
+      * with a stack of screens. Note that if you remove the last
+      * screen of the stack, this call with call System.exit() to
+      * protect against a runtime crash due to not having
+      * a screen to render anymore.
+      */
     def popScreen(): Unit = {
       screens = screens.tail
+      if(screens.isEmpty) {
+        System.exit()
+      }
     }
     def newScreen(screen: GameScreen): Unit = {
       screens = List(screen)

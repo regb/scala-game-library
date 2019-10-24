@@ -88,17 +88,16 @@ trait GameLoopComponent {
     gameLoopListener.onStepStart()
 
     //canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
-    canvas.clear()
+    // TODO: should we clear the canvas? I don't think so, because I think
+    //       the render call should have the choice to do it, and because
+    //       when we skip the render due to setting a new screen stack, we
+    //       get an ugly black frame of transition.
+    //canvas.clear()
 
-    /*
-     * compute the vals before update as it could modify the screen stack
-     */
-    // TODO: Review how these are used and drawn, because in practice I never rely
-    //       on these non-opaque stack, and from a quick look at the code things
-    //       do not seem to work as intended.
+    // Save the screen stack first as it could get modified during an update.
+    val screensStack = gameState.screensStack
+
     val currentScreen = gameState.screensStack.head
-    val renderedScreens = gameState.screensStack.takeWhile(!_.isOpaque).reverse
-    val lastOpaqueScreen = gameState.screensStack.find(_.isOpaque)
 
     if(currentScreen.isLoading && currentScreen.preloaders.exists((l: Loader[_]) => !l.isLoaded)) {
       currentScreen.loadingRender(canvas)
@@ -113,10 +112,20 @@ trait GameLoopComponent {
       currentScreen.update(dt)
       gameLoopListener.onUpdateComplete()
 
-      gameLoopListener.onRenderStart()
-      lastOpaqueScreen.foreach(screen => screen.render(canvas))
-      renderedScreens.foreach(screen => screen.render(canvas))
-      gameLoopListener.onRenderComplete()
+      // If the update modified the screen stack, better to stop
+      // now because the render can be tricky, and we want to
+      // ensure the call to onLoaded is done on the new screen.
+      if(screensStack == gameState.screensStack) {
+
+        val transparentScreens: List[GameScreen] = gameState.screensStack.takeWhile(!_.isOpaque)
+        val lastOpaqueScreen: Option[GameScreen] = gameState.screensStack.find(_.isOpaque)
+        // Screens to render, in the order of the deepest more first.
+        val renderedScreens = lastOpaqueScreen ++ transparentScreens.reverse
+
+        gameLoopListener.onRenderStart()
+        renderedScreens.foreach(_.render(canvas))
+        gameLoopListener.onRenderComplete()
+      }
     }
 
     gameLoopListener.onStepComplete()
