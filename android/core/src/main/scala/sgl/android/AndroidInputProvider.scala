@@ -77,32 +77,37 @@ trait AndroidInputProvider extends Activity with InputProvider {
         true
       }
     })
+  }
 
-    //TODO: clarify what is proper way to detect those events
-    gameView.setOnKeyListener(new View.OnKeyListener {
-      override def onKey(v: View, keyCode: Int, event: KeyEvent): Boolean = {
-        if(keyCode == KeyEvent.KEYCODE_BACK) {
-          if(event.getAction == KeyEvent.ACTION_UP) {
-            Input.newEvent(Input.KeyUpEvent(Input.Keys.ButtonBack))
-            true
-          } else if(event.getAction == KeyEvent.ACTION_DOWN) {
-            Input.newEvent(Input.KeyDownEvent(Input.Keys.ButtonBack))
-            true
-          } else false
-        } else if(keyCode == KeyEvent.KEYCODE_MENU) {
-          if(event.getAction == KeyEvent.ACTION_UP) {
-            Input.newEvent(Input.KeyUpEvent(Input.Keys.ButtonMenu))
-            true
-          } else if(event.getAction == KeyEvent.ACTION_DOWN) {
-            Input.newEvent(Input.KeyDownEvent(Input.Keys.ButtonMenu))
-            true
-          } else false
-        } else {
-          false
-        }
-      }
-    })
+  /** Enable the back button events.
+    *
+    * If set to true, explicitly handles the back button pressed event.
+    * Otherwise, the system handles it by default and close the Activity.
+    */
+  val EnableBackButtonEvents: Boolean
 
+  val EnableMenuButtonEvents: Boolean
+
+  override def onKeyDown(keyCode: Int, event: KeyEvent): Boolean = keyCode match {
+    case KeyEvent.KEYCODE_BACK if EnableBackButtonEvents =>
+      Input.newEvent(Input.KeyDownEvent(Input.Keys.ButtonBack))
+      true
+    case KeyEvent.KEYCODE_MENU if EnableMenuButtonEvents =>
+      Input.newEvent(Input.KeyDownEvent(Input.Keys.ButtonMenu))
+      true
+    case _ =>
+      false
+  }
+
+  override def onKeyUp(keyCode: Int, event: KeyEvent): Boolean = keyCode match {
+    case KeyEvent.KEYCODE_BACK if EnableBackButtonEvents =>
+      Input.newEvent(Input.KeyUpEvent(Input.Keys.ButtonBack))
+      true
+    case KeyEvent.KEYCODE_MENU if EnableMenuButtonEvents =>
+      Input.newEvent(Input.KeyUpEvent(Input.Keys.ButtonMenu))
+      true
+    case _ =>
+      false
   }
 
   //TODO: must reintegrate these scrolling detection somewhere in the framework
