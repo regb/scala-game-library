@@ -23,6 +23,8 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
     case class AndroidBitmap(bitmap: NativeBitmap) extends AbstractBitmap {
       override def height: Int = bitmap.getHeight
       override def width: Int = bitmap.getWidth
+
+      override def release(): Unit = bitmap.recycle()
     }
     type Bitmap = AndroidBitmap
 

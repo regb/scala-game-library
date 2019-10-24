@@ -12,6 +12,31 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
     abstract class AbstractBitmap {
       def height: Int
       def width: Int
+
+      /** Release the bitmap resources.
+        *
+        * Once you no longer need the bitmap, you should explicitly
+        * release it. This will free up resources that you might need
+        * later. In some platforms, the garbage collector might
+        * take care of freeing up the resources, so it might not be
+        * strictly necessary. But you have no guarantee about that and
+        * generally this will be more efficient and quick in releasing
+        * the resources. You should also try to invalidate any reference
+        * to the bitmap in conjunction to calling this.
+        *
+        * Even when the platform takes care of releasing by doing garbage
+        * collection, it's safe to call. It's unsafe to use the bitmaps
+        * after calling release().
+        */
+      def release(): Unit
+      // One idea, based on above comment, is that we could have a strict
+      // mode on the desktop platform, in which we would detect the use of
+      // the bitmap following a call to release, and throw an exception.
+      // That would be very helpful for development, because there's a
+      // risk that the call to release does nothing in one environment and then
+      // you access the bitmap and things look like they're working, but when
+      // you go on a different platform it would crash at runtime when you
+      // access it, leading to confusion on the source of the problem.
     }
     type Bitmap <: AbstractBitmap
 

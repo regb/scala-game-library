@@ -30,6 +30,8 @@ trait Html5GraphicsProvider extends GraphicsProvider {
     case class Html5Bitmap(image: HTMLImageElement) extends AbstractBitmap {
       override def height: Int = image.height
       override def width: Int = image.width
+
+      override def release(): Unit = {}
     }
     type Bitmap = Html5Bitmap
 

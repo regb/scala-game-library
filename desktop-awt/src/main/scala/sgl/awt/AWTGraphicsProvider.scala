@@ -28,6 +28,11 @@ trait AWTGraphicsProvider extends GraphicsProvider {
     case class AWTBitmap(img: Image) extends AbstractBitmap {
       override def height: Int = img.getHeight(null)
       override def width: Int = img.getWidth(null)
+
+      override def release(): Unit = {
+        // I think there's nothing to do here, but is that actually true?
+      }
+
     }
     type Bitmap = AWTBitmap
 

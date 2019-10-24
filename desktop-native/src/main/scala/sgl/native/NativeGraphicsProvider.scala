@@ -50,7 +50,11 @@ trait NativeGraphicsProvider extends GraphicsProvider {
       }
     }
 
-    case class OpenGLTextureBitmap(texture: GLuint, width: Int, height: Int) extends AbstractBitmap
+    case class OpenGLTextureBitmap(texture: GLuint, width: Int, height: Int) extends AbstractBitmap {
+      // TODO: Implement the release.
+      override def release(): Unit = {}
+    }
+
     type Bitmap = OpenGLTextureBitmap
   
     case class NativeFont() extends AbstractFont {
