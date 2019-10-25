@@ -67,9 +67,7 @@ trait InputProvider {
 
     private val eventQueue: Queue[InputEvent] = new Queue[InputEvent]()
 
-    //TODO: this should be private, only accessible to the backends implementing the input
-    //      provider
-    def newEvent(event: InputEvent): Unit = synchronized {
+    private[sgl] def newEvent(event: InputEvent): Unit = synchronized {
       logger.trace("Adding new event: " + event + " to the queue.")
       eventQueue.enqueue(event)
     }
@@ -117,6 +115,8 @@ trait InputProvider {
     case class MouseUpEvent(x: Int, y: Int, mouseButton: MouseButtons.MouseButton) extends MouseInputEvent
     //middle button scrolled, amount +/- depending on direction
     case class MouseScrolledEvent(amount: Int) extends MouseInputEvent
+
+    case class SystemActionEvent(action: Actions.Action) extends InputEvent
 
     /*
      * Touch events: Moved means that the cursor is currently touching (different interpretation
@@ -278,14 +278,24 @@ trait InputProvider {
        */
       case object ButtonStart extends Key
       case object ButtonSelect extends Key
-
-      /*
-       * We also have system buttons like back/menu in Android
-       */
-      case object ButtonBack extends Key
-      case object ButtonMenu extends Key
     }
 
+    object Actions {
+      /** A general action input depending on the system.
+        *
+        * Typical examples would be clicking the back or home
+        * button on Android. These are inputs that are better
+        * described as triggered or not (by opposition to keys
+        * which are Down/Up events) and they have a some sort of
+        * semantic meaning (like back on android meaning going back
+        * to the up activity/screen).
+        */
+      sealed trait Action
+
+      case object Back extends Action
+      case object Menu extends Action
+    }
   }
+
 
 }

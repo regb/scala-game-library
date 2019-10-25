@@ -88,23 +88,19 @@ trait AndroidInputProvider extends Activity with InputProvider {
 
   val EnableMenuButtonEvents: Boolean
 
-  override def onKeyDown(keyCode: Int, event: KeyEvent): Boolean = keyCode match {
-    case KeyEvent.KEYCODE_BACK if EnableBackButtonEvents =>
-      Input.newEvent(Input.KeyDownEvent(Input.Keys.ButtonBack))
-      true
-    case KeyEvent.KEYCODE_MENU if EnableMenuButtonEvents =>
-      Input.newEvent(Input.KeyDownEvent(Input.Keys.ButtonMenu))
-      true
-    case _ =>
-      false
+  override def onBackPressed(): Unit = {
+    println("onBackPressed")
+    if(EnableBackButtonEvents) {
+      println("onBackPressed adding event")
+      Input.newEvent(Input.SystemActionEvent(Input.Actions.Back))
+    } else {
+      super.onBackPressed()
+    }
   }
 
-  override def onKeyUp(keyCode: Int, event: KeyEvent): Boolean = keyCode match {
-    case KeyEvent.KEYCODE_BACK if EnableBackButtonEvents =>
-      Input.newEvent(Input.KeyUpEvent(Input.Keys.ButtonBack))
-      true
+  override def onKeyDown(keyCode: Int, event: KeyEvent): Boolean = keyCode match {
     case KeyEvent.KEYCODE_MENU if EnableMenuButtonEvents =>
-      Input.newEvent(Input.KeyUpEvent(Input.Keys.ButtonMenu))
+      Input.newEvent(Input.SystemActionEvent(Input.Actions.Menu))
       true
     case _ =>
       false

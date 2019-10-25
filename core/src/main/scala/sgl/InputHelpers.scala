@@ -66,6 +66,7 @@ trait InputHelpersComponent {
       case TouchUpEvent(x, y, pointer) => (
         Inputs.Touch.pointerPressed -= pointer
       )
+      case SystemActionEvent(_) => ()
     }
 
     private def setKeyboardState(key: Input.Keys.Key, down: Boolean): Unit = key match {
@@ -78,9 +79,6 @@ trait InputHelpersComponent {
 
       case Keys.ButtonStart => Inputs.Buttons.startPressed = down
       case Keys.ButtonSelect => Inputs.Buttons.selectPressed = down
-
-      case Keys.ButtonBack => Inputs.Buttons.backPressed = down
-      case Keys.ButtonMenu => Inputs.Buttons.menuPressed = down
 
       case Keys.A => Inputs.Keyboard.a = down
       case Keys.B => Inputs.Keyboard.b = down
@@ -182,8 +180,6 @@ trait InputHelpersComponent {
       var leftPressed: Boolean = false
       var middlePressed: Boolean = false
       var rightPressed: Boolean = false
-      var backPressed: Boolean = false
-      var menuPressed: Boolean = false
       var startPressed: Boolean = false
       var selectPressed: Boolean = false
     }
