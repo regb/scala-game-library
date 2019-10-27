@@ -89,9 +89,7 @@ trait AndroidInputProvider extends Activity with InputProvider {
   val EnableMenuButtonEvents: Boolean
 
   override def onBackPressed(): Unit = {
-    println("onBackPressed")
     if(EnableBackButtonEvents) {
-      println("onBackPressed adding event")
       Input.newEvent(Input.SystemActionEvent(Input.Actions.Back))
     } else {
       super.onBackPressed()
@@ -103,7 +101,12 @@ trait AndroidInputProvider extends Activity with InputProvider {
       Input.newEvent(Input.SystemActionEvent(Input.Actions.Menu))
       true
     case _ =>
-      false
+      // Important to call super.onKeyDown, because the default implementation handles
+      // the onBackPressed event. We also cannot just return false as is usual for
+      // a chain of onKeyDown, because we are actually overriding the base activity
+      // method, so there's no outer code that will check the result and call the
+      // base implementation on false.
+      super.onKeyDown(keyCode, event)
   }
 
   //TODO: must reintegrate these scrolling detection somewhere in the framework
