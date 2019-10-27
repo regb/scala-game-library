@@ -8,6 +8,7 @@ import com.google.firebase.analytics.{FirebaseAnalytics => UFirebaseAnalytics, _
 
 import _root_.android.app.Activity
 import _root_.android.os.Bundle
+import _root_.android.provider.Settings
 
 /** An AnalyticsProvider using Firebase Analytics for Android.
   *
@@ -57,7 +58,18 @@ trait AndroidFirebaseAnalyticsProvider extends Activity with AnalyticsProvider
 
   override def onCreate(bundle: Bundle): Unit = {
     super.onCreate(bundle)
+
     firebaseAnalytics = UFirebaseAnalytics.getInstance(this)
+
+    // We explicitly disable the analytics if we are running in the test lab of
+    // firebase. This is actually used by prelaunch report on Google Play, so
+    // this is going to be common across most Android apps, and we do not want
+    // to collect noisy analytics from these prelaunch reports.
+    val testLabSetting = Settings.System.getString(getContentResolver(), "firebase.test.lab")
+    if("true".equals(testLabSetting)) {
+      // We are in a testlab environment, let's not collect any Analytics.
+      firebaseAnalytics.setAnalyticsCollectionEnabled(false)
+    }
   }
 
   //TODO: the name choice conflicts with firebase API (see import) so maybe
