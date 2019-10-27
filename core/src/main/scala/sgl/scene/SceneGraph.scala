@@ -227,12 +227,14 @@ trait SceneGraphComponent {
   
     /** find and return the SceneNode that is hit by the point (x,y)
       *
-      * If the element is a group, it will recursively search for the
-      * topmost (visible) element that gets hit. Typically if a button
-      * is on top of some panel, and hit is checked with coordinates in
-      * the button, then both panel and button are intersected, but the
-      * hit method would return the button, as it is displayed on top of
-      * the panel.
+      * The default implementation uses the actual dimension of the sceneNode
+      * to detect if there's a hit or not.
+      *
+      * If the element is a SceneGroup, it will recursively search for the
+      * topmost (visible) element that gets hit. Typically if a button is on
+      * top of some panel, and hit is checked with coordinates in the button,
+      * then both panel and button are intersected, but the hit method would
+      * return the button, as it is displayed on top of the panel.
       */
     def hit(x: Int, y: Int): Option[SceneNode] = {
       if(x >= this.x && x <= this.x + width &&

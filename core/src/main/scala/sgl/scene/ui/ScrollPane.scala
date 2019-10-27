@@ -6,7 +6,7 @@ import scala.collection.mutable.HashSet
 
 trait ScrollPaneComponent {
   this: SceneGraphComponent with ViewportComponent
-  with GraphicsProvider with InputProvider with SystemProvider =>
+  with GraphicsProvider with InputProvider with SystemProvider with WindowProvider =>
 
   /** A scrollable pane to hold SceneNodes.
     *
@@ -210,16 +210,23 @@ trait ScrollPaneComponent {
       }}
     }
 
+    // Set how much the pointer can be moved while still being considered
+    // a click.
+    // Maybe we should expose this for tuning? At the same time, maybe we should
+    // just figure out the best constant and keep it private.
+    private val PointerMovedThreshold = Window.dp2px(8)
     /* 
      * We set the clickCondition to filter click events on the ScrollPane
      * to only these that would be valid for the underlying nodes.
      * The goal is to prevent a quick scroll to be interpreted as a click
      * on a node (while not forgetting to interpret legitimate click events).
      * We then use the notifyClick of this ScrollPane to forward to the underlying
-     * nodes.
+     * nodes. It's not clear how much delta is ok, but on touch screen with
+     * fat fingers there's probably quite a bit of imprecision so we should
+     * give some decent margin.
      */
     override def clickCondition(dx: Int, dy: Int, duration: Long): Boolean = {
-      duration < 700 && dx < 3 && dx > -3 && dy < 3 && dy > -3
+      duration < 700 && dx < PointerMovedThreshold && dx > -PointerMovedThreshold && dy < PointerMovedThreshold && dy > -PointerMovedThreshold
     }
 
     override def notifyClick(x: Int, y: Int): Boolean = {

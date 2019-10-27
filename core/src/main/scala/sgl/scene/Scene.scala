@@ -8,6 +8,6 @@ package scene
   * each individually.
   */
 trait SceneComponent extends SceneGraphComponent with ui.ScrollPaneComponent {
-  this: GraphicsProvider with InputProvider with SystemProvider with ViewportComponent =>
+  this: GraphicsProvider with WindowProvider with InputProvider with SystemProvider with ViewportComponent =>
 
 }
