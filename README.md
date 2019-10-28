@@ -168,11 +168,7 @@ the library. Other subsets of the features are demonstrated in the
 
 ## Gallery
 
-This section is intended to list some actual published and commercial games, as
-well as games currently in production that are using the SGL. The list is quite
-short, but I'm hopeful that it will grow over time.
-
-### Published
+SGL has been used to produce a small, but non-zero, number of published games.
 
 * [WinSmash](http://regblanc.com/games/winsmash/), available for
 [Android](https://play.google.com/store/apps/details?id=com.regblanc.winsmash)
@@ -180,12 +176,10 @@ short, but I'm hopeful that it will grow over time.
 [Android](https://play.google.com/store/apps/details?id=com.regblanc.scalavator)
 and for the [Web](http://regblanc.com/games/scalavator/play.html). Code source
 available on [GitHub](https://github.com/regb/scalavator).
-
-### In Developement
-
-* *Fish Escape*, a sequel to the Android title [Rat
+* [Fish
+  Escape](https://play.google.com/store/apps/details?id=com.limetalesgames.fishescapelite),
+  a sequel to the Android title [Rat
   Trap](https://play.google.com/store/apps/details?id=com.regblanc.rattrap).
-  See the latest [trailer](https://www.youtube.com/watch?v=0q0adLOBRXo).
 
 ## Code Organization
 
