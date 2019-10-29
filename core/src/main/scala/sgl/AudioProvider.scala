@@ -254,6 +254,9 @@ trait AudioProvider {
         * The volume should be between 0 and 1, and it will act
         * as a multiplier to the current volume settings in
         * the device (so 1 will be at max and 0 will be silent).
+        *
+        * The volume should be set prior to playing the music, otherwise
+        * it's behavior is undefined.
         */
       def setVolume(volume: Float): Unit
   
