@@ -12,17 +12,19 @@ trait TestGraphicsProvider extends GraphicsProvider {
   class TestGraphics extends Graphics {
 
     class TestBitmap extends AbstractBitmap {
-      def height: Int = ???
-      def width: Int = ???
+      override def height: Int = ???
+      override def width: Int = ???
+
+      override def release(): Unit = {}
     }
     type Bitmap = TestBitmap
-    def loadImage(path: ResourcePath): Loader[Bitmap] = ???
+    override def loadImage(path: ResourcePath): Loader[Bitmap] = ???
 
     class TestFont extends AbstractFont {
-      def withSize(size: Int): Font = ???
-      def withStyle(style: Font.Style): Font = ???
-      def isBold(): Boolean = ???
-      def isItalic(): Boolean = ???
+      override def withSize(size: Int): Font = ???
+      override def withStyle(style: Font.Style): Font = ???
+      override def isBold(): Boolean = ???
+      override def isItalic(): Boolean = ???
     }
     type Font = TestFont
     class TestFontCompanion extends FontCompanion {
