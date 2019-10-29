@@ -1,5 +1,6 @@
 package sgl.util
 
+import scala.collection.mutable.ListBuffer
 import scala.util.{Try, Success, Failure}
 
 /** An object that handles loading the underlying type
@@ -44,7 +45,7 @@ import scala.util.{Try, Success, Failure}
   */
 trait Loader[+A] {
 
-  /** Schedule a callback to be execute when loaded
+  /** Schedule a callback to be execute when loaded.
     *
     * The callback must take into account the possibility that the
     * loader failed with some exception. Could be a file not found
@@ -198,30 +199,36 @@ trait LoaderPromise[A] {
 // expose APIs to use the loader, and not complete it.
 class DefaultLoader[A] extends Loader[A] with LoaderPromise[A] {
 
+  private object lock
+
   private var v: Option[Try[A]] = None
-  private var callbacks: List[Try[A] => Any] = Nil
+  private val callbacks: ListBuffer[Try[A] => Any] = new ListBuffer
 
   override def loader: Loader[A] = this
 
   override def isCompleted = v.nonEmpty
 
-  override def tryComplete(result: Try[A]): Boolean = v match {
-    case Some(_) => false
-    case None => {
-      v = Some(result)
-      callbacks.foreach(callback => callback(result))
-      callbacks = Nil
-      true
+  override def tryComplete(result: Try[A]): Boolean = lock.synchronized {
+    v match {
+      case Some(_) => false
+      case None => {
+        v = Some(result)
+        callbacks.foreach(callback => callback(result))
+        callbacks.clear()
+        true
+      }
     }
   }
 
   override def isLoaded: Boolean = isCompleted
 
-  override def onLoad[U](f: (Try[A]) => U): Unit = v match {
-    case None =>
-      callbacks ::= f
-    case Some(result) =>
-      f(result)
+  override def onLoad[U](f: (Try[A]) => U): Unit = lock.synchronized {
+    v match {
+      case None =>
+        callbacks.append(f)
+      case Some(result) =>
+        f(result)
+    }
   }
 
   override def transform[B](f: (Try[A]) => Try[B]): Loader[B] = {
