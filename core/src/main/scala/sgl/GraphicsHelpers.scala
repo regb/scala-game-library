@@ -2,7 +2,7 @@ package sgl
 
 import scala.language.implicitConversions
 
-/** Provide helpers for common graphics operations
+/** Provide helpers for common graphics operations.
   *
   * This is designed as a separate module to the GraphicsProvider,
   * as GraphicsProvider should be limited to the lowest level
@@ -16,11 +16,10 @@ import scala.language.implicitConversions
   * This is directly extended by the GraphicsProvider trait, which makes
   * it transparent to the client (automatically comes when the client depends
   * on the GraphicsProvider). Having it as a separate trait makes it
-  * simpler for code maintenance.
+  * simpler for code/file maintenance.
   */
-trait GraphicsHelpersComponent {
+private[sgl] trait GraphicsHelpersComponent {
   this: GraphicsProvider =>
-
 
   trait GraphicsExtension {
     this: Graphics =>
@@ -31,7 +30,8 @@ trait GraphicsHelpersComponent {
       * of the primitives method of the Canvas, thus, mostly for
       * maintanability, they are provided in a separate class
       */
-    implicit class RichCanvas(canvas: Canvas) {
+    trait RichCanvas {
+      this: AbstractCanvas =>
 
       /** draws the bitmap region mutliple times to fill the area
         *
@@ -45,7 +45,7 @@ trait GraphicsHelpersComponent {
         //first we draw all the full tiles
         for(i <- 0 until nbFullCols) {
           for(j <- 0 until nbFullRows) {
-            canvas.drawBitmap(region.bitmap, x+i*region.width, y+j*region.height, region.x, region.y, region.width, region.height)
+            this.drawBitmap(region.bitmap, x+i*region.width, y+j*region.height, region.x, region.y, region.width, region.height)
           }
         }
 
@@ -53,29 +53,29 @@ trait GraphicsHelpersComponent {
         val missingWidth = width - nbFullCols*region.width
         if(missingWidth > 0) {
           for(i <- 0 until nbFullRows)
-            canvas.drawBitmap(region.bitmap, x+nbFullCols*region.width, y+i*region.height, region.x, region.y, missingWidth, region.height)
+            this.drawBitmap(region.bitmap, x+nbFullCols*region.width, y+i*region.height, region.x, region.y, missingWidth, region.height)
         }
         val missingHeight = height - nbFullRows*region.height
         if(missingHeight > 0) {
           for(i <- 0 until nbFullCols)
-            canvas.drawBitmap(region.bitmap, x+i*region.width, y+nbFullRows*region.height, region.x, region.y, region.width, missingHeight)
+            this.drawBitmap(region.bitmap, x+i*region.width, y+nbFullRows*region.height, region.x, region.y, region.width, missingHeight)
         }
 
         //finally draw bottom right corner
         if(missingWidth > 0 && missingHeight > 0) {
-          canvas.drawBitmap(region.bitmap, nbFullCols*region.width, nbFullRows*region.height, region.x, region.y, missingWidth, missingHeight)
+          this.drawBitmap(region.bitmap, nbFullCols*region.width, nbFullRows*region.height, region.x, region.y, missingWidth, missingHeight)
         }
 
       }
 
       def drawBitmap(region: BitmapRegion, x: Int, y: Int): Unit = {
-        canvas.drawBitmap(region.bitmap, x, y, region.x, region.y, region.width, region.height)
+        this.drawBitmap(region.bitmap, x, y, region.x, region.y, region.width, region.height)
       }
       def drawBitmap(region: BitmapRegion, x: Int, y: Int, s: Float): Unit = {
-        canvas.drawBitmap(region.bitmap, x, y, region.x, region.y, region.width, region.height, s, 1f)
+        this.drawBitmap(region.bitmap, x, y, region.x, region.y, region.width, region.height, s, 1f)
       }
       def drawBitmap(region: BitmapRegion, x: Int, y: Int, s: Float, alpha: Float): Unit = {
-        canvas.drawBitmap(region.bitmap, x, y, region.x, region.y, region.width, region.height, s, alpha)
+        this.drawBitmap(region.bitmap, x, y, region.x, region.y, region.width, region.height, s, alpha)
       }
 
     }
@@ -116,12 +116,17 @@ trait GraphicsHelpersComponent {
 
     }
     object BitmapRegion {
+      // TODO: Should this be implicit? It would hide a wrapping into a bitmap region, whic
+      //       might or might not put pressure on the GC. Without the implicit, the client code
+      //       needs to be explicit about the wrapping, and that would make it more likely that
+      //       they would define a constant BitmapRegion at initialization and use that instead.
+      //       My intuition is that the compiler could figure out these optimizations, but maybe
+      //       not always?
       def apply(bitmap: Bitmap): BitmapRegion = BitmapRegion(bitmap, 0, 0, bitmap.width, bitmap.height)
 
       // TODO: Some kind of the following split function should be useful.
       // def split(bitmap: Bitmap, w: Int, h: Int): Array[Array[BitmapRegion]] = ???
     }
-    implicit def bitmapToBitmapRegion(bitmap: Bitmap): BitmapRegion = BitmapRegion(bitmap)
 
     /** Stores a transformation around a BitmapRegion.
       *

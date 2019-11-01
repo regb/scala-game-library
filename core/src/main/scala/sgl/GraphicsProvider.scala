@@ -139,7 +139,7 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
     }
     type TextLayout <: AbstractTextLayout
 
-    trait AbstractCanvas {
+    trait AbstractCanvas extends RichCanvas {
 
       /** The width of the drawing area.
         *
