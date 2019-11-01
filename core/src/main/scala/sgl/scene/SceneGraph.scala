@@ -171,21 +171,28 @@ trait SceneGraphComponent {
     * could be a simple character sprite, or a button. It could also be a Group
     * of scene element.
     *
-    * The position (x,y) is the top-left position of the node, in the coordinate system
-    * of the direct parent. So if the node is part of a group, its position can be specified
-    * relatively to the group, and then the group can be positioned globally independently.
-    * the coordinates use Float, as typically a node could be simulated by physics on a frame-by-frame
-    * basis an move fractions of pixels. Double seems to give un-necessary precision.
+    * The position (x,y) is the top-left position of the node, in the
+    * coordinate system of the direct parent. So if the node is part of a
+    * group, its position can be specified relatively to the group, and then
+    * the group can be positioned globally independently.  the coordinates use
+    * Float, as typically a node could be simulated by physics on a
+    * frame-by-frame basis and could move fractions of pixels. Double seems to
+    * offer un-necessary precision.
     *
-    * A SceneNode always has a rectangular box around it. The width/height are used as the coordinate
-    * system for the scene nodes, and coordinates such as origin points and children nodes are relative
-    * to that rectangular area. (0, 0) is, as always, top-left. The node could be a more refined shape,
-    * such as a circle inside the box, in that case the rectangle box will need to be a bounding box around,
-    * and exact collision method can be defined more precisely against the circle shape.
+    * A SceneNode always has a rectangular box around it. The width/height are
+    * used as the coordinate system for the scene nodes, and coordinates such
+    * as origin points and children nodes are relative to that rectangular
+    * area. (0, 0) is, as always, top-left. The node could be a more refined
+    * shape, such as a circle inside the box, in that case the rectangle box
+    * will need to be a bounding box around, and exact collision method can be
+    * defined more precisely against the circle shape.
     */
   abstract class SceneNode(
     var x: Float, var y: Float, var width: Float, var height: Float
   ) {
+
+    def right = x+width
+    def bottom = y+height
 
     // TODO: Here's a use case to consider:
     //   Each SceneNode is a UI button of 10x10, we want to
@@ -217,7 +224,6 @@ trait SceneGraphComponent {
     //  scaleX *= scale
     //  scaleY *= scale
     //}
-  
   
     def update(dt: Long): Unit
 
@@ -381,6 +387,17 @@ trait SceneGraphComponent {
       els.foreach(el => gr.addNode(el))
       gr
     }
+  }
+
+  /** A simple static bitmap SceneNode.
+    *
+    * This uses the dimensions of the bitmap to set the node dimensions.
+    * Update does nothing (it's a static bitmap) and render renders it.
+    */
+  class BitmapNode(bitmap: Graphics.BitmapRegion, _x: Float, _y: Float) extends SceneNode(_x, _y, bitmap.width, bitmap.height) {
+    // A bitmap is just static, so nothing to do on update.
+    override def update(dt: Long): Unit = {}
+    override def render(canvas: Graphics.Canvas): Unit = canvas.drawBitmap(bitmap, this.x.toInt, this.y.toInt)
   }
 
   // TODO: A clickable trait would be pretty cool to modularize the notion of

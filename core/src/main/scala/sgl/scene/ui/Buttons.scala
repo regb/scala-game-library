@@ -7,7 +7,7 @@ trait ButtonsComponent {
 
   import Graphics._
 
-  abstract class Button(_x: Int, _y: Int, _width: Int, _height: Int)
+  abstract class Button(_x: Float, _y: Float, _width: Int, _height: Int)
     extends SceneNode(_x, _y, _width, _height) {
 
     private var pressed: Boolean = false
@@ -38,7 +38,7 @@ trait ButtonsComponent {
 
   }
 
-  class BitmapButton(_x: Int, _y: Int, regularBitmap: BitmapRegion, pressedBitmap: BitmapRegion)
+  class BitmapButton(_x: Float, _y: Float, regularBitmap: BitmapRegion, pressedBitmap: BitmapRegion)
     extends Button(_x, _y, regularBitmap.width, regularBitmap.height) {
 
     override def renderPressed(canvas: Canvas): Unit =
