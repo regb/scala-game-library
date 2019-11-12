@@ -10,7 +10,7 @@ import util._
 trait ScreensComponent {
   this: GraphicsProvider with InputProvider with SystemProvider with WindowProvider 
   with GameStateComponent with GameLoopStatisticsComponent with LoggingProvider
-  with GraphicsHelpersComponent with ViewportComponent with SceneComponent with PopupsComponent =>
+  with ViewportComponent with SceneComponent with PopupsComponent =>
 
   private implicit val LogTag = Logger.Tag("main-screen")
 
@@ -25,18 +25,18 @@ trait ScreensComponent {
     val levelsPane = new ScrollPane(0, 0, Window.width, Window.height, Window.width, 3*Window.height)
     scene.addNode(levelsPane)
 
-    class LevelButton(i: Int, _x: Int, _y: Int) extends Button(_x, _y, 100, 30) {
-      override def notifyClick(x: Int, y: Int): Boolean = {
+    class LevelButton(i: Int, _x: Float, _y: Float) extends Button(_x, _y, 100, 30) {
+      override def notifyClick(x: Float, y: Float): Boolean = {
         println(s"button $i clicked at ($x, $y)")
         true
       }
       override def renderPressed(canvas: Graphics.Canvas): Unit = {
         val color = Graphics.defaultPaint.withColor(Graphics.Color.Red)
-        canvas.drawRect(x.toInt, y.toInt, width.toInt, height.toInt, color)
+        canvas.drawRect(x, y, width, height, color)
       }
       override def renderRegular(canvas: Graphics.Canvas): Unit = {
         val color = Graphics.defaultPaint.withColor(Graphics.Color.Green)
-        canvas.drawRect(x.toInt, y.toInt, width.toInt, height.toInt, color)
+        canvas.drawRect(x, y, width, height, color)
       }
     }
     for(i <- 1 to 100) {
@@ -75,6 +75,7 @@ trait ScreensComponent {
     }
 
     override def render(canvas: Graphics.Canvas): Unit = {
+      canvas.drawColor(Graphics.Color.Black)
       scene.render(canvas)
     }
 

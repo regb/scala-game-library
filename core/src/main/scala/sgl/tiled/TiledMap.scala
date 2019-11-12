@@ -135,10 +135,10 @@ case class TileLayer(
     if(tiles.isEmpty || tiles(0).isEmpty) Set() else {
       val tileWidth = tiles(0)(0).width
       val tileHeight = tiles(0)(0).height
-      val i1 = (rect.top / tileHeight) max 0
-      val i2 = (rect.bottom / tileHeight) min (tiles.length-1)
-      val j1 = (rect.left / tileWidth) max 0
-      val j2 = (rect.right / tileWidth) min (tiles(i1).length-1)
+      val i1 = (rect.top / tileHeight).toInt max 0
+      val i2 = (rect.bottom / tileHeight).toInt min (tiles.length-1)
+      val j1 = (rect.left / tileWidth).toInt max 0
+      val j2 = (rect.right / tileWidth).toInt min (tiles(i1).length-1)
 
       var res = Set[Tile]()
       for(i <- i1 to i2) {
@@ -175,7 +175,7 @@ case class ObjectLayer(
 }
 
 
-/** A unique tile in a TileLayer
+/** A unique tile in a TileLayer.
   *
   * The index is a globally unique identifier, that refers to some tile
   * from one of the tileset. Since each tileset has a different firstGlobalId,

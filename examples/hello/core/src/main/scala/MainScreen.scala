@@ -67,7 +67,6 @@ trait MainScreenComponent extends ViewportComponent {
     val Width = 480
     val Height = 320
 
-    //val viewport = new Viewport(Window.width, Window.height/2)
     val viewport = new Viewport(Window.width, Window.height)
     viewport.setCamera(0, 0, Width, Height)
     viewport.scalingStrategy = Viewport.Fit
@@ -82,11 +81,11 @@ trait MainScreenComponent extends ViewportComponent {
     )
     val characterAnimation = new Animation(200, characterFrames, Animation.Loop)
 
-    var x: Double = 0
-    var y: Double = 0
+    var x = 0f
+    var y = 0f
 
-    var autoX = 0d
-    var autoY = 0d
+    var autoX = 0f
+    var autoY = 0f
 
     var totalTime: Long = 0
     override def update(dt: Long): Unit = {
@@ -103,23 +102,21 @@ trait MainScreenComponent extends ViewportComponent {
       totalTime += dt
 
       if(Inputs.Keyboard.left) {
-        x -= dp2px(50)*(dt/1000d)
+        x -= dp2px(50)*(dt/1000f)
       }
       if(Inputs.Keyboard.right) {
-        x += dp2px(50)*(dt/1000d)
+        x += dp2px(50)*(dt/1000f)
       }
 
       if(Inputs.Keyboard.up) {
-        y -= dp2px(50)*(dt/1000d)
+        y -= dp2px(50)*(dt/1000f)
       }
       if(Inputs.Keyboard.down) {
-        y += dp2px(50)*(dt/1000d)
+        y += dp2px(50)*(dt/1000f)
       }
 
-      autoX += dp2px(50)*(dt/1000d)
-      autoY += dp2px(50)*(dt/1000d)
-
-      //logger.debug("Fps: " + statistics.measuredFps)
+      autoX += dp2px(50)*(dt/1000f)
+      autoY += dp2px(50)*(dt/1000f)
     }
 
     override def render(canvas: Canvas): Unit = {
@@ -127,9 +124,23 @@ trait MainScreenComponent extends ViewportComponent {
       viewport.withViewport(canvas){
         canvas.drawRect(0, 0, Window.width, Window.height, Graphics.defaultPaint.withColor(Color.rgb(0, 0, 200)))
         canvas.drawRect(0, 0, Width, Height, Graphics.defaultPaint.withColor(Color.rgb(204, 242, 204)))
-        canvas.drawCircle(autoX.toInt, autoY.toInt, dp2px(50), Graphics.defaultPaint.withColor(Color.Black))
+        canvas.drawCircle(autoX, autoY, dp2px(50), Graphics.defaultPaint.withColor(Color.Black))
 
-        canvas.drawBitmap(characterAnimation.currentFrame(totalTime), x.toInt, y.toInt, 1f, 0.5f)
+        canvas.drawBitmap(characterAnimation.currentFrame(totalTime), x, y, 1f, 0.5f)
+
+        var rectWidth: Float = dp2px(50f)
+        canvas.translate(dp2px(200f), dp2px(10f))
+        canvas.drawRect(0, 0, rectWidth, rectWidth, Graphics.defaultPaint.withColor(Color.Red))
+        canvas.translate(rectWidth + dp2px(10f), 0)
+        canvas.withSave {
+          canvas.scale(4f, 4f)
+          canvas.drawRect(0, 0, rectWidth/4, rectWidth/4, Graphics.defaultPaint.withColor(Color.Red))
+        }
+        canvas.translate(rectWidth + dp2px(10f), 0)
+        canvas.withSave {
+          canvas.scale(8f, 8f)
+          canvas.drawRect(0, 0, rectWidth/8, rectWidth/8, Graphics.defaultPaint.withColor(Color.Red))
+        }
       }
     }
 

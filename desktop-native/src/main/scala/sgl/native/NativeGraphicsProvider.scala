@@ -102,8 +102,8 @@ trait NativeGraphicsProvider extends GraphicsProvider {
   
     class NativeCanvas extends AbstractCanvas {
   
-      override val width: Int = 0
-      override val height: Int = 0
+      override val width: Float = 0
+      override val height: Float = 0
   
       override def withSave[A](body: => A): A = {
         glPushMatrix()
@@ -114,24 +114,24 @@ trait NativeGraphicsProvider extends GraphicsProvider {
         res
       }
   
-      override def translate(x: Int, y: Int): Unit = {
-        glTranslatef(x.toFloat, y.toFloat, 0f)
+      override def translate(x: Float, y: Float): Unit = {
+        glTranslatef(x, y, 0f)
       }
   
-      override def rotate(theta: Double): Unit = {
-        val radian = theta*scala.math.Pi/180d
-        glRotated(theta, 0d, 0d, 1d)
+      override def rotate(theta: Float): Unit = {
+        glRotatef(theta, 0f, 0f, 1f)
       }
   
-      override def scale(sx: Double, sy: Double): Unit = {
-        glScaled(sx, sy, 1d)
+      override def scale(sx: Float, sy: Float): Unit = {
+        glScalef(sx, sy, 1f)
       }
   
-      override def clipRect(x: Int, y: Int, width: Int, height: Int): Unit = {
-        glScissor(x, y, width.toUInt, height.toUInt)
+      override def clipRect(x: Float, y: Float, width: Float, height: Float): Unit = {
+        // TODO: actually clip in float?
+        glScissor(x.toInt, y.toInt, width.toInt.toUInt, height.toInt.toUInt)
       }
   
-      override def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit = {
+      override def drawBitmap(bitmap: Bitmap, x: Float, y: Float): Unit = {
         glColor4f(1f,1f,1f,1f)
   
         glEnable(GL_TEXTURE_2D)
@@ -142,10 +142,10 @@ trait NativeGraphicsProvider extends GraphicsProvider {
         glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA)
   
         glBegin(GL_QUADS)
-          glTexCoord2f(0f, 0f); glVertex2i(x, y)
-          glTexCoord2f(1f, 0f); glVertex2i(x+bitmap.width, y)
-          glTexCoord2f(1f, 1f); glVertex2i(x+bitmap.width, y+bitmap.height)
-          glTexCoord2f(0f, 1f); glVertex2i(x, y+bitmap.height)
+          glTexCoord2f(0f, 0f); glVertex2f(x, y)
+          glTexCoord2f(1f, 0f); glVertex2f(x+bitmap.width, y)
+          glTexCoord2f(1f, 1f); glVertex2f(x+bitmap.width, y+bitmap.height)
+          glTexCoord2f(0f, 1f); glVertex2f(x, y+bitmap.height)
         glEnd()
   
         glDepthMask(GL_TRUE)
@@ -154,11 +154,11 @@ trait NativeGraphicsProvider extends GraphicsProvider {
         glDisable(GL_TEXTURE_2D)
       }
   
-      override def drawBitmap(bitmap: Bitmap, x: Int, y: Int, s: Float): Unit = {
+      override def drawBitmap(bitmap: Bitmap, x: Float, y: Float, s: Float): Unit = {
         drawBitmap(bitmap, x, y, 0, 0, bitmap.width, bitmap.height, s)
       }
 
-      override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f, alpha: Float = 1f): Unit = {
+      override def drawBitmap(bitmap: Bitmap, dx: Float, dy: Float, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f, alpha: Float = 1f): Unit = {
 
         glColor4f(1f, 1f, 1f, alpha)
   
@@ -175,10 +175,10 @@ trait NativeGraphicsProvider extends GraphicsProvider {
         glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA)
   
         glBegin(GL_QUADS)
-          glTexCoord2f(sxf, syf); glVertex2i(dx, dy)
-          glTexCoord2f(sxf+swf, syf); glVertex2i(dx+(s*width).toInt, dy)
-          glTexCoord2f(sxf+swf, syf+shf); glVertex2i(dx+(s*width).toInt, dy+(s*height).toInt)
-          glTexCoord2f(sxf, syf+shf); glVertex2i(dx, dy+(s*height).toInt)
+          glTexCoord2f(sxf, syf); glVertex2f(dx, dy)
+          glTexCoord2f(sxf+swf, syf); glVertex2f(dx + s*width, dy)
+          glTexCoord2f(sxf+swf, syf+shf); glVertex2f(dx + s*width, dy + s*height)
+          glTexCoord2f(sxf, syf+shf); glVertex2f(dx, dy + s*height)
         glEnd()
   
         glDepthMask(GL_TRUE)
@@ -187,18 +187,18 @@ trait NativeGraphicsProvider extends GraphicsProvider {
         glDisable(GL_TEXTURE_2D)
       }
   
-      override def drawRect(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {
+      override def drawRect(x: Float, y: Float, width: Float, height: Float, paint: Paint): Unit = {
         setRenderColor(paint.color)
   
         glBegin(GL_QUADS)
-          glVertex2i(x, y)
-          glVertex2i(x+width, y)
-          glVertex2i(x+width, y+height)
-          glVertex2i(x, y+height)
+          glVertex2f(x, y)
+          glVertex2f(x+width, y)
+          glVertex2f(x+width, y+height)
+          glVertex2f(x, y+height)
         glEnd()
       }
   
-      override def drawOval(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {
+      override def drawOval(x: Float, y: Float, width: Float, height: Float, paint: Paint): Unit = {
         setRenderColor(paint.color)
   
         //val rect = stackalloc[SDL_Rect].init(x, y, width, height)
@@ -207,7 +207,7 @@ trait NativeGraphicsProvider extends GraphicsProvider {
         var degree: Int = 0
   
         glPushMatrix()
-        glTranslatef(x.toFloat, y.toFloat, 0f)
+        glTranslatef(x, y, 0f)
   
         glBegin(GL_TRIANGLE_FAN)
         while(degree < 360) {
@@ -220,19 +220,19 @@ trait NativeGraphicsProvider extends GraphicsProvider {
         glPopMatrix()
       }
   
-      override def drawLine(x1: Int, y1: Int, x2: Int, y2: Int, paint: Paint): Unit = {
+      override def drawLine(x1: Float, y1: Float, x2: Float, y2: Float, paint: Paint): Unit = {
         setRenderColor(paint.color)
         glBegin(GL_LINE)
-          glVertex2i(x1, y1)
-          glVertex2i(x2, y2)
+          glVertex2f(x1, y1)
+          glVertex2f(x2, y2)
         glEnd()
       }
   
-      override def drawString(str: String, x: Int, y: Int, paint: Paint): Unit = {
+      override def drawString(str: String, x: Float, y: Float, paint: Paint): Unit = {
         ???
       }
   
-      override def drawText(text: TextLayout, x: Int, y: Int): Unit = {
+      override def drawText(text: TextLayout, x: Float, y: Float): Unit = {
         ???
       }
   
@@ -241,7 +241,8 @@ trait NativeGraphicsProvider extends GraphicsProvider {
         glClear(GL_COLOR_BUFFER_BIT)
       }
   
-      override def clearRect(x: Int, y: Int, width: Int, height: Int): Unit = {
+      override def clearRect(x: Float, y: Float, width: Float, height: Float): Unit = {
+        // TODO: respect the rect.
         glClear(GL_COLOR_BUFFER_BIT)
       }
   

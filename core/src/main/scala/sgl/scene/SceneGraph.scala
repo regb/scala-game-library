@@ -27,6 +27,7 @@ trait SceneGraphComponent {
     * graphics and other platform features.
     */
   class SceneGraph(width: Int, height: Int, val viewport: Viewport) {
+    // TODO: should width and height also be float? What do they mean exactly?
 
     /*
      * A map of all currently active down events, for each pointer index, we store
@@ -34,7 +35,7 @@ trait SceneGraphComponent {
      * and the time of the event. This state is used to match up event and pointer-leaving
      * event and determine if it is a proper click or not.
      */
-    private val downEvents: HashMap[Int, (SceneNode, (Int, Int, Long))] = new HashMap
+    private val downEvents: HashMap[Int, (SceneNode, (Float, Float, Long))] = new HashMap
 
     /** Process an input event in the graph.
       *
@@ -49,7 +50,7 @@ trait SceneGraphComponent {
       * and not processed further.
       */
     def processInput(input: Input.InputEvent): Boolean = {
-      val hitPosition: Option[(Int, Int)] = input match {
+      val hitPosition: Option[(Float, Float)] = input match {
         case MouseDownEvent(x, y, _) => Some(viewport.screenToWorld(x, y))
         case MouseMovedEvent(x, y) => Some(viewport.screenToWorld(x, y))
         case MouseUpEvent(x, y, _) => Some(viewport.screenToWorld(x, y))
@@ -231,18 +232,18 @@ trait SceneGraphComponent {
   
     //def addAction(action: Action): Unit
   
-    /** find and return the SceneNode that is hit by the point (x,y)
+    /** find and return the SceneNode that is hit by the point (x,y).
       *
       * The default implementation uses the actual dimension of the sceneNode
       * to detect if there's a hit or not.
       *
       * If the element is a SceneGroup, it will recursively search for the
       * topmost (visible) element that gets hit. Typically if a button is on
-      * top of some panel, and hit is checked with coordinates in the button,
-      * then both panel and button are intersected, but the hit method would
-      * return the button, as it is displayed on top of the panel.
+      * top of some panel, and hit is checked with coordinates inside the
+      * button, then both panel and button are intersected, but the hit method
+      * would return the button, as it is displayed on top of the panel.
       */
-    def hit(x: Int, y: Int): Option[SceneNode] = {
+    def hit(x: Float, y: Float): Option[SceneNode] = {
       if(x >= this.x && x <= this.x + width &&
          y >= this.y && y <= this.y + height)
         Some(this)
@@ -255,10 +256,10 @@ trait SceneGraphComponent {
      * event does not guarantee a follow-up up/click event.
      */
 
-    def notifyDown(x: Int, y: Int): Boolean = false
-    def notifyUp(x: Int, y: Int): Boolean = false
+    def notifyDown(x: Float, y: Float): Boolean = false
+    def notifyUp(x: Float, y: Float): Boolean = false
 
-    def notifyMoved(x: Int, y: Int): Unit = ()
+    def notifyMoved(x: Float, y: Float): Unit = ()
 
     /* Essentially I don't know how to design the event system, so I just add
      * the simplest thing that works for the current game I'm working on, which
@@ -275,7 +276,7 @@ trait SceneGraphComponent {
      //       by the client. Also, with such implementation, buttons will work nicely on
      //       top of scrollable pane, because we want the event to tickle down to the scrolling
      //       pane and not be interecepted by a button click.
-    def notifyClick(x: Int, y: Int): Boolean = false
+    def notifyClick(x: Float, y: Float): Boolean = false
 
 
     /** Provide a condition to validate a click.
@@ -292,17 +293,17 @@ trait SceneGraphComponent {
       * generate a click event for this node. Override if you want to fine tune
       * the behaviour.
       */
-    def clickCondition(dx: Int, dy: Int, duration: Long): Boolean = true
+    def clickCondition(dx: Float, dy: Float, duration: Long): Boolean = true
 
     // Rule to determine if a click duration (down to up, in ms) from
     // a mouse should be considered as a click, or should be ignored.
     // One use case, if click is too long we can ignore it. Default is any duration is valid.
-    def mouseClickCondition(dx: Int, dy: Int, duration: Long): Boolean = clickCondition(dx, dy, duration)
+    def mouseClickCondition(dx: Float, dy: Float, duration: Long): Boolean = clickCondition(dx, dy, duration)
 
     // Same for touch. Additional considerations for touch event would be that
     // the screen can be very sensible, and thus very short duration could be ignored.
     // This also default to true.
-    def touchClickCondition(dx: Int, dy: Int, duration: Long): Boolean = clickCondition(dx, dy, duration)
+    def touchClickCondition(dx: Float, dy: Float, duration: Long): Boolean = clickCondition(dx, dy, duration)
   
 
     /*
@@ -370,10 +371,10 @@ trait SceneGraphComponent {
   
     //override def addAction(action: Action): Unit = ???
   
-    final override def hit(x: Int, y: Int): Option[SceneNode] = {
+    final override def hit(x: Float, y: Float): Option[SceneNode] = {
       var found: Option[SceneNode] = None
       for(node <- nodes if found.isEmpty) {
-        found = node.hit(x - this.x.toInt,y - this.y.toInt)
+        found = node.hit(x - this.x, y - this.y)
       }
       found
     }
@@ -397,7 +398,7 @@ trait SceneGraphComponent {
   class BitmapNode(bitmap: Graphics.BitmapRegion, _x: Float, _y: Float) extends SceneNode(_x, _y, bitmap.width, bitmap.height) {
     // A bitmap is just static, so nothing to do on update.
     override def update(dt: Long): Unit = {}
-    override def render(canvas: Graphics.Canvas): Unit = canvas.drawBitmap(bitmap, this.x.toInt, this.y.toInt)
+    override def render(canvas: Graphics.Canvas): Unit = canvas.drawBitmap(bitmap, this.x, this.y)
   }
 
   // TODO: A clickable trait would be pretty cool to modularize the notion of
@@ -412,11 +413,11 @@ trait SceneGraphComponent {
   //       to the container object which understand the state and the action better.
   // trait Clickable extends SceneNode {
 
-  //   //def notifyClick(x: Int, y: Int): Boolean
+  //   //def notifyClick(x: Float, y: Float): Boolean
 
-  //   private var downPos: Option[(Int, Int)] = None
+  //   private var downPos: Option[(Float, Float)] = None
 
-  //   override def notifyDown(x: Int, y: Int): Boolean = {
+  //   override def notifyDown(x: Float, y: Float): Boolean = {
   //     downPos = Some((x, y))
   //     super.notifyDown(x, y)
   //   }
@@ -426,7 +427,7 @@ trait SceneGraphComponent {
   //     super.notifyPointerLeave()
   //   }
 
-  //   override def notifyUp(x: Int, y: Int): Boolean = {
+  //   override def notifyUp(x: Float, y: Float): Boolean = {
   //     if(downPos.nonEmpty) {
   //       notifyClick(x, y)
   //       downPos = None

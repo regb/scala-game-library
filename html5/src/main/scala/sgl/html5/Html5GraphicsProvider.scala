@@ -119,8 +119,8 @@ trait Html5GraphicsProvider extends GraphicsProvider {
       
       val context = canvas.getContext("2d").asInstanceOf[Ctx2D]
 
-      override def height: Int = canvas.height
-      override def width: Int = canvas.width
+      override def height: Float = canvas.height
+      override def width: Float = canvas.width
 
       //note that the scala.js compiler is able to inline the body, so
       //you don't pay any performance cost for using the nice auto wrapping
@@ -132,47 +132,47 @@ trait Html5GraphicsProvider extends GraphicsProvider {
         res
       }
 
-      override def translate(x: Int, y: Int): Unit = {
+      override def translate(x: Float, y: Float): Unit = {
         context.translate(x, y)
       }
 
-      override def rotate(theta: Double): Unit = {
+      override def rotate(theta: Float): Unit = {
         //rotate towards positive x/y (so, visually clockwise)
         context.rotate(theta)
       }
 
-      override def scale(sx: Double, sy: Double): Unit = {
+      override def scale(sx: Float, sy: Float): Unit = {
         context.scale(sx, sy)
       }
 
 
-      override def clipRect(x: Int, y: Int, width: Int, height: Int): Unit = {
+      override def clipRect(x: Float, y: Float, width: Float, height: Float): Unit = {
         context.beginPath()
         context.rect(x, y, width, height)
         context.clip()
       }
 
-      override def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit = {
+      override def drawBitmap(bitmap: Bitmap, x: Float, y: Float): Unit = {
         context.drawImage(bitmap.image, x, y)
       }
 
-      override def drawBitmap(bitmap: Bitmap, x: Int, y: Int, s: Float): Unit = {
+      override def drawBitmap(bitmap: Bitmap, x: Float, y: Float, s: Float): Unit = {
         drawBitmap(bitmap, x, y, 0, 0, bitmap.width, bitmap.height, s)
       }
 
-      override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f, alpha: Float = 1f): Unit = {
+      override def drawBitmap(bitmap: Bitmap, dx: Float, dy: Float, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f, alpha: Float = 1f): Unit = {
         context.globalAlpha = alpha
         context.drawImage(bitmap.image, sx, sy, width, height, dx, dy, s*width, s*height)
         context.globalAlpha = 1f
       }
 
-      override def drawRect(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {
+      override def drawRect(x: Float, y: Float, width: Float, height: Float, paint: Paint): Unit = {
         paint.prepareContext(context)
         context.fillRect(x, y, width, height)
       }
 
       //drawing an ellipsis, with x,y top-left
-      private def drawEllipse(x: Int, y: Int, w: Int, h: Int): Unit = {
+      private def drawEllipse(x: Float, y: Float, w: Float, h: Float): Unit = {
         val kappa = 0.5522848
         val ox = (w / 2) * kappa // control point offset horizontal
         val oy = (h / 2) * kappa // control point offset vertical
@@ -191,12 +191,12 @@ trait Html5GraphicsProvider extends GraphicsProvider {
         context.fill();
       }
 
-      override def drawOval(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {
+      override def drawOval(x: Float, y: Float, width: Float, height: Float, paint: Paint): Unit = {
         paint.prepareContext(context)
         drawEllipse(x-width/2, y-height/2, width, height)
       }
 
-      override def drawLine(x1: Int, y1: Int, x2: Int, y2: Int, paint: Paint): Unit = {
+      override def drawLine(x1: Float, y1: Float, x2: Float, y2: Float, paint: Paint): Unit = {
         paint.prepareContext(context)
         context.beginPath()
         context.moveTo(x1, y1)
@@ -204,12 +204,12 @@ trait Html5GraphicsProvider extends GraphicsProvider {
         context.stroke()
       }
 
-      override def drawString(str: String, x: Int, y: Int, paint: Paint): Unit = {
+      override def drawString(str: String, x: Float, y: Float, paint: Paint): Unit = {
         paint.prepareContext(context)
         context.fillText(str, x, y)
       }
 
-      override def drawText(text: TextLayout, x: Int, y: Int): Unit = {
+      override def drawText(text: TextLayout, x: Float, y: Float): Unit = {
         text.draw(context, x, y)
       }
 
@@ -218,7 +218,7 @@ trait Html5GraphicsProvider extends GraphicsProvider {
         context.fillRect(0, 0, Window.width, Window.height)
       }
 
-      override def clearRect(x: Int, y: Int, width: Int, height: Int): Unit = {
+      override def clearRect(x: Float, y: Float, width: Float, height: Float): Unit = {
         context.clearRect(x, y, width, height)
       }
 
@@ -267,7 +267,7 @@ trait Html5GraphicsProvider extends GraphicsProvider {
 
       override val height: Int = rows.size * lineHeight
 
-      def draw(ctx: Ctx2D, x: Int, y: Int): Unit = {
+      def draw(ctx: Ctx2D, x: Float, y: Float): Unit = {
         paint.prepareContext(ctx)
         var startY = y
         rows.foreach(line => {

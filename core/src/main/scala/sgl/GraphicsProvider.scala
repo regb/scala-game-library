@@ -139,6 +139,18 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
     }
     type TextLayout <: AbstractTextLayout
 
+    /** A canvas to draw things on.
+      *
+      * A canvas is a drawing area that provides drawing primitives. It is
+      * a virtual screen to which you can render, but it does not necessarily
+      * map to the physical screen. It can be transformed through translation
+      * or scaling, which might make drawing more convenient. Eventually it can
+      * be rendered on the physical screen.
+      *
+      * The Canvas is one of the lower-level abstraction and would be backed by
+      * either a similar concept on the platform (think Canvas on HTML5) or directly
+      * by OpenGL.
+      */
     trait AbstractCanvas extends RichCanvas {
 
       /** The width of the drawing area.
@@ -154,12 +166,12 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
         * the canvas is still the same rectangle from the drawing point of view, just
         * rendered rotated).
         */
-      def width: Int
+      def width: Float
       /** The height of the drawing area.
         *
         * Refer to width doc. Same comments apply here.
         */
-      def height: Int
+      def height: Float
       
       /*
        * The canvas contains a concept of current transformation matrix, and provide
@@ -186,42 +198,42 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
        * but maybe there are usecases where we need more flexibility?
        */
 
-      //For now, we only provide withSave abstraction to save and restore canvas
-      //as it seems to cover all cases that make sense, and it's easier to add later
-      //if we need access to save/restore, than remove them later if we figure out it's not necessary
-      //as usual, I follow the design to not add something until I need it
-      /** Execute body on a local canvas
+      /** Execute body on a local canvas.
         *
         * Save the current canvas state (transformation), execute
-        * the body, then restore the previous canvas.
+        * the body, then restore the previous canvas. Any transformations
+        * that happen to the canvas inside the body will be dropped.
+        *
+        * The body will still apply mutations to the same canvas, so any
+        * draw calls will be visible.
         */
       def withSave[A](body: => A): A
 
-      /** translate the origin by (x, y)
+      /** translate the origin by (x, y).
         *
         * Mutliple translate are additive, meaning that to cancel a translation by (x,y)
         * you must translate by (-x,-y). translate (x,y) does not simply move the origin
         * to (x,y) but adds x and y to the current origin. If origin was (0,0) new origin
         * will indeed be at (x,y)
         */
-      def translate(x: Int, y: Int): Unit
+      def translate(x: Float, y: Float): Unit
 
-      /** rotate the canvas
+      /** rotate the canvas.
         *
         * The angle theta is given in radian. The rotation follows the mathematical conventions,
-        * which is to rotate towards the the positive axises. In SGL, since origin is top-left
+        * which is to rotate towards the positive axises. In SGL, since origin is top-left
         * and x-axis points to the right and y-axis points to the bottom, a positive value
         * of theta will rotate in clockwise order.
-        *
-        * TODO: do we need to specify the center of rotation? Should it be the origin (0,0) (top-left)?
         */
-      def rotate(theta: Double): Unit
+      // TODO: check that all backends respect the right rotation direction.
+      def rotate(theta: Float): Unit
 
-      def scale(sx: Double, sy: Double): Unit
+      /** Scale the canvas. */
+      def scale(sx: Float, sy: Float): Unit
 
-      //one reason to have the clipRect additive, is that this seems to be a feature mostly
-      //relevant when recursively setting up sub element in their own local coordinates, and
-      //in that case it makes sense anyway to wrap everything in a save/restore cycle
+      // one reason to have the clipRect additive, is that this seems to be a feature mostly
+      // relevant when recursively setting up sub element in their own local coordinates, and
+      // in that case it makes sense anyway to wrap everything in a save/restore cycle
       /** clip rendering area with the rectangle.
         *
         * A call to clip is always additive with previous clips, and part of the current
@@ -230,8 +242,7 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
         * The clip also does not impact the canvas dimensions, it's more of a
         * transparent layer that filters out draw calls outside of it.
         */
-      def clipRect(x: Int, y: Int, width: Int, height: Int): Unit
-
+      def clipRect(x: Float, y: Float, width: Float, height: Float): Unit
 
       /*
        * Then the canvas provide standard drawing methods
@@ -256,32 +267,38 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
        */
 
       /** draw the whole bitmap at x and y. */
-      def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit
+      def drawBitmap(bitmap: Bitmap, x: Float, y: Float): Unit =
+        drawBitmap(bitmap, x, y, 0, 0, bitmap.width, bitmap.height, 1f, 1f)
 
       /** draw the bitmap at x and y with a scaling factor. */
-      def drawBitmap(bitmap: Bitmap, x: Int, y: Int, s: Float): Unit =
+      def drawBitmap(bitmap: Bitmap, x: Float, y: Float, s: Float): Unit =
         drawBitmap(bitmap, x, y, 0, 0, bitmap.width, bitmap.height, s, 1f)
 
       /** draw the bitmap at x and y with a scaling factor and alpha transparency. */
-      def drawBitmap(bitmap: Bitmap, x: Int, y: Int, s: Float, alpha: Float): Unit =
+      def drawBitmap(bitmap: Bitmap, x: Float, y: Float, s: Float, alpha: Float): Unit =
         drawBitmap(bitmap, x, y, 0, 0, bitmap.width, bitmap.height, s, alpha)
 
       /** draw a selected rectangle from the bitmap at canvas position dx and dy.
         *
         * The dx and dy are the destination coordinates to draw in the canvas,
-        * the sx and sy are the source coordinates without the bitmap (in bitmap
-        * coordinates) and the width and height are the (non-scaled) width and height
-        * that we want to draw out of the bitmap. The rendered graphics will have
-        * width and height s*width and h*width. s is the scaling factor between 0 and 1 factor
-        * and alpha is the transparency between 0 and 1 (with 1 being fully opaque).
+        * the sx and sy are the source coordinates in the bitmap (in bitmap
+        * coordinates) and the width and height are the (non-scaled) width and
+        * height that we want to draw out of the bitmap. The rendered graphics
+        * will have width and height s*width and h*width. s is the scaling
+        * factor between 0 and 1 factor and alpha is the transparency between 0
+        * and 1 (with 1 being fully opaque).
         *
-        * This is slightly simpler than the more general drawing from a
-        * source rect to a dest rect, but we only support aligned rectangle
-        * and symmetric scaling.
+        * This is slightly simpler than the more general drawing from a source
+        * rect to a dest rect, but SGL only supports aligned rectangle and
+        * symmetric scaling, for now.
         */
-      def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f, alpha: Float = 1f): Unit
+      def drawBitmap(bitmap: Bitmap, dx: Float, dy: Float, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f, alpha: Float = 1f): Unit
 
-      def drawRect(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit
+      // TODO: provide a way to control pencil thickness. Probably in Paint? Could also be just one extra argument, since it might not
+      // be used in two many other places (although, font size feels slightly similar).
+      def drawLine(x1: Float, y1: Float, x2: Float, y2: Float, pain: Paint): Unit
+
+      def drawRect(x: Float, y: Float, width: Float, height: Float, paint: Paint): Unit
 
       //only supported by Android API 21+
       //it would be nice to have a typesafe way to add those features with
@@ -290,26 +307,30 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
       //maybe look at implicit parameters with some sort of capabilities ?
       //def drawRoundRect(x: Int, y: Int, width: Int, height: Int, rx: Float, ry: Float, paint: Paint): Unit
 
-      /** draw an oval at center (x,y)
+      /** draw an oval at center (x,y).
         *
         * x and y are the center coordinates.
-        * width is the full width of the oval to be drawn
+        * width is the full width of the oval to be drawn, and height
+        * is the full height.
         */
-      def drawOval(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit
-      def drawLine(x1: Int, y1: Int, x2: Int, y2: Int, paint: Paint): Unit
+      def drawOval(x: Float, y: Float, width: Float, height: Float, paint: Paint): Unit
 
-      /** x and y are the center coordinates. */
-      def drawCircle(x: Int, y: Int, radius: Int, paint: Paint): Unit = drawOval(x, y, 2*radius, 2*radius, paint)
-
-      def drawString(str: String, x: Int, y: Int, paint: Paint): Unit
-      //TODO: provide alignment option
-      def drawText(text: TextLayout, x: Int, y: Int): Unit
+      /** Draw a circle centered at (x,y).
+        * 
+        * kx and y are the center coordinates.
+        */
+      def drawCircle(x: Float, y: Float, radius: Float, paint: Paint): Unit = drawOval(x, y, 2*radius, 2*radius, paint)
 
       def drawColor(color: Color): Unit
 
-      def clearRect(x: Int, y: Int, width: Int, height: Int): Unit
+      def clearRect(x: Float, y: Float, width: Float, height: Float): Unit
       /** Clear the canvas by writing its background color */
       def clear(): Unit = clearRect(0, 0, width, height)
+
+
+      def drawString(str: String, x: Float, y: Float, paint: Paint): Unit
+      //TODO: provide alignment option
+      def drawText(text: TextLayout, x: Float, y: Float): Unit
 
       /** Pre-render the text into a TextLayout object */
       def renderText(text: String, width: Int, paint: Paint): TextLayout

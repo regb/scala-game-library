@@ -82,7 +82,7 @@ trait WindowProvider {
     /** Convert an amount of DIP to the same amount of pixel. */
     def dp2px(x: Int): Int = (x*Window.ppi/160f).toInt
     /** Convert an amount of DIP to the same amount of pixel. */
-    def dp2px(x: Double): Double = x*Window.ppi/160f
+    def dp2px(x: Float): Float = x*Window.ppi/160f
   }
 
   /** the unique window hosting the game

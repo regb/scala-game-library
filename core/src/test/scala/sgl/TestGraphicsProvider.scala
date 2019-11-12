@@ -63,29 +63,27 @@ trait TestGraphicsProvider extends GraphicsProvider {
 
     class TestCanvas extends AbstractCanvas {
 
-      def width: Int = ???
-      def height: Int = ???
+      def width: Float = ???
+      def height: Float = ???
       
-      def withSave[A](body: => A): A = ???
-      def translate(x: Int, y: Int): Unit = ???
-      def rotate(theta: Double): Unit = ???
-      def scale(sx: Double, sy: Double): Unit = ???
-      def clipRect(x: Int, y: Int, width: Int, height: Int): Unit = ???
+      override def withSave[A](body: => A): A = ???
+      override def translate(x: Float, y: Float): Unit = ???
+      override def rotate(theta: Float): Unit = ???
+      override def scale(sx: Float, sy: Float): Unit = ???
+      override def clipRect(x: Float, y: Float, width: Float, height: Float): Unit = ???
 
-      def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit = ???
+      override def drawBitmap(bitmap: Bitmap, dx: Float, dy: Float, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f, alpha: Float = 1f): Unit = ???
 
-      def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f, alpha: Float = 1f): Unit = ???
+      override def drawRect(x: Float, y: Float, width: Float, height: Float, paint: Paint): Unit = ???
 
-      def drawRect(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = ???
+      override def drawOval(x: Float, y: Float, width: Float, height: Float, paint: Paint): Unit = ???
+      override def drawLine(x1: Float, y1: Float, x2: Float, y2: Float, paint: Paint): Unit = ???
 
-      def drawOval(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = ???
-      def drawLine(x1: Int, y1: Int, x2: Int, y2: Int, paint: Paint): Unit = ???
-
-      def drawString(str: String, x: Int, y: Int, paint: Paint): Unit = ???
-      def drawText(text: TextLayout, x: Int, y: Int): Unit = ???
-      def drawColor(color: Color): Unit = ???
-      def clearRect(x: Int, y: Int, width: Int, height: Int): Unit = ???
-      def renderText(text: String, width: Int, paint: Paint): TextLayout = ???
+      override def drawString(str: String, x: Float, y: Float, paint: Paint): Unit = ???
+      override def drawText(text: TextLayout, x: Float, y: Float): Unit = ???
+      override def drawColor(color: Color): Unit = ???
+      override def clearRect(x: Float, y: Float, width: Float, height: Float): Unit = ???
+      override def renderText(text: String, width: Int, paint: Paint): TextLayout = ???
     }
     type Canvas = TestCanvas
   }

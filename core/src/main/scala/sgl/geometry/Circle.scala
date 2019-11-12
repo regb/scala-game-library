@@ -1,20 +1,20 @@
 package sgl.geometry
 
-case class Circle(x: Int, y: Int, radius: Int) {
+case class Circle(x: Float, y: Float, radius: Float) {
   require(radius >= 0)
 
   def center: Point = Point(x, y)
 
-  def left: Int = x - radius
-  def top: Int = y - radius
-  def right: Int = x + radius
-  def bottom: Int = y + radius
+  def left: Float = x - radius
+  def top: Float = y - radius
+  def right: Float = x + radius
+  def bottom: Float = y + radius
 
 
   /* contrary to Rec, the intersect takes double as part of the sphere is in-between
    * two pixels
    */
-  def intersect(x: Double, y: Double): Boolean = {
+  def intersect(x: Float, y: Float): Boolean = {
     val d2 = (x - this.x)*(x - this.x) + (y - this.y)*(y - this.y)
     d2 <= radius*radius
   }
@@ -29,5 +29,5 @@ case class Circle(x: Int, y: Int, radius: Int) {
 }
 
 object Circle {
-  def apply(center: Point, radius: Int): Circle = Circle(center.x.toInt, center.y.toInt, radius)
+  def apply(center: Point, radius: Float): Circle = Circle(center.x, center.y, radius)
 }

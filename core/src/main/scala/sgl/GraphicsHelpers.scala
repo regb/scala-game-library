@@ -33,48 +33,56 @@ private[sgl] trait GraphicsHelpersComponent {
     trait RichCanvas {
       this: AbstractCanvas =>
 
-      /** draws the bitmap region mutliple times to fill the area
+      /** draws the bitmap region mutliple times to fill the area.
         *
         * Draws the bitmap in tiles of original size, to completely
         * fill the specified area.
         */
-      def drawRepeatedBitmap(region: BitmapRegion, x: Int, y: Int, width: Int, height: Int): Unit = {
-        val nbFullCols: Int = width/region.width
-        val nbFullRows: Int = height/region.height
+      def drawRepeatedBitmap(region: BitmapRegion, x: Float, y: Float, width: Float, height: Float): Unit = {
+        // We need to clip the drawing area because the drawBitmap does not provide
+        // a way to control subpixel are in the bitmap space, which would be needed
+        // to exactly map the image to the drawing region.
+        this.withSave { this.clipRect(x, y, width, height)
 
-        //first we draw all the full tiles
-        for(i <- 0 until nbFullCols) {
-          for(j <- 0 until nbFullRows) {
-            this.drawBitmap(region.bitmap, x+i*region.width, y+j*region.height, region.x, region.y, region.width, region.height)
+          val nbFullCols: Int = width.toInt/region.width
+          val nbFullRows: Int = height.toInt/region.height
+
+          // First we draw all the full tiles.
+          for(i <- 0 until nbFullCols) {
+            for(j <- 0 until nbFullRows) {
+              this.drawBitmap(region.bitmap, x+i*region.width, y+j*region.height, region.x, region.y, region.width, region.height)
+            }
+          }
+
+          // Now we draw last col, row, and corner. We compute missing width
+          // and height, and round up to the ceiling because we need an integer
+          // for indexing in the bitmap. The extra pixel will be clipped
+          // anyway, so in theory we wouldn't even need to worry about the
+          // precision.
+          val missingWidth = math.ceil(width - nbFullCols*region.width).toInt
+          val missingHeight = math.ceil(height - nbFullRows*region.height).toInt
+
+          if(missingWidth > 0) {
+            for(i <- 0 until nbFullRows)
+              this.drawBitmap(region.bitmap, x+nbFullCols*region.width, y+i*region.height, region.x, region.y, missingWidth, region.height)
+          }
+          if(missingHeight > 0) {
+            for(i <- 0 until nbFullCols)
+              this.drawBitmap(region.bitmap, x+i*region.width, y+nbFullRows*region.height, region.x, region.y, region.width, missingHeight)
+          }
+          if(missingWidth > 0 && missingHeight > 0) {
+            this.drawBitmap(region.bitmap, nbFullCols*region.width, nbFullRows*region.height, region.x, region.y, missingWidth, missingHeight)
           }
         }
-
-        //now draw last col and las rows (without corner)
-        val missingWidth = width - nbFullCols*region.width
-        if(missingWidth > 0) {
-          for(i <- 0 until nbFullRows)
-            this.drawBitmap(region.bitmap, x+nbFullCols*region.width, y+i*region.height, region.x, region.y, missingWidth, region.height)
-        }
-        val missingHeight = height - nbFullRows*region.height
-        if(missingHeight > 0) {
-          for(i <- 0 until nbFullCols)
-            this.drawBitmap(region.bitmap, x+i*region.width, y+nbFullRows*region.height, region.x, region.y, region.width, missingHeight)
-        }
-
-        //finally draw bottom right corner
-        if(missingWidth > 0 && missingHeight > 0) {
-          this.drawBitmap(region.bitmap, nbFullCols*region.width, nbFullRows*region.height, region.x, region.y, missingWidth, missingHeight)
-        }
-
       }
 
-      def drawBitmap(region: BitmapRegion, x: Int, y: Int): Unit = {
+      def drawBitmap(region: BitmapRegion, x: Float, y: Float): Unit = {
         this.drawBitmap(region.bitmap, x, y, region.x, region.y, region.width, region.height)
       }
-      def drawBitmap(region: BitmapRegion, x: Int, y: Int, s: Float): Unit = {
+      def drawBitmap(region: BitmapRegion, x: Float, y: Float, s: Float): Unit = {
         this.drawBitmap(region.bitmap, x, y, region.x, region.y, region.width, region.height, s, 1f)
       }
-      def drawBitmap(region: BitmapRegion, x: Int, y: Int, s: Float, alpha: Float): Unit = {
+      def drawBitmap(region: BitmapRegion, x: Float, y: Float, s: Float, alpha: Float): Unit = {
         this.drawBitmap(region.bitmap, x, y, region.x, region.y, region.width, region.height, s, alpha)
       }
 

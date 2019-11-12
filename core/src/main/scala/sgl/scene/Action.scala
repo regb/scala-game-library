@@ -19,7 +19,6 @@ abstract class Action {
   def isCompleted: Boolean
 }
 
-
 class SequenceAction(private var as: List[Action]) extends Action {
   override def update(dt: Long): Unit = as match {
     case x::xs =>

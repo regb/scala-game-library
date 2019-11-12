@@ -55,8 +55,8 @@ object TweeningEquations {
   // a quad tweening could be a function from [0,1] to [0,1], with equation x => x*x, so
   // for 0.5 (half) it returns 0.25. Then the result X can be used in a standard interpolation
   // (1-X)*A + X*B (or A + X(B-A) if that's easier to read) to get from A to B. With that
-  // observation, another interface would be really just a function (Double) => Double.
-  type TweeningFunction = (Int, Double, Double) => (Int) => Double
+  // observation, another interface would be really just a function (Float) => Float.
+  type TweeningFunction = (Int, Float, Float) => (Int) => Float
 
   /*
    * One design consideration is what to do when the elapsed time is out of bound
@@ -97,60 +97,60 @@ object TweeningEquations {
    * than an increasing one.
    */
   
-  def linear(duration: Int, start: Double, end: Double)(elapsed: Int): Double = {
+  def linear(duration: Int, start: Float, end: Float)(elapsed: Int): Float = {
     require(duration > 0)
     if(elapsed <= 0) start
     else if(elapsed >= duration) end
-    else start + (elapsed/duration.toDouble)*(end-start)
+    else start + (elapsed/duration.toFloat)*(end-start)
   }
 
-  def easeInQuad(duration: Int, start: Double, end: Double)(elapsed: Int): Double = {
+  def easeInQuad(duration: Int, start: Float, end: Float)(elapsed: Int): Float = {
     if(elapsed <= 0) start
     else if(elapsed >= duration) end
     else {
-      val progress = elapsed/duration.toDouble
+      val progress = elapsed/duration.toFloat
       start + (progress*progress)*(end-start)
     }
   }
-  def easeOutQuad(duration: Int, start: Double, end: Double)(elapsed: Int): Double = {
+  def easeOutQuad(duration: Int, start: Float, end: Float)(elapsed: Int): Float = {
     if(elapsed <= 0) start
     else if(elapsed >= duration) end
     else {
-      val inverseProgress = (duration-elapsed)/duration.toDouble  // 1 -> 0.5 -> 0
+      val inverseProgress = (duration-elapsed)/duration.toFloat  // 1 -> 0.5 -> 0
       val normalizedQuad = 1 - inverseProgress*inverseProgress  // 0 -> 0.75 -> 1
       start + normalizedQuad*(end-start)
     }
   }
-  def easeInOutQuad(duration: Int, start: Double, end: Double)(elapsed: Int): Double = {
+  def easeInOutQuad(duration: Int, start: Float, end: Float)(elapsed: Int): Float = {
     if(elapsed <= 0) start
     else if(elapsed >= duration) end
     else {
-      val progress = elapsed/(duration*0.5)
+      val progress = elapsed/(duration*0.5f)
       if(progress < 1) {
-        start + progress*progress*0.5*(end-start)
+        start + progress*progress*0.5f*(end-start)
       } else { // progress is 1 -> 1.5 -> 2
         val newProgress = progress - 1  // 0 -> 0.5 -> 1
         val inverseProgress = 1 - newProgress  // 1 -> 0.5 -> 0
         val normalizedQuad = 1 - inverseProgress*inverseProgress  // 0 -> 0.75 -> 1
-        (start + 0.5*(end-start)) + normalizedQuad*0.5*(end-start)
+        (start + 0.5f*(end-start)) + normalizedQuad*0.5f*(end-start)
       }
     }
   }
   // TODO: easeOutInQuad
 
-  def easeInCube(duration: Int, start: Double, end: Double)(elapsed: Int): Double = {
+  def easeInCube(duration: Int, start: Float, end: Float)(elapsed: Int): Float = {
     if(elapsed <= 0) start
     else if(elapsed >= duration) end
     else {
-      val progress = elapsed/duration.toDouble
+      val progress = elapsed/duration.toFloat
       start + (progress*progress*progress)*(end-start)
     }
   }
-  def easeOutCube(duration: Int, start: Double, end: Double)(elapsed: Int): Double = {
+  def easeOutCube(duration: Int, start: Float, end: Float)(elapsed: Int): Float = {
     if(elapsed <= 0) start
     else if(elapsed >= duration) end
     else {
-      val inverseProgress = (duration-elapsed)/duration.toDouble  // 1 -> 0.5 -> 0
+      val inverseProgress = (duration-elapsed)/duration.toFloat  // 1 -> 0.5 -> 0
       val normalizedCube = 1 - inverseProgress*inverseProgress*inverseProgress  // 0 -> 0.875 -> 1
       start + normalizedCube*(end-start)
     }
@@ -159,12 +159,12 @@ object TweeningEquations {
 
   // Here's the idea of implementating the insight around how all functions can
   // be reduced to a normalized [0,1] operation.
-  private def easeGeneric(easeNormalized: (Double) => Double): TweeningFunction = {
-    def f(duration: Int, start: Double, end: Double)(elapsed: Int): Double = {
+  private def easeGeneric(easeNormalized: (Float) => Float): TweeningFunction = {
+    def f(duration: Int, start: Float, end: Float)(elapsed: Int): Float = {
       if(elapsed <= 0) start
       else if(elapsed >= duration) end
       else {
-        val x = easeNormalized(elapsed/duration.toDouble)
+        val x = easeNormalized(elapsed/duration.toFloat)
         start + x*(end-start)
       }
     }
@@ -178,8 +178,8 @@ object TweeningEquations {
     * quadratic). It is an out easing because the sine function between 0 and
     * PI/2 goes up slightly faster first before flattening.
     */
-  private def easeOutSineNormalized(t: Double): Double = {
-    math.sin(t*math.Pi/2)
+  private def easeOutSineNormalized(t: Float): Float = {
+    math.sin(t*math.Pi/2).toFloat
   }
   def easeOutSine: TweeningFunction = easeGeneric(easeOutSineNormalized)
   /** Compute the normalized easeInSine.
@@ -189,8 +189,8 @@ object TweeningEquations {
     * from -1 to 0, and is then shifted by +1 to bring back to the normalized
     * area.
     */
-  private def easeInSineNormalized(t: Double): Double = {
-    math.sin(t*math.Pi/2 + 1.5*math.Pi) + 1
+  private def easeInSineNormalized(t: Float): Float = {
+    math.sin(t*math.Pi/2 + 1.5*math.Pi).toFloat + 1
   }
   def easeInSine: TweeningFunction = easeGeneric(easeInSineNormalized)
   //TODO: easeInOutSine and easeOutInSine
@@ -220,8 +220,8 @@ object TweeningEquations {
     *       then the output is from 0 to +infinity but we just want to map it to 0-1, this
     *       might give a better true exponential shape.
     */
-  private def easeInExpNormalized(b: Double = 2, a: Double = 10)(t: Double): Double = {
-    math.pow(b, a*(t-1))
+  private def easeInExpNormalized(b: Float = 2, a: Float = 10)(t: Float): Float = {
+    math.pow(b, a*(t-1)).toFloat
   }
   def easeInExp: TweeningFunction = easeGeneric(easeInExpNormalized())
   /** Compute the normalized easeInExp.
@@ -234,8 +234,8 @@ object TweeningEquations {
     * is it quickly goes towards 0 and then flattens. Taking 1 - this will tend
     * get the 0 to 1 with the out shape.
     */
-  private def easeOutExpNormalized(b: Double = 2, a: Double = 10)(t: Double): Double = {
-    1 - math.pow(b, -a*t)
+  private def easeOutExpNormalized(b: Float = 2, a: Float = 10)(t: Float): Float = {
+    1 - math.pow(b, -a*t).toFloat
   }
   def easeOutExp: TweeningFunction = easeGeneric(easeOutExpNormalized())
   //TODO: easeInOutExp and easeOutInExp
@@ -295,8 +295,8 @@ object TweeningEquations {
     * -A*t)*math.cos(t*P*(2*math.Pi)) with A (default 10) and P (default 2)
     * that can be played with to get stronger amplitude and more cycles.
     */
-  private def easeOutElasticNormalized(a: Double = 10, p: Double = 2)(t: Double): Double =
-    1 - math.pow(2, -a*t)*math.cos(t*p*(2*math.Pi))
-  def easeOutElastic(a: Double = 10, p: Double = 2): TweeningFunction = easeGeneric(easeOutElasticNormalized(a, p))
+  private def easeOutElasticNormalized(a: Float = 10, p: Float = 2)(t: Float): Float =
+    (1 - math.pow(2, -a*t)*math.cos(t*p*(2*math.Pi))).toFloat
+  def easeOutElastic(a: Float = 10, p: Float = 2): TweeningFunction = easeGeneric(easeOutElasticNormalized(a, p))
 
 }

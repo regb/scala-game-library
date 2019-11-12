@@ -54,9 +54,9 @@ trait ScrollPaneComponent {
     * of the down event. The node could also see a sequence of down-pointerleave, without
     * an up event. An up event does not literally means that the player lifted the pointer.
     */
-  class ScrollPane(_x: Int, _y: Int, 
-                   paneWidth: Int, paneHeight: Int,
-                   worldWidth: Int, worldHeight: Int) extends SceneNode(_x, _y, paneWidth, paneHeight) {
+  class ScrollPane(_x: Float, _y: Float, 
+                   paneWidth: Float, paneHeight: Float,
+                   worldWidth: Float, worldHeight: Float) extends SceneNode(_x, _y, paneWidth, paneHeight) {
     require(paneWidth > 0 && worldWidth > 0 && paneHeight > 0 && worldHeight > 0)
 
     private val root: SceneGroup = new SceneGroup(0, 0, worldWidth, worldHeight)
@@ -73,7 +73,7 @@ trait ScrollPaneComponent {
       * this method. The rectangle show is then (x,y) with
       * lengths (paneWidth, paneHeight).
       */
-    def setCamera(x: Int, y: Int): Unit = {
+    def setCamera(x: Float, y: Float): Unit = {
       cameraX = x
       cameraY = y
       clipCamera()
@@ -102,8 +102,8 @@ trait ScrollPaneComponent {
     }
 
     private var pressed = false
-    private var prevX = 0
-    private var prevY = 0
+    private var prevX = 0f
+    private var prevY = 0f
 
     private var scrollingVelocityX = 0f
     private var scrollingVelocityY = 0f
@@ -117,8 +117,8 @@ trait ScrollPaneComponent {
      * have additional scrolling motion, then we need to notify it (with a small
      * delay). The coordinates are stored in the world coordinates.
      */
-    private var delayedDownNode: Option[(SceneNode, (Int, Int, Long))] = None
-    private var downNode: Option[(SceneNode, (Int, Int, Long))] = None
+    private var delayedDownNode: Option[(SceneNode, (Float, Float, Long))] = None
+    private var downNode: Option[(SceneNode, (Float, Float, Long))] = None
     /*
      * TODO: There is a general feeling of duplication with some of the work done in
      *   the SceneGraph event handling. The StepGraph is also tracking down events.
@@ -133,20 +133,20 @@ trait ScrollPaneComponent {
      *   notifyPointerEnter.
      */
 
-    override def notifyDown(x: Int, y: Int): Boolean = {
+    override def notifyDown(x: Float, y: Float): Boolean = {
       prevX = x
       prevY = y
       pressed = true
       targetCameraX = cameraX
       targetCameraY = cameraY
 
-      val wx = x + cameraX.toInt
-      val wy = y + cameraY.toInt
+      val wx = x + cameraX
+      val wy = y + cameraY
       delayedDownNode = root.hit(wx, wy).map(n => (n, (wx, wy, 0l)))
       true
     }
 
-    override def notifyMoved(x: Int, y: Int): Unit = {
+    override def notifyMoved(x: Float, y: Float): Unit = {
       if(pressed) {
         targetCameraX -= (x - prevX)
         targetCameraY -= (y - prevY)
@@ -155,8 +155,8 @@ trait ScrollPaneComponent {
         prevY = y
         clipTargetCamera()
 
-        val wx = x + cameraX.toInt
-        val wy = y + cameraY.toInt
+        val wx = x + cameraX
+        val wy = y + cameraY
         downNode.orElse(delayedDownNode).foreach{ case (node, _) => {
           if(!node.hit(wx, wy).exists(_ == node)) {
             downNode = None
@@ -167,15 +167,15 @@ trait ScrollPaneComponent {
       }
     }
 
-    override def notifyUp(x: Int, y: Int): Boolean = {
+    override def notifyUp(x: Float, y: Float): Boolean = {
       pressed = false
       scrollingVelocityX = 0.25f*(cameraX - targetCameraX)
       scrollingVelocityY = 0.25f*(cameraY - targetCameraY)
 
       // No matter what was the down node (this or some other one because
       // we moved) we should clear the down node now.
-      val wx = x + cameraX.toInt
-      val wy = y + cameraY.toInt
+      val wx = x + cameraX
+      val wy = y + cameraY
       delayedDownNode.foreach{ case (node, (ox, oy, _)) => {
         // If there is an up event before we have decided on what to do
         // with the delayed down event, it probably means that the down
@@ -225,13 +225,13 @@ trait ScrollPaneComponent {
      * fat fingers there's probably quite a bit of imprecision so we should
      * give some decent margin.
      */
-    override def clickCondition(dx: Int, dy: Int, duration: Long): Boolean = {
+    override def clickCondition(dx: Float, dy: Float, duration: Long): Boolean = {
       duration < 700 && dx < PointerMovedThreshold && dx > -PointerMovedThreshold && dy < PointerMovedThreshold && dy > -PointerMovedThreshold
     }
 
-    override def notifyClick(x: Int, y: Int): Boolean = {
-      val wx = x + cameraX.toInt
-      val wy = y + cameraY.toInt
+    override def notifyClick(x: Float, y: Float): Boolean = {
+      val wx = x + cameraX
+      val wy = y + cameraY
       root.hit(wx, wy).forall(node => node.notifyClick(wx, wy))
     }
 
@@ -239,7 +239,7 @@ trait ScrollPaneComponent {
       delayedDownNode = delayedDownNode.map{ case (n, (x,y,d)) => (n, (x,y,d+dt)) }
       delayedDownNode.foreach{ case e@(node, (ox, oy, duration)) => {
         if(duration > 80) {
-          if(clickCondition((prevX+cameraX-ox).toInt, (prevY+cameraY-oy).toInt, duration)) {
+          if(clickCondition(prevX+cameraX-ox, prevY+cameraY-oy, duration)) {
             node.notifyDown(ox, oy)
             downNode = Some(e)
           }
@@ -250,8 +250,8 @@ trait ScrollPaneComponent {
       // so, remove the down node and notify an up event, but no click event.
       downNode = downNode.map{ case (n, (x,y,d)) => (n, (x,y,d+dt)) }
       downNode.foreach{ case (node, (ox, oy, duration)) => {
-        val wx = (prevX+cameraX).toInt
-        val wy = (prevY+cameraY).toInt
+        val wx = prevX+cameraX
+        val wy = prevY+cameraY
         if(!clickCondition(wx-ox, wy-oy, duration)) {
           node.notifyUp(wx, wy)
           downNode = None
@@ -287,8 +287,8 @@ trait ScrollPaneComponent {
 
     override def render(canvas: Graphics.Canvas): Unit = {
       canvas.withSave {
-        canvas.translate(-cameraX.toInt, -cameraY.toInt)
-        canvas.clipRect(cameraX.toInt, cameraY.toInt, cameraX.toInt + paneWidth.toInt, cameraY.toInt + paneHeight.toInt)
+        canvas.translate(-cameraX, -cameraY)
+        canvas.clipRect(cameraX, cameraY, cameraX + paneWidth, cameraY + paneHeight)
         root.render(canvas)
       }
     }

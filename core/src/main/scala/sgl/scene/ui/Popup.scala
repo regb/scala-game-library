@@ -25,7 +25,7 @@ trait PopupsComponent extends ButtonsComponent {
     * backgroundColor and for more advanced tuning one can override the render
     * method.
     */
-  class Popup(_width: Int, _height: Int, inner: SceneNode) extends SceneNode(0, 0, _width, _height) {
+  class Popup(_width: Float, _height: Float, inner: SceneNode) extends SceneNode(0, 0, _width, _height) {
 
     val backgroundColor = Color.Transparent
 
@@ -33,7 +33,7 @@ trait PopupsComponent extends ButtonsComponent {
 
     // A popup always intecept clicks, so either the inner node processes the
     // click or otherwise the popup intercept the click (and does nothing).
-    override def hit(x: Int, y: Int): Option[SceneNode] = {
+    override def hit(x: Float, y: Float): Option[SceneNode] = {
       if(active)
         inner.hit(x, y).orElse(Some(this))
       else
@@ -68,7 +68,7 @@ trait PopupsComponent extends ButtonsComponent {
     * commonly used in a popup style, where it blocks all other interaction and
     * waits until the user clicked one of the choice.
     */
-  class Dialog(_width: Int, label: String, options: List[(String, () => Unit)], fontSize: Int, fontColor: Color) extends SceneNode(0, 0, _width, 0) {
+  class Dialog(_width: Float, label: String, options: List[(String, () => Unit)], fontSize: Int, fontColor: Color) extends SceneNode(0, 0, _width, 0) {
 
     val leftMargin = Window.dp2px(32)
     val topMargin = Window.dp2px(32)
@@ -99,7 +99,7 @@ trait PopupsComponent extends ButtonsComponent {
 
     private var buttons: List[TextButton] = Nil
 
-    override def hit(x: Int, y: Int): Option[SceneNode] = {
+    override def hit(x: Float, y: Float): Option[SceneNode] = {
       buttons.flatMap(_.hit(x, y)).headOption
     }
 
@@ -108,12 +108,12 @@ trait PopupsComponent extends ButtonsComponent {
     }
 
     override def render(canvas: Canvas): Unit = {
-      val labelText = canvas.renderText(label, _width - leftMargin - rightMargin, paint)
+      val labelText = canvas.renderText(label, (_width - leftMargin - rightMargin).toInt, paint)
       val totalHeight = topMargin + labelText.height + labelOptionsSpace + fontSize + bottomMargin
       this.height = totalHeight
       val buttonsY = totalHeight - bottomMargin - fontSize
 
-      val buttonWidth = (width.toInt - leftMargin - rightMargin - (options.size-1)*buttonMargin)/options.size
+      val buttonWidth = (width - leftMargin - rightMargin - (options.size-1)*buttonMargin)/options.size
 
       if(fillPaint == null)
         fillPaint = defaultPaint.withColor(fillColor)
@@ -121,8 +121,8 @@ trait PopupsComponent extends ButtonsComponent {
         outlinePaint = defaultPaint.withColor(outlineColor)
       if(buttons == Nil) {
         buttons = options.zipWithIndex.map{ case ((txt, action), i) => {
-          new TextButton(x.toInt + leftMargin + buttonWidth*i + buttonMargin*i, y.toInt + buttonsY, buttonWidth, fontSize + Window.dp2px(16), txt, buttonRegularTheme, buttonPressedTheme) {
-            override def notifyClick(x: Int, y: Int): Boolean = {
+          new TextButton(x + leftMargin + buttonWidth*i + buttonMargin*i, y + buttonsY, buttonWidth, fontSize + Window.dp2px(16), txt, buttonRegularTheme, buttonPressedTheme) {
+            override def notifyClick(x: Float, y: Float): Boolean = {
               action()
               true
             }
@@ -130,16 +130,16 @@ trait PopupsComponent extends ButtonsComponent {
         }}
       }
 
-      canvas.drawRect(x.toInt, y.toInt, _width, totalHeight, fillPaint)
-      canvas.drawLine(x.toInt, y.toInt, x.toInt+_width, y.toInt, outlinePaint)
-      canvas.drawLine(x.toInt+_width, y.toInt, x.toInt+_width, y.toInt+totalHeight, outlinePaint)
-      canvas.drawLine(x.toInt+_width, y.toInt+totalHeight, x.toInt, y.toInt+totalHeight, outlinePaint)
-      canvas.drawLine(x.toInt, y.toInt+totalHeight, x.toInt, y.toInt, outlinePaint)
+      canvas.drawRect(x, y, _width, totalHeight, fillPaint)
+      canvas.drawLine(x, y, x+_width, y, outlinePaint)
+      canvas.drawLine(x+_width, y, x+_width, y+totalHeight, outlinePaint)
+      canvas.drawLine(x+_width, y+totalHeight, x, y+totalHeight, outlinePaint)
+      canvas.drawLine(x, y+totalHeight, x, y, outlinePaint)
 
-      canvas.drawText(labelText, x.toInt + leftMargin, y.toInt + topMargin + fontSize)
+      canvas.drawText(labelText, x + leftMargin, y + topMargin + fontSize)
 
       buttons.foreach(button => {
-        button.y = y.toInt + buttonsY
+        button.y = y + buttonsY
         button.render(canvas)
       })
     }
@@ -153,12 +153,12 @@ trait PopupsComponent extends ButtonsComponent {
     * center the dialog in the popup with the update method. To achieve a
     * transition effect, one can override the update method.
     */
-  class DialogPopup(_width: Int, _height: Int, dialog: Dialog) extends Popup(_width, _height, dialog) {
+  class DialogPopup(_width: Float, _height: Float, dialog: Dialog) extends Popup(_width, _height, dialog) {
 
     override def update(dt: Long): Unit = {
       super.update(dt)
-      dialog.x = (width - dialog.width).toInt/2
-      dialog.y = (height - dialog.height).toInt/2
+      dialog.x = (width - dialog.width)/2
+      dialog.y = (height - dialog.height)/2
     }
 
   }

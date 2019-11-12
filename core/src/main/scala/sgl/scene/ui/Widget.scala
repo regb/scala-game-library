@@ -7,16 +7,16 @@
 //  * how to render widgets in a hierarchical user
 //  * interface.
 //  */
-//abstract class Widget(_x: Int, _y: Int) extends SceneElement(_x, _y) {
+//abstract class Widget(_x: Float, _y: Float) extends SceneElement(_x, _y) {
 //
-//  def minWidth: Int
-//  def minHeight: Int
+//  def minWidth: Float
+//  def minHeight: Float
 //
-//  def preferredWidth: Int
-//  def preferredHeight: Int
+//  def preferredWidth: Float
+//  def preferredHeight: Float
 //
-//  def maxWidth: Option[Int]
-//  def maxHeight: Option[Int]
+//  def maxWidth: Option[Float]
+//  def maxHeight: Option[Float]
 //
 //
 //}

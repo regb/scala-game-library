@@ -8,18 +8,21 @@ trait ViewportComponent {
   /** A screen view of the virtual world.
     *
     * Viewport is meant to map a virtual world into a physical screen. It
-    * essentially exports a mapping from two coordinates system. Given that
+    * essentially exports a mapping from two coordinates systems. Given that
     * it's 2D, it's a relatively straightforward mapping, but the class is
     * convenient as an abstraction of how to render the virtual world into the
     * screen, and is used by various components of the framework as a standard
-    * way to express this mapping. Typically the scene extension needs the
+    * way to express this mapping. For example, the scene extension needs the
     * notion of a viewport to properly map click events to the right
     * coordinates.
     *
     * The Viewport is constructed with the screen coordinates, screenWidth, and
     * screenHeight. In general, this should be the Window.width and
     * Window.height, but you can use the viewport for various mapping strategy
-    * so it could be something else (think split screens for example).
+    * so it could be something else (think split screens for example). The
+    * coordinates of the physical screen are discrete, since the screen is
+    * made of individual pixels. The dimensions are the number of pixels in
+    * both width and height.
     *
     * Once created, we need to set a camera, which is essentially the world
     * camera and thus define the dimensions of the world that we wish to
@@ -27,7 +30,10 @@ trait ViewportComponent {
     * camera coordinates in a virtual world (which you should maintain in your
     * game logic) and you set it to the viewport in order to be able to query
     * the coordinate mapping. If you don't set a camera, it defaults to top-left
-    * and the entire screen (1:1 mapping to the screen).
+    * and the entire screen (1:1 mapping to the screen). The camera is defined
+    * in floating point coordinates, as these are the world coordinates, and
+    * they could be arbitrary (for example, the whole world could be defined
+    * within [0,1] and the mapping to a physical viewport should do the rest).
     *
     * You can use the camera as the state of your scrolling implementation. If
     * you create a runner, and it moves horizontally all the time, you can simply
@@ -58,15 +64,22 @@ trait ViewportComponent {
     def height: Int = screenHeight
   
     // Top-left position of the camera clip.
-    private var _cameraX: Int = 0
-    private var _cameraY: Int = 0
-    private var _cameraWidth: Int = screenWidth
-    private var _cameraHeight: Int = screenHeight
-    def cameraX: Int = _cameraX
-    def cameraY: Int = _cameraY
-    def cameraWidth: Int = _cameraWidth
-    def cameraHeight: Int = _cameraHeight
-    def setCamera(x: Int, y: Int, w: Int, h: Int): Unit = {
+    private var _cameraX: Float = 0
+    private var _cameraY: Float = 0
+    private var _cameraWidth: Float = screenWidth
+    private var _cameraHeight: Float = screenHeight
+    def cameraX: Float = _cameraX
+    def cameraY: Float = _cameraY
+    def cameraWidth: Float = _cameraWidth
+    def cameraHeight: Float = _cameraHeight
+
+    /** Set the world camera.
+      *
+      * This is the camera into the world coordinates. The region
+      * defined by the camera will be mapped to the physical screen
+      * when rendering a canvas through this Viewport.
+      */
+    def setCamera(x: Float, y: Float, w: Float, h: Float): Unit = {
       _cameraX = x
       _cameraY = y
       val newDim = w != _cameraWidth || h != _cameraHeight
@@ -75,7 +88,8 @@ trait ViewportComponent {
       if(newDim) // only needs to update when the w/h changes.
         update()
     }
-    def translateCamera(dx: Int, dy: Int): Unit = {
+
+    def translateCamera(dx: Float, dy: Float): Unit = {
       _cameraX += dx
       _cameraY += dy
     }
@@ -88,12 +102,12 @@ trait ViewportComponent {
     }
 
     // How much we need to scale the world width, according to the scalingStrategy.
-    private var wRatio: Double = 1
+    private var wRatio: Float = 1
     // How much we need to scale the world height, according to the scalingStrategy.
-    private var hRatio: Double = 1
+    private var hRatio: Float = 1
 
-    private var offsetX: Int = 0
-    private var offsetY: Int = 0
+    private var offsetX: Float = 0
+    private var offsetY: Float = 0
 
     // initialize internal state properly.
     update()
@@ -104,8 +118,8 @@ trait ViewportComponent {
     // that won't need to recompute, and we anyway need these
     // parameters in the coordinates conversions as well.
     private def update(): Unit = {
-      wRatio = screenWidth/_cameraWidth.toDouble
-      hRatio = screenHeight/_cameraHeight.toDouble
+      wRatio = screenWidth/_cameraWidth
+      hRatio = screenHeight/_cameraHeight
       scalingStrategy match {
         case Stretch =>
           // Stretch simply scale in both direction, so ratios are correct.
@@ -114,21 +128,21 @@ trait ViewportComponent {
         case Fit =>
           if(wRatio < hRatio) {
             offsetX = 0
-            offsetY = ((screenHeight - wRatio*_cameraHeight)/2).toInt
+            offsetY = (screenHeight - wRatio*_cameraHeight)/2
             hRatio = wRatio
           } else {
-            offsetX = ((screenWidth - hRatio*_cameraWidth)/2).toInt
+            offsetX = (screenWidth - hRatio*_cameraWidth)/2
             offsetY = 0
             wRatio = hRatio
           }
         case Fill =>
           if(wRatio < hRatio) {
-            offsetX = (screenWidth - (hRatio*_cameraWidth).toInt)/2
+            offsetX = (screenWidth - hRatio*_cameraWidth)/2
             offsetY = 0
             wRatio = hRatio
           } else {
-            offsetX = 0.toInt
-            offsetY = (screenHeight - (wRatio*_cameraHeight).toInt)/2
+            offsetX = 0
+            offsetY = (screenHeight - wRatio*_cameraHeight)/2
             hRatio = wRatio
           }
         case Extend =>
@@ -162,7 +176,7 @@ trait ViewportComponent {
         canvas.clipRect(0, 0, screenWidth, screenHeight)
 
         if(scalingStrategy == Fit)
-          canvas.clipRect(offsetX, offsetY, (wRatio*_cameraWidth).toInt, (hRatio*_cameraHeight).toInt)
+          canvas.clipRect(offsetX, offsetY, wRatio*_cameraWidth, hRatio*_cameraHeight)
 
         canvas.translate(offsetX, offsetY)
         canvas.scale(wRatio, hRatio)
@@ -178,12 +192,12 @@ trait ViewportComponent {
       * @return The coordinates (wx,wy) in the world defined by the camera, according to
       *   the scaling strategy.
       */
-    def screenToWorld(x: Int, y: Int): (Int, Int) = {
+    def screenToWorld(x: Int, y: Int): (Float, Float) = {
       // If we support screenX and screenY, we need to document if the point is in
       // absolute screen coordinates or in local viewport screen coordinates.
       (
-       ((x - offsetX)/wRatio).toInt + _cameraX,
-       ((y - offsetY)/hRatio).toInt + _cameraY
+       (x - offsetX)/wRatio + _cameraX,
+       (y - offsetY)/hRatio + _cameraY
       )
     }
 
@@ -193,10 +207,10 @@ trait ViewportComponent {
       * @param y The y coordinate on the virtual world defined by the camera (within the camera bounds).
       * @return The coordinates (sx,sy) in the screen, according to the scaling strategy.
       */
-    def worldToScreen(x: Int, y: Int): (Int, Int) = {
+    def worldToScreen(x: Float, y: Float): (Int, Int) = {
       (
-       ((x-_cameraX)*wRatio).toInt + offsetX,
-       ((y-_cameraY)*hRatio).toInt + offsetY
+       math.round((x-_cameraX)*wRatio + offsetX).toInt,
+       math.round((y-_cameraY)*hRatio + offsetY).toInt
       )
     }
   }

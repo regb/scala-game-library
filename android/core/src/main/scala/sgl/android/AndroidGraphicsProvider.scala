@@ -114,8 +114,10 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
 
     case class AndroidCanvas(canvas: NativeCanvas) extends AbstractCanvas {
 
-      override def width: Int = canvas.getWidth
-      override def height: Int = canvas.getHeight
+      // TODO: canvas.getWidth is not in synced with canvas scale, we need to figure out
+      //       a clear definition of width/height (does it follow scaling, is it only a pixel concept?)
+      override def width: Float = canvas.getWidth
+      override def height: Float = canvas.getHeight
 
       override def withSave[A](body: => A): A = {
         canvas.save()
@@ -124,72 +126,65 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
         res
       }
 
-      def translate(x: Int, y: Int): Unit = {
-        canvas.translate(x.toFloat, y.toFloat)
+      def translate(x: Float, y: Float): Unit = {
+        canvas.translate(x, y)
       }
 
-      override def rotate(theta: Double): Unit = {
-        //not documentaed, but will assume that rotate on Android follows the same direction
-        //as AWT
+      override def rotate(theta: Float): Unit = {
+        // Not documentaed, but will assume that rotate on Android follows the same direction
+        // as AWT.
         val degrees = scala.math.toDegrees(theta)
         canvas.rotate(degrees.toFloat)
       }
 
-      override def scale(sx: Double, sy: Double): Unit = {
-        canvas.scale(sx.toFloat, sy.toFloat)
+      override def scale(sx: Float, sy: Float): Unit = {
+        canvas.scale(sx, sy)
       }
 
-      def clipRect(x: Int, y: Int, width: Int, height: Int): Unit = {
+      def clipRect(x: Float, y: Float, width: Float, height: Float): Unit = {
         canvas.clipRect(x, y, x+width, y+height)
       }
 
       private val bitmapPaint = new NativePaint
 
-      override def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit = {
+      override def drawBitmap(bitmap: Bitmap, x: Float, y: Float): Unit = {
         canvas.drawBitmap(bitmap.bitmap, x, y, bitmapPaint)
       }
 
-      override def drawBitmap(bitmap: Bitmap, x: Int, y: Int, s: Float): Unit = {
+      override def drawBitmap(bitmap: Bitmap, x: Float, y: Float, s: Float): Unit = {
         val src = new AndroidRect(0, 0, bitmap.width, bitmap.height)
-        val dst = new AndroidRect(x, y, x + (s*bitmap.width).toInt, y + (s*bitmap.height).toInt)
+        val dst = new RectF(x, y, x + s*bitmap.width, y + s*bitmap.height)
         canvas.drawBitmap(bitmap.bitmap, src, dst, bitmapPaint)
       }
       
-      override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f, alpha: Float = 1f): Unit = {
+      override def drawBitmap(bitmap: Bitmap, dx: Float, dy: Float, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f, alpha: Float = 1f): Unit = {
         // Save and restore alpha to avoid allocating a fresh bitmap paint here.
         val prevAlpha = bitmapPaint.getAlpha
         bitmapPaint.setAlpha((alpha*255).toInt)
         val src = new AndroidRect(sx, sy, sx+width, sy+height)
-        val dst = new AndroidRect(dx, dy, dx + (s*width).toInt, dy + (s*height).toInt)
+        val dst = new RectF(dx, dy, dx + s*width, dy + s*height)
         canvas.drawBitmap(bitmap.bitmap, src, dst, bitmapPaint)
         bitmapPaint.setAlpha(prevAlpha)
       }
 
-
-      override def drawRect(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {
+      override def drawRect(x: Float, y: Float, width: Float, height: Float, paint: Paint): Unit = {
         canvas.drawRect(x, y, x+width, y+height, paint.toAndroid)
       }
 
-      //override def drawRoundRect(x: Int, y: Int, width: Int, height: Int, rx: Float, ry: Float, paint: Paint): Unit = {
-      //  //only API level 21. Would be nice to have a separate trait to mix in with requirements from a higher API. Probably as a separate library as well
-      //  //canvas.drawRoundRect(x, y, x+width, y+height, rx, ry, paint.toAndroid)
-      //  ???
-      //}
-
-      override def drawOval(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {
+      override def drawOval(x: Float, y: Float, width: Float, height: Float, paint: Paint): Unit = {
         val rect = new RectF(x-width/2, y-height/2, x+width/2, y+height/2)
         canvas.drawOval(rect, paint.toAndroid)
       }
-      override def drawLine(x1: Int, y1: Int, x2: Int, y2: Int, paint: Paint): Unit = {
+      override def drawLine(x1: Float, y1: Float, x2: Float, y2: Float, paint: Paint): Unit = {
         canvas.drawLine(x1, y1, x2, y2, paint.toAndroid)
       }
 
 
-      override def drawString(str: String, x: Int, y: Int, paint: Paint): Unit = {
+      override def drawString(str: String, x: Float, y: Float, paint: Paint): Unit = {
         canvas.drawText(str, x, y, paint.toAndroid)
       }
 
-      override def drawText(text: TextLayout, x: Int, y: Int): Unit = {
+      override def drawText(text: TextLayout, x: Float, y: Float): Unit = {
         text.draw(canvas, x, y)
       }
 
@@ -198,7 +193,8 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
       }
 
 
-      override def clearRect(x: Int, y: Int, width: Int, height: Int): Unit = {
+      // TODO: implement this.
+      override def clearRect(x: Float, y: Float, width: Float, height: Float): Unit = {
         ()
         //val paint = new NativePaint
         //paint.setColor(NativeColor.BLACK)
@@ -224,7 +220,7 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
 
       def height = messageLayout.getHeight
 
-      def draw(canvas: NativeCanvas, x: Int, y: Int): Unit = {
+      def draw(canvas: NativeCanvas, x: Float, y: Float): Unit = {
         canvas.save()
         canvas.translate(x, y + textPaint.ascent)
         messageLayout.draw(canvas)

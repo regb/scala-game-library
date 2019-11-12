@@ -88,7 +88,7 @@ trait MainScreenComponent {
     }
 
     def drawSquare(canvas: Canvas, point: Point, paint: Paint) = {
-      canvas.drawRect(point.x.toInt * squareSize, point.y.toInt * squareSize, squareSize, squareSize, paint)
+      canvas.drawRect(point.x * squareSize, point.y * squareSize, squareSize, squareSize, paint)
     }
 
     def drawSnake(canvas: Canvas): Unit = {

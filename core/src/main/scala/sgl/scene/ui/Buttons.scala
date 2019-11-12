@@ -7,7 +7,7 @@ trait ButtonsComponent {
 
   import Graphics._
 
-  abstract class Button(_x: Float, _y: Float, _width: Int, _height: Int)
+  abstract class Button(_x: Float, _y: Float, _width: Float, _height: Float)
     extends SceneNode(_x, _y, _width, _height) {
 
     private var pressed: Boolean = false
@@ -24,14 +24,14 @@ trait ButtonsComponent {
         renderRegular(canvas)
     }
 
-    override def notifyDown(x: Int, y: Int): Boolean = {
+    override def notifyDown(x: Float, y: Float): Boolean = {
       pressed = true
       true
     }
     override def notifyPointerLeave(): Unit = {
       pressed = false
     }
-    override def notifyUp(x: Int, y: Int): Boolean = {
+    override def notifyUp(x: Float, y: Float): Boolean = {
       pressed = false
       true
     }
@@ -42,10 +42,10 @@ trait ButtonsComponent {
     extends Button(_x, _y, regularBitmap.width, regularBitmap.height) {
 
     override def renderPressed(canvas: Canvas): Unit =
-      canvas.drawBitmap(pressedBitmap, x.toInt, y.toInt)
+      canvas.drawBitmap(pressedBitmap, x, y)
 
     override def renderRegular(canvas: Canvas): Unit =
-      canvas.drawBitmap(regularBitmap, x.toInt, y.toInt)
+      canvas.drawBitmap(regularBitmap, x, y)
   }
 
   // Seems like we could use some general theme object, which provide the
@@ -64,17 +64,17 @@ trait ButtonsComponent {
     val fillPaint = defaultPaint.withColor(fillColor)
     val textPaint = defaultPaint.withColor(textColor)
 
-    def drawBox(canvas: Canvas, x: Int, y: Int, width: Int, height: Int): Unit = {
+    def drawBox(canvas: Canvas, x: Float, y: Float, width: Float, height: Float): Unit = {
       canvas.drawRect(x, y, width, height, fillPaint)
       canvas.drawLine(x, y, x+width, y, borderPaint)
-      canvas.drawLine(x+width, y, x+width, y.toInt+height, borderPaint)
+      canvas.drawLine(x+width, y, x+width, y+height, borderPaint)
       canvas.drawLine(x+width, y+height, x, y+height, borderPaint)
       canvas.drawLine(x, y+height, x, y, borderPaint)
     }
 
   }
 
-  class TextButton(_x: Int, _y: Int, _width: Int, _height: Int, label: String, regularTheme: ButtonTheme, pressedTheme: ButtonTheme)
+  class TextButton(_x: Float, _y: Float, _width: Float, _height: Float, label: String, regularTheme: ButtonTheme, pressedTheme: ButtonTheme)
     extends Button(_x, _y, _width, _height) {
 
     // The verticalPadding is there to handle the location where we should draw
@@ -90,13 +90,13 @@ trait ButtonsComponent {
     val pressedTextPaint = defaultPaint.withColor(pressedTheme.textColor).withFont(pressedTheme.textFont).withAlignment(Alignments.Center)
 
     override def renderPressed(canvas: Canvas): Unit = {
-      pressedTheme.drawBox(canvas, x.toInt, y.toInt, _width, _height)
-      canvas.drawString(label, x.toInt + width.toInt/2, y.toInt + height.toInt - verticalPadding, pressedTextPaint)
+      pressedTheme.drawBox(canvas, x, y, _width, _height)
+      canvas.drawString(label, x + width/2, y + height - verticalPadding, pressedTextPaint)
     }
 
     override def renderRegular(canvas: Canvas): Unit = {
-      regularTheme.drawBox(canvas, x.toInt, y.toInt, _width, _height)
-      canvas.drawString(label, x.toInt + width.toInt/2, y.toInt + height.toInt - verticalPadding, regularTextPaint)
+      regularTheme.drawBox(canvas, x, y, _width, _height)
+      canvas.drawString(label, x + width/2, y + height - verticalPadding, regularTextPaint)
     }
 
   }

@@ -4,9 +4,9 @@ package awt
 import sgl.util._
 import awt.util._
 
-import java.awt.{Image, Graphics, Graphics2D, Color, AlphaComposite}
+import java.awt.{FontMetrics, Image, Graphics, Graphics2D, Color, AlphaComposite}
+import java.awt.geom.{Rectangle2D, Ellipse2D, Line2D, AffineTransform}
 import javax.imageio.ImageIO
-import java.awt.FontMetrics
 
 trait AWTGraphicsProvider extends GraphicsProvider {
   this: AWTWindowProvider with AWTSystemProvider =>
@@ -100,7 +100,7 @@ trait AWTGraphicsProvider extends GraphicsProvider {
     type Paint = AWTPaint
     override def defaultPaint: Paint = AWTPaint(Font.Default, Color.Black, Alignments.Left)
 
-    case class AWTCanvas(var graphics: Graphics2D, var width: Int, var height: Int) extends AbstractCanvas {
+    case class AWTCanvas(var graphics: Graphics2D, var width: Float, var height: Float) extends AbstractCanvas {
 
       override def withSave[A](body: => A): A = {
         // Save current state.
@@ -119,52 +119,57 @@ trait AWTGraphicsProvider extends GraphicsProvider {
         res
       }
 
-      override def translate(x: Int, y: Int): Unit = {
+      override def translate(x: Float, y: Float): Unit = {
         //using .toDouble is important as there is a Graphics2D method on Int, but it does not
         //modify the current translation and instead set absolute x and y positions
-        graphics.translate(x.toDouble, y.toDouble)
+        graphics.translate(x, y)
       }
 
-      override def rotate(theta: Double): Unit = {
-        //graphics.rotate states that rotating with a positive angle theta rotates points
-        //on the positive x axis toward the positive y axis
+      override def rotate(theta: Float): Unit = {
+        // graphics.rotate states that rotating with a positive angle theta (in
+        // radians) rotates points on the positive x axis toward the positive y
+        // axis.
         graphics.rotate(theta)
       }
 
-      override def scale(sx: Double, sy: Double): Unit = {
+      override def scale(sx: Float, sy: Float): Unit = {
         graphics.scale(sx, sy)
         // Scaling means that drawing will be scaled up, it has the inverse
         // effect on the visible width/height of the canvas (they are scaled
         // down by the same factors).
-        this.width = (width/sx).toInt
-        this.height = (height/sy).toInt
+        this.width = width/sx
+        this.height = height/sy
       }
 
-      override def clipRect(x: Int, y: Int, width: Int, height: Int): Unit = {
-        graphics.clipRect(x, y, width, height)
+      override def clipRect(x: Float, y: Float, width: Float, height: Float): Unit = {
+        graphics.clip(new Rectangle2D.Float(x, y, width, height))
         // According to doc of clipRect, we don't want to change the width/height on clipping.
         // Not sure all the backends are respecting that though?
       }
 
-      override def drawBitmap(bitmap: Bitmap, x: Int, y: Int): Unit = {
-        graphics.drawImage(bitmap.img, x, y, null)
-      }
-      override def drawBitmap(bitmap: Bitmap, x: Int, y: Int, s: Float): Unit = {
-        graphics.drawImage(bitmap.img, x, y, x + (s*bitmap.width).toInt, y + (s*bitmap.height).toInt, 0, 0, bitmap.width, bitmap.height, null)
-      }
-      override def drawBitmap(bitmap: Bitmap, dx: Int, dy: Int, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f, alpha: Float = 1f): Unit = {
+      override def drawBitmap(bitmap: Bitmap, dx: Float, dy: Float, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f, alpha: Float = 1f): Unit = {
         val ac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha)
         graphics.setComposite(ac)
-        graphics.drawImage(bitmap.img, dx, dy, dx + (s*width).toInt, dy + (s*height).toInt, sx, sy, sx + width, sy + height, null)
+        
+        // Save the current clip, before setting the clip for the draw area.
+        val c = graphics.getClip
+        graphics.clip(new Rectangle2D.Float(dx, dy, width*s, height*s))
 
-        // Reset default ac.
+        val at = new AffineTransform
+        at.translate(dx - sx, dy - sy)
+        at.scale(s, s)
+        graphics.drawImage(bitmap.img, at, null)
+        
+        graphics.setClip(c)
+
+        // Reset default alpha composite.
         val dac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f)
         graphics.setComposite(dac)
       }
 
-      override def drawRect(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {
+      override def drawRect(x: Float, y: Float, width: Float, height: Float, paint: Paint): Unit = {
         graphics.setColor(paint.color)
-        graphics.fillRect(x, y, width, height)
+        graphics.fill(new Rectangle2D.Float(x, y, width, height))
       }
 
       //override def drawRoundRect(x: Int, y: Int, width: Int, height: Int, rx: Float, ry: Float, paint: Paint): Unit = {
@@ -172,16 +177,17 @@ trait AWTGraphicsProvider extends GraphicsProvider {
       //  graphics.fillRoundRect(x, y, width, height, (rx*2).toInt, (ry*2).toInt)
       //}
 
-      override def drawOval(x: Int, y: Int, width: Int, height: Int, paint: Paint): Unit = {
+      override def drawOval(x: Float, y: Float, width: Float, height: Float, paint: Paint): Unit = {
         graphics.setColor(paint.color)
-        graphics.fillOval(x-width/2, y-height/2, width, height)
-      }
-      override def drawLine(x1: Int, y1: Int, x2: Int, y2: Int, paint: Paint): Unit = {
-        graphics.setColor(paint.color)
-        graphics.drawLine(x1, y1, x2, y2)
+        graphics.fill(new Ellipse2D.Float(x-width/2, y-height/2, width, height))
       }
 
-      override def drawString(str: String, x: Int, y: Int, paint: Paint): Unit = {
+      override def drawLine(x1: Float, y1: Float, x2: Float, y2: Float, paint: Paint): Unit = {
+        graphics.setColor(paint.color)
+        graphics.draw(new Line2D.Float(x1, y1, x2, y2))
+      }
+
+      override def drawString(str: String, x: Float, y: Float, paint: Paint): Unit = {
         graphics.setColor(paint.color)
         graphics.setFont(paint.font.f)
         paint.alignment match {
@@ -194,19 +200,19 @@ trait AWTGraphicsProvider extends GraphicsProvider {
         }
       }
 
-      private def drawCenteredString(str: String, x: Int, y: Int, paint: Paint) {
+      private def drawCenteredString(str: String, x: Float, y: Float, paint: Paint) {
         val metrics = graphics.getFontMetrics
         val realX = x - metrics.stringWidth(str)/2
         //val y = ((rect.height - metrics.getHeight()) / 2) - metrics.getAscent();
         graphics.drawString(str, realX, y)
       }
-      private def drawRightAlignedString(str: String, x: Int, y: Int, paint: Paint) {
+      private def drawRightAlignedString(str: String, x: Float, y: Float, paint: Paint) {
         val metrics = graphics.getFontMetrics
         val realX = x - metrics.stringWidth(str)
         graphics.drawString(str, realX, y)
       }
 
-      override def drawText(text: TextLayout, x: Int, y: Int): Unit = {
+      override def drawText(text: TextLayout, x: Float, y: Float): Unit = {
         graphics.setColor(text.paint.color)
         graphics.setFont(text.paint.font.f)
         text.draw(graphics, x, y)
@@ -214,12 +220,13 @@ trait AWTGraphicsProvider extends GraphicsProvider {
 
       override def drawColor(color: Color): Unit = {
         graphics.setColor(color)
-        graphics.fillRect(0, 0, width, height)
+        graphics.fill(new Rectangle2D.Float(0, 0, width, height))
       }
 
 
-      override def clearRect(x: Int, y: Int, width: Int, height: Int): Unit = {
-        graphics.clearRect(x, y, width, height)
+      override def clearRect(x: Float, y: Float, width: Float, height: Float): Unit = {
+        graphics.setColor(Color.Black)
+        graphics.fill(new Rectangle2D.Float(x, y, width, height))
       }
 
       override def renderText(text: String, width: Int, paint: Paint): TextLayout = {
@@ -264,7 +271,7 @@ trait AWTGraphicsProvider extends GraphicsProvider {
 
       override val height: Int = rows.size * lineHeight
 
-      def draw(g: Graphics2D, x: Int, y: Int): Unit = {
+      def draw(g: Graphics2D, x: Float, y: Float): Unit = {
         var startY = y
         rows.foreach(line => {
           g.drawString(line, x, startY)
