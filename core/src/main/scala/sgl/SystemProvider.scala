@@ -115,24 +115,31 @@ trait SystemProvider {
   val System: System
 
   trait AbstractResourcePath {
-
-    /** compose the path with a file
+    /** Compose the path with a file/directory.
       *
       * The argument can be either a directory or a file. Chain
       * multiple / together to build a complete path.
       *
-      * This is supposed to be the only way to build a path, ensuring
-      * that the final path is build appropriately for the current
-      * platform. You should not include '/' character in your filename,
-      * as it is quite risky and will depend on the exact implementation
-      * of the path. Never do {{{ path / "foo/bar" }}} but instead do
-      * {{{ path / "foo" / "bar" }}}.
+      * This is supposed to be the only way to build a path, ensuring that the
+      * final path is build appropriately for the current platform. You should
+      * not build your path with '/' characters in your filename.
+      *
+      * However, if the filename that you provide contains '/', the
+      * implementation will consider them as equivalent separators to what you
+      * would get by calling the method with the independent parts.
+      * Essentially, if you call {{{ path / "foo/bar" }}}, then the
+      * implementation will do the equivalent of {{{ path / "foo" / "bar" }}}.
+      *
+      * This method also make a canonical version of the path, by interpreting
+      * "." as the current directory (just disregarding it), and ".." as the
+      * previous directory (cancelling the previous one, or none if still at
+      * the root). So {{{ "a" / "." / "b" / .. / "c" }}} will produce the same
+      * output as {{{ "a" / "c" }}}.
       */
     def / (filename: String): ResourcePath
-
   }
 
-  /** A path to access a resource in the system
+  /** A path to access a resource in the system.
     *
     * This abstracts the way to reference to a resource in the current
     * system. It is not necessarly a path in the filesystem, as it could
@@ -162,17 +169,12 @@ trait SystemProvider {
     */
   type ResourcePath <: AbstractResourcePath
 
-  /** The root prefix for all resources
+  /** The root path for all resources.
     *
     * This provides the base ResourcePath on
     * which to build ResourcePath for each resource.
     */
-  val ResourcesPrefix: ResourcePath
-  //indeed, ResourcePath without a 's' as this is the path to ONE resource. But
-  //the root prefix is ResourcesPrefix, as it is the prefix of ALL resources.
-
-  /* TODO: Why not root  instead of prefix? */
-  def ResourcesRoot: ResourcePath = ResourcesPrefix
+  val ResourcesRoot: ResourcePath
 
   case class ResourceNotFoundException(path: ResourcePath) extends Exception("Resource " + path.toString + " not found")
 
@@ -194,4 +196,39 @@ trait SystemProvider {
   //TODO: alternative is to provide a conversion from resource to wrapper with the / method
   //TODO: how to allow ResourcePath to be = String while still providing the '/' method ?
   //implicit def wrapResourcePath(resourcePath: System.ResourcePath): System.AbstractResourcePath
+}
+
+
+/** A cross-platform default provider for the ResourcePath.
+  *
+  * This is a simple, parts-based implementation of a ResourcePath. This is likely
+  * good enough for all platforms, but we still leave the abstraction in the
+  * SystemProvider and let each backend decide if they want to use this default
+  * or if they want to roll their own.
+  */
+trait PartsResourcePathProvider {
+  this: SystemProvider =>
+
+  case class PartsResourcePath(parts: Vector[String]) extends AbstractResourcePath {
+
+    def path: String = parts.mkString("/")
+
+    def / (filename: String): ResourcePath = {
+      val subparts = filename.split("/")
+      this / subparts
+    }
+
+    def / (subparts: Seq[String]): ResourcePath = if(subparts.isEmpty) this else {
+      val r = subparts.head match {
+        case "." => this
+        case ".." => PartsResourcePath(if(parts.isEmpty) parts else parts.init)
+        case file => {
+          PartsResourcePath(parts :+ file)
+        }
+      }
+      r / subparts.tail
+    }
+  }
+  type ResourcePath = PartsResourcePath
+  override val ResourcesRoot = PartsResourcePath(Vector())
 }

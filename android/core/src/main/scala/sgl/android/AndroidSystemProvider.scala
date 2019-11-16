@@ -11,7 +11,7 @@ import java.net.URI
 
 import scala.concurrent.ExecutionContext
 
-trait AndroidSystemProvider extends SystemProvider {
+trait AndroidSystemProvider extends SystemProvider with PartsResourcePathProvider {
   self: AndroidWindowProvider with Activity =>
 
   object AndroidSystem extends System {
@@ -68,14 +68,6 @@ trait AndroidSystemProvider extends SystemProvider {
 
   }
   val System = AndroidSystem
-
-  case class StringPath(path: String) extends AbstractResourcePath {
-    override def / (filename: String): ResourcePath =
-      if(this == ResourcesPrefix) StringPath(filename) else StringPath(path + "/" + filename)
-  }
-  type ResourcePath = StringPath
-
-  override val ResourcesPrefix: ResourcePath = StringPath("")
 
   //Centralize the execution context used for asynchronous tasks in the Desktop backend
   //Could be overriden at wiring time

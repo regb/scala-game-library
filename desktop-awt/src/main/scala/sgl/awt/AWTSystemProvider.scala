@@ -9,7 +9,7 @@ import java.io.File
 
 import scala.concurrent.ExecutionContext
 
-trait AWTSystemProvider extends SystemProvider {
+trait AWTSystemProvider extends SystemProvider with PartsResourcePathProvider {
 
   object AWT5System extends System {
 
@@ -63,16 +63,6 @@ trait AWTSystemProvider extends SystemProvider {
 
   }
   val System = AWT5System
-
-  case class StringPath(path: String) extends AbstractResourcePath {
-    //We don't use java.io.File.separator for the "/" separator, as
-    //resource path must always use "/", even on Windows
-    override def / (filename: String): ResourcePath =
-      if(this == ResourcesPrefix) StringPath(filename) else StringPath(path + "/" + filename)
-  }
-  type ResourcePath = StringPath
-
-  override val ResourcesPrefix: ResourcePath = StringPath("")
 
   /** Control whether resources can be provided dynamically.
     *

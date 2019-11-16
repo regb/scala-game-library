@@ -10,7 +10,7 @@ import scala.concurrent.ExecutionContext
 
 import scala.language.implicitConversions
 
-trait NativeSystemProvider extends SystemProvider {
+trait NativeSystemProvider extends SystemProvider with PartsResourcePathProvider {
 
   object NativeSystem extends System {
 
@@ -40,10 +40,9 @@ trait NativeSystemProvider extends SystemProvider {
 
   override val System = NativeSystem
 
-  case class StringPath(path: String) extends AbstractResourcePath {
-    override def /(filename: String): ResourcePath = StringPath(path + "/" + filename)
-  }
-  type ResourcePath = StringPath
-  val ResourcesPrefix: ResourcePath = StringPath("assets")
+  // TODO: This is not really a root as we start with a first part ("assets"). We
+  // should instead add the assets prefix at the time when we convert the parts to
+  // a path. For now, it's a fine hack to get something working though.
+  override val ResourcesRoot: ResourcePath = PartsResourcePath(Vector("assets"))
 
 }

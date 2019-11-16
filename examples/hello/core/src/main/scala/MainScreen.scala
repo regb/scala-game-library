@@ -31,14 +31,14 @@ trait MainScreenComponent extends ViewportComponent {
 
     override def update(dt: Long): Unit = {
       if(characterBitmapLoader == null) {
-        characterBitmapLoader = Graphics.loadImage(ResourcesPrefix / "drawable" / "character.png")
+        characterBitmapLoader = Graphics.loadImage(ResourcesRoot / "drawable" / "character.png")
       }
       if(musicLoader == null) {
-        //musicLoader = Audio.loadMusic(ResourcesPrefix / "audio" / "music.wav")
-        musicLoader = Audio.loadMusic(ResourcesPrefix / "audio" / "music.ogg")
+        //musicLoader = Audio.loadMusic(ResourcesRoot / "audio" / "music.wav")
+        musicLoader = Audio.loadMusic(ResourcesRoot / "audio" / "music.ogg")
       }
       if(beepLoader == null) {
-        beepLoader = Audio.loadSound(ResourcesPrefix / "audio" / "beep.wav")
+        beepLoader = Audio.loadSound(ResourcesRoot / "audio" / "beep.wav")
       }
       if(characterBitmapLoader.isLoaded && musicLoader.isLoaded && beepLoader.isLoaded) {
         characterBitmap = Some(characterBitmapLoader.value.get.get)

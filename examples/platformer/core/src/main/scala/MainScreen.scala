@@ -20,8 +20,8 @@ trait MainScreenComponent extends ViewportComponent {
 
     override def name: String = "platformer-screen"
 
-    val levelLoader: Loader[TiledMap] = System.loadText(ResourcesPrefix / "levels" / "level.json").map(lvl => TmxJsonParser.parse(lvl.iterator))
-    val tiledMapRendererLoader: Loader[TiledMapRenderer] = levelLoader.flatMap(lvl => TiledMapRenderer.load(lvl))
+    val levelLoader: Loader[TiledMap] = System.loadText(ResourcesRoot / "levels" / "level.json").map(lvl => TmxJsonParser.parse(lvl.iterator))
+    val tiledMapRendererLoader: Loader[TiledMapRenderer] = levelLoader.flatMap(lvl => TiledMapRenderer.load(lvl, ResourcesRoot / "levels"))
     addPreloading(levelLoader)
     addPreloading(tiledMapRendererLoader)
 

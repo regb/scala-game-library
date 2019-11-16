@@ -9,7 +9,7 @@ import js.typedarray.{ArrayBuffer, TypedArrayBuffer}
 
 import sgl.util._
 
-trait Html5SystemProvider extends SystemProvider {
+trait Html5SystemProvider extends SystemProvider with PartsResourcePathProvider {
 
   object Html5System extends System {
 
@@ -68,11 +68,5 @@ trait Html5SystemProvider extends SystemProvider {
 
   }
   val System = Html5System
-
-  case class StringPath(path: String) extends AbstractResourcePath {
-    override def / (filename: String): ResourcePath = StringPath(path + "/" + filename)
-  }
-  type ResourcePath = StringPath
-  val ResourcesPrefix: ResourcePath = StringPath("")
 
 }

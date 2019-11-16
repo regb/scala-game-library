@@ -10,8 +10,19 @@ trait TiledMapRendererComponent {
 
   object TiledMapRenderer {
 
-    def load(tiledMap: TiledMap, root: ResourcePath = ResourcesPrefix): Loader[TiledMapRenderer] = {
+    /** Prepare a TiledMapRenderer.
+      *
+      * This loads the TiledMap by loading all the tilesets bitmaps. The
+      * tilesets are loaded assuming the provided root directory. Typically,
+      * the root directory will be the prefix path to the tiled map file,
+      * because that's most likely from where the tiled editor will have set
+      * the relative path reference to the tilesets in the TiledMap encoding.
+      */
+    def load(tiledMap: TiledMap, root: ResourcePath): Loader[TiledMapRenderer] = {
       val tilesetsBitmaps: Vector[Loader[Graphics.Bitmap]] = tiledMap.tileSets.map(ts =>
+        // We can combine the image with / because the method handles '/' in the filename.
+        // Note that this is only true if the TIledMap format uses '/' for separators, as
+        // no other separators are accepted by the ResourcePath method /.
         Graphics.loadImage(root / ts.image)
       )
       Loader.combine(tilesetsBitmaps).map(imgs => {

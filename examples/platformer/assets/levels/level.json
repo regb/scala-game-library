@@ -77,7 +77,7 @@
         {
          "columns":5,
          "firstgid":1,
-         "image":"drawable\/tileset.png",
+         "image":"..\/drawable\/tileset.png",
          "imageheight":188,
          "imagewidth":188,
          "margin":10,
