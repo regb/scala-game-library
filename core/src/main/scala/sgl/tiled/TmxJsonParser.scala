@@ -20,7 +20,7 @@ trait TmxJsonParserComponent {
       val AsInt(height) = json \ "height"
       val AsInt(tileWidth) = json \ "tilewidth"
       val AsInt(tileHeight) = json \ "tileheight"
-  
+
       val orientation: Orientation = (json \ "orientation") match {
         case JString("orthogonal") => Orthogonal
         case JString("isometric") => Isometric
@@ -81,20 +81,26 @@ trait TmxJsonParserComponent {
           assert(layerWidth == width)
           assert(layerHeight == height)
   
+          // The data is a single array of indices, for each tile the index is
+          // which bitmap to use from the tileset (or 0 if none). The tiles are
+          // represented row by row, from left to right, from top to bottom. That
+          // is, the first N elements are the topmost row of tiles, the next N
+          // elements are the second row of tiles, and so on.
           val JArray(data) = layer \ "data"
           var rawTiles: List[Int] = data.collect{ case AsInt(i) => i.toInt }
   
+          // We represent the tiles as an array of rows, from top to bottom.
           val rows = new Array[Array[Int]](height.toInt)
           var r = 0
           while(r < rows.length) {
-            val col = new Array[Int](width.toInt)
+            val row = new Array[Int](width.toInt)
             var c = 0
-            while(c < col.length) {
-              col(c) = rawTiles.head
+            while(c < row.length) {
+              row(c) = rawTiles.head
               rawTiles = rawTiles.tail
               c += 1
             }
-            rows(r) = col
+            rows(r) = row
             r += 1
           }
   

@@ -278,6 +278,37 @@ lazy val menuDesktopAWT = (project in file("./examples/menu/desktop-awt"))
   )
   .dependsOn(coreJVM, desktopAWT, menuCoreJVM)
 
+lazy val platformerCommonSettings = Seq(
+  version        := "1.0",
+  scalaVersion   := scalaVer,
+  scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
+)
+
+lazy val platformerCore = (crossProject(JSPlatform, JVMPlatform, NativePlatform).crossType(CrossType.Pure) in file("./examples/platformer/core"))
+  .settings(snakeCommonSettings: _*)
+  .settings(noPublishSettings: _*)
+  .settings(name := "platformer-core")
+  .nativeSettings(scalaVersion := scalaNativeVer)
+  .jvmConfigure(_.dependsOn(coreJVM))
+  .jsConfigure(_.dependsOn(coreJS))
+  .nativeConfigure(_.dependsOn(coreNative))
+
+lazy val platformerCoreJVM = platformerCore.jvm
+lazy val platformerCoreJS = platformerCore.js
+lazy val platformerCoreNative = platformerCore.native
+
+lazy val platformerAssets = file("./examples/platformer/assets")
+
+lazy val platformerDesktopAWT = (project in file("./examples/platformer/desktop-awt"))
+  .settings(snakeCommonSettings: _*)
+  .settings(noPublishSettings: _*)
+  .settings(
+    name        := "platformer-desktop-awt",
+    unmanagedResourceDirectories in Compile := Seq(platformerAssets),
+    fork in run := true
+  )
+  .dependsOn(coreJVM, desktopAWT, platformerCoreJVM)
+
 lazy val OS = sys.props("os.name").toLowerCase
 lazy val LinuxName = "Linux"
 lazy val MacName = "Mac OS X"

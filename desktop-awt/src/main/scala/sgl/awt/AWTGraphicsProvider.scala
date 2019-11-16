@@ -172,11 +172,6 @@ trait AWTGraphicsProvider extends GraphicsProvider {
         graphics.fill(new Rectangle2D.Float(x, y, width, height))
       }
 
-      //override def drawRoundRect(x: Int, y: Int, width: Int, height: Int, rx: Float, ry: Float, paint: Paint): Unit = {
-      //  graphics.setColor(paint.color)
-      //  graphics.fillRoundRect(x, y, width, height, (rx*2).toInt, (ry*2).toInt)
-      //}
-
       override def drawOval(x: Float, y: Float, width: Float, height: Float, paint: Paint): Unit = {
         graphics.setColor(paint.color)
         graphics.fill(new Ellipse2D.Float(x-width/2, y-height/2, width, height))

@@ -3,29 +3,46 @@ package tiled
 
 import geometry._
 
-/** A typesafe representation of a TMX map
+/** A typesafe representation of a TMX map.
   *
   * The role of this is to provide a lightweight Scala abstraction
   * on top of the TMX file format for tile maps (from the tiled editor).
   * It adds only a few convenient methods to manipulate the tilemap, and
   * mostly focus on mapping the representation of a tmx map to a typesafe
-  * that is easily useable from Scala. Other methods such as renderer can
-  * then be built on top.
+  * representation that is easily useable from Scala. Other methods such as
+  * renderer can then be built on top.
   *
   * The point is not to abstract away low level information from tmx (that is
   * something that could be done with a Map interface somewhere else), but just
   * to provide a parser from textual representation to a Scala structure.
   */
 case class TiledMap(
-  //layers are ordered with first layer as the bottom one
+
+  /** The stack of layers.
+    *
+    * The first layer on the list is the bottommost one. They
+    * are in the order in which they should be rendered.
+    *
+    * The order might be slightly counter-intuitive, as we typically
+    * think of them as a stack of layers, but it actually follows
+    * the internal JSON representation that Tiled used for serializing
+    * the map.
+    */
   layers: Vector[Layer],
+
   tileSets: Vector[TileSet],
-  //width of a tile, in pixels
+
+  /** Width of a tile, in pixels. */
   tileWidth: Int,
-  //height of a tile, in pixels
+  /** Height of a tile, in pixels. */
   tileHeight: Int,
-  //in (R, G, B, A)
+
+  /** An optional background color for the whole map.
+    *
+    * In (R, G, B, A) format, with each value from 0-255.
+    */
   backgroundColor: Option[(Int, Int, Int, Int)],
+
   nextObjectId: Int,
   orientation: Orientation,
   renderOrder: RenderOrder,
@@ -88,11 +105,6 @@ case class TiledMap(
   }
 
 }
-// object TiledMap {
-//   def fromJson(lines: Iterator[String]): TiledMap = fromJson(lines.toList.mkString("\n"))
-//   def fromJson(rawJson: String): TiledMap = TmxJsonParser.parse(rawJson)
-// }
-
 
 abstract sealed trait Layer {
   val name: String
@@ -100,7 +112,7 @@ abstract sealed trait Layer {
   val isVisible: Boolean
   val opacity: Double
 
-  /** offset used when rendering the layer
+  /** offset used when rendering the layer.
     *
     * Can be useful for example with stack of layers
     * to give some depth illusion.
@@ -108,6 +120,11 @@ abstract sealed trait Layer {
   val offsetX: Int
   val offsetY: Int
 }
+
+/** A Layer containing a matrix of tiles.
+  *
+  * 
+  */
 case class TileLayer(
   name: String, tiles: Array[Array[Tile]],
   isVisible: Boolean, opacity: Double,
@@ -181,16 +198,20 @@ case class ObjectLayer(
   * from one of the tileset. Since each tileset has a different firstGlobalId,
   * the index uniquely identify a tileset and a tile data. A None index means
   * transparent tile (or nothing).
+  *
+  * The coordinate (x,y) are the position of the top-left pixel of the tile, in
+  * the layer that contains it.
   */
 case class Tile(index: Option[Int], x: Int, y: Int, width: Int, height: Int) {
-  def rect: Rect = Rect(x, y, width, height)
+  val rect: Rect = Rect(x, y, width, height)
 }
+
 case class TiledMapObject(
   name: String,
   x: Int, y: Int, width: Int, height: Int,
   properties: Map[String, String])
 
-/** A reprsentation of a tileset
+/** A representation of a tileset.
   *
   * tileHeight and tileWidth can be different from the map standard
   * tile dimensions. For example, if the tileset are 64x64 while the
@@ -200,36 +221,58 @@ case class TiledMapObject(
   *
   * image is a path relative to the location of the level, so it is
   * predictable from a classpath.
+  *
+  * The margin/spacing help specify where the tiles are located in the tileset,
+  * the rest of the pixels will be ignored by the rendering system.
   */
 case class TileSet(
   firstGlobalId: Int, name: String,
   tileCount: Int, nbColumns: Int,
   tileHeight: Int, tileWidth: Int,
-  margin: Int, spacing: Int,
+  /** The outside margin of the tileset.
+    *
+    * This is the space between the edge of the bitmap and the first
+    * tiles. It's all four direction, top, left, bottom, right. The
+    * content of these pixels will be ignored.
+    */
+  margin: Int,
+  /** The number of pixels between each tile.
+    *
+    * This is the space between any two adjacent tiles (horizontal and vertical).
+    * Typically these pixels will be transparent and should be ignored. This
+    * space can help fight against weird artifact (anti-aliasing?) effect when
+    * drawing tiles from a tileset when pixels are next to each other, sometimes
+    * the rendering system will use the neighbour pixel and it will lead to
+    * weird visual artifact. This can happen depending on the scaling factor, but
+    * adding some transparent pixels as space should protect against that effect.
+    */
+  spacing: Int,
   image: String) {
 
 
+  /** Return the top-left pixel location of the tile in the tileset. */
   def tileCoordinates(gid: Int): (Int, Int) = {
     require(gid >= firstGlobalId && gid < firstGlobalId+tileCount)
     val offset = gid - firstGlobalId
     val row = offset / nbColumns
     val col = offset % nbColumns
-    (col*tileWidth, row*tileHeight)
+    (margin + (col*spacing) + col*tileWidth, margin + (row*spacing) + row*tileHeight)
   }
 
-  //we need to get the bottom-left coordinates, as drawing tiles
-  //should expand to the top-right
+  /** Return the bottom-left pixel location of the tile in the tileset.
+    *
+    * Knowing the bottom coordinates can be useful because if the tileset
+    * tileWidth/tileHeight are larger than the tiles in the map, the rendering
+    * should expan top-right and not bottom-right.
+    **/
   def tileBottomLeft(gid: Int): (Int, Int) = {
-    require(gid >= firstGlobalId && gid < firstGlobalId+tileCount)
-    val offset = gid - firstGlobalId
-    val row = offset / nbColumns
-    val col = offset % nbColumns
-    (col*tileWidth, row*tileHeight + tileHeight)
+    val (x, y) = tileCoordinates(gid)
+    (x, y + tileHeight - 1)
   }
 
 }
 
-/** How the map is staggered
+/** How the map is staggered.
   *
   * Stagger means that some rows/cols are shifted inward. This
   * is typically used for hexa maps, that can be seen

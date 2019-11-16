@@ -4,7 +4,7 @@ package awt
 import sgl.util._
 
 import java.awt.image.BufferedImage
-import java.awt.Graphics2D
+import java.awt.{Graphics2D, RenderingHints}
 
 trait AWTApp extends GameApp 
                 with AWTGraphicsProvider with AWTInputProvider with AWTAudioProvider
@@ -100,7 +100,10 @@ trait AWTApp extends GameApp
         // println("heap max: " + java.lang.Runtime.getRuntime.maxMemory())
         // println("heap free: " + java.lang.Runtime.getRuntime.freeMemory())
 
-        val canvas: Graphics.Canvas = Graphics.AWTCanvas(backBuffer.getGraphics.asInstanceOf[Graphics2D], gamePanel.getWidth, gamePanel.getHeight)
+        val backBufferGraphics = backBuffer.getGraphics.asInstanceOf[Graphics2D]
+        // TODO: Provide a settings for controlling antialiasing.
+        //backBufferGraphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF)
+        val canvas: Graphics.Canvas = Graphics.AWTCanvas(backBufferGraphics, gamePanel.getWidth, gamePanel.getHeight)
 
         val newTime = java.lang.System.nanoTime
         //delta time, in ms (all time measures are in nano)
