@@ -169,7 +169,13 @@ trait AWTGraphicsProvider extends GraphicsProvider {
 
       override def drawRect(x: Float, y: Float, width: Float, height: Float, paint: Paint): Unit = {
         graphics.setColor(paint.color)
-        graphics.fill(new Rectangle2D.Float(x, y, width, height))
+        val rect = new Rectangle2D.Float(x, y, width, height)
+        // I have noticed that under some scaling, if we only fill the rectangle, this can lead to
+        // a tiny space between the rect and the tiles. Using both draw and fill seems to fix it.
+        // I wasn't able to find the proper documentation on that, but it did fix a problem and
+        // it does not seem to create any, so I'm going with the double draw.
+        graphics.draw(rect)
+        graphics.fill(rect)
       }
 
       override def drawOval(x: Float, y: Float, width: Float, height: Float, paint: Paint): Unit = {

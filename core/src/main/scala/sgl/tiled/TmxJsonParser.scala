@@ -61,6 +61,8 @@ trait TmxJsonParserComponent {
       def parseLayer(layer: JValue): Layer = {
         val JString(name) = layer \ "name"
         val JString(tpe) = layer \ "type"
+
+        val AsInt(layerId) = layer \ "id"
   
         //we don't parse x/y coordinates, as apparently they are always 0
   
@@ -68,79 +70,103 @@ trait TmxJsonParserComponent {
           case JBoolean(v) => v
           case _ => true
         }
-        val opacity: Double = jsonToDouble(layer \ "opacity").getOrElse(1)
+        val opacity: Float = jsonToFloat(layer \ "opacity").getOrElse(1)
   
-        val offsetX: Double = jsonToDouble(layer \ "offsetx").getOrElse(0)
-        val offsetY: Double = jsonToDouble(layer \ "offsety").getOrElse(0)
+        val offsetX: Float = jsonToFloat(layer \ "offsetx").getOrElse(0)
+        val offsetY: Float = jsonToFloat(layer \ "offsety").getOrElse(0)
   
-        if(tpe == "tilelayer") {
-          //width and height are present (only in tilelayer),
-          //but should apparently always be the same as top level
-          val AsInt(layerWidth) = layer \ "width"
-          val AsInt(layerHeight) = layer \ "height"
-          assert(layerWidth == width)
-          assert(layerHeight == height)
+        tpe match {
+          case "tilelayer" => {
+            //width and height are present (only in tilelayer),
+            //but should apparently always be the same as top level
+            val AsInt(layerWidth) = layer \ "width"
+            val AsInt(layerHeight) = layer \ "height"
+            assert(layerWidth == width)
+            assert(layerHeight == height)
   
-          // The data is a single array of indices, for each tile the index is
-          // which bitmap to use from the tileset (or 0 if none). The tiles are
-          // represented row by row, from left to right, from top to bottom. That
-          // is, the first N elements are the topmost row of tiles, the next N
-          // elements are the second row of tiles, and so on.
-          val JArray(data) = layer \ "data"
-          var rawTiles: List[Int] = data.collect{ case AsInt(i) => i.toInt }
+            // The data is a single array of indices, for each tile the index is
+            // which bitmap to use from the tileset (or 0 if none). The tiles are
+            // represented row by row, from left to right, from top to bottom. That
+            // is, the first N elements are the topmost row of tiles, the next N
+            // elements are the second row of tiles, and so on.
+            val JArray(data) = layer \ "data"
+            var rawTiles: List[Int] = data.collect{ case AsInt(i) => i.toInt }
   
-          // We represent the tiles as an array of rows, from top to bottom.
-          val rows = new Array[Array[Int]](height.toInt)
-          var r = 0
-          while(r < rows.length) {
-            val row = new Array[Int](width.toInt)
-            var c = 0
-            while(c < row.length) {
-              row(c) = rawTiles.head
-              rawTiles = rawTiles.tail
-              c += 1
-            }
-            rows(r) = row
-            r += 1
-          }
-  
-          val tiles: Array[Array[Tile]] = {
-            val tmp: Array[Array[Tile]] = new Array(rows.length)
-            for(i <- 0 until rows.length) {
-              tmp(i) = new Array(rows(i).length)
-              for(j <- 0 until tmp(i).length) {
-                val x = j*tileWidth.toInt
-                val y = i*tileHeight.toInt
-                val index = rows(i)(j)
-                val tile = Tile(if(index == 0) None else Some(index), x, y, tileWidth.toInt, tileHeight.toInt)
-                tmp(i)(j) = tile
+            // We represent the tiles as an array of rows, from top to bottom.
+            val rows = new Array[Array[Int]](height.toInt)
+            var r = 0
+            while(r < rows.length) {
+              val row = new Array[Int](width.toInt)
+              var c = 0
+              while(c < row.length) {
+                row(c) = rawTiles.head
+                rawTiles = rawTiles.tail
+                c += 1
               }
+              rows(r) = row
+              r += 1
             }
-            tmp
+  
+            val tiles: Array[Array[Tile]] = {
+              val tmp: Array[Array[Tile]] = new Array(rows.length)
+              for(i <- 0 until rows.length) {
+                tmp(i) = new Array(rows(i).length)
+                for(j <- 0 until tmp(i).length) {
+                  val x = j*tileWidth.toInt
+                  val y = i*tileHeight.toInt
+                  val index = rows(i)(j)
+                  val tile = Tile(if(index == 0) None else Some(index), x, y, tileWidth.toInt, tileHeight.toInt)
+                  tmp(i)(j) = tile
+                }
+              }
+              tmp
+            }
+  
+            TileLayer(name, layerId, tiles, visible, opacity, offsetX.toInt, offsetY.toInt)
+  
           }
+          case "objectgroup" => {
+            // group x and y coordinates, should always be 0 but used to be modifiable in previous
+            // versions of tiled
+            // val groupX: Float = jsonToFloat(layer \ "x").getOrElse(0)
+            // val groupY: Float = jsonToFloat(layer \ "y").getOrElse(0)
+
+            val drawOrder: DrawOrder = (json \ "draworder") match {
+              case JString("topdown") => TopDown
+              case JString("index") => Index
+              case _ => TopDown // Default is defined to be topdown in Tiled documentation.
+            }
+
+            def parseObj(obj: JValue): TiledMapObject = {
+              val JString(name) = obj \ "name"
+              val AsInt(id) = obj \ "id"
+              val JString(tpe) = obj \ "type"
+
+              val x = jsonToFloat(obj \ "x").get
+              val y = jsonToFloat(obj \ "y").get
+
+              if((obj \ "point") match { case JBoolean(true) => true case _ => false }) {
+                TiledMapPoint(name, id, tpe, x, y, Map())
+              } else if((obj \ "ellipse") match { case JBoolean(true) => true case _ => false}) {
+                val width = jsonToFloat(obj \ "width").get
+                val height = jsonToFloat(obj \ "height").get
+                val rotation = jsonToFloat(obj \ "rotation").get
+                TiledMapEllipse(name, id, tpe, x, y, width, height, rotation, Map())
+              } else {
+                val width = jsonToFloat(obj \ "width").get
+                val height = jsonToFloat(obj \ "height").get
+                val rotation = jsonToFloat(obj \ "rotation").get
+                TiledMapRect(name, id, tpe, x, y, width, height, rotation, Map())
+              }
+
+            }
   
-          TileLayer(name, tiles, visible, opacity, offsetX.toInt, offsetY.toInt)
+            val JArray(objects) = layer \ "objects"
+            val parsedObjs = objects map parseObj
   
-        } else if(tpe == "objectgroup") {
-          //group x and y coordinates, should always be 0 but used to be modifiable in previous
-          //versions of tiled
-          val groupX: Double = jsonToDouble(layer \ "x").getOrElse(0)
-          val groupY: Double = jsonToDouble(layer \ "y").getOrElse(0)
-  
-          val JArray(objects) = layer \ "objects"
-          val parsedObjs = objects.map(obj => {
-            val JString(objectName) = obj \ "name"
-            val x = jsonToDouble(obj \ "x").get
-            val y = jsonToDouble(obj \ "y").get
-            val width = jsonToDouble(obj \ "width").get
-            val height = jsonToDouble(obj \ "height").get
-  
-            TiledMapObject(name=objectName, x=x.toInt, y=y.toInt, width=width.toInt, height=height.toInt, Map())
-          })
-  
-          ObjectLayer(name, parsedObjs, visible, opacity, offsetX.toInt, offsetY.toInt)
-        } else {
-          throw new Exception("layer type not supported: " + tpe)
+            ObjectLayer(name, layerId, parsedObjs, drawOrder, visible, opacity, offsetX.toInt, offsetY.toInt)
+          }
+          case tpe => throw new Exception("layer type not supported: " + tpe)
         }
   
       }
@@ -196,6 +222,10 @@ trait TmxJsonParserComponent {
     private def jsonToDouble(json: JValue): Option[Double] = json match {
       case JNumber(v) => Some(v)
       //case AsInt(v) => Some(v.toDouble) //assuming that for coordinates this cannot overflow
+      case _ => None
+    }
+    private def jsonToFloat(json: JValue): Option[Float] = json match {
+      case JNumber(v) => Some(v.toFloat)
       case _ => None
     }
   }

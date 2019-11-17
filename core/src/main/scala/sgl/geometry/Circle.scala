@@ -10,10 +10,6 @@ case class Circle(x: Float, y: Float, radius: Float) {
   def right: Float = x + radius
   def bottom: Float = y + radius
 
-
-  /* contrary to Rec, the intersect takes double as part of the sphere is in-between
-   * two pixels
-   */
   def intersect(x: Float, y: Float): Boolean = {
     val d2 = (x - this.x)*(x - this.x) + (y - this.y)*(y - this.y)
     d2 <= radius*radius
@@ -26,8 +22,22 @@ case class Circle(x: Float, y: Float, radius: Float) {
   def intersect(rect: Rect): Boolean = Collisions.circleWithAabb(this, rect)
 
   def boundingRect: Rect = Rect(x - radius, y - radius, 2*radius, 2*radius)
+
+  def asEllipse: Ellipse = Ellipse(x, y, 2*radius, 2*radius)
 }
 
 object Circle {
   def apply(center: Point, radius: Float): Circle = Circle(center.x, center.y, radius)
+}
+
+
+case class Ellipse(x: Float, y: Float, width: Float, height: Float) {
+
+  def center: Point = Point(x, y)
+
+  def left: Float = x - width/2
+  def top: Float = y - height/2
+  def right: Float = x + width/2
+  def bottom: Float = y + height/2
+
 }

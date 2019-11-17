@@ -82,9 +82,6 @@ trait TiledMapRendererComponent {
     }
 
     //TODO: take into account renderorder
-    //TODO: use layer offsets
-    //TODO: how to render tiles that are larger than grid and start from outside
-    //      lower/upper bound and expand into the view port?
     private def render(canvas: Graphics.Canvas, tileLayer: TileLayer): Unit = {
       val i1 = y / tiledMap.tileHeight
       val i2 = (y + height - 1) / tiledMap.tileHeight
@@ -96,18 +93,17 @@ trait TiledMapRendererComponent {
             val tile = tileLayer.tiles(i)(j)
             tile.index.foreach(index => {
               val ts = tiledMap.getTileSetForTileId(index)
-              val dx = tile.x - x
-              val dy = tile.y - y
+              val dx = tileLayer.offsetX + tile.x - x
+              val dy = tileLayer.offsetY + tile.y - y
+              val (imageX, imageY) = ts.tileCoordinates(index)
               // Now when drawing we must adjust the y position in the canvas and in the image,
               // because the tiled map format allows for larger tiles in the tileset, and when
               // that happens it's defined to expand "top-right", meaning that we need to draw
               // from bottom-left to top-right, which we accomplish by moving up the y coordinates
               // by the ts.tileHeight, from the bottom coordinates.
-              //val (imageX, imageY) = ts.tileBottomLeft(index)
-              val (imageX, imageY) = ts.tileCoordinates(index)
               canvas.drawBitmap(tilesetsBitmaps(ts),
-                                dx, dy, // + tiledMap.tileHeight - ts.tileHeight,
-                                imageX, imageY/*-ts.tileHeight+1*/, ts.tileWidth, ts.tileHeight)
+                                dx, dy + tiledMap.tileHeight - ts.tileHeight,
+                                imageX, imageY + tiledMap.tileHeight - ts.tileHeight, ts.tileWidth, ts.tileHeight)
             })
           }
         }

@@ -81,43 +81,46 @@ case class TiledMap(
   //should probably be independent of this TiledMap (tilemap is a pure pixel level information,
   //tied to a bitmap tileset). is assuming that the tileset has been scaled indepenndently in
   //the same way.
-  def toDp(dp2px: (Int) => Int): TiledMap = {
-    TiledMap(
-      layers.map(layer => layer match {
-        case TileLayer(name, tiles, visible, opacity, offsetX, offsetY) => {
-          val newTiles = tiles.map(row => row.map(tile => tile.copy(x = dp2px(tile.x), y = dp2px(tile.y), width = dp2px(tile.width), height = dp2px(tile.height))))
-          TileLayer(name, newTiles, visible, opacity, dp2px(offsetX), dp2px(offsetY))
-        }
-        case ObjectLayer(name, objs, visible, opacity, offsetX, offsetY) => {
-          val newObjects = objs.map(obj => obj.copy(x = dp2px(obj.x), y = dp2px(obj.y), width = dp2px(obj.width), height = dp2px(obj.height)))
-          ObjectLayer(name, newObjects, visible, opacity, dp2px(offsetX), dp2px(offsetY))
-        }
-      }),
-      tileSets.map(tileSet => 
-        tileSet.copy(tileWidth = dp2px(tileSet.tileWidth), tileHeight = dp2px(tileSet.tileHeight),
-                     margin = dp2px(tileSet.margin), spacing = dp2px(tileSet.spacing))
-      ),
-      tileWidth = dp2px(tileWidth), tileHeight = dp2px(tileHeight), backgroundColor = backgroundColor,
-      stagger = stagger.copy(hexSideLength=dp2px(stagger.hexSideLength)),
-      nextObjectId = nextObjectId, orientation = orientation, renderOrder = renderOrder
-    )
+  //def toDp(dp2px: (Int) => Int): TiledMap = {
+  //  TiledMap(
+  //    layers.map(layer => layer match {
+  //      case TileLayer(name, id, tiles, visible, opacity, offsetX, offsetY) => {
+  //        val newTiles = tiles.map(row => row.map(tile => tile.copy(x = dp2px(tile.x), y = dp2px(tile.y), width = dp2px(tile.width), height = dp2px(tile.height))))
+  //        TileLayer(name, id, newTiles, visible, opacity, dp2px(offsetX), dp2px(offsetY))
+  //      }
+  //      case ObjectLayer(name, id, objs, drawOrder, visible, opacity, offsetX, offsetY) => {
+  //        val newObjects = objs.map(obj => obj.copy(x = dp2px(obj.x), y = dp2px(obj.y), width = dp2px(obj.width), height = dp2px(obj.height)))
+  //        ObjectLayer(name, id, newObjects, drawOrder, visible, opacity, dp2px(offsetX), dp2px(offsetY))
+  //      }
+  //    }),
+  //    tileSets.map(tileSet => 
+  //      tileSet.copy(tileWidth = dp2px(tileSet.tileWidth), tileHeight = dp2px(tileSet.tileHeight),
+  //                   margin = dp2px(tileSet.margin), spacing = dp2px(tileSet.spacing))
+  //    ),
+  //    tileWidth = dp2px(tileWidth), tileHeight = dp2px(tileHeight), backgroundColor = backgroundColor,
+  //    stagger = stagger.copy(hexSideLength=dp2px(stagger.hexSideLength)),
+  //    nextObjectId = nextObjectId, orientation = orientation, renderOrder = renderOrder
+  //  )
 
-  }
+  //}
 
 }
 
 abstract sealed trait Layer {
   val name: String
 
-  val isVisible: Boolean
-  val opacity: Double
+  val id: Int
 
-  /** offset used when rendering the layer.
+  val isVisible: Boolean
+  val opacity: Float
+
+  /** Horizontal offset used when rendering the layer.
     *
     * Can be useful for example with stack of layers
     * to give some depth illusion.
     */
   val offsetX: Int
+  /** Vertical offset used when rendering the layer. */
   val offsetY: Int
 }
 
@@ -126,8 +129,8 @@ abstract sealed trait Layer {
   * 
   */
 case class TileLayer(
-  name: String, tiles: Array[Array[Tile]],
-  isVisible: Boolean, opacity: Double,
+  name: String, id: Int, tiles: Array[Array[Tile]],
+  isVisible: Boolean, opacity: Float,
   offsetX: Int, offsetY: Int
 ) extends Layer {
 
@@ -181,8 +184,8 @@ case class TileLayer(
 }
 
 case class ObjectLayer(
-  name: String, objects: List[TiledMapObject],
-  isVisible: Boolean, opacity: Double,
+  name: String, id: Int, objects: List[TiledMapObject],
+  drawOrder: DrawOrder, isVisible: Boolean, opacity: Float,
   offsetX: Int, offsetY: Int
 ) extends Layer {
 
@@ -206,10 +209,64 @@ case class Tile(index: Option[Int], x: Int, y: Int, width: Int, height: Int) {
   val rect: Rect = Rect(x, y, width, height)
 }
 
-case class TiledMapObject(
-  name: String,
-  x: Int, y: Int, width: Int, height: Int,
-  properties: Map[String, String])
+sealed trait TiledMapObject {
+
+  /** The name of the object. */
+  val name: String
+
+  /** Identifier unique across all objects. */
+  val id: Int
+
+  /** Arbitrary type assigned in the editor for this object. */
+  val tpe: String
+
+  /** X coordinate of the object in the map.
+    *
+    * This can be in subpixel location. This is always the top location,
+    * whatever the shape.
+    **/
+  val x: Float
+
+  /** X coordinate of the object in the map.
+    *
+    * This can be in subpixel location. This is always the left location,
+    * whatever the shape.
+    **/
+  val y: Float
+
+  /** Arbitrary properties for this object. */
+  val properties: Map[String, String]
+}
+
+case class TiledMapPoint(name: String, id: Int, tpe: String, x: Float, y: Float, properties: Map[String, String]) extends TiledMapObject {
+  def point: Point = Point(x, y)
+}
+
+case class TiledMapRect(
+  name: String, id: Int, tpe: String,
+  x: Float, y: Float, width: Float, height: Float,
+  /** Angle in degrees, clockwise. */
+  rotation: Float,
+  properties: Map[String, String]) extends TiledMapObject {
+
+  def rect: Rect = Rect(x, y, width, height)
+}
+
+/** An ellipse-shaped object.
+  *
+  * The (x,y) coordinates are the top-left coordinates and not
+  * the center coordinates.
+  */
+case class TiledMapEllipse(
+  name: String, id: Int, tpe: String,
+  x: Float, y: Float, width: Float, height: Float,
+  /** Angle in degrees, clockwise. */
+  rotation: Float,
+  properties: Map[String, String]) extends TiledMapObject {
+
+  def ellipse: Ellipse = Ellipse(x + width/2, y + height/2, width, height)
+
+}
 
 /** A representation of a tileset.
   *
@@ -311,6 +368,11 @@ case object RightDown extends RenderOrder
 case object RightUp extends RenderOrder
 case object LeftDown extends RenderOrder
 case object LeftUp extends RenderOrder
+
+/** Drawing order for an object layer. */
+sealed trait DrawOrder
+case object TopDown extends DrawOrder
+case object Index extends DrawOrder
 
 sealed trait Axis
 case object XAxis extends Axis

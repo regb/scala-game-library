@@ -20,20 +20,26 @@ trait MainScreenComponent extends ViewportComponent {
 
     override def name: String = "platformer-screen"
 
+    private val playerPaint = Graphics.defaultPaint.withColor(Color.Blue)
+
     val levelLoader: Loader[TiledMap] = System.loadText(ResourcesRoot / "levels" / "level.json").map(lvl => TmxJsonParser.parse(lvl.iterator))
     val tiledMapRendererLoader: Loader[TiledMapRenderer] = levelLoader.flatMap(lvl => TiledMapRenderer.load(lvl, ResourcesRoot / "levels"))
     addPreloading(levelLoader)
     addPreloading(tiledMapRendererLoader)
 
-
     private var level: TiledMap = _
     private var tiledMapRenderer: TiledMapRenderer = _
     private var viewport = new Viewport(Window.width, Window.height)
+    private var playerRect = Rect(0, 0, 0, 0)
+    private var goalEllipse = Ellipse(0, 0, 0, 0)
     override def onLoaded(): Unit = {
       level = levelLoader.value.get.get
       tiledMapRenderer = tiledMapRendererLoader.value.get.get
       viewport.setCamera(0, 0, level.totalWidth, level.totalHeight)
       viewport.scalingStrategy = Viewport.Fit
+      val objectLayer = level.objectLayers.head
+      playerRect = objectLayer("player").asInstanceOf[TiledMapRect].rect
+      goalEllipse = objectLayer("goal").asInstanceOf[TiledMapEllipse].ellipse
     }
 
 
@@ -48,9 +54,12 @@ trait MainScreenComponent extends ViewportComponent {
     }
 
     override def render(canvas: Canvas): Unit = {
-      canvas.drawColor(Color.White)
+      canvas.drawColor(Color.rgb(0, 255, 50))
       viewport.withViewport(canvas){
         tiledMapRenderer.render(canvas)
+
+        canvas.drawRect(playerRect.left, playerRect.top, playerRect.width, playerRect.height, playerPaint)
+        canvas.drawOval(goalEllipse.x, goalEllipse.y, goalEllipse.width, goalEllipse.height, playerPaint)
       }
     }
 
