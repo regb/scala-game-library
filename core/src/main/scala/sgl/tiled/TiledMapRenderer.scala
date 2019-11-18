@@ -53,7 +53,7 @@ trait TiledMapRendererComponent {
     private var width = tiledMap.totalWidth
     private var height = tiledMap.totalHeight
 
-    private val backgroundColor: Option[Graphics.Color] = tiledMap.backgroundColor.map{ case (r, g, b, a) => Graphics.Color.rgba(r, g, b, a) }
+    private val backgroundColor: Option[Graphics.Color] = tiledMap.backgroundColor.map(c =>  Graphics.Color.rgba(c.r, c.g, c.b, c.a))
     private val backgroundColorPaint: Option[Graphics.Paint] = backgroundColor.map(c => Graphics.defaultPaint.withColor(c))
 
     /** Move the top-left camera into the tiled map. */

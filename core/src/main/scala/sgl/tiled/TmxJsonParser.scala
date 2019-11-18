@@ -56,7 +56,31 @@ trait TmxJsonParserComponent {
       }
   
       val AsInt(nextObjectId) = json \ "nextobjectid"
-  
+
+      def parseProperty(property: JValue): Property = {
+        val JString(name) = property \ "name"
+        val JString(tpe) = property \ "type"
+        val jValue = property \ "value"
+        tpe match {
+          case "string" =>
+            val JString(value) = jValue
+            StringProperty(name, value)
+          case "int" =>
+            val AsInt(value) = jValue
+            IntProperty(name, value)
+          case "float" =>
+            FloatProperty(name, jsonToFloat(jValue).get)
+          case "bool" =>
+            val JBoolean(b) = jValue
+            BoolProperty(name, b)
+          case "color" =>
+            val JString(hexa) = jValue
+            ColorProperty(name, TiledMapColor(hexa))
+          case "file" =>
+            val JString(value) = jValue
+            FileProperty(name, value)
+        }
+      }
   
       def parseLayer(layer: JValue): Layer = {
         val JString(name) = layer \ "name"
@@ -123,7 +147,6 @@ trait TmxJsonParserComponent {
             }
   
             TileLayer(name, layerId, tiles, visible, opacity, offsetX.toInt, offsetY.toInt)
-  
           }
           case "objectgroup" => {
             // group x and y coordinates, should always be 0 but used to be modifiable in previous
@@ -145,18 +168,23 @@ trait TmxJsonParserComponent {
               val x = jsonToFloat(obj \ "x").get
               val y = jsonToFloat(obj \ "y").get
 
+              val properties = (obj \ "properties") match {
+                case JArray(props) => props.toVector map parseProperty
+                case _ => Vector()
+              }
+
               if((obj \ "point") match { case JBoolean(true) => true case _ => false }) {
-                TiledMapPoint(name, id, tpe, x, y, Map())
+                TiledMapPoint(name, id, tpe, x, y, properties)
               } else if((obj \ "ellipse") match { case JBoolean(true) => true case _ => false}) {
                 val width = jsonToFloat(obj \ "width").get
                 val height = jsonToFloat(obj \ "height").get
                 val rotation = jsonToFloat(obj \ "rotation").get
-                TiledMapEllipse(name, id, tpe, x, y, width, height, rotation, Map())
+                TiledMapEllipse(name, id, tpe, x, y, width, height, rotation, properties)
               } else {
                 val width = jsonToFloat(obj \ "width").get
                 val height = jsonToFloat(obj \ "height").get
                 val rotation = jsonToFloat(obj \ "rotation").get
-                TiledMapRect(name, id, tpe, x, y, width, height, rotation, Map())
+                TiledMapRect(name, id, tpe, x, y, width, height, rotation, properties)
               }
 
             }
@@ -200,11 +228,7 @@ trait TmxJsonParserComponent {
       val JArray(tilesets) = json \ "tilesets"
   
       val color = (json \ "backgroundcolor") match {
-        case JString(hexa) => {
-          //hexa format from TMX is #AARRGGBB, must convert to (R,G,B,A)
-          val ints = hexa.tail.grouped(2).toList.map(h => Integer.parseInt(h, 16))
-          Some((ints(1), ints(2), ints(3), ints(0)))
-        }
+        case JString(hexa) => Some(TiledMapColor(hexa))
         case _ => None
       }
   

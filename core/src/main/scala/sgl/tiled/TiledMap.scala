@@ -37,11 +37,8 @@ case class TiledMap(
   /** Height of a tile, in pixels. */
   tileHeight: Int,
 
-  /** An optional background color for the whole map.
-    *
-    * In (R, G, B, A) format, with each value from 0-255.
-    */
-  backgroundColor: Option[(Int, Int, Int, Int)],
+  /** An optional background color for the whole map. */
+  backgroundColor: Option[TiledMapColor],
 
   nextObjectId: Int,
   orientation: Orientation,
@@ -235,10 +232,10 @@ sealed trait TiledMapObject {
   val y: Float
 
   /** Arbitrary properties for this object. */
-  val properties: Map[String, String]
+  val properties: Vector[Property]
 }
 
-case class TiledMapPoint(name: String, id: Int, tpe: String, x: Float, y: Float, properties: Map[String, String]) extends TiledMapObject {
+case class TiledMapPoint(name: String, id: Int, tpe: String, x: Float, y: Float, properties: Vector[Property]) extends TiledMapObject {
   def point: Point = Point(x, y)
 }
 
@@ -247,7 +244,7 @@ case class TiledMapRect(
   x: Float, y: Float, width: Float, height: Float,
   /** Angle in degrees, clockwise. */
   rotation: Float,
-  properties: Map[String, String]) extends TiledMapObject {
+  properties: Vector[Property]) extends TiledMapObject {
 
   def rect: Rect = Rect(x, y, width, height)
 }
@@ -262,10 +259,9 @@ case class TiledMapEllipse(
   x: Float, y: Float, width: Float, height: Float,
   /** Angle in degrees, clockwise. */
   rotation: Float,
-  properties: Map[String, String]) extends TiledMapObject {
+  properties: Vector[Property]) extends TiledMapObject {
 
   def ellipse: Ellipse = Ellipse(x + width/2, y + height/2, width, height)
-
 }
 
 /** A representation of a tileset.
@@ -377,3 +373,22 @@ case object Index extends DrawOrder
 sealed trait Axis
 case object XAxis extends Axis
 case object YAxis extends Axis
+
+sealed trait Property {
+  val name: String
+}
+case class StringProperty(name: String, value: String) extends Property
+case class IntProperty(name: String, value: Int) extends Property
+case class FloatProperty(name: String, value: Float) extends Property
+case class BoolProperty(name: String, value: Boolean) extends Property
+case class ColorProperty(name: String, value: TiledMapColor) extends Property
+case class FileProperty(name: String, value: String) extends Property
+
+case class TiledMapColor(r: Int, g: Int, b: Int, a: Int)
+object TiledMapColor {
+  /** Parse a color from a hex-encoded color (#AABBCCDD). */
+  def apply(hexa: String): TiledMapColor = {
+    val ints = hexa.tail.grouped(2).toList.map(h => Integer.parseInt(h, 16))
+    TiledMapColor(ints(1), ints(2), ints(3), ints(0))
+  }
+}
