@@ -30,7 +30,7 @@ case class TiledMap(
     */
   layers: Vector[Layer],
 
-  tileSets: Vector[TileSet],
+  tilesets: Vector[Tileset],
 
   /** Width of a tile, in pixels. */
   tileWidth: Int,
@@ -69,10 +69,10 @@ case class TiledMap(
   /** map total height in pixels */
   val totalHeight: Int = height*tileHeight
 
-  def getTileSetForTileId(gid: Int): TileSet = tileSets.find(ts =>
+  def getTilesetForTileId(gid: Int): Tileset = tilesets.find(ts =>
     ts.firstGlobalId <= gid && gid < ts.firstGlobalId + ts.tileCount).get
   
-
+  def getTilesetTile(gid: Int): TilesetTile = getTilesetForTileId(gid).getTileByGlobalId(gid)
 
   //convert the tilemap (which is in device indepent pixels, into correct pixels coordinates
   //should probably be independent of this TiledMap (tilemap is a pure pixel level information,
@@ -90,7 +90,7 @@ case class TiledMap(
   //        ObjectLayer(name, id, newObjects, drawOrder, visible, opacity, dp2px(offsetX), dp2px(offsetY))
   //      }
   //    }),
-  //    tileSets.map(tileSet => 
+  //    tilesets.map(tileSet => 
   //      tileSet.copy(tileWidth = dp2px(tileSet.tileWidth), tileHeight = dp2px(tileSet.tileHeight),
   //                   margin = dp2px(tileSet.margin), spacing = dp2px(tileSet.spacing))
   //    ),
@@ -278,7 +278,7 @@ case class TiledMapEllipse(
   * The margin/spacing help specify where the tiles are located in the tileset,
   * the rest of the pixels will be ignored by the rendering system.
   */
-case class TileSet(
+case class Tileset(
   firstGlobalId: Int, name: String,
   tileCount: Int, nbColumns: Int,
   tileHeight: Int, tileWidth: Int,
@@ -300,17 +300,31 @@ case class TileSet(
     * adding some transparent pixels as space should protect against that effect.
     */
   spacing: Int,
-  image: String) {
+  image: String,
+  tiles: Array[TilesetTile]) {
 
-
-  /** Return the top-left pixel location of the tile in the tileset. */
-  def tileCoordinates(gid: Int): (Int, Int) = {
-    require(gid >= firstGlobalId && gid < firstGlobalId+tileCount)
-    val offset = gid - firstGlobalId
-    val row = offset / nbColumns
-    val col = offset % nbColumns
-    (margin + (col*spacing) + col*tileWidth, margin + (row*spacing) + row*tileHeight)
+  /** Find the tile identified by the global id in this tileset. */
+  def getTileByGlobalId(gid: Int): TilesetTile = {
+    require(gid >= firstGlobalId && gid < firstGlobalId + tileCount)
+    tiles(gid - firstGlobalId)
   }
+
+}
+
+
+/** A tile object from a tileset. */
+case class TilesetTile(
+  /** The local id of the Tile.
+    *
+    * This is not the global id, which is used to identify
+    * the tile from outside the tileset (globally across
+    * any tileset). You can get to it by adding it to the
+    * firstGlobalId of the tileset that owns this tile.
+    */
+  id: Int,
+  tpe: Option[String],
+  x: Int, y: Int, width: Int, height: Int,
+  objectLayer: Option[ObjectLayer], properties: Vector[Property]) {
 
   /** Return the bottom-left pixel location of the tile in the tileset.
     *
@@ -318,9 +332,8 @@ case class TileSet(
     * tileWidth/tileHeight are larger than the tiles in the map, the rendering
     * should expan top-right and not bottom-right.
     **/
-  def tileBottomLeft(gid: Int): (Int, Int) = {
-    val (x, y) = tileCoordinates(gid)
-    (x, y + tileHeight - 1)
+  def bottomLeft: (Int, Int) = {
+    (x, y + height - 1)
   }
 
 }

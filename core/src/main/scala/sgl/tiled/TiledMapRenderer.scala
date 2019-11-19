@@ -19,14 +19,14 @@ trait TiledMapRendererComponent {
       * the relative path reference to the tilesets in the TiledMap encoding.
       */
     def load(tiledMap: TiledMap, root: ResourcePath): Loader[TiledMapRenderer] = {
-      val tilesetsBitmaps: Vector[Loader[Graphics.Bitmap]] = tiledMap.tileSets.map(ts =>
+      val tilesetsBitmaps: Vector[Loader[Graphics.Bitmap]] = tiledMap.tilesets.map(ts =>
         // We can combine the image with / because the method handles '/' in the filename.
         // Note that this is only true if the TIledMap format uses '/' for separators, as
         // no other separators are accepted by the ResourcePath method /.
         Graphics.loadImage(root / ts.image)
       )
       Loader.combine(tilesetsBitmaps).map(imgs => {
-        val tilesetsBitmaps: Map[TileSet, Graphics.Bitmap] = tiledMap.tileSets.zip(imgs).toMap
+        val tilesetsBitmaps: Map[Tileset, Graphics.Bitmap] = tiledMap.tilesets.zip(imgs).toMap
         new TiledMapRenderer(tiledMap, tilesetsBitmaps)
       })
     }
@@ -45,7 +45,7 @@ trait TiledMapRendererComponent {
     * You can prepare the canvas before the render call to get any
     * effect that you want (translation, scaling).
     **/
-  class TiledMapRenderer(tiledMap: TiledMap, tilesetsBitmaps: Map[TileSet, Graphics.Bitmap]) {
+  class TiledMapRenderer(tiledMap: TiledMap, tilesetsBitmaps: Map[Tileset, Graphics.Bitmap]) {
 
     // The drawing area within the tiledMap.
     private var x = 0
@@ -92,10 +92,10 @@ trait TiledMapRendererComponent {
           if(i < tileLayer.tiles.size && j < tileLayer.tiles(i).size) {
             val tile = tileLayer.tiles(i)(j)
             tile.index.foreach(index => {
-              val ts = tiledMap.getTileSetForTileId(index)
+              val ts = tiledMap.getTilesetForTileId(index)
               val dx = tileLayer.offsetX + tile.x - x
               val dy = tileLayer.offsetY + tile.y - y
-              val (imageX, imageY) = ts.tileCoordinates(index)
+              val t = ts.getTileByGlobalId(index)
               // Now when drawing we must adjust the y position in the canvas and in the image,
               // because the tiled map format allows for larger tiles in the tileset, and when
               // that happens it's defined to expand "top-right", meaning that we need to draw
@@ -103,7 +103,7 @@ trait TiledMapRendererComponent {
               // by the ts.tileHeight, from the bottom coordinates.
               canvas.drawBitmap(tilesetsBitmaps(ts),
                                 dx, dy + tiledMap.tileHeight - ts.tileHeight,
-                                imageX, imageY + tiledMap.tileHeight - ts.tileHeight, ts.tileWidth, ts.tileHeight)
+                                t.x, t.y + tiledMap.tileHeight - ts.tileHeight, ts.tileWidth, ts.tileHeight)
             })
           }
         }

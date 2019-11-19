@@ -40,6 +40,8 @@ trait MainScreenComponent extends ViewportComponent {
       val objectLayer = level.objectLayers.head
       playerRect = objectLayer("player").asInstanceOf[TiledMapRect].rect
       goalEllipse = objectLayer("goal").asInstanceOf[TiledMapEllipse].ellipse
+
+      println(level.tilesets.map(ts => ts.tiles.mkString(" -- ")).mkString("\n"))
     }
 
 

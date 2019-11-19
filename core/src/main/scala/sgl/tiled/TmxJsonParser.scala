@@ -81,6 +81,10 @@ trait TmxJsonParserComponent {
             FileProperty(name, value)
         }
       }
+      def parseProperties(properties: JValue): Vector[Property] = properties match {
+        case JArray(props) => props.toVector map parseProperty
+        case _ => Vector()
+      }
   
       def parseLayer(layer: JValue): Layer = {
         val JString(name) = layer \ "name"
@@ -168,10 +172,7 @@ trait TmxJsonParserComponent {
               val x = jsonToFloat(obj \ "x").get
               val y = jsonToFloat(obj \ "y").get
 
-              val properties = (obj \ "properties") match {
-                case JArray(props) => props.toVector map parseProperty
-                case _ => Vector()
-              }
+              val properties = parseProperties(obj \ "properties")
 
               if((obj \ "point") match { case JBoolean(true) => true case _ => false }) {
                 TiledMapPoint(name, id, tpe, x, y, properties)
@@ -199,7 +200,7 @@ trait TmxJsonParserComponent {
   
       }
   
-      def parseTileSet(tileset: JValue): TileSet = {
+      def parseTileset(tileset: JValue): Tileset = {
         val AsInt(firstGlobalId) = tileset \ "firstgid"
         val JString(name) = tileset \ "name"
         val JString(image) = tileset \ "image"
@@ -216,12 +217,55 @@ trait TmxJsonParserComponent {
   
         val AsInt(margin) = tileset \ "margin"
         val AsInt(spacing) = tileset \ "spacing"
+
+        def computeTileCoordinates(id: Int): (Int, Int) = {
+          val row = id / nbColumns
+          val col = id % nbColumns
+          (margin + (col*spacing) + col*tileWidth, margin + (row*spacing) + row*tileHeight)
+        }
+
+        def parseTile(tile: JValue): TilesetTile = {
+          // tile \ "id" is the local id of the tile, not the gid.
+          val AsInt(id) = tile \ "id"
+          val (x, y) = computeTileCoordinates(id)
+          // tile \ "height" and tile \ "width" should match tileHeight and tileWidth.
+          val tpe = (tile \ "type") match {
+            case JString(tpe) => Some(tpe)
+            case _ => None
+          }
+          val objectLayer = (tile \ "objectgroup") match {
+            case JNothing => None
+            case v => Some(parseLayer(v).asInstanceOf[ObjectLayer])
+          }
+          val properties = parseProperties(tile \ "properties")
+
+
+          TilesetTile(id, tpe, x, y, tileWidth, tileHeight, objectLayer, properties)
+        }
+
+        val tiles: Array[TilesetTile] = new Array(tileCount)
+
+        (tileset \ "tiles") match {
+          case JArray(ts) => ts.foreach(t => {
+            val pt = parseTile(t)
+            tiles(pt.id) = pt
+          })
+          case _ => ()
+        }
+        // Fill the missing TilesetTile with default values.
+        for(i <- 0 until tiles.size) {
+          if(tiles(i) == null) {
+            val (x, y) = computeTileCoordinates(i)
+            tiles(i) = TilesetTile(i, None, x, y, tileWidth, tileHeight, None, Vector())
+          }
+        }
   
-        TileSet(firstGlobalId=firstGlobalId.toInt, name=name,
+        Tileset(firstGlobalId=firstGlobalId.toInt, name=name,
                 image=image,
                 tileCount=tileCount.toInt, nbColumns=nbColumns.toInt,
                 tileWidth=tileWidth.toInt, tileHeight=tileHeight.toInt,
-                margin=margin.toInt, spacing=spacing.toInt)
+                margin=margin.toInt, spacing=spacing.toInt,
+                tiles=tiles)
       }
   
       val JArray(layers) = json \ "layers"
@@ -233,7 +277,7 @@ trait TmxJsonParserComponent {
       }
   
       val parsedLayers = layers map parseLayer
-      val parsedTilesets =  tilesets map parseTileSet
+      val parsedTilesets =  tilesets map parseTileset
   
       TiledMap(parsedLayers.toVector, parsedTilesets.toVector, tileWidth=tileWidth.toInt, tileHeight=tileHeight.toInt,
              backgroundColor=color, orientation=orientation, nextObjectId=nextObjectId.toInt, renderOrder=renderOrder,
