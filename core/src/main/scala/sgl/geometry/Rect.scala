@@ -1,7 +1,7 @@
 package sgl.geometry
 
-//TODO: we should differential AABB and OBB
-case class Rect(left: Float, top: Float, width: Float, height: Float) {
+/** an AABB Rect. */
+class Rect(val left: Float, val top: Float, val width: Float, val height: Float) {
   require(width >= 0 && height >= 0)
 
   def right: Float = left + width
@@ -32,10 +32,11 @@ case class Rect(left: Float, top: Float, width: Float, height: Float) {
   def intersect(circle: Circle): Boolean = Collisions.circleWithAabb(circle, this)
 }
 
-
 object Rect {
 
-  def fromCoordinates(left: Float, top: Float, right: Float, bottom: Float): Rect =
+  def apply(left: Float, top: Float, width: Float, height: Float) = new Rect(left, top, width, height)
+
+  def fromBoundingBox(left: Float, top: Float, right: Float, bottom: Float): Rect =
     Rect(left, top, right - left, bottom - top)
 
 }

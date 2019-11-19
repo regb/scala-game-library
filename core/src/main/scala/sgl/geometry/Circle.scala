@@ -21,7 +21,7 @@ case class Circle(x: Float, y: Float, radius: Float) {
 
   def intersect(rect: Rect): Boolean = Collisions.circleWithAabb(this, rect)
 
-  def boundingRect: Rect = Rect(x - radius, y - radius, 2*radius, 2*radius)
+  def boundingBox: Rect = Rect(x - radius, y - radius, 2*radius, 2*radius)
 
   def asEllipse: Ellipse = Ellipse(x, y, 2*radius, 2*radius)
 }
@@ -40,4 +40,5 @@ case class Ellipse(x: Float, y: Float, width: Float, height: Float) {
   def right: Float = x + width/2
   def bottom: Float = y + height/2
 
+  def boundingBox: Rect = Rect(x - width/2, y - height/2, width, height)
 }

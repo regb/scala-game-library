@@ -17,8 +17,8 @@ object Collisions {
   }
 
   def circleWithAabb(c: Circle, r: Rect): Boolean = {
-    val circleAsRect = c.boundingRect
-    if(!aabbWithAabb(circleAsRect, r)) {
+    val circleBoundingBox = c.boundingBox
+    if(!aabbWithAabb(circleBoundingBox, r)) {
       //no collision with overapproximation rect means for sure no collision
       false
     } else if(r.vertices.exists(p => c.intersect(p))) {
@@ -55,25 +55,25 @@ object Collisions {
       for(i <- 0 until p1.nbEdges) {
         val a = p1.edgeStart(i)
         val b = p1.edgeEnd(i)
-        val n = (a-->b).normal
+        val n = (b-a).normal
 
         // We consider the axis defined by the normal to the line segment a->b.
         // We project all points to it to get a range for the shadow.
 
         var p1min = Float.MaxValue
         var p1max = Float.MinValue
-        for(p <- p1.points) {
-          val v = p.x*n.x + p.y*n.y
-          p1min = p1min min v
-          p1max = p1max max v
+        for(v <- p1.vertices) {
+          val dp = v*n
+          p1min = p1min min dp
+          p1max = p1max max dp
         }
 
         var p2min = Float.MaxValue
         var p2max = Float.MinValue
-        for(p <- p2.points) {
-          val v = p.x*n.x + p.y*n.y
-          p2min = p2min min v
-          p2max = p2max max v
+        for(v <- p2.vertices) {
+          val dp = v*n
+          p2min = p2min min dp
+          p2max = p2max max dp
         }
 
         // Finally, check if they overlap.

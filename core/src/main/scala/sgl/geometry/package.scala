@@ -21,6 +21,13 @@ package sgl
   * It seems better to not mix geometry and GraphicsProvider, in order to not
   * impose the engine geometry system to users that only wishes to use the Graphics
   * for platform independence.
+  *
+  * Also, the axis system for the geometry follows the same axis system as the
+  * rest of SGL, that is x is pointing right and y is pointing down (from
+  * top-left to bottom-right). This might lead to some confusion because
+  * standard math definition is to have y pointing up, and most algorithms here
+  * are purely mathematical on geometric shapes. There's still more value in having
+  * a consistent axis system in all of SGL though.
   */
 package object geometry {
 

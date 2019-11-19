@@ -168,10 +168,10 @@ case class TileLayer(
   }
 
   def intersectingTiles(circle: Circle): Set[Tile] = {
-    val boundingRect = circle.boundingRect
+    val boundingBox = circle.boundingBox
 
     var res = Set[Tile]()
-    for(tile <- intersectingTiles(boundingRect)) {
+    for(tile <- intersectingTiles(boundingBox)) {
       if(circle.intersect(tile.rect))
         res += tile
     }
