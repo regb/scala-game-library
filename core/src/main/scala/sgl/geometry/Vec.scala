@@ -5,7 +5,7 @@ package sgl.geometry
 /*
  * We use different class for Point and Vec, even though
  * they can be seen as the same object, because it seems
- * like we don't want to accidently replace one by another
+ * like we don't want to accidently replace one by another.
  */
 case class Vec(x: Float, y: Float) {
 
@@ -17,6 +17,8 @@ case class Vec(x: Float, y: Float) {
   def unary_- : Vec = Vec(-x, -y)
 
   def norm: Float = math.sqrt(x*x + y*y).toFloat
+
+  def normal: Vec = Vec(-y, x)
 
   def normalized: Vec = {
     val n = this.norm

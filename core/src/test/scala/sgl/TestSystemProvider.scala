@@ -25,6 +25,6 @@ trait TestSystemProvider extends SystemProvider {
   }
   type ResourcePath = TestResourcePath
 
-  override val ResourcesPrefix: ResourcePath = new TestResourcePath
+  override val ResourcesRoot: ResourcePath = new TestResourcePath
 
 }
