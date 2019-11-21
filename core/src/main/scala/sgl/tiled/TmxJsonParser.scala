@@ -85,6 +85,10 @@ trait TmxJsonParserComponent {
         case JArray(props) => props.toVector map parseProperty
         case _ => Vector()
       }
+
+      def parsePoint(point: JValue): Point = {
+        Point(jsonToFloat(point \ "x").get, jsonToFloat(point \ "y").get)
+      }
   
       def parseLayer(layer: JValue): Layer = {
         val JString(name) = layer \ "name"
@@ -181,6 +185,16 @@ trait TmxJsonParserComponent {
                 val height = jsonToFloat(obj \ "height").get
                 val rotation = jsonToFloat(obj \ "rotation").get
                 TiledMapEllipse(name, id, tpe, x, y, width, height, rotation, properties)
+              } else if(obj \ "polygon" != JNothing) {
+                val JArray(points) = obj \ "polygon"
+                val ps = (points map parsePoint).toVector
+                val rotation = jsonToFloat(obj \ "rotation").get
+                TiledMapPolygon(name, id, tpe, x, y, ps, rotation, properties)
+              } else if(obj \ "polyline" != JNothing) {
+                val JArray(points) = obj \ "polyline"
+                val ps = (points map parsePoint).toVector
+                val rotation = jsonToFloat(obj \ "rotation").get
+                TiledMapPolyline(name, id, tpe, x, y, ps, rotation, properties)
               } else {
                 val width = jsonToFloat(obj \ "width").get
                 val height = jsonToFloat(obj \ "height").get

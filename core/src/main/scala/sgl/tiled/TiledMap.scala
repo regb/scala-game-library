@@ -219,15 +219,18 @@ sealed trait TiledMapObject {
 
   /** X coordinate of the object in the map.
     *
-    * This can be in subpixel location. This is always the top location,
-    * whatever the shape.
+    * This can be in subpixel location.
+    *
+    * How to interpret the (x,y) coordinates depends on the actual object type,
+    * for example for rectangls that would be the top-left, but for polygons
+    * that would be the starting point of the polygon (from which all following
+    * points are relative to).
     **/
   val x: Float
 
   /** X coordinate of the object in the map.
     *
-    * This can be in subpixel location. This is always the left location,
-    * whatever the shape.
+    * This can be in subpixel location.
     **/
   val y: Float
 
@@ -263,6 +266,27 @@ case class TiledMapEllipse(
 
   def ellipse: Ellipse = Ellipse(x + width/2, y + height/2, width, height)
 }
+
+case class TiledMapPolygon(
+  name: String, id: Int, tpe: String,
+  x: Float, y: Float, points: Vector[Point],
+  rotation: Float,
+  properties: Vector[Property]) extends TiledMapObject {
+  
+  /** Returns a polygon shape for this object.
+    *
+    * The polygon shape is in absolute coordinates, meaning that it will
+    * translate the local points coordinates to the coordinates defined
+    * by the object (x,y) position.
+    */
+  def polygon: Polygon = Polygon(points.map(p => Vec(p.x + x, p.y + y)).toArray)
+}
+
+case class TiledMapPolyline(
+  name: String, id: Int, tpe: String,
+  x: Float, y: Float, points: Vector[Point],
+  rotation: Float,
+  properties: Vector[Property]) extends TiledMapObject
 
 /** A representation of a tileset.
   *
@@ -405,3 +429,5 @@ object TiledMapColor {
     TiledMapColor(ints(1), ints(2), ints(3), ints(0))
   }
 }
+
+case class Point(x: Float, y: Float)

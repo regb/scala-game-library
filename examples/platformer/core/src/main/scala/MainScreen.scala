@@ -41,7 +41,7 @@ trait MainScreenComponent extends ViewportComponent {
       playerRect = objectLayer("player").asInstanceOf[TiledMapRect].rect
       goalEllipse = objectLayer("goal").asInstanceOf[TiledMapEllipse].ellipse
 
-      println(level.tilesets.map(ts => ts.tiles.mkString(" -- ")).mkString("\n"))
+      println(level.tilesets.map(ts => ts.tiles.mkString("\n")).mkString("\n"))
     }
 
 
