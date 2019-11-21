@@ -23,6 +23,15 @@ class Polygon(val vertices: Array[Vec]) {
 
     Rect.fromBoundingBox(left=left, top=top, right=right, bottom=bottom)
   }
+
+  // TODO: Currently we assume that we have convex polygons, as our only
+  // collision detection method for polygons need convex polygons. We should
+  // add code to detect convex/concave polygons, and then some way to
+  // do triangulation in order to transform a concave polygon into a set of
+  // convex polygons that we can then apply our collision algorithm on.
+  //   - https://en.wikipedia.org/wiki/Polygon_triangulation
+  //   - https://math.stackexchange.com/questions/1743995/determine-whether-a-polygon-is-convex-based-on-its-vertices
+  //   - https://stackoverflow.com/questions/471962/how-do-i-efficiently-determine-if-a-polygon-is-convex-non-convex-or-complex
 }
 
 object Polygon {
