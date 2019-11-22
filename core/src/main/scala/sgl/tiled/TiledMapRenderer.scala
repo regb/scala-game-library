@@ -1,12 +1,10 @@
 package sgl
 package tiled
 
-import sgl.geometry.Point
-import sgl.util._
+import sgl.util.{Loader, Math}
 
 trait TiledMapRendererComponent {
   this: SystemProvider with GraphicsProvider with WindowProvider =>
-
 
   object TiledMapRenderer {
 
@@ -75,9 +73,38 @@ trait TiledMapRendererComponent {
     def render(canvas: Graphics.Canvas): Unit = {
       backgroundColorPaint.foreach(p => canvas.drawRect(x, y, width, height, p))
 
-      tiledMap.tileLayers.foreach(tl => {
-        if(tl.isVisible)
-          render(canvas, tl)
+      tiledMap.layers.foreach(l => {
+        if(l.isVisible)
+          render(canvas, l)
+      })
+    }
+
+    private def render(canvas: Graphics.Canvas, layer: Layer): Unit = layer match {
+      case tl: TileLayer => render(canvas, tl)
+      case ol: ObjectLayer => render(canvas, ol)
+    }
+
+    private def render(canvas: Graphics.Canvas, objectLayer: ObjectLayer): Unit = {
+      objectLayer.objects.foreach(obj => obj match {
+        case TiledMapTileObject(_, _, _, gid, x, y, w, h, rot, _) => {
+          val ts = tiledMap.getTilesetForTileId(gid)
+          val tl = ts.getTileByGlobalId(gid)
+          val sx = w / ts.tileWidth.toFloat
+          val sy = h / ts.tileHeight.toFloat
+          val theta = Math.degreeToRadian(rot).toFloat
+          canvas.withSave{
+            // The slightly tricky part is that (x,y) is the bottom-left
+            // position of the (non-rotated) tile in the world. To address
+            // that, we will translate to the bottom-left and draw at
+            // -tileHeight (the top).
+            canvas.translate(x, y)
+            canvas.rotate(theta)
+            canvas.scale(sx, sy)
+            canvas.drawBitmap(tilesetsBitmaps(ts), 0, -ts.tileHeight,
+                              tl.x, tl.y, ts.tileWidth, ts.tileHeight)
+          }
+        }
+        case _ => ()
       })
     }
 

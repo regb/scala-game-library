@@ -181,7 +181,7 @@ case class TileLayer(
 }
 
 case class ObjectLayer(
-  name: String, id: Int, objects: List[TiledMapObject],
+  name: String, id: Int, objects: Vector[TiledMapObject],
   drawOrder: DrawOrder, isVisible: Boolean, opacity: Float,
   offsetX: Int, offsetY: Int
 ) extends Layer {
@@ -286,6 +286,11 @@ case class TiledMapPolyline(
   name: String, id: Int, tpe: String,
   x: Float, y: Float, points: Vector[Point],
   rotation: Float,
+  properties: Vector[Property]) extends TiledMapObject
+
+case class TiledMapTileObject(
+  name: String, id: Int, tpe: String, gid: Int,
+  x: Float, y: Float, width: Float, height: Float, rotation: Float,
   properties: Vector[Property]) extends TiledMapObject
 
 /** A representation of a tileset.

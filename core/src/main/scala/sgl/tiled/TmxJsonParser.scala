@@ -195,6 +195,14 @@ trait TmxJsonParserComponent {
                 val ps = (points map parsePoint).toVector
                 val rotation = jsonToFloat(obj \ "rotation").get
                 TiledMapPolyline(name, id, tpe, x, y, ps, rotation, properties)
+              } else if(obj \ "gid" != JNothing) {
+                // This is a tile object. For tile object, (x,y) is the bottom left coordinates of the tile
+                // (wherever it would end up after the rotation and scaling).
+                val AsInt(gid) = obj \ "gid"
+                val width = jsonToFloat(obj \ "width").get
+                val height = jsonToFloat(obj \ "height").get
+                val rotation = jsonToFloat(obj \ "rotation").get
+                TiledMapTileObject(name, id, tpe, gid, x, y, width, height, rotation, properties)
               } else {
                 val width = jsonToFloat(obj \ "width").get
                 val height = jsonToFloat(obj \ "height").get
@@ -207,7 +215,7 @@ trait TmxJsonParserComponent {
             val JArray(objects) = layer \ "objects"
             val parsedObjs = objects map parseObj
   
-            ObjectLayer(name, layerId, parsedObjs, drawOrder, visible, opacity, offsetX.toInt, offsetY.toInt)
+            ObjectLayer(name, layerId, parsedObjs.toVector, drawOrder, visible, opacity, offsetX.toInt, offsetY.toInt)
           }
           case tpe => throw new Exception("layer type not supported: " + tpe)
         }
