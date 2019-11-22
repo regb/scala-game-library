@@ -101,7 +101,8 @@ trait TiledMapRendererComponent {
             canvas.rotate(theta)
             canvas.scale(sx, sy)
             canvas.drawBitmap(tilesetsBitmaps(ts), 0, -ts.tileHeight,
-                              tl.x, tl.y, ts.tileWidth, ts.tileHeight)
+                              tl.x, tl.y, ts.tileWidth, ts.tileHeight,
+                              1f, objectLayer.opacity)
           }
         }
         case _ => ()
@@ -130,7 +131,8 @@ trait TiledMapRendererComponent {
               // by the ts.tileHeight, from the bottom coordinates.
               canvas.drawBitmap(tilesetsBitmaps(ts),
                                 dx, dy + tiledMap.tileHeight - ts.tileHeight,
-                                t.x, t.y + tiledMap.tileHeight - ts.tileHeight, ts.tileWidth, ts.tileHeight)
+                                t.x, t.y + tiledMap.tileHeight - ts.tileHeight, ts.tileWidth, ts.tileHeight,
+                                1f, tileLayer.opacity)
             })
           }
         }
