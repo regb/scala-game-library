@@ -16,7 +16,9 @@ trait MainScreenComponent extends ViewportComponent {
 
   private implicit val LogTag = Logger.Tag("main-screen")
 
-  class MainScreen extends GameScreen {
+  private val dt: Long = 5l
+
+  class MainScreen extends FixedTimestepGameScreen(dt) {
 
     override def name: String = "platformer-screen"
 
@@ -27,32 +29,59 @@ trait MainScreenComponent extends ViewportComponent {
     addPreloading(levelLoader)
     addPreloading(tiledMapRendererLoader)
 
-    private var level: TiledMap = _
+    private var map: TiledMap = _
     private var tiledMapRenderer: TiledMapRenderer = _
     private var viewport = new Viewport(Window.width, Window.height)
     private var playerRect = Rect(0, 0, 0, 0)
+    private var oldPlayerRect = Rect(0, 0, 0, 0)
     private var goalEllipse = Ellipse(0, 0, 0, 0)
+    private var solidCollisionLayers: Vector[TileLayer] = _
     override def onLoaded(): Unit = {
-      level = levelLoader.value.get.get
+      map = levelLoader.value.get.get
       tiledMapRenderer = tiledMapRendererLoader.value.get.get
-      viewport.setCamera(0, 0, level.totalWidth, level.totalHeight)
+      viewport.setCamera(0, 0, map.totalWidth, map.totalHeight)
       viewport.scalingStrategy = Viewport.Fit
-      val objectLayer = level.objectLayers.head
+      val objectLayer = map.objectLayers.head
       playerRect = objectLayer("player").asInstanceOf[TiledMapRect].rect
+      oldPlayerRect = playerRect.clone
       goalEllipse = objectLayer("goal").asInstanceOf[TiledMapEllipse].ellipse
-
-      println(level.tilesets.map(ts => ts.tiles.mkString("\n")).mkString("\n"))
+      solidCollisionLayers = map.tileLayers.filter(_.properties.find(_.name == "collision_type").flatMap(_.stringValue).exists(_ == "solid"))
     }
 
-
-    override def update(dt: Long): Unit = {
+    override def fixedUpdate(): Unit = {
       InputHelpers.processEvents(e => e match {
         case _ => ()
       })
 
-      //if(Inputs.Keyboard.left) {
-      //  x -= dp2px(50)*(dt/1000f)
-      //}
+      if(Inputs.Keyboard.left) {
+        playerRect.left = playerRect.left - 0.15f*dt
+      }
+      if(Inputs.Keyboard.right) {
+        playerRect.left = playerRect.left + 0.15f*dt
+      }
+      val collidingX = solidCollisionLayers.exists(tl => {
+        tl.intersectingTiles(playerRect).exists(_.nonEmpty)
+      })
+      if(collidingX) {
+        playerRect.left = oldPlayerRect.left
+      } else {
+        oldPlayerRect.left = playerRect.left
+      }
+
+      if(Inputs.Keyboard.up) {
+        playerRect.top = playerRect.top - 0.15f*dt
+      }
+      if(Inputs.Keyboard.down) {
+        playerRect.top = playerRect.top + 0.15f*dt
+      }
+      val collidingY = solidCollisionLayers.exists(tl => {
+        tl.intersectingTiles(playerRect).exists(_.nonEmpty)
+      })
+      if(collidingY) {
+        playerRect.top = oldPlayerRect.top
+      } else {
+        oldPlayerRect.top = playerRect.top
+      }
     }
 
     override def render(canvas: Canvas): Unit = {

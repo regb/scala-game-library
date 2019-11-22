@@ -1,8 +1,7 @@
 package sgl.geometry
 
 /** an AABB Rect. */
-class Rect(val left: Float, val top: Float, val width: Float, val height: Float) {
-  require(width >= 0 && height >= 0)
+class Rect(var left: Float, var top: Float, var width: Float, var height: Float) {
 
   def right: Float = left + width
   def bottom: Float = top + height
@@ -30,6 +29,10 @@ class Rect(val left: Float, val top: Float, val width: Float, val height: Float)
   def intersect(rect: Rect): Boolean = Collisions.aabbWithAabb(this, rect)
 
   def intersect(circle: Circle): Boolean = Collisions.circleWithAabb(circle, this)
+
+  override def toString: String = s"Rect(left=$left, top=$top, width=$width, height=$height)"
+
+  override def clone: Rect = Rect(left, top, width, height)
 }
 
 object Rect {

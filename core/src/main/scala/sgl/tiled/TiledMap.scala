@@ -119,6 +119,8 @@ abstract sealed trait Layer {
   val offsetX: Int
   /** Vertical offset used when rendering the layer. */
   val offsetY: Int
+
+  val properties: Vector[Property]
 }
 
 /** A Layer containing a matrix of tiles.
@@ -126,16 +128,17 @@ abstract sealed trait Layer {
   * 
   */
 case class TileLayer(
-  name: String, id: Int, tiles: Array[Array[Tile]],
+  name: String, id: Int, tiles: Array[Array[TileLayer.Tile]],
   isVisible: Boolean, opacity: Float,
-  offsetX: Int, offsetY: Int
+  offsetX: Int, offsetY: Int,
+  properties: Vector[Property]
 ) extends Layer {
 
   // An advantage of the tile layout is that the world is well structured
   // and we can do random access very efficiently. The following methods
   // are efficient (O(1)) ways to find relevant tiles in the tile layer.
 
-  def intersectingTile(pos: Point): Option[Tile] = {                     
+  def intersectingTile(pos: Point): Option[TileLayer.Tile] = {                     
     if(tiles.isEmpty || tiles(0).isEmpty) None else {
       val tileWidth = tiles(0)(0).width
       val tileHeight = tiles(0)(0).height
@@ -148,7 +151,7 @@ case class TileLayer(
     }
   }
 
-  def intersectingTiles(rect: Rect): Set[Tile] = {
+  def intersectingTiles(rect: Rect): Set[TileLayer.Tile] = {
     if(tiles.isEmpty || tiles(0).isEmpty) Set() else {
       val tileWidth = tiles(0)(0).width
       val tileHeight = tiles(0)(0).height
@@ -157,7 +160,7 @@ case class TileLayer(
       val j1 = (rect.left / tileWidth).toInt max 0
       val j2 = (rect.right / tileWidth).toInt min (tiles(i1).length-1)
 
-      var res = Set[Tile]()
+      var res = Set[TileLayer.Tile]()
       for(i <- i1 to i2) {
         for(j <- j1 to j2) {
           res += tiles(i)(j)
@@ -167,15 +170,34 @@ case class TileLayer(
     }
   }
 
-  def intersectingTiles(circle: Circle): Set[Tile] = {
+  def intersectingTiles(circle: Circle): Set[TileLayer.Tile] = {
     val boundingBox = circle.boundingBox
 
-    var res = Set[Tile]()
+    var res = Set[TileLayer.Tile]()
     for(tile <- intersectingTiles(boundingBox)) {
       if(circle.intersect(tile.rect))
         res += tile
     }
     res
+  }
+}
+
+object TileLayer {
+  /** A unique tile in a TileLayer.
+    *
+    * The index is a globally unique identifier, that refers to some tile
+    * from one of the tileset. Since each tileset has a different firstGlobalId,
+    * the index uniquely identify a tileset and a tile data. A None index means
+    * transparent tile (or nothing).
+    *
+    * The coordinate (x,y) are the position of the top-left pixel of the tile, in
+    * the layer that contains it.
+    */
+  case class Tile(index: Option[Int], x: Int, y: Int, width: Int, height: Int) {
+    val rect: Rect = Rect(x, y, width, height)
+
+    def isEmpty = index.isEmpty
+    def nonEmpty = index.nonEmpty
   }
 
 }
@@ -183,27 +205,13 @@ case class TileLayer(
 case class ObjectLayer(
   name: String, id: Int, objects: Vector[TiledMapObject],
   drawOrder: DrawOrder, isVisible: Boolean, opacity: Float,
-  offsetX: Int, offsetY: Int
+  offsetX: Int, offsetY: Int,
+  properties: Vector[Property]
 ) extends Layer {
 
   val objectsMap: Map[String, TiledMapObject] = objects.map(o => (o.name, o)).toMap
   def get(objectName: String): Option[TiledMapObject] = objectsMap.get(objectName)
   def apply(objectName: String): TiledMapObject = objectsMap(objectName)
-}
-
-
-/** A unique tile in a TileLayer.
-  *
-  * The index is a globally unique identifier, that refers to some tile
-  * from one of the tileset. Since each tileset has a different firstGlobalId,
-  * the index uniquely identify a tileset and a tile data. A None index means
-  * transparent tile (or nothing).
-  *
-  * The coordinate (x,y) are the position of the top-left pixel of the tile, in
-  * the layer that contains it.
-  */
-case class Tile(index: Option[Int], x: Int, y: Int, width: Int, height: Int) {
-  val rect: Rect = Rect(x, y, width, height)
 }
 
 sealed trait TiledMapObject {
@@ -343,7 +351,7 @@ case class Tileset(
 
 /** A tile object from a tileset. */
 case class TilesetTile(
-  /** The local id of the Tile.
+  /** The local id of the tile.
     *
     * This is not the global id, which is used to identify
     * the tile from outside the tileset (globally across
@@ -418,13 +426,27 @@ case object YAxis extends Axis
 
 sealed trait Property {
   val name: String
+
+  def stringValue: Option[String]
 }
-case class StringProperty(name: String, value: String) extends Property
-case class IntProperty(name: String, value: Int) extends Property
-case class FloatProperty(name: String, value: Float) extends Property
-case class BoolProperty(name: String, value: Boolean) extends Property
-case class ColorProperty(name: String, value: TiledMapColor) extends Property
-case class FileProperty(name: String, value: String) extends Property
+case class StringProperty(name: String, value: String) extends Property {
+  override def stringValue: Option[String] = Some(value)
+}
+case class IntProperty(name: String, value: Int) extends Property {
+  override def stringValue: Option[String] = None
+}
+case class FloatProperty(name: String, value: Float) extends Property {
+  override def stringValue: Option[String] = None
+}
+case class BoolProperty(name: String, value: Boolean) extends Property {
+  override def stringValue: Option[String] = None
+}
+case class ColorProperty(name: String, value: TiledMapColor) extends Property {
+  override def stringValue: Option[String] = None
+}
+case class FileProperty(name: String, value: String) extends Property {
+  override def stringValue: Option[String] = None
+}
 
 case class TiledMapColor(r: Int, g: Int, b: Int, a: Int)
 object TiledMapColor {

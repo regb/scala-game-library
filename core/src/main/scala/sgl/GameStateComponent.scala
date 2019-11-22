@@ -105,12 +105,27 @@ trait GameStateComponent {
   
   }
 
-  /** A GameScreen that only updates on a fixed timestep
+  /** A GameScreen that only updates on a fixed timestep.
     *
-    * 
+    * This is typically used for game with physics simulation and forces, like
+    * platformers with gravity. The typical way to simulate physics is to add
+    * the gravity to the velocity on each update, essentially approximating the
+    * mathematical equations for movement. However, this approximation depends
+    * on how often we update (it gives a different results depending on the
+    * size of the delta), so for consistency we want to do a fixed update,
+    * independent of the frame rate.
+    *
+    * Another use case for the fixed update, is to make it small enough that we
+    * avoid tunneling issues with collision detection (like if the delta is so
+    * large that we end up passing right through a solid object). This also can
+    * avoid having to do explicit collision response, as the delta could be
+    * small enough that the dx/dy movement would take us within 1 pixel of the
+    * next obstacle, and it would be enough to resolve a collision by setting
+    * the object back to its previous coordinates instead of moving it to the
+    * closest possible point outside the collision.
     */
-  abstract class FixedTimestepGameScreen(val fixedDelta: Long) extends GameScreen {
-    require(fixedDelta > 0)
+  abstract class FixedTimestepGameScreen(val fixedDelta: Long) extends
+  GameScreen { require(fixedDelta > 0)
 
     //TODO: handle the "spiral of death" problem in that class maybe?
     //      could provide a "def panic(): Unit" function that gets called

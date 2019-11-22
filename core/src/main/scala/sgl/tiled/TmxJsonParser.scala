@@ -106,6 +106,8 @@ trait TmxJsonParserComponent {
   
         val offsetX: Float = jsonToFloat(layer \ "offsetx").getOrElse(0)
         val offsetY: Float = jsonToFloat(layer \ "offsety").getOrElse(0)
+
+        val properties = parseProperties(layer \ "properties")
   
         tpe match {
           case "tilelayer" => {
@@ -139,22 +141,22 @@ trait TmxJsonParserComponent {
               r += 1
             }
   
-            val tiles: Array[Array[Tile]] = {
-              val tmp: Array[Array[Tile]] = new Array(rows.length)
+            val tiles: Array[Array[TileLayer.Tile]] = {
+              val tmp: Array[Array[TileLayer.Tile]] = new Array(rows.length)
               for(i <- 0 until rows.length) {
                 tmp(i) = new Array(rows(i).length)
                 for(j <- 0 until tmp(i).length) {
                   val x = j*tileWidth.toInt
                   val y = i*tileHeight.toInt
                   val index = rows(i)(j)
-                  val tile = Tile(if(index == 0) None else Some(index), x, y, tileWidth.toInt, tileHeight.toInt)
+                  val tile = TileLayer.Tile(if(index == 0) None else Some(index), x, y, tileWidth.toInt, tileHeight.toInt)
                   tmp(i)(j) = tile
                 }
               }
               tmp
             }
   
-            TileLayer(name, layerId, tiles, visible, opacity, offsetX.toInt, offsetY.toInt)
+            TileLayer(name, layerId, tiles, visible, opacity, offsetX.toInt, offsetY.toInt, properties)
           }
           case "objectgroup" => {
             // group x and y coordinates, should always be 0 but used to be modifiable in previous
@@ -215,7 +217,7 @@ trait TmxJsonParserComponent {
             val JArray(objects) = layer \ "objects"
             val parsedObjs = objects map parseObj
   
-            ObjectLayer(name, layerId, parsedObjs.toVector, drawOrder, visible, opacity, offsetX.toInt, offsetY.toInt)
+            ObjectLayer(name, layerId, parsedObjs.toVector, drawOrder, visible, opacity, offsetX.toInt, offsetY.toInt, properties)
           }
           case tpe => throw new Exception("layer type not supported: " + tpe)
         }
