@@ -285,7 +285,7 @@ lazy val platformerCommonSettings = Seq(
 )
 
 lazy val platformerCore = (crossProject(JSPlatform, JVMPlatform, NativePlatform).crossType(CrossType.Pure) in file("./examples/platformer/core"))
-  .settings(snakeCommonSettings: _*)
+  .settings(platformerCommonSettings: _*)
   .settings(noPublishSettings: _*)
   .settings(name := "platformer-core")
   .nativeSettings(scalaVersion := scalaNativeVer)
@@ -300,7 +300,7 @@ lazy val platformerCoreNative = platformerCore.native
 lazy val platformerAssets = file("./examples/platformer/assets")
 
 lazy val platformerDesktopAWT = (project in file("./examples/platformer/desktop-awt"))
-  .settings(snakeCommonSettings: _*)
+  .settings(platformerCommonSettings: _*)
   .settings(noPublishSettings: _*)
   .settings(
     name        := "platformer-desktop-awt",
@@ -308,6 +308,23 @@ lazy val platformerDesktopAWT = (project in file("./examples/platformer/desktop-
     fork in run := true
   )
   .dependsOn(coreJVM, desktopAWT, platformerCoreJVM)
+
+lazy val platformerDesktopNative = (project in file("./examples/platformer/desktop-native"))
+  .enablePlugins(ScalaNativePlugin)
+  .settings(platformerCommonSettings: _*)
+  .settings(noPublishSettings: _*)
+  .settings(scalaVersion := scalaNativeVer)
+  .settings(
+    name := "platformer-desktop-native",
+    if(isLinux(OS))
+      nativeLinkingOptions += "-lGL"
+    else if(isMac(OS))
+      nativeLinkingOptions ++= Seq("-framework", "OpenGL")
+    else
+      ???
+  )
+  .dependsOn(coreNative, desktopNative, platformerCoreNative)
+
 
 lazy val OS = sys.props("os.name").toLowerCase
 lazy val LinuxName = "Linux"
