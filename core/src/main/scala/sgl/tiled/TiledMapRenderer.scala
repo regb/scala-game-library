@@ -69,18 +69,22 @@ trait TiledMapRendererComponent {
       this.height = h
     }
 
-    /** render all visible tile layers of the Map. */
-    def render(canvas: Graphics.Canvas): Unit = {
+    /** render all visible tile layers of the Map.
+      *
+      * The totalTIme is used for rendering the right frame of the animated
+      * tiles.
+      */
+    def render(canvas: Graphics.Canvas, totalTime: Long): Unit = {
       backgroundColorPaint.foreach(p => canvas.drawRect(x, y, width, height, p))
 
       tiledMap.layers.foreach(l => {
         if(l.isVisible)
-          render(canvas, l)
+          render(canvas, l, totalTime)
       })
     }
 
-    private def render(canvas: Graphics.Canvas, layer: Layer): Unit = layer match {
-      case tl: TileLayer => render(canvas, tl)
+    private def render(canvas: Graphics.Canvas, layer: Layer, totalTime: Long): Unit = layer match {
+      case tl: TileLayer => render(canvas, tl, totalTime)
       case ol: ObjectLayer => render(canvas, ol)
     }
 
@@ -88,7 +92,7 @@ trait TiledMapRendererComponent {
       objectLayer.objects.foreach(obj => obj match {
         case TiledMapTileObject(_, _, _, gid, x, y, w, h, rot, _) => {
           val ts = tiledMap.getTilesetForTileId(gid)
-          val tl = ts.getTileByGlobalId(gid)
+          val tl = ts.getTileByGlobalId(gid).asInstanceOf[Tileset.StaticTile]
           val sx = w / ts.tileWidth.toFloat
           val sy = h / ts.tileHeight.toFloat
           val theta = Math.degreeToRadian(rot).toFloat
@@ -110,7 +114,7 @@ trait TiledMapRendererComponent {
     }
 
     //TODO: take into account renderorder
-    private def render(canvas: Graphics.Canvas, tileLayer: TileLayer): Unit = {
+    private def render(canvas: Graphics.Canvas, tileLayer: TileLayer, totalTime: Long): Unit = {
       val i1 = y / tiledMap.tileHeight
       val i2 = (y + height - 1) / tiledMap.tileHeight
       val j1 = x / tiledMap.tileWidth
@@ -118,12 +122,17 @@ trait TiledMapRendererComponent {
       for(i <- i1 to i2) {
         for(j <- j1 to j2) {
           if(i < tileLayer.tiles.size && j < tileLayer.tiles(i).size) {
-            val tile = tileLayer.tiles(i)(j)
+            val tile = tileLayer.tiles(i)(j) 
             tile.index.foreach(index => {
               val ts = tiledMap.getTilesetForTileId(index)
               val dx = tileLayer.offsetX + tile.x - x
               val dy = tileLayer.offsetY + tile.y - y
-              val t = ts.getTileByGlobalId(index)
+              val t = ts.getTileByGlobalId(index) match {
+                case (at: Tileset.AnimatedTile) => {
+                  ts.tiles(at.tileId(totalTime)).asInstanceOf[Tileset.StaticTile]
+                }
+                case (st: Tileset.StaticTile) => st
+              }
               // Now when drawing we must adjust the y position in the canvas and in the image,
               // because the tiled map format allows for larger tiles in the tileset, and when
               // that happens it's defined to expand "top-right", meaning that we need to draw

@@ -248,7 +248,13 @@ trait TmxJsonParserComponent {
           (margin + (col*spacing) + col*tileWidth, margin + (row*spacing) + row*tileHeight)
         }
 
-        def parseTile(tile: JValue): TilesetTile = {
+        def parseFrame(frame: JValue): Tileset.TileFrame = {
+          val AsInt(duration) = frame \ "duration"
+          val AsInt(tileId) = frame \ "tileid"
+          Tileset.TileFrame(duration, tileId)
+        }
+
+        def parseTile(tile: JValue): Tileset.Tile = {
           // tile \ "id" is the local id of the tile, not the gid.
           val AsInt(id) = tile \ "id"
           val (x, y) = computeTileCoordinates(id)
@@ -263,11 +269,17 @@ trait TmxJsonParserComponent {
           }
           val properties = parseProperties(tile \ "properties")
 
+          (tile \ "animation") match {
+            case JNothing =>
+              Tileset.StaticTile(id, tpe, x, y, tileWidth, tileHeight, objectLayer, properties)
+            case JArray(frames) =>
+              val animation = frames.map(parseFrame).toVector
+              Tileset.AnimatedTile(id, tpe, animation, objectLayer, properties)
+          }
 
-          TilesetTile(id, tpe, x, y, tileWidth, tileHeight, objectLayer, properties)
         }
 
-        val tiles: Array[TilesetTile] = new Array(tileCount)
+        val tiles: Array[Tileset.Tile] = new Array(tileCount)
 
         (tileset \ "tiles") match {
           case JArray(ts) => ts.foreach(t => {
@@ -276,11 +288,11 @@ trait TmxJsonParserComponent {
           })
           case _ => ()
         }
-        // Fill the missing TilesetTile with default values.
+        // Fill the missing tiles with default values.
         for(i <- 0 until tiles.size) {
           if(tiles(i) == null) {
             val (x, y) = computeTileCoordinates(i)
-            tiles(i) = TilesetTile(i, None, x, y, tileWidth, tileHeight, None, Vector())
+            tiles(i) = Tileset.StaticTile(i, None, x, y, tileWidth, tileHeight, None, Vector())
           }
         }
   

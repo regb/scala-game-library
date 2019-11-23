@@ -48,7 +48,9 @@ trait MainScreenComponent extends ViewportComponent {
       solidCollisionLayers = map.tileLayers.filter(_.properties.find(_.name == "collision_type").flatMap(_.stringValue).exists(_ == "solid"))
     }
 
+    private var totalTime: Long = 0
     override def fixedUpdate(): Unit = {
+      totalTime += dt
       InputHelpers.processEvents(e => e match {
         case _ => ()
       })
@@ -89,7 +91,7 @@ trait MainScreenComponent extends ViewportComponent {
     override def render(canvas: Canvas): Unit = {
       canvas.drawColor(BackgroundColor)
       viewport.withViewport(canvas){
-        tiledMapRenderer.render(canvas)
+        tiledMapRenderer.render(canvas, totalTime)
 
         canvas.drawRect(playerRect.left, playerRect.top, playerRect.width, playerRect.height, playerPaint)
         canvas.drawOval(goalEllipse.x, goalEllipse.y, goalEllipse.width, goalEllipse.height, playerPaint)

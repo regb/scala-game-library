@@ -72,7 +72,7 @@ case class TiledMap(
   def getTilesetForTileId(gid: Int): Tileset = tilesets.find(ts =>
     ts.firstGlobalId <= gid && gid < ts.firstGlobalId + ts.tileCount).get
   
-  def getTilesetTile(gid: Int): TilesetTile = getTilesetForTileId(gid).getTileByGlobalId(gid)
+  def getTilesetTile(gid: Int): Tileset.Tile = getTilesetForTileId(gid).getTileByGlobalId(gid)
 
   //convert the tilemap (which is in device indepent pixels, into correct pixels coordinates
   //should probably be independent of this TiledMap (tilemap is a pure pixel level information,
@@ -338,42 +338,76 @@ case class Tileset(
     */
   spacing: Int,
   image: String,
-  tiles: Array[TilesetTile]) {
+  tiles: Array[Tileset.Tile]) {
 
   /** Find the tile identified by the global id in this tileset. */
-  def getTileByGlobalId(gid: Int): TilesetTile = {
+  def getTileByGlobalId(gid: Int): Tileset.Tile = {
     require(gid >= firstGlobalId && gid < firstGlobalId + tileCount)
     tiles(gid - firstGlobalId)
   }
 
 }
 
+object Tileset {
 
-/** A tile object from a tileset. */
-case class TilesetTile(
-  /** The local id of the tile.
-    *
-    * This is not the global id, which is used to identify
-    * the tile from outside the tileset (globally across
-    * any tileset). You can get to it by adding it to the
-    * firstGlobalId of the tileset that owns this tile.
-    */
-  id: Int,
-  tpe: Option[String],
-  x: Int, y: Int, width: Int, height: Int,
-  objectLayer: Option[ObjectLayer], properties: Vector[Property]) {
-
-  /** Return the bottom-left pixel location of the tile in the tileset.
-    *
-    * Knowing the bottom coordinates can be useful because if the tileset
-    * tileWidth/tileHeight are larger than the tiles in the map, the rendering
-    * should expan top-right and not bottom-right.
-    **/
-  def bottomLeft: (Int, Int) = {
-    (x, y + height - 1)
+  sealed trait Tile {
+    /** The local id of the tile.
+      *
+      * This is not the global id, which is used to identify
+      * the tile from outside the tileset (globally across
+      * any tileset). You can get to it by adding it to the
+      * firstGlobalId of the tileset that owns this tile.
+      */
+    val id: Int
+    val tpe: Option[String]
+    val objectLayer: Option[ObjectLayer]
+    val properties: Vector[Property]
   }
 
+  /** A tile object from a tileset. */
+  case class StaticTile(
+    id: Int, tpe: Option[String],
+    x: Int, y: Int, width: Int, height: Int,
+    objectLayer: Option[ObjectLayer], properties: Vector[Property]) extends Tile {
+  
+    /** Return the bottom-left pixel location of the tile in the tileset.
+      *
+      * Knowing the bottom coordinates can be useful because if the tileset
+      * tileWidth/tileHeight are larger than the tiles in the map, the rendering
+      * should expan top-right and not bottom-right.
+      **/
+    def bottomLeft: (Int, Int) = {
+      (x, y + height - 1)
+    }
+  }
+
+  // TODO: Detect that the animation does not recursively refer to an animated map, we do not
+  //       support that.
+  case class AnimatedTile(
+    id: Int, tpe: Option[String], 
+    animation: Vector[TileFrame],
+    objectLayer: Option[ObjectLayer], properties: Vector[Property]) extends Tile {
+
+    val duration: Int = animation.map(_.duration).sum
+
+    def tileId(totalTime: Long): Int = {
+      var timeInAnimation = totalTime % duration
+      var i = 0
+      while(timeInAnimation >= 0) {
+        if(timeInAnimation < animation(i).duration)
+          return animation(i).tileId
+        timeInAnimation -= animation(i).duration
+        i += 1
+      }
+      throw new RuntimeException("This should not have happened")
+    }
+
+  }
+
+  case class TileFrame(duration: Int, tileId: Int)
+
 }
+
 
 /** How the map is staggered.
   *
