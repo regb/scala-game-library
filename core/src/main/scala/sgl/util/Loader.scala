@@ -153,18 +153,19 @@ object Loader {
 
   def combine[A](loaders: Seq[Loader[A]]): Loader[Seq[A]] = {
     val p = new DefaultLoader[Seq[A]]
+
+    object lock
     val totalToLoad = loaders.size
     var totalLoaded = 0
 
-    //assuming we use always the same thread, so no race conditions
-    loaders.foreach(loader => loader.onLoad((res: Try[A]) => res match {
+    loaders.foreach(loader => loader.onLoad((res: Try[A]) => lock.synchronized { res match {
       case Success(v) =>
         totalLoaded += 1
         if(totalLoaded == totalToLoad)
           p.success(loaders.map(l => l.value.get.get))
       case Failure(e) =>
         p.failure(e)
-    }))
+    }}))
 
     p.loader
   }
