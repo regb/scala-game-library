@@ -84,8 +84,10 @@ trait MainScreenComponent extends ViewportComponent {
       }
     }
 
+    private val BackgroundColor = Color.rgb(0, 255, 50)
+
     override def render(canvas: Canvas): Unit = {
-      canvas.drawColor(Color.rgb(0, 255, 50))
+      canvas.drawColor(BackgroundColor)
       viewport.withViewport(canvas){
         tiledMapRenderer.render(canvas)
 

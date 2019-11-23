@@ -102,6 +102,14 @@ trait AWTGraphicsProvider extends GraphicsProvider {
 
     case class AWTCanvas(var graphics: Graphics2D, var width: Float, var height: Float) extends AbstractCanvas {
 
+      // A temporary rectangle used for calling the Graphics2D APIs. We
+      // try to help the garbage collector by only instantiating once and
+      // reusing it in all calls.
+      private var rect = new Rectangle2D.Float(0, 0, 0, 0)
+      private var ellipse = new Ellipse2D.Float(0, 0, 0, 0)
+      private var line = new Line2D.Float(0, 0, 0, 0)
+      private var affineTransform = new AffineTransform
+
       override def withSave[A](body: => A): A = {
         // Save current state.
         val oldGraphics: Graphics2D = graphics.create().asInstanceOf[Graphics2D]
@@ -142,7 +150,8 @@ trait AWTGraphicsProvider extends GraphicsProvider {
       }
 
       override def clipRect(x: Float, y: Float, width: Float, height: Float): Unit = {
-        graphics.clip(new Rectangle2D.Float(x, y, width, height))
+        rect.setRect(x, y, width, height)
+        graphics.clip(rect)
         // According to doc of clipRect, we don't want to change the width/height on clipping.
         // Not sure all the backends are respecting that though?
       }
@@ -153,12 +162,13 @@ trait AWTGraphicsProvider extends GraphicsProvider {
         
         // Save the current clip, before setting the clip for the draw area.
         val c = graphics.getClip
-        graphics.clip(new Rectangle2D.Float(dx, dy, width*s, height*s))
+        rect.setRect(dx, dy, width*s, height*s)
+        graphics.clip(rect)
 
-        val at = new AffineTransform
-        at.translate(dx - sx, dy - sy)
-        at.scale(s, s)
-        graphics.drawImage(bitmap.img, at, null)
+        affineTransform.setToIdentity()
+        affineTransform.translate(dx - sx, dy - sy)
+        affineTransform.scale(s, s)
+        graphics.drawImage(bitmap.img, affineTransform, null)
         
         graphics.setClip(c)
 
@@ -169,7 +179,7 @@ trait AWTGraphicsProvider extends GraphicsProvider {
 
       override def drawRect(x: Float, y: Float, width: Float, height: Float, paint: Paint): Unit = {
         graphics.setColor(paint.color)
-        val rect = new Rectangle2D.Float(x, y, width, height)
+        rect.setRect(x, y, width, height)
         // I have noticed that under some scaling, if we only fill the rectangle, this can lead to
         // a tiny space between the rect and the tiles. Using both draw and fill seems to fix it.
         // I wasn't able to find the proper documentation on that, but it did fix a problem and
@@ -180,12 +190,17 @@ trait AWTGraphicsProvider extends GraphicsProvider {
 
       override def drawOval(x: Float, y: Float, width: Float, height: Float, paint: Paint): Unit = {
         graphics.setColor(paint.color)
-        graphics.fill(new Ellipse2D.Float(x-width/2, y-height/2, width, height))
+        ellipse.x = x-width/2
+        ellipse.y = y-height/2
+        ellipse.width = width
+        ellipse.height = height
+        graphics.fill(ellipse)
       }
 
       override def drawLine(x1: Float, y1: Float, x2: Float, y2: Float, paint: Paint): Unit = {
         graphics.setColor(paint.color)
-        graphics.draw(new Line2D.Float(x1, y1, x2, y2))
+        line.setLine(x1, y1, x2, y2)
+        graphics.draw(line)
       }
 
       override def drawString(str: String, x: Float, y: Float, paint: Paint): Unit = {
@@ -221,13 +236,15 @@ trait AWTGraphicsProvider extends GraphicsProvider {
 
       override def drawColor(color: Color): Unit = {
         graphics.setColor(color)
-        graphics.fill(new Rectangle2D.Float(0, 0, width, height))
+        rect.setRect(0, 0, width, height)
+        graphics.fill(rect)
       }
 
 
       override def clearRect(x: Float, y: Float, width: Float, height: Float): Unit = {
         graphics.setColor(Color.Black)
-        graphics.fill(new Rectangle2D.Float(x, y, width, height))
+        rect.setRect(x, y, width, height)
+        graphics.fill(rect)
       }
 
       override def renderText(text: String, width: Int, paint: Paint): TextLayout = {
