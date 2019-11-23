@@ -269,14 +269,12 @@ trait TmxJsonParserComponent {
           }
           val properties = parseProperties(tile \ "properties")
 
-          (tile \ "animation") match {
-            case JNothing =>
-              Tileset.StaticTile(id, tpe, x, y, tileWidth, tileHeight, objectLayer, properties)
-            case JArray(frames) =>
-              val animation = frames.map(parseFrame).toVector
-              Tileset.AnimatedTile(id, tpe, animation, objectLayer, properties)
+          val animation: Vector[Tileset.TileFrame] = (tile \ "animation") match {
+            case JNothing => Vector()
+            case JArray(frames) => frames.map(parseFrame).toVector
           }
 
+          Tileset.Tile(id, tpe, x, y, tileWidth, tileHeight, animation, objectLayer, properties)
         }
 
         val tiles: Array[Tileset.Tile] = new Array(tileCount)
@@ -292,7 +290,7 @@ trait TmxJsonParserComponent {
         for(i <- 0 until tiles.size) {
           if(tiles(i) == null) {
             val (x, y) = computeTileCoordinates(i)
-            tiles(i) = Tileset.StaticTile(i, None, x, y, tileWidth, tileHeight, None, Vector())
+            tiles(i) = Tileset.Tile(i, None, x, y, tileWidth, tileHeight, Vector(), None, Vector())
           }
         }
   

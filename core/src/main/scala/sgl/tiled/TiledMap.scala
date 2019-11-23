@@ -350,7 +350,8 @@ case class Tileset(
 
 object Tileset {
 
-  sealed trait Tile {
+  /** A tile object from a tileset. */
+  case class Tile(
     /** The local id of the tile.
       *
       * This is not the global id, which is used to identify
@@ -358,17 +359,22 @@ object Tileset {
       * any tileset). You can get to it by adding it to the
       * firstGlobalId of the tileset that owns this tile.
       */
-    val id: Int
-    val tpe: Option[String]
-    val objectLayer: Option[ObjectLayer]
-    val properties: Vector[Property]
-  }
-
-  /** A tile object from a tileset. */
-  case class StaticTile(
-    id: Int, tpe: Option[String],
+    id: Int,
+    tpe: Option[String],
     x: Int, y: Int, width: Int, height: Int,
-    objectLayer: Option[ObjectLayer], properties: Vector[Property]) extends Tile {
+    /** Any tile can be animated with a sequence of tiles.
+      *
+      * The animation can recursively point to the current tile, in
+      * which case we would not recursively use the animation of course,
+      * but we would use the rest of the tile information for rendering.
+      * This is in fact a common way to use animated tiles, by having
+      * the animation frames next to each other in the tileset, and using
+      * the first frame tile as the animated tile, and in doing so the first
+      * animation frame points to itself.
+      */
+    animation: Vector[TileFrame],
+    objectLayer: Option[ObjectLayer], properties: Vector[Property]) {
+
   
     /** Return the bottom-left pixel location of the tile in the tileset.
       *
@@ -379,19 +385,19 @@ object Tileset {
     def bottomLeft: (Int, Int) = {
       (x, y + height - 1)
     }
-  }
 
-  // TODO: Detect that the animation does not recursively refer to an animated map, we do not
-  //       support that.
-  case class AnimatedTile(
-    id: Int, tpe: Option[String], 
-    animation: Vector[TileFrame],
-    objectLayer: Option[ObjectLayer], properties: Vector[Property]) extends Tile {
+    val animationDuration: Int = animation.map(_.duration).sum
 
-    val duration: Int = animation.map(_.duration).sum
-
+    /** Return the true tileid after totalTime.
+      *
+      * If this tile is non-animated tile, this just always returns
+      * this.id, but if this is an animated tile, it loops through the
+      * animation and returns the proper tile id at this point in time.
+      */
     def tileId(totalTime: Long): Int = {
-      var timeInAnimation = totalTime % duration
+      if(animation.isEmpty)
+        return id
+      var timeInAnimation = totalTime % animationDuration
       var i = 0
       while(timeInAnimation >= 0) {
         if(timeInAnimation < animation(i).duration)
@@ -401,7 +407,6 @@ object Tileset {
       }
       throw new RuntimeException("This should not have happened")
     }
-
   }
 
   case class TileFrame(duration: Int, tileId: Int)
