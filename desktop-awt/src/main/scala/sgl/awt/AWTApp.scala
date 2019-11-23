@@ -128,8 +128,6 @@ trait AWTApp extends GameApp
 
             gameLoopStep(dt, canvas)
 
-            println("gameLoopStep elapsed time: " + (java.lang.System.nanoTime - beginTime)/(1000l))
-
             g.dispose()
           } while(strategy.contentsRestored())
 
@@ -138,7 +136,6 @@ trait AWTApp extends GameApp
 
         val endTime: Long = java.lang.System.nanoTime
         val elapsedTime: Long = endTime - beginTime
-        println("total elapsed time: " + elapsedTime/1000l)
 
         val sleepTime: Long = targetFramePeriod.map(fp => fp - elapsedTime/(1000l*1000l)).getOrElse(0)
 
