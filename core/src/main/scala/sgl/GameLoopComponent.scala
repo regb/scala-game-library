@@ -108,9 +108,11 @@ trait GameLoopComponent {
         currentScreen._isLoading = false
       }
 
-      gameLoopListener.onUpdateStart()
-      currentScreen.update(dt)
-      gameLoopListener.onUpdateComplete()
+      if(dt > 0) {
+        gameLoopListener.onUpdateStart()
+        currentScreen.update(dt)
+        gameLoopListener.onUpdateComplete()
+      }
 
       // If the update modified the screen stack, better to stop
       // now because the render can be tricky, and we want to

@@ -8,6 +8,7 @@ import javax.swing.JPanel
 import java.awt.event._
 import java.awt.Dimension
 import java.awt.Toolkit
+import java.awt
 
 trait AWTWindowProvider extends WindowProvider {
   this: GameStateComponent =>
@@ -26,16 +27,17 @@ trait AWTWindowProvider extends WindowProvider {
     */
   val frameDimension: (Int, Int)
 
-  class ApplicationFrame(gamePanel: GamePanel) extends JFrame {
+  class ApplicationFrame(canvas: awt.Canvas) extends JFrame {
     
     this.setTitle(frameTitle)
 
-    this.add(gamePanel)
-    gamePanel.setFocusable(true)
-
     val (w, h) = frameDimension
     this.getContentPane().setPreferredSize(new Dimension(w, h))
-    gamePanel.setSize(w, h)
+    canvas.setSize(w, h)
+
+    canvas.setFocusable(true)
+
+    this.add(canvas, 0)
     this.pack()
 
     this.setDefaultCloseOperation(EXIT_ON_CLOSE)
@@ -46,21 +48,19 @@ trait AWTWindowProvider extends WindowProvider {
     this.setLocationRelativeTo(null)
   }
 
-  class GamePanel extends JPanel
-
   /*
    * We don't initialize as part of the cake mixin, because
    * of the usual issues with initialization order and null pointers
    * due to override (frameDimension). They are initialized in main
    * instead
    */
-  var gamePanel: GamePanel = null
+  var gameCanvas: awt.Canvas = null
   var applicationFrame: ApplicationFrame = null
 
   class AWTWindow extends AbstractWindow {
 
-    override def width: Int = gamePanel.getWidth
-    override def height: Int = gamePanel.getHeight
+    override def width: Int = gameCanvas.getWidth
+    override def height: Int = gameCanvas.getHeight
 
     /*
      * TODO: After doing some research, and trial and errors, it seems

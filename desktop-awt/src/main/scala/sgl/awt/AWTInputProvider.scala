@@ -68,7 +68,7 @@ trait AWTInputProvider extends InputProvider {
   }
 
   def registerInputListeners(): Unit = {
-    gamePanel.addMouseListener(new MouseAdapter() {
+    gameCanvas.addMouseListener(new MouseAdapter() {
       override def mouseClicked(e: MouseEvent): Unit = { }
       override def mousePressed(e: MouseEvent): Unit = {
         Input.newEvent(Input.MouseDownEvent(e.getX, e.getY, mouseEventButton(e)))
@@ -77,7 +77,7 @@ trait AWTInputProvider extends InputProvider {
         Input.newEvent(Input.MouseUpEvent(e.getX, e.getY, mouseEventButton(e)))
       }
     })
-    gamePanel.addMouseMotionListener(new MouseAdapter() {
+    gameCanvas.addMouseMotionListener(new MouseAdapter() {
       //mouseMoved is only when not pressed, while dragged is only
       //when pressed. We abstract both into a MouseMovedEvent, and
       //the dragged can be detected with the MouseDownEvent happening
@@ -90,7 +90,7 @@ trait AWTInputProvider extends InputProvider {
       }
     })
 
-    gamePanel.addKeyListener(new KeyListener() {
+    gameCanvas.addKeyListener(new KeyListener() {
       override def keyPressed(e: KeyEvent): Unit = {
         keyEventKey(e).foreach(key => {
           Input.newEvent(Input.KeyDownEvent(key))

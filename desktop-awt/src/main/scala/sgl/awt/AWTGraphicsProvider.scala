@@ -4,12 +4,16 @@ package awt
 import sgl.util._
 import awt.util._
 
-import java.awt.{FontMetrics, Image, Graphics, Graphics2D, Color, AlphaComposite}
+import java.awt.{FontMetrics, Image, Graphics, Graphics2D, Color, AlphaComposite, GraphicsEnvironment, GraphicsConfiguration, Transparency}
+import java.awt.image.BufferedImage
 import java.awt.geom.{Rectangle2D, Ellipse2D, Line2D, AffineTransform}
 import javax.imageio.ImageIO
 
 trait AWTGraphicsProvider extends GraphicsProvider {
   this: AWTWindowProvider with AWTSystemProvider =>
+
+  val AWTGraphicsEnvironment = GraphicsEnvironment.getLocalGraphicsEnvironment
+  val AWTGraphicsConfig = AWTGraphicsEnvironment.getDefaultScreenDevice.getDefaultConfiguration
 
   object AWTGraphics extends Graphics {
 
@@ -20,17 +24,33 @@ trait AWTGraphicsProvider extends GraphicsProvider {
         if(url == null) {
           throw new ResourceNotFoundException(path)
         }
-        val bi = ImageIO.read(url)
-        AWTBitmap(bi)
+
+        val bufferedImage = {
+          val sb = ImageIO.read(url)
+          // Now we copy the read buffered image into a new buffered image which
+          // has a compatibly TYPE_INT_ARGB with the target buffer in which we will
+          // render the image.
+          val b = AWTGraphicsConfig.createCompatibleImage(sb.getWidth, sb.getHeight, Transparency.TRANSLUCENT)
+          val g = b.createGraphics
+          g.drawImage(sb, 0, 0, null)
+          g.dispose()
+          sb.flush()
+          b
+        }
+
+        AWTBitmap(bufferedImage)
       }
     }
 
-    case class AWTBitmap(img: Image) extends AbstractBitmap {
+    case class AWTBitmap(var img: BufferedImage) extends AbstractBitmap {
       override def height: Int = img.getHeight(null)
       override def width: Int = img.getWidth(null)
 
       override def release(): Unit = {
-        // I think there's nothing to do here, but is that actually true?
+        img.flush()
+        // Make sure we lose the pointer for garbage collection, in case the game
+        // kept a pointer to the AWTBitmap.
+        img = null
       }
 
     }
