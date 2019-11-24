@@ -135,7 +135,9 @@ trait GameStateComponent {
     final override def update(dt: Long): Unit = {
       accumulatedDelta += dt
 
-      while(accumulatedDelta >= fixedDelta) {
+      val screensStack = gameState.screensStack
+
+      while(accumulatedDelta >= fixedDelta && screensStack == gameState.screensStack) {
         accumulatedDelta -= fixedDelta
         fixedUpdate()
       }
