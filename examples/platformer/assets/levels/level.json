@@ -32,7 +32,7 @@
          "name":"platform offset",
          "offsetx":8,
          "offsety":8,
-         "opacity":0.200000002980232,
+         "opacity":1,
          "type":"tilelayer",
          "visible":true,
          "width":30,
