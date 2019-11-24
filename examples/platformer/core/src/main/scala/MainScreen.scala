@@ -12,7 +12,7 @@ trait MainScreenComponent extends ViewportComponent {
   with GameStateComponent with InputHelpersComponent with GameLoopStatisticsComponent
   with LoggingProvider with TiledMapRendererComponent with TmxJsonParserComponent =>
 
-  import Graphics.{Bitmap, Canvas, Color}
+  import Graphics.{Bitmap, BitmapRegion, Canvas, Color, Animation}
 
   private implicit val LogTag = Logger.Tag("main-screen")
 
@@ -29,11 +29,15 @@ trait MainScreenComponent extends ViewportComponent {
     addPreloading(levelLoader)
     addPreloading(tiledMapRendererLoader)
 
+    val playerLoader: Loader[Bitmap] = Graphics.loadImage(ResourcesRoot / "drawable" / "player.png")
+    addPreloading(playerLoader)
+
     private var map: TiledMap = _
     private var tiledMapRenderer: TiledMapRenderer = _
     private var viewport = new Viewport(Window.width, Window.height)
     private var playerRect = Rect(0, 0, 0, 0)
     private var oldPlayerRect = Rect(0, 0, 0, 0)
+    private var playerAnimation: Animation[BitmapRegion] = _
     private var goalEllipse = Ellipse(0, 0, 0, 0)
     private var solidCollisionLayers: Vector[TileLayer] = _
     override def onLoaded(): Unit = {
@@ -44,6 +48,7 @@ trait MainScreenComponent extends ViewportComponent {
       val objectLayer = map.objectLayers.head
       playerRect = objectLayer("player").asInstanceOf[TiledMapRect].rect
       oldPlayerRect = playerRect.clone
+      playerAnimation = new Animation(200, BitmapRegion.split(playerLoader.value.get.get, 0, 0, 30, 60, 3, 1), Animation.Loop)
       goalEllipse = objectLayer("goal").asInstanceOf[TiledMapEllipse].ellipse
       solidCollisionLayers = map.tileLayers.filter(_.properties.find(_.name == "collision_type").flatMap(_.stringValue).exists(_ == "solid"))
     }
@@ -93,7 +98,7 @@ trait MainScreenComponent extends ViewportComponent {
       viewport.withViewport(canvas){
         tiledMapRenderer.render(canvas, totalTime)
 
-        canvas.drawRect(playerRect.left, playerRect.top, playerRect.width, playerRect.height, playerPaint)
+        canvas.drawBitmap(playerAnimation.currentFrame(totalTime), playerRect.left, playerRect.top)
         canvas.drawOval(goalEllipse.x, goalEllipse.y, goalEllipse.width, goalEllipse.height, playerPaint)
       }
     }

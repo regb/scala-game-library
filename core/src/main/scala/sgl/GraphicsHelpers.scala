@@ -132,8 +132,20 @@ private[sgl] trait GraphicsHelpersComponent {
       //       not always?
       def apply(bitmap: Bitmap): BitmapRegion = BitmapRegion(bitmap, 0, 0, bitmap.width, bitmap.height)
 
-      // TODO: Some kind of the following split function should be useful.
-      // def split(bitmap: Bitmap, w: Int, h: Int): Array[Array[BitmapRegion]] = ???
+      def split(bitmap: Bitmap, x: Int, y: Int, width: Int, height: Int, nbColumns: Int, nbRows: Int): Array[BitmapRegion] = {
+        var cx = x
+        var cy = y
+        val result = new Array[BitmapRegion](nbColumns * nbRows)
+        for(r <- 0 until nbRows) {
+          for(c <- 0 until nbColumns) {
+            result(r*nbColumns + c) = BitmapRegion(bitmap, cx, cy, width, height)
+            cx += width
+          }
+          cx = x
+          cy += height
+        }
+        result
+      }
     }
 
     /** Stores a transformation around a BitmapRegion.
