@@ -60,6 +60,8 @@ trait NativeGraphicsProvider extends GraphicsProvider {
     case class NativeFont() extends AbstractFont {
       override def withSize(s: Int): Font = ???
       override def withStyle(s: Font.Style): Font = ???
+
+      override def size: Int = ???
   
       override def isBold: Boolean = ???
       override def isItalic: Boolean = ???

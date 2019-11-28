@@ -60,6 +60,8 @@ trait AWTGraphicsProvider extends GraphicsProvider {
       override def withSize(s: Int): Font = AWTFont(f.deriveFont(f.getStyle, s))
       override def withStyle(s: Font.Style): Font = AWTFont(f.deriveFont(AWTFontCompanion.toAWTStyle(s)))
 
+      override def size: Int = f.getSize
+
       override def isBold: Boolean = (f.getStyle & java.awt.Font.BOLD) != 0
       override def isItalic: Boolean = (f.getStyle & java.awt.Font.ITALIC) != 0
     }
@@ -74,7 +76,8 @@ trait AWTGraphicsProvider extends GraphicsProvider {
           if(res == null) {
             throw new ResourceNotFoundException(path)
           }
-          AWTFont(createFont(TRUETYPE_FONT, res))
+          val f = createFont(TRUETYPE_FONT, res)
+          AWTFont(f)
         }
       }
 

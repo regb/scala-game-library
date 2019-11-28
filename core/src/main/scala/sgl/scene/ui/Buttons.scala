@@ -84,7 +84,10 @@ trait ButtonsComponent {
     // should compute that from the rendering and font size, but this requires
     // a bunch of modification to the framework, so instead we hardcode a value
     // that is most likely fine, and the caller can override it if necessary.
-    val verticalPadding = Window.dp2px(16)
+    // We compute this by first removing half of the real padding (the height -
+    // the font size) and then we add a small offset for the part of the font
+    // that's below the baseline (using 20% as an all-around appromiation).
+    val verticalPadding = (_height-regularTheme.textFont.size)/2 + (0.2f*regularTheme.textFont.size).toInt
 
     val regularTextPaint = defaultPaint.withColor(regularTheme.textColor).withFont(regularTheme.textFont).withAlignment(Alignments.Center)
     val pressedTextPaint = defaultPaint.withColor(pressedTheme.textColor).withFont(pressedTheme.textFont).withAlignment(Alignments.Center)

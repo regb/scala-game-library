@@ -41,10 +41,12 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
     type Bitmap <: AbstractBitmap
 
     abstract class AbstractFont {
+      /** Return the same font family and style but with a new point size. */
       def withSize(size: Int): Font
       def withStyle(style: Font.Style): Font
 
-      //def size: Int
+      /** The point size specified by withSize. */
+      def size: Int
 
       def isBold(): Boolean
       def isItalic(): Boolean
@@ -61,11 +63,13 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
 
       /** Load a font from a resource.
         *
-        * This only supports TrueType fonts (.ttf) or
-        * OpenType font (.otf). In principle we could
-        * support Type1 font but they seemed outdated
-        * and inferior so the support doesn't seem worth
-        * it.
+        * This only supports TrueType fonts (.ttf) or OpenType font (.otf). In
+        * principle we could support Type1 font but they seemed outdated and
+        * inferior so the support doesn't seem worth it.
+        *
+        * The Font has an arbitrary size, so you should use Font.withSize
+        * to set the size that you want and not rely to the default which might
+        * not be consistent across platforms.
         */
       def load(path: ResourcePath): Loader[Font]
 
