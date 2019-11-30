@@ -8,7 +8,6 @@ import _root_.android.app.Activity
 import _root_.android.content.Intent
 import _root_.android.os.Bundle
 import _root_.android.util.AttributeSet
-import _root_.android.view.View
 import _root_.android.view.SurfaceView
 import _root_.android.view.SurfaceHolder
 import _root_.android.view.WindowManager
@@ -223,7 +222,8 @@ trait AndroidApp extends Activity with GameApp
     private implicit val LogTag = Logger.Tag("sgl-gameview")
   
     getHolder.addCallback(this)
-    setFocusable(true)
+    this.setFocusable(true)
+    this.setContentDescription("Main View where the game is rendered.")
   
     override def surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int): Unit = {
       logger.debug("SurfaceChanged called")
