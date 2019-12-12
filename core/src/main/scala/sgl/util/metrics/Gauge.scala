@@ -7,6 +7,7 @@ class FloatGauge(_name: String) extends Metrics(_name) {
   def add(x: Float): Unit = {
     v += x
   }
+  def += (x: Float): Unit = add(x)
 
   def set(x: Int): Unit = {
     v = x
@@ -26,6 +27,7 @@ class IntGauge(_name: String) extends Metrics(_name) {
   def add(x: Int): Unit = {
     v += x
   }
+  def += (x: Int): Unit = add(x)
 
   def set(x: Int): Unit = {
     v = x

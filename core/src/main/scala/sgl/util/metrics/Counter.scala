@@ -8,12 +8,12 @@ class Counter(_name: String) extends Metrics(_name) {
     c += 1
   }
 
-  def unary_++ : Unit = incr()
-
-  def incr(amount: Int): Unit = {
+  def add(amount: Int): Unit = {
     require(amount >= 0)
     c += amount
   }
+
+  def += (amount: Int): Unit = add(amount)
 
   def get: Int = c
 
