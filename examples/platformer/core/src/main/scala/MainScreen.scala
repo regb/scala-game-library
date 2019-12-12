@@ -5,11 +5,13 @@ import sgl._
 import geometry._
 import scene._
 import util._
+import sgl.util.metrics.InstrumentationProvider
 import tiled._
 
 trait MainScreenComponent extends ViewportComponent {
   this: GraphicsProvider with InputProvider with SystemProvider with WindowProvider with AudioProvider
-  with GameStateComponent with InputHelpersComponent with GameLoopStatisticsComponent
+  with GameStateComponent with InputHelpersComponent
+  with GameLoopStatisticsComponent with InstrumentationProvider
   with LoggingProvider with TiledMapRendererComponent with TmxJsonParserComponent =>
 
   import Graphics.{Bitmap, BitmapRegion, Canvas, Color, Animation}
@@ -101,6 +103,8 @@ trait MainScreenComponent extends ViewportComponent {
         canvas.drawBitmap(playerAnimation.currentFrame(totalTime), playerRect.left, playerRect.top)
         canvas.drawOval(goalEllipse.x, goalEllipse.y, goalEllipse.width, goalEllipse.height, playerPaint)
       }
+
+      Metrics.logAllMetrics()
     }
 
   }
