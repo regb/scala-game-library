@@ -21,6 +21,7 @@ trait TestGraphicsProvider extends GraphicsProvider {
     override def loadImage(path: ResourcePath): Loader[Bitmap] = ???
 
     class TestFont extends AbstractFont {
+      override def size: Int = ???
       override def withSize(size: Int): Font = ???
       override def withStyle(style: Font.Style): Font = ???
       override def isBold(): Boolean = ???
