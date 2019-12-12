@@ -1,6 +1,6 @@
 package sgl.util.metrics
 
-class Counter {
+class Counter(_name: String) extends Metrics(_name) {
 
   private var c: Int = 0
 
@@ -17,4 +17,5 @@ class Counter {
 
   def get: Int = c
 
+  override def toString: String = s"$name => $c"
 }

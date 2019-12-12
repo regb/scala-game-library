@@ -1,6 +1,6 @@
 package sgl.util.metrics
 
-class Histogram(buckets: Array[Float]) {
+class Histogram(_name: String, buckets: Array[Float]) extends Metrics(_name) {
 
   // buckets is a list of upper bounds, with implicit -inf and +inf at
   // both ends. That is, given [a1, a2, a3], the implicit buckets defineds
@@ -34,7 +34,6 @@ class Histogram(buckets: Array[Float]) {
     counts(buckets.length) += 1
   }
 
-
   // Number of observation so far.
   def count: Int = c
 
@@ -51,7 +50,7 @@ class Histogram(buckets: Array[Float]) {
   //def time(body: =>Unit): Unit = ???
 
   override def toString: String = {
-    s"average=${average}\nmedian=???\n" +
+    s"$name\naverage=${average}\nmedian=???\n" +
     counts.zipWithIndex.filter(_._1 != 0).map{ case (c, i) => {
       val from = if(i == 0) "-inf" else buckets(i-1)
       val to = if(i == buckets.size) "+inf" else buckets(i)
@@ -71,10 +70,10 @@ object Histogram {
     * implicit buckets, there will be count buckets for
     * intermediate deltas.
     */
-  def linear(from: Float, to: Float, count: Int): Histogram = {
+  def linear(name: String, from: Float, to: Float, count: Int): Histogram = {
     val delta: Float = (to - from) / count
     val buckets = for(i <- 0 to count) yield (from + i*delta)
-    new Histogram(buckets.toArray)
+    new Histogram(name, buckets.toArray)
   }
 
   // TODO: with explicit buckets

@@ -1,6 +1,8 @@
 package sgl
 
-/** Statistics component to measure game loop performances
+import util.metrics._
+
+/** Statistics component to measure game loop performances.
   *
   * The game loop statistics is an optional component, that
   * can be mixed into the main application, and will hook into
@@ -8,7 +10,7 @@ package sgl
   * impact performence on production build, if not included.
   */
 trait GameLoopStatisticsComponent extends GameLoopComponent {
-  this: GameStateComponent with GraphicsProvider =>
+  this: GameStateComponent with GraphicsProvider with InstrumentationProvider =>
 
   val statistics: GameLoopStatistics = new GameLoopStatistics
 
@@ -68,52 +70,44 @@ trait GameLoopStatisticsComponent extends GameLoopComponent {
     */
   class GameLoopStatistics {
 
-    //all time measures are stored in nanoseconds, for precision.
-    //this might be necessary as some update step would take less
-    //than a full millisecond, and will thus lose precision. Values
-    //such as average, in Double, are expressed in milliseconds.
-
-    private var _totalTimeRunning: Long = 0
-    /** total time the game loop has been running
+    /** Histogram for game loop update calls, in ms.
       *
-      * Ignore the time spent sleeping, so should not
-      * be used to determine fps. Could be useful
-      * to understand time spent by the application still
-      * In nanoseconds.
+      * We use 15 buckets, from 0 to 15ms. Anything slower than
+      * that for an update seems hopeless for any game as it would
+      * prevent to reach 60 FPS and likely make it impossible to
+      * even reach 30FPS given the need to also render.
       */
-    def totalTimeRunning: Long = _totalTimeRunning
+    private var updateHistogram: Histogram = null
 
-    private var _totalFrames: Long = 0
-    def totalFrames: Long = _totalFrames
+    /** Histogram for game loop render calls, in ms. */
+    private var renderHistogram: Histogram = null
 
-    private var _totalUpdateTime: Long = 0
-    private var _totalRenderTime: Long = 0
+    /** Histogram for game loop entire frame, in ms. */
+    private var frameHistogram: Histogram = null
 
-    //we compute current average using an exponential moving average.
-    //the goal is to eventually eliminate outliers that would have appear, while still computing
-    //some sort of average. We set alpha to 0.01, which should give results similar
-    //to an average over the last 100 values (about 2-3 seconds, depending on FPS). 
-    //Using this averaging technique, we don't need  to store any data points
-    private var _updateTimeAverage: Double = 0
-    private var _renderTimeAverage: Double = 0
-    private var _frameTimeAverage: Double = 0
-    private val AverageAlpha: Double = 0.01
+    private var fps: IntGauge = null
 
-    def updateTimeAverage: Double = _updateTimeAverage/(1000*1000)
-    def renderTimeAverage: Double = _renderTimeAverage/(1000*1000)
-    def frameTimeAverage: Double = _frameTimeAverage/(1000*1000)
+
+    // Must init lazily because of the cake dependencies (Metrics could be null).
+    private def initIfNull(): Unit = {
+      if(updateHistogram == null)
+        updateHistogram = Metrics.HistogramWithLinearBuckets("/game_loop/update", 0f, 15f, 15)
+      if(renderHistogram == null)
+        renderHistogram = Metrics.HistogramWithLinearBuckets("/game_loop/render", 0f, 40f, 20)
+      if(frameHistogram == null)
+        frameHistogram = Metrics.HistogramWithLinearBuckets("/game_loop/frame", 0f, 40f, 20)
+      if(fps == null)
+        fps = Metrics.IntGauge("/game_loop/fps")
+    }
 
     private[GameLoopStatisticsComponent] def completeUpdateFrame(dt: Long) = {
-      _totalUpdateTime += dt
-      _updateTimeAverage = AverageAlpha*dt + (1-AverageAlpha)*_updateTimeAverage
+      initIfNull()
+      updateHistogram.observe(dt/(1000f*1000f))
     }
     private[GameLoopStatisticsComponent] def completeRenderFrame(dt: Long) = {
-      _totalRenderTime += dt
-      _renderTimeAverage = AverageAlpha*dt + (1-AverageAlpha)*_renderTimeAverage
+      initIfNull()
+      renderHistogram.observe(dt/(1000f*1000f))
     }
-
-    private var _measuredFps: Int = 0
-    def measuredFps: Int = _measuredFps
 
     //interesting data such as FPS should be computed over the most recent
     //data and not as an average over the long term, so we keep computing
@@ -126,13 +120,13 @@ trait GameLoopStatisticsComponent extends GameLoopComponent {
     //we make the mutability only visible to the local implementation,
     //so that clients are not able to temper with the statistics
     private[GameLoopStatisticsComponent] def completeFrame(dt: Long) = {
-      _totalFrames += 1
-      _totalTimeRunning += dt
-      _frameTimeAverage = AverageAlpha*dt + (1-AverageAlpha)*_frameTimeAverage
+      initIfNull()
+      frameHistogram.observe(dt/(1000f*1000f))
+
       currentSnapshotFrameCount += 1
       val currentTime = System.nanoTime
-      if(currentTime - currentSnapshotStartTime > 1000*1000*1000) {//full snapshot taken
-        _measuredFps = currentSnapshotFrameCount
+      if(currentTime - currentSnapshotStartTime > 1000*1000*1000) { //full snapshot taken
+        fps.set(currentSnapshotFrameCount)
         currentSnapshotFrameCount = 0
         currentSnapshotStartTime = currentTime
       }

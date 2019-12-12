@@ -1,6 +1,6 @@
 package sgl.util.metrics
 
-class FloatGauge {
+class FloatGauge(_name: String) extends Metrics(_name) {
 
   private var v: Float = 0
 
@@ -14,12 +14,12 @@ class FloatGauge {
 
   def get: Float = v
 
-  override def toString: String = v.toString
+  override def toString: String = s"$name => $v"
 
 }
 
 
-class IntGauge {
+class IntGauge(_name: String) extends Metrics(_name) {
 
   private var v: Int = 0
 
@@ -33,5 +33,5 @@ class IntGauge {
 
   def get: Int = v
 
-  override def toString: String = v.toString
+  override def toString: String = s"$name => $v"
 }
