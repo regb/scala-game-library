@@ -7,12 +7,10 @@ trait InstrumentationProvider {
 
   trait AbstractMetrics {
 
-    def Counter(name: String): Counter
-
-    def IntGauge(name: String): IntGauge
-    def FloatGauge(name: String): FloatGauge
-
-    def HistogramWithLinearBuckets(name: String, from: Float, to: Float, count: Int): Histogram
+    def Counter(name: String): Counter = new Counter(name)
+    def IntGauge(name: String): IntGauge = new IntGauge(name)
+    def FloatGauge(name: String): FloatGauge = new FloatGauge(name)
+    def HistogramWithLinearBuckets(name: String, from: Float, to: Float, count: Int): Histogram = Histogram.linear(name, from, to, count)
 
     def collectSamples(): Unit
 
@@ -87,24 +85,24 @@ trait DefaultInstrumentationProvider extends InstrumentationProvider {
     var allMetrics: List[metrics.Metrics] = Nil
 
     override def Counter(name: String): Counter = {
-      val c = new Counter(name)
+      val c = super.Counter(name)
       allMetrics ::= c
       c
     }
 
     override def IntGauge(name: String): IntGauge = {
-      val g = new IntGauge(name)
+      val g = super.IntGauge(name)
       allMetrics ::= g
       g
     }
     override def FloatGauge(name: String): FloatGauge = {
-      val g = new FloatGauge(name)
+      val g = super.FloatGauge(name)
       allMetrics ::= g
       g
     }
 
     override def HistogramWithLinearBuckets(name: String, from: Float, to: Float, count: Int): Histogram = {
-      val h = Histogram.linear(name, from, to, count)
+      val h = super.HistogramWithLinearBuckets(name, from, to, count)
       allMetrics ::= h
       h
     }
@@ -137,17 +135,24 @@ trait DefaultInstrumentationProvider extends InstrumentationProvider {
 
 }
 
-//trait NoInstrumentationProvider extends InstrumentationProvider {
-//
-//  object NoMetrics extends AbstractMetrics {
-//
-//    override def Counter(name: String): Counter = ???
-//
-//    override def IntGauge(name: String): IntGauge = ???
-//    override def FloatGauge(name: String): FloatGauge = ???
-//    
-//    override def collectSamples(): Unit = ???
-//  }
-//  type Metrics = NoMetrics.type
-//  override val Metrics = NoMetrics
-//
+/** An InstrumentationProvider that does not have any metrics.
+  *
+  * When you mixin this InstrumentationProvider, metrics can
+  * be created but we do not keep track of them. The display
+  * methods thus don't display anything.
+  */
+trait NoInstrumentationProvider extends InstrumentationProvider {
+  this: GraphicsProvider =>
+
+  object NoMetrics extends AbstractMetrics {
+
+    override def collectSamples(): Unit = ???
+
+    override def init(): Unit = {}
+    override def update(): Unit = {}
+    override def logMetrics(): Unit = {}
+    override def renderMetrics(canvas: Graphics.Canvas, paint: Graphics.Paint): Unit = {}
+  }
+  type Metrics = NoMetrics.type
+  override val Metrics = NoMetrics
+}

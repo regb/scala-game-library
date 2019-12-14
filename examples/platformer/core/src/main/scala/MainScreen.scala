@@ -10,8 +10,7 @@ import tiled._
 
 trait MainScreenComponent extends ViewportComponent {
   this: GraphicsProvider with InputProvider with SystemProvider with WindowProvider with AudioProvider
-  with GameStateComponent with InputHelpersComponent
-  with GameLoopStatisticsComponent with InstrumentationProvider
+  with GameStateComponent with InputHelpersComponent with InstrumentationProvider
   with LoggingProvider with TiledMapRendererComponent with TmxJsonParserComponent =>
 
   import Graphics.{Bitmap, BitmapRegion, Canvas, Color, Animation}
