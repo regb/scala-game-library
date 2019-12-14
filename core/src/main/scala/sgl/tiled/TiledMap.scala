@@ -69,9 +69,16 @@ case class TiledMap(
   /** map total height in pixels */
   val totalHeight: Int = height*tileHeight
 
-  def getTilesetForTileId(gid: Int): Tileset = tilesets.find(ts =>
-    ts.firstGlobalId <= gid && gid < ts.firstGlobalId + ts.tileCount).get
-  
+  def getTilesetForTileId(gid: Int): Tileset = {
+    var i = 0
+    while(i < tilesets.size) {
+      val ts = tilesets(i)
+      if(ts.firstGlobalId <= gid && gid < ts.firstGlobalId + ts.tileCount)
+        return ts
+    }
+    throw new IllegalArgumentException("gid not pointing to existing tileset")
+  }
+
   def getTilesetTile(gid: Int): Tileset.Tile = getTilesetForTileId(gid).getTileByGlobalId(gid)
 
   //convert the tilemap (which is in device indepent pixels, into correct pixels coordinates

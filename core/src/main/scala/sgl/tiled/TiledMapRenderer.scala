@@ -75,12 +75,16 @@ trait TiledMapRendererComponent {
       * tiles.
       */
     def render(canvas: Graphics.Canvas, totalTime: Long): Unit = {
-      backgroundColorPaint.foreach(p => canvas.drawRect(x, y, width, height, p))
+      if(backgroundColorPaint.nonEmpty)
+        canvas.drawRect(x, y, width, height, backgroundColorPaint.get)
 
-      tiledMap.layers.foreach(l => {
-        if(l.isVisible)
-          render(canvas, l, totalTime)
-      })
+      var i = 0
+      while(i < tiledMap.layers.size) {
+        val layer = tiledMap.layers(i)
+        if(layer.isVisible)
+          render(canvas, layer, totalTime)
+        i += 1
+      }
     }
 
     private def render(canvas: Graphics.Canvas, layer: Layer, totalTime: Long): Unit = layer match {
@@ -89,28 +93,32 @@ trait TiledMapRendererComponent {
     }
 
     private def render(canvas: Graphics.Canvas, objectLayer: ObjectLayer, totalTime: Long): Unit = {
-      objectLayer.objects.foreach(obj => obj match {
-        case TiledMapTileObject(_, _, _, gid, x, y, w, h, rot, _) => {
-          val ts = tiledMap.getTilesetForTileId(gid)
-          val tl = ts.tiles(ts.getTileByGlobalId(gid).tileId(totalTime))
-          val sx = w / ts.tileWidth.toFloat
-          val sy = h / ts.tileHeight.toFloat
-          val theta = Math.degreeToRadian(rot).toFloat
-          canvas.withSave{
-            // The slightly tricky part is that (x,y) is the bottom-left
-            // position of the (non-rotated) tile in the world. To address
-            // that, we will translate to the bottom-left and draw at
-            // -tileHeight (the top).
-            canvas.translate(x, y)
-            canvas.rotate(theta)
-            canvas.scale(sx, sy)
-            canvas.drawBitmap(tilesetsBitmaps(ts), 0, -ts.tileHeight,
-                              tl.x, tl.y, ts.tileWidth, ts.tileHeight,
-                              1f, objectLayer.opacity)
+      var i = 0
+      while(i < objectLayer.objects.size) {
+        objectLayer.objects(i) match {
+          case TiledMapTileObject(_, _, _, gid, x, y, w, h, rot, _) => {
+            val ts = tiledMap.getTilesetForTileId(gid)
+            val tl = ts.tiles(ts.getTileByGlobalId(gid).tileId(totalTime))
+            val sx = w / ts.tileWidth.toFloat
+            val sy = h / ts.tileHeight.toFloat
+            val theta = Math.degreeToRadian(rot).toFloat
+            canvas.withSave{
+              // The slightly tricky part is that (x,y) is the bottom-left
+              // position of the (non-rotated) tile in the world. To address
+              // that, we will translate to the bottom-left and draw at
+              // -tileHeight (the top).
+              canvas.translate(x, y)
+              canvas.rotate(theta)
+              canvas.scale(sx, sy)
+              canvas.drawBitmap(tilesetsBitmaps(ts), 0, -ts.tileHeight,
+                                tl.x, tl.y, ts.tileWidth, ts.tileHeight,
+                                1f, objectLayer.opacity)
+            }
           }
+          case _ => ()
         }
-        case _ => ()
-      })
+        i += 1
+      }
     }
 
     //TODO: take into account renderorder
@@ -119,11 +127,14 @@ trait TiledMapRendererComponent {
       val i2 = (y + height - 1) / tiledMap.tileHeight
       val j1 = x / tiledMap.tileWidth
       val j2 = (x + width - 1) / tiledMap.tileWidth
-      for(i <- i1 to i2) {
-        for(j <- j1 to j2) {
-          if(i < tileLayer.tiles.size && j < tileLayer.tiles(i).size) {
+      var i = i1
+      while(i <= i2) {
+        var j = j1
+        while(j <= j2) {
+          if(i < tileLayer.tiles.size && j < tileLayer.tiles(i).length) {
             val tile = tileLayer.tiles(i)(j) 
-            tile.index.foreach(index => {
+            if(tile.index.nonEmpty) {
+              val index = tile.index.get
               val ts = tiledMap.getTilesetForTileId(index)
               val dx = tileLayer.offsetX + tile.x - x
               val dy = tileLayer.offsetY + tile.y - y
@@ -137,9 +148,11 @@ trait TiledMapRendererComponent {
                                 dx, dy + tiledMap.tileHeight - ts.tileHeight,
                                 t.x, t.y + tiledMap.tileHeight - ts.tileHeight, ts.tileWidth, ts.tileHeight,
                                 1f, tileLayer.opacity)
-            })
+            }
           }
+          j += 1
         }
+        i += 1
       }
     }
 
