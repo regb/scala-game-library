@@ -1,7 +1,5 @@
 package sgl
 
-import scala.language.implicitConversions
-
 /** Provide helpers for common graphics operations.
   *
   * This is designed as a separate module to the GraphicsProvider,
@@ -124,12 +122,12 @@ private[sgl] trait GraphicsHelpersComponent {
 
     }
     object BitmapRegion {
-      // TODO: Should this be implicit? It would hide a wrapping into a bitmap region, whic
-      //       might or might not put pressure on the GC. Without the implicit, the client code
-      //       needs to be explicit about the wrapping, and that would make it more likely that
-      //       they would define a constant BitmapRegion at initialization and use that instead.
-      //       My intuition is that the compiler could figure out these optimizations, but maybe
-      //       not always?
+      // This Should not be implicit. It would hide a wrapping into a bitmap region, which
+      // might or might not put pressure on the GC. Without the implicit, the client code
+      // needs to be explicit about the wrapping, and that would make it more likely that
+      // they would define a constant BitmapRegion at initialization and use that instead.
+      // My intuition is that the compiler could figure out these optimizations, but maybe
+      // not always?
       def apply(bitmap: Bitmap): BitmapRegion = BitmapRegion(bitmap, 0, 0, bitmap.width, bitmap.height)
 
       def split(bitmap: Bitmap, x: Int, y: Int, width: Int, height: Int, nbColumns: Int, nbRows: Int): Array[BitmapRegion] = {

@@ -135,7 +135,7 @@ abstract sealed trait Layer {
   * 
   */
 case class TileLayer(
-  name: String, id: Int, tiles: Array[Array[TileLayer.Tile]],
+  name: String, id: Int, tiles: Vector[Vector[TileLayer.Tile]],
   isVisible: Boolean, opacity: Float,
   offsetX: Int, offsetY: Int,
   properties: Vector[Property]
@@ -294,7 +294,7 @@ case class TiledMapPolygon(
     * translate the local points coordinates to the coordinates defined
     * by the object (x,y) position.
     */
-  def polygon: Polygon = Polygon(points.map(p => Vec(p.x + x, p.y + y)).toArray)
+  def polygon: Polygon = Polygon(points.map(p => Vec(p.x + x, p.y + y)))
 }
 
 case class TiledMapPolyline(
@@ -345,7 +345,7 @@ case class Tileset(
     */
   spacing: Int,
   image: String,
-  tiles: Array[Tileset.Tile]) {
+  tiles: Vector[Tileset.Tile]) {
 
   /** Find the tile identified by the global id in this tileset. */
   def getTileByGlobalId(gid: Int): Tileset.Tile = {

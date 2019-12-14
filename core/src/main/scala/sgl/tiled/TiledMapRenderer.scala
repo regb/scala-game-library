@@ -127,6 +127,7 @@ trait TiledMapRendererComponent {
       val i2 = (y + height - 1) / tiledMap.tileHeight
       val j1 = x / tiledMap.tileWidth
       val j2 = (x + width - 1) / tiledMap.tileWidth
+
       var i = i1
       while(i <= i2) {
         var j = j1

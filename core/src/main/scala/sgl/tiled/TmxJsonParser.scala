@@ -141,19 +141,20 @@ trait TmxJsonParserComponent {
               r += 1
             }
   
-            val tiles: Array[Array[TileLayer.Tile]] = {
-              val tmp: Array[Array[TileLayer.Tile]] = new Array(rows.length)
+            val tiles: Vector[Vector[TileLayer.Tile]] = {
+              val tmp: Array[Vector[TileLayer.Tile]] = new Array(rows.length)
               for(i <- 0 until rows.length) {
-                tmp(i) = new Array(rows(i).length)
-                for(j <- 0 until tmp(i).length) {
+                val row = new Array[TileLayer.Tile](rows(i).length)
+                for(j <- 0 until row.length) {
                   val x = j*tileWidth.toInt
                   val y = i*tileHeight.toInt
                   val index = rows(i)(j)
                   val tile = TileLayer.Tile(if(index == 0) None else Some(index), x, y, tileWidth.toInt, tileHeight.toInt)
-                  tmp(i)(j) = tile
+                  row(j) = tile
                 }
+                tmp(i) = row.toVector
               }
-              tmp
+              tmp.toVector
             }
   
             TileLayer(name, layerId, tiles, visible, opacity, offsetX.toInt, offsetY.toInt, properties)
@@ -299,7 +300,7 @@ trait TmxJsonParserComponent {
                 tileCount=tileCount.toInt, nbColumns=nbColumns.toInt,
                 tileWidth=tileWidth.toInt, tileHeight=tileHeight.toInt,
                 margin=margin.toInt, spacing=spacing.toInt,
-                tiles=tiles)
+                tiles=tiles.toVector)
       }
   
       val JArray(layers) = json \ "layers"

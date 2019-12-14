@@ -1,6 +1,6 @@
 package sgl.geometry
 
-class Polygon(val vertices: Array[Vec]) {
+class Polygon(val vertices: Vector[Vec]) {
   require(vertices.size > 2)
 
   def nbEdges: Int = vertices.size
@@ -35,5 +35,5 @@ class Polygon(val vertices: Array[Vec]) {
 }
 
 object Polygon {
-  def apply(vertices: Array[Vec]) = new Polygon(vertices)
+  def apply(vertices: Vector[Vec]) = new Polygon(vertices)
 }
