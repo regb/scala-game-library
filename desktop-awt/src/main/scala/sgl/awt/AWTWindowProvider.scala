@@ -31,6 +31,9 @@ trait AWTWindowProvider extends WindowProvider {
     
     this.setTitle(frameTitle)
 
+    // TODO: borderless, but no exit button.
+    // this.setUndecorated(true)
+
     val (w, h) = frameDimension
     this.getContentPane().setPreferredSize(new Dimension(w, h))
     canvas.setSize(w, h)

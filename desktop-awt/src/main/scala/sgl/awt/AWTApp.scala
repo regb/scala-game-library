@@ -4,7 +4,7 @@ package awt
 import sgl.util._
 
 import java.awt.image.BufferedImage
-import java.awt.{GraphicsEnvironment, GraphicsConfiguration, Graphics2D, Transparency, RenderingHints}
+import java.awt.{GraphicsEnvironment, GraphicsConfiguration, Graphics2D, Transparency, RenderingHints, Rectangle}
 import java.awt
 
 trait AWTApp extends GameApp 
@@ -23,6 +23,9 @@ trait AWTApp extends GameApp
    */
 
   def main(args: Array[String]): Unit = {
+
+    java.lang.System.setProperty("sun.java2d.opengl","True");
+
     this.gameCanvas = new awt.Canvas(AWTGraphicsConfig)
     this.applicationFrame = new ApplicationFrame(this.gameCanvas)
     this.applicationFrame.addWindowListener(new java.awt.event.WindowAdapter() {
@@ -105,6 +108,11 @@ trait AWTApp extends GameApp
         // println("heap used: " + java.lang.Runtime.getRuntime.totalMemory())
         // println("heap max: " + java.lang.Runtime.getRuntime.maxMemory())
         // println("heap free: " + java.lang.Runtime.getRuntime.freeMemory())
+        
+
+        // Set these two with option
+        //g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, if(???) RenderingHints.VALUE_ANTIALIAS_ON else RenderingHints.VALUE_ANTIALIAS_OFF)
+        //g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, if(???) RenderingHints.VALUE_INTERPOLATION_BILINEAR else RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR)
 
         // Not too sure why we do these loops, but it seems like the buffers
         // used in the strategy can get lost/restored and if that happens
@@ -116,9 +124,13 @@ trait AWTApp extends GameApp
         do {
           do {
             val g = strategy.getDrawGraphics().asInstanceOf[Graphics2D]
-            // TODO: Provide a settings for controlling antialiasing.
-            //g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF)
-            //g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+
+            val bounds = new Rectangle(0, 0, gameCanvas.getWidth, gameCanvas.getHeight)
+            g.setClip(bounds)
+
+            // Maybe set background color and then fill it.
+            // g.fill(bounds)
+
             val canvas: Graphics.Canvas = Graphics.AWTCanvas(g, gameCanvas.getWidth, gameCanvas.getHeight)
 
             val newTime = java.lang.System.nanoTime
