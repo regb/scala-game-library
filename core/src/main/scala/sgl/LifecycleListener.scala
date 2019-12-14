@@ -69,7 +69,7 @@ object SilentLifecyclieListener extends LifecycleListener {
   override def resume(): Unit = {}
   override def pause(): Unit = {}
   override def shutdown(): Unit = {}
-} 
+}
 
 trait LifecycleListenerProvider {
 

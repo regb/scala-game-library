@@ -18,13 +18,23 @@ trait GameLoopStatisticsComponent extends GameLoopComponent {
 
   class StatisticsGameLoopListener extends GameLoopListener {
 
+    private var initCalled = false
+
     private var beginTime = System.nanoTime
     override def onStepStart(): Unit = {
+      if(!initCalled) {
+        // Doesn't feel very good to do that, but we need a way to invoke the
+        // init function of the Metrics before the first loop step, which would
+        // be now...
+        Metrics.init()
+        initCalled = true
+      }
       beginTime = System.nanoTime
     }
     override def onStepComplete(): Unit = {
       val elapsedTime: Long = System.nanoTime - beginTime
       statistics.completeFrame(elapsedTime)
+      Metrics.update()
     }
 
     private var startUpdate = System.nanoTime
@@ -47,7 +57,7 @@ trait GameLoopStatisticsComponent extends GameLoopComponent {
 
   }
 
-  /** Provides statistics about the running game
+  /** Provides statistics about the running game.
     *
     * Is useful to undesrtand actual FPS, or the time taken
     * by each part of the game loop (processing inputs, update, rendering).

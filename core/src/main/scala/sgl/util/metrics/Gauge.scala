@@ -15,8 +15,13 @@ class FloatGauge(_name: String) extends Metrics(_name) {
 
   def get: Float = v
 
+  override def reset(): Unit = {
+    v = 0
+  }
+
   override def toString: String = s"$name => $v"
 
+  override def renderString: String = s"$name $v"
 }
 
 
@@ -35,5 +40,11 @@ class IntGauge(_name: String) extends Metrics(_name) {
 
   def get: Int = v
 
+  override def reset(): Unit = {
+    v = 0
+  }
+
   override def toString: String = s"$name => $v"
+
+  override def renderString: String = s"$name $v"
 }

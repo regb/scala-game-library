@@ -17,5 +17,12 @@ class Counter(_name: String) extends Metrics(_name) {
 
   def get: Int = c
 
+  override def reset(): Unit = {
+    c = 0
+  }
+
   override def toString: String = s"$name => $c"
+
+  override def renderString: String = s"$name $c"
+
 }

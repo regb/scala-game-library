@@ -95,6 +95,8 @@ trait MainScreenComponent extends ViewportComponent {
 
     private val BackgroundColor = Color.rgb(0, 255, 50)
 
+    private val metricsPaint = Graphics.defaultPaint.withColor(Color.White).withFont(Graphics.Font.Monospace.withSize(20))
+
     override def render(canvas: Canvas): Unit = {
       canvas.drawColor(BackgroundColor)
       viewport.withViewport(canvas){
@@ -104,7 +106,7 @@ trait MainScreenComponent extends ViewportComponent {
         canvas.drawOval(goalEllipse.x, goalEllipse.y, goalEllipse.width, goalEllipse.height, playerPaint)
       }
 
-      Metrics.logAllMetrics()
+      Metrics.renderMetrics(canvas, metricsPaint)
     }
 
   }

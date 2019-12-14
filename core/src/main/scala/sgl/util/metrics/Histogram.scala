@@ -42,6 +42,17 @@ class Histogram(_name: String, buckets: Array[Float]) extends Metrics(_name) {
 
   def average: Float = totalSum / count
 
+  override def reset(): Unit = {
+    var i = 0
+    while(i < counts.length) {
+      counts(i) = 0
+      i += 1
+    }
+
+    sum = 0
+    c = 0
+  }
+
   // TODO: some form of percentile could be nice?
   //def percentile(n: Int): Float = ???
 
@@ -50,12 +61,16 @@ class Histogram(_name: String, buckets: Array[Float]) extends Metrics(_name) {
   //def time(body: =>Unit): Unit = ???
 
   override def toString: String = {
-    s"$name\naverage=${average}\nmedian=???\n" +
+    s"$name\naverage=${this.average}\nmedian=???\n" +
     counts.zipWithIndex.filter(_._1 != 0).map{ case (c, i) => {
       val from = if(i == 0) "-inf" else buckets(i-1)
       val to = if(i == buckets.size) "+inf" else buckets(i)
       s"]$from,$to] -> $c"
     }}.mkString("\n")
+  }
+
+  override def renderString: String = {
+    "%s %.4f (average in ms/s/m TODO)".format(name, average)
   }
 
 }
