@@ -8,6 +8,11 @@ to ship this first and then publish 0.0.1 as a stable version. But let's keep
 track of the things we notice while working on the game and that need to be
 addressed when going to 0.0.2.
 
+### Screenshots
+
+Have a screenshots system that continuously take screenshots of the game (each
+frame, at the engine level).
+
 ### Solve the dp2px and multi-density problem
 
 We have too many calls to dp2px with all constants. We need to be able to use
