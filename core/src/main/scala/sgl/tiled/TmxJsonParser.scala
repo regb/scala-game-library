@@ -220,6 +220,11 @@ trait TmxJsonParserComponent {
   
             ObjectLayer(name, layerId, parsedObjs.toVector, drawOrder, visible, opacity, offsetX.toInt, offsetY.toInt, properties)
           }
+          case "group" => {
+            val JArray(subLayers) = layer \ "layers"
+            val parsedSubLayers = subLayers map parseLayer
+            GroupLayer(name, layerId, parsedSubLayers.toVector, visible, opacity, offsetX.toInt, offsetY.toInt, properties)
+          }
           case tpe => throw new Exception("layer type not supported: " + tpe)
         }
   

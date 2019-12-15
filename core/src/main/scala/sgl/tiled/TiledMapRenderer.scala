@@ -82,17 +82,31 @@ trait TiledMapRendererComponent {
       while(i < tiledMap.layers.size) {
         val layer = tiledMap.layers(i)
         if(layer.isVisible)
-          render(canvas, layer, totalTime)
+          render(canvas, layer, totalTime, 1f)
         i += 1
       }
     }
 
-    private def render(canvas: Graphics.Canvas, layer: Layer, totalTime: Long): Unit = layer match {
-      case tl: TileLayer => render(canvas, tl, totalTime)
-      case ol: ObjectLayer => render(canvas, ol, totalTime)
+    // the opacity parameter is to be applied in addition to the actual opacity of the layer.
+    private def render(canvas: Graphics.Canvas, layer: Layer, totalTime: Long, opacity: Float): Unit = layer match {
+      case tl: TileLayer => render(canvas, tl, totalTime, opacity)
+      case ol: ObjectLayer => render(canvas, ol, totalTime, opacity)
+      case gl: GroupLayer => {
+        var i = 0
+        canvas.translate(gl.offsetX, gl.offsetY)
+        while(i < gl.layers.size) {
+          val l = gl.layers(i)
+          if(l.isVisible) {
+              render(canvas, l, totalTime, gl.opacity)
+          }
+          i += 1
+        }
+        canvas.translate(-gl.offsetX, -gl.offsetY)
+      }
     }
 
-    private def render(canvas: Graphics.Canvas, objectLayer: ObjectLayer, totalTime: Long): Unit = {
+    // the opacity parameter is to be applied in addition to the actual opacity of the layer.
+    private def render(canvas: Graphics.Canvas, objectLayer: ObjectLayer, totalTime: Long, opacity: Float): Unit = {
       var i = 0
       while(i < objectLayer.objects.size) {
         objectLayer.objects(i) match {
@@ -112,7 +126,7 @@ trait TiledMapRendererComponent {
               canvas.scale(sx, sy)
               canvas.drawBitmap(tilesetsBitmaps(ts), 0, -ts.tileHeight,
                                 tl.x, tl.y, ts.tileWidth, ts.tileHeight,
-                                1f, objectLayer.opacity)
+                                1f, objectLayer.opacity * opacity)
             }
           }
           case _ => ()
@@ -122,7 +136,8 @@ trait TiledMapRendererComponent {
     }
 
     //TODO: take into account renderorder
-    private def render(canvas: Graphics.Canvas, tileLayer: TileLayer, totalTime: Long): Unit = {
+    // the opacity parameter is to be applied in addition to the actual opacity of the layer.
+    private def render(canvas: Graphics.Canvas, tileLayer: TileLayer, totalTime: Long, opacity: Float = 1f): Unit = {
       val i1 = y / tiledMap.tileHeight
       val i2 = (y + height - 1) / tiledMap.tileHeight
       val j1 = x / tiledMap.tileWidth
@@ -148,7 +163,7 @@ trait TiledMapRendererComponent {
               canvas.drawBitmap(tilesetsBitmaps(ts),
                                 dx, dy + tiledMap.tileHeight - ts.tileHeight,
                                 t.x, t.y + tiledMap.tileHeight - ts.tileHeight, ts.tileWidth, ts.tileHeight,
-                                1f, tileLayer.opacity)
+                                1f, tileLayer.opacity*opacity)
             }
           }
           j += 1

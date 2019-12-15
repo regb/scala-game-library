@@ -308,6 +308,12 @@ case class TiledMapTileObject(
   x: Float, y: Float, width: Float, height: Float, rotation: Float,
   properties: Vector[Property]) extends TiledMapObject
 
+case class GroupLayer(
+  name: String, id: Int, layers: Vector[Layer],
+  isVisible: Boolean, opacity: Float,
+  offsetX: Int, offsetY: Int,
+  properties: Vector[Property]) extends Layer
+
 /** A representation of a tileset.
   *
   * tileHeight and tileWidth can be different from the map standard
