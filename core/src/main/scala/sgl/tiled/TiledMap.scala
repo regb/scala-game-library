@@ -28,9 +28,14 @@ case class TiledMap(
     * the internal JSON representation that Tiled used for serializing
     * the map.
     */
-  layers: Vector[Layer],
+  override val layers: Vector[Layer],
 
   tilesets: Vector[Tileset],
+
+  /** The map width, in number of tiles. */
+  width: Int,
+  /** The map height, in number of tiles. */
+  height: Int,
 
   /** Width of a tile, in pixels. */
   tileWidth: Int,
@@ -44,30 +49,7 @@ case class TiledMap(
   orientation: Orientation,
   renderOrder: RenderOrder,
   stagger: Stagger
-) {
-
-  val tileLayers: Vector[TileLayer] = layers.collect {
-    case (t: TileLayer) => t
-  }
-  private val tileLayersMap: Map[String, TileLayer] = tileLayers.map(t => (t.name, t)).toMap
-  def getTileLayer(name: String): Option[TileLayer] = tileLayersMap.get(name)
-
-  val objectLayers: Vector[ObjectLayer] = layers.collect {
-    case (o: ObjectLayer) => o
-  }
-  val objectLayersMap: Map[String, ObjectLayer] = objectLayers.map(o => (o.name, o)).toMap
-  def getObjectLayer(name: String): Option[ObjectLayer] = objectLayersMap.get(name)
-
-  val imageLayers: Vector[ImageLayer] = layers.collect {
-    case (i: ImageLayer) => i
-  }
-  val imageLayersMap: Map[String, ImageLayer] = imageLayers.map(i => (i.name, i)).toMap
-  def getImageLayer(name: String): Option[ImageLayer] = imageLayersMap.get(name)
-
-  /** the map height, in number of tiles */
-  val height: Int = tileLayers.headOption.map(_.tiles.length).getOrElse(0)
-  /** the map width, in number of tiles */
-  val width: Int = tileLayers.headOption.map(_.tiles(0).length).getOrElse(0)
+) extends LayersContainer(layers) {
 
   /** map total width in pixels */
   val totalWidth: Int = width*tileWidth
@@ -315,10 +297,10 @@ case class TiledMapTileObject(
   properties: Vector[Property]) extends TiledMapObject
 
 case class GroupLayer(
-  name: String, id: Int, layers: Vector[Layer],
+  name: String, id: Int, override val layers: Vector[Layer],
   isVisible: Boolean, opacity: Float,
   offsetX: Int, offsetY: Int,
-  properties: Vector[Property]) extends Layer
+  properties: Vector[Property]) extends LayersContainer(layers) with Layer
 
 case class ImageLayer(
   name: String, id: Int, image: String,
@@ -522,3 +504,33 @@ object TiledMapColor {
 }
 
 case class Point(x: Float, y: Float)
+
+abstract class LayersContainer(val layers: Vector[Layer]) {
+  val tileLayers: Vector[TileLayer] = layers.collect {
+    case (t: TileLayer) => t
+  }
+  private val tileLayersMap: Map[String, TileLayer] = tileLayers.map(t => (t.name, t)).toMap
+  def getTileLayer(name: String): Option[TileLayer] = tileLayersMap.get(name)
+  def tileLayer(name: String): TileLayer = tileLayersMap(name)
+
+  val objectLayers: Vector[ObjectLayer] = layers.collect {
+    case (o: ObjectLayer) => o
+  }
+  val objectLayersMap: Map[String, ObjectLayer] = objectLayers.map(o => (o.name, o)).toMap
+  def getObjectLayer(name: String): Option[ObjectLayer] = objectLayersMap.get(name)
+  def objectLayer(name: String): ObjectLayer = objectLayersMap(name)
+
+  val imageLayers: Vector[ImageLayer] = layers.collect {
+    case (i: ImageLayer) => i
+  }
+  val imageLayersMap: Map[String, ImageLayer] = imageLayers.map(i => (i.name, i)).toMap
+  def getImageLayer(name: String): Option[ImageLayer] = imageLayersMap.get(name)
+  def imageLayer(name: String): ImageLayer = imageLayersMap(name)
+
+  val groupLayers: Vector[GroupLayer] = layers.collect {
+    case (g: GroupLayer) => g
+  }
+  val groupLayersMap: Map[String, GroupLayer] = groupLayers.map(g => (g.name, g)).toMap
+  def getGroupLayer(name: String): Option[GroupLayer] = groupLayersMap.get(name)
+  def groupLayer(name: String): GroupLayer = groupLayersMap(name)
+}

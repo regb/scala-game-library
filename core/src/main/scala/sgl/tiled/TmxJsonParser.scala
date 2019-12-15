@@ -323,9 +323,10 @@ trait TmxJsonParserComponent {
       val parsedLayers = layers map parseLayer
       val parsedTilesets =  tilesets map parseTileset
   
-      TiledMap(parsedLayers.toVector, parsedTilesets.toVector, tileWidth=tileWidth.toInt, tileHeight=tileHeight.toInt,
-             backgroundColor=color, orientation=orientation, nextObjectId=nextObjectId.toInt, renderOrder=renderOrder,
-             stagger=stagger)
+      TiledMap(parsedLayers.toVector, parsedTilesets.toVector, 
+               width=width.toInt, height=height.toInt, tileWidth=tileWidth.toInt, tileHeight=tileHeight.toInt,
+               backgroundColor=color, orientation=orientation, nextObjectId=nextObjectId.toInt, renderOrder=renderOrder,
+               stagger=stagger)
     }
   
     // TODO: we probably want to provide .as[T] (.as[Double] for example)

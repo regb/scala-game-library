@@ -46,7 +46,7 @@ trait MainScreenComponent extends ViewportComponent {
       tiledMapRenderer = tiledMapRendererLoader.value.get.get
       viewport.setCamera(0, 0, map.totalWidth, map.totalHeight)
       viewport.scalingStrategy = Viewport.Fit
-      val objectLayer = map.objectLayers.head
+      val objectLayer = map.objectLayer("GameObjects")
       playerRect = objectLayer("player").asInstanceOf[TiledMapRect].rect
       oldPlayerRect = playerRect.clone
       playerAnimation = new Animation(200, BitmapRegion.split(playerLoader.value.get.get, 0, 0, 30, 60, 3, 1), Animation.Loop)

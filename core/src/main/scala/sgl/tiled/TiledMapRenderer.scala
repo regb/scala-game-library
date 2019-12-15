@@ -151,7 +151,7 @@ trait TiledMapRendererComponent {
 
     //TODO: take into account renderorder
     // the opacity parameter is to be applied in addition to the actual opacity of the layer.
-    private def render(canvas: Graphics.Canvas, tileLayer: TileLayer, totalTime: Long, opacity: Float = 1f): Unit = {
+    private def render(canvas: Graphics.Canvas, tileLayer: TileLayer, totalTime: Long, opacity: Float): Unit = {
       val i1 = y / tiledMap.tileHeight
       val i2 = (y + height - 1) / tiledMap.tileHeight
       val j1 = x / tiledMap.tileWidth

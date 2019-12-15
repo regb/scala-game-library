@@ -63,7 +63,7 @@
         {
          "draworder":"topdown",
          "id":4,
-         "name":"objects",
+         "name":"GameObjects",
          "objects":[
                 {
                  "height":60,
@@ -262,15 +262,15 @@
                      "name":"",
                      "objects":[
                             {
-                             "height":28.875,
-                             "id":1,
+                             "height":15.590977443609,
+                             "id":2,
                              "name":"",
                              "rotation":0,
                              "type":"",
                              "visible":true,
-                             "width":27.875,
-                             "x":1.55120137299771,
-                             "y":1.5
+                             "width":15.1418546365915,
+                             "x":11.8696741854637,
+                             "y":11.8696741854637
                             }],
                      "opacity":1,
                      "type":"objectgroup",
