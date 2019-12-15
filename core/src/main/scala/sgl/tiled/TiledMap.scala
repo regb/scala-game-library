@@ -474,24 +474,45 @@ sealed trait Property {
   val name: String
 
   def stringValue: Option[String]
+  def intValue: Option[Int]
+  def floatValue: Option[Float]
+  def boolValue: Option[Boolean]
 }
 case class StringProperty(name: String, value: String) extends Property {
   override def stringValue: Option[String] = Some(value)
+  override def intValue: Option[Int] = None
+  override def floatValue: Option[Float] = None
+  override def boolValue: Option[Boolean] = None
 }
 case class IntProperty(name: String, value: Int) extends Property {
   override def stringValue: Option[String] = None
+  override def intValue: Option[Int] = Some(value)
+  override def floatValue: Option[Float] = None
+  override def boolValue: Option[Boolean] = None
 }
 case class FloatProperty(name: String, value: Float) extends Property {
   override def stringValue: Option[String] = None
+  override def intValue: Option[Int] = None
+  override def floatValue: Option[Float] = Some(value)
+  override def boolValue: Option[Boolean] = None
 }
 case class BoolProperty(name: String, value: Boolean) extends Property {
   override def stringValue: Option[String] = None
+  override def intValue: Option[Int] = None
+  override def floatValue: Option[Float] = None
+  override def boolValue: Option[Boolean] = Some(value)
 }
 case class ColorProperty(name: String, value: TiledMapColor) extends Property {
   override def stringValue: Option[String] = None
+  override def intValue: Option[Int] = None
+  override def floatValue: Option[Float] = None
+  override def boolValue: Option[Boolean] = None
 }
 case class FileProperty(name: String, value: String) extends Property {
   override def stringValue: Option[String] = None
+  override def intValue: Option[Int] = None
+  override def floatValue: Option[Float] = None
+  override def boolValue: Option[Boolean] = None
 }
 
 case class TiledMapColor(r: Int, g: Int, b: Int, a: Int)
