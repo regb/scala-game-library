@@ -23,9 +23,14 @@ trait TiledMapRendererComponent {
         // no other separators are accepted by the ResourcePath method /.
         Graphics.loadImage(root / ts.image)
       )
-      Loader.combine(tilesetsBitmaps).map(imgs => {
-        val tilesetsBitmaps: Map[Tileset, Graphics.Bitmap] = tiledMap.tilesets.zip(imgs).toMap
-        new TiledMapRenderer(tiledMap, tilesetsBitmaps)
+      val imageLayersBitmaps: Vector[Loader[Graphics.Bitmap]] = tiledMap.imageLayers.map(il =>
+        Graphics.loadImage(root / il.image)
+      )
+
+      Loader.combine(tilesetsBitmaps ++ imageLayersBitmaps).map(imgs => {
+        val tilesetsBitmaps: Map[Tileset, Graphics.Bitmap] = tiledMap.tilesets.zip(imgs.take(tiledMap.tilesets.size)).toMap
+        val imageLayersBitmaps: Map[ImageLayer, Graphics.Bitmap] = tiledMap.imageLayers.zip(imgs.takeRight(tiledMap.imageLayers.size)).toMap
+        new TiledMapRenderer(tiledMap, tilesetsBitmaps, imageLayersBitmaps)
       })
     }
 
@@ -43,7 +48,7 @@ trait TiledMapRendererComponent {
     * You can prepare the canvas before the render call to get any
     * effect that you want (translation, scaling).
     **/
-  class TiledMapRenderer(tiledMap: TiledMap, tilesetsBitmaps: Map[Tileset, Graphics.Bitmap]) {
+  class TiledMapRenderer(tiledMap: TiledMap, tilesetsBitmaps: Map[Tileset, Graphics.Bitmap], imageLayersBitmaps: Map[ImageLayer, Graphics.Bitmap]) {
 
     // The drawing area within the tiledMap.
     private var x = 0
@@ -91,22 +96,31 @@ trait TiledMapRendererComponent {
     private def render(canvas: Graphics.Canvas, layer: Layer, totalTime: Long, opacity: Float): Unit = layer match {
       case tl: TileLayer => render(canvas, tl, totalTime, opacity)
       case ol: ObjectLayer => render(canvas, ol, totalTime, opacity)
-      case gl: GroupLayer => {
-        var i = 0
-        canvas.translate(gl.offsetX, gl.offsetY)
-        while(i < gl.layers.size) {
-          val l = gl.layers(i)
-          if(l.isVisible) {
-              render(canvas, l, totalTime, gl.opacity)
-          }
-          i += 1
-        }
-        canvas.translate(-gl.offsetX, -gl.offsetY)
-      }
+      case gl: GroupLayer => render(canvas, gl, totalTime, opacity)
+      case il: ImageLayer => render(canvas, il, totalTime, opacity)
     }
 
     // the opacity parameter is to be applied in addition to the actual opacity of the layer.
-    private def render(canvas: Graphics.Canvas, objectLayer: ObjectLayer, totalTime: Long, opacity: Float): Unit = {
+    def render(canvas: Graphics.Canvas, groupLayer: GroupLayer, totalTime: Long, opacity: Float): Unit = {
+      var i = 0
+      canvas.translate(groupLayer.offsetX, groupLayer.offsetY)
+      while(i < groupLayer.layers.size) {
+        val layer = groupLayer.layers(i)
+        if(layer.isVisible) {
+            render(canvas, layer, totalTime, opacity*groupLayer.opacity)
+        }
+        i += 1
+      }
+      canvas.translate(-groupLayer.offsetX, -groupLayer.offsetY)
+    }
+
+    // the opacity parameter is to be applied in addition to the actual opacity of the layer.
+    def render(canvas: Graphics.Canvas, imageLayer: ImageLayer, totalTime: Long, opacity: Float): Unit = {
+      canvas.drawBitmap(imageLayersBitmaps(imageLayer), imageLayer.offsetX, imageLayer.offsetY, imageLayer.opacity*opacity)
+    }
+
+    // the opacity parameter is to be applied in addition to the actual opacity of the layer.
+    def render(canvas: Graphics.Canvas, objectLayer: ObjectLayer, totalTime: Long, opacity: Float): Unit = {
       var i = 0
       while(i < objectLayer.objects.size) {
         objectLayer.objects(i) match {

@@ -58,6 +58,12 @@ case class TiledMap(
   val objectLayersMap: Map[String, ObjectLayer] = objectLayers.map(o => (o.name, o)).toMap
   def getObjectLayer(name: String): Option[ObjectLayer] = objectLayersMap.get(name)
 
+  val imageLayers: Vector[ImageLayer] = layers.collect {
+    case (i: ImageLayer) => i
+  }
+  val imageLayersMap: Map[String, ImageLayer] = imageLayers.map(i => (i.name, i)).toMap
+  def getImageLayer(name: String): Option[ImageLayer] = imageLayersMap.get(name)
+
   /** the map height, in number of tiles */
   val height: Int = tileLayers.headOption.map(_.tiles.length).getOrElse(0)
   /** the map width, in number of tiles */
@@ -310,6 +316,12 @@ case class TiledMapTileObject(
 
 case class GroupLayer(
   name: String, id: Int, layers: Vector[Layer],
+  isVisible: Boolean, opacity: Float,
+  offsetX: Int, offsetY: Int,
+  properties: Vector[Property]) extends Layer
+
+case class ImageLayer(
+  name: String, id: Int, image: String,
   isVisible: Boolean, opacity: Float,
   offsetX: Int, offsetY: Int,
   properties: Vector[Property]) extends Layer
