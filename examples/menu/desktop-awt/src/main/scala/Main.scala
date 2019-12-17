@@ -11,7 +11,7 @@ import sgl.scene.ui._
 
 /** Wire backend to the App here */
 object Main extends AbstractApp with AWTApp
-  with InputHelpersComponent with VerboseStdErrLoggingProvider with GameLoopStatisticsComponent
+  with InputHelpersComponent with VerboseStdErrLoggingProvider
   with SceneComponent with PopupsComponent with ViewportComponent {
 
   override val TargetFps = Some(60)

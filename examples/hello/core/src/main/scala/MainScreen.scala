@@ -8,8 +8,7 @@ import util._
 
 trait MainScreenComponent extends ViewportComponent {
   this: GraphicsProvider with InputProvider with SystemProvider with WindowProvider with AudioProvider
-  with GameStateComponent with InputHelpersComponent with GameLoopStatisticsComponent
-  with LoggingProvider =>
+  with GameStateComponent with InputHelpersComponent with LoggingProvider =>
 
   import Graphics.{Bitmap, Canvas, Color, BitmapRegion, Animation, RichCanvas}
   import Audio.{Music, Sound}

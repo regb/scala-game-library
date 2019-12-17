@@ -5,7 +5,7 @@ import sgl._
 import sgl.util._
 
 trait AbstractApp extends MainScreenComponent {
-  this: GameApp with InputHelpersComponent with GameLoopStatisticsComponent =>
+  this: GameApp with InputHelpersComponent =>
 
   override def startingScreen: GameScreen = LoadingScreen
 

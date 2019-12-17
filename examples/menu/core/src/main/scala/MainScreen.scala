@@ -9,7 +9,7 @@ import util._
 
 trait ScreensComponent {
   this: GraphicsProvider with InputProvider with SystemProvider with WindowProvider 
-  with GameStateComponent with GameLoopStatisticsComponent with LoggingProvider
+  with GameStateComponent with LoggingProvider
   with ViewportComponent with SceneComponent with PopupsComponent =>
 
   private implicit val LogTag = Logger.Tag("main-screen")
