@@ -14,7 +14,6 @@ trait AndroidJsonProvider extends JsonProvider {
 
     override def parse(raw: String): JValue = new JSONTokener(raw).nextValue()
 
-
     class AndroidRichJsonAst(v: Any) extends RichJsonAst {
       override def \ (field: String): JValue = v match {
         case (o: JSONObject) => {
@@ -36,7 +35,6 @@ trait AndroidJsonProvider extends JsonProvider {
     object AndroidJString extends JStringCompanion {
       override def unapply(ast: JValue): Option[String] = ast match {
         case (s: java.lang.String) => Some(s)
-        case (s: String) => Some(s)
         case _ => None
       }
     }
@@ -49,10 +47,6 @@ trait AndroidJsonProvider extends JsonProvider {
         case (f: java.lang.Float) => Some(f.toDouble)
         case (i: java.lang.Integer) => Some(i.toDouble)
         case (l: java.lang.Long) => Some(l.toDouble)
-        case (d: Double) => Some(d)
-        case (f: Float) => Some(f.toDouble)
-        case (i: Integer) => Some(i.toDouble)
-        case (l: Long) => Some(l.toDouble)
         case _ => None
       }
     }
