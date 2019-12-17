@@ -157,25 +157,32 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
       */
     trait AbstractCanvas extends RichCanvas {
 
-      /** The width of the drawing area.
-        *
-        * This is the available width that one can draw in. It depends on the
-        * current transformation of the canvas, it could start as the Window.width
-        * but then through scaling of the canvas it might become smaller/larger.
-        * Note that when canvas.scale is called, the width is essentially scaled
-        * inversely because the scaling applies to the drawing and not the Canvas
-        * itself.
-        *
-        * The width remains stable with translations and rotation (a rotation means that
-        * the canvas is still the same rectangle from the drawing point of view, just
-        * rendered rotated).
-        */
-      def width: Float
-      /** The height of the drawing area.
-        *
-        * Refer to width doc. Same comments apply here.
-        */
-      def height: Float
+      // TODO: Figure out and document what happens if we draw outside the current
+      //       visible rectangle (say we draw at (-10,-10). It's clear that it should
+      //       be valid as we would see the result from (0,0), but the question is can
+      //       we then translate the canvas to (-10, -10) and see the whole picture
+      //       or was the part drawn outside the visible area culled and thus nothing would
+      //       be seen?
+
+      ///** The width of the drawing area.
+      //  *
+      //  * This is the available width that one can draw in. It depends on the
+      //  * current transformation of the canvas, it could start as the Window.width
+      //  * but then through scaling of the canvas it might become smaller/larger.
+      //  * Note that when canvas.scale is called, the width is essentially scaled
+      //  * inversely because the scaling applies to the drawing and not the Canvas
+      //  * itself.
+      //  *
+      //  * The width remains stable with translations and rotation (a rotation means that
+      //  * the canvas is still the same rectangle from the drawing point of view, just
+      //  * rendered rotated).
+      //  */
+      //def width: Float
+      ///** The height of the drawing area.
+      //  *
+      //  * Refer to width doc. Same comments apply here.
+      //  */
+      //def height: Float
       
       /*
        * The canvas contains a concept of current transformation matrix, and provide
@@ -325,11 +332,20 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
         */
       def drawCircle(x: Float, y: Float, radius: Float, paint: Paint): Unit = drawOval(x, y, 2*radius, 2*radius, paint)
 
+      /** Draw a color on the canvas.
+        *
+        * This is a convenient way to fill the canvas with a color, it could
+        * instead be done by drawing a large rectangle, but it is potentially
+        * more efficient depending on the implementation.
+        *
+        * Note that it is unspecified if the color is drawn in the infinite
+        * canvas space, or only in the visible area.
+        */
       def drawColor(color: Color): Unit
 
-      def clearRect(x: Float, y: Float, width: Float, height: Float): Unit
+      // def clearRect(x: Float, y: Float, width: Float, height: Float): Unit
       /** Clear the canvas by writing its background color */
-      def clear(): Unit = clearRect(0, 0, width, height)
+      // def clear(): Unit = clearRect(0, 0, width, height)
 
 
       def drawString(str: String, x: Float, y: Float, paint: Paint): Unit

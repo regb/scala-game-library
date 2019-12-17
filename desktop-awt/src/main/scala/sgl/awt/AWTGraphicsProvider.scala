@@ -124,6 +124,9 @@ trait AWTGraphicsProvider extends GraphicsProvider {
     override def defaultPaint: Paint = AWTPaint(Font.Default, Color.Black, Alignments.Left)
 
     case class AWTCanvas(var graphics: Graphics2D, var width: Float, var height: Float) extends AbstractCanvas {
+      // We keep the virtual width/height so that we can set the proper rectangles when we need
+      // to draw the whole visible area. Note that this means that the drawColor only draws the
+      // current canvas and not the theoretically infinite space.
 
       // A temporary rectangle used for calling the Graphics2D APIs. We
       // try to help the garbage collector by only instantiating once and
@@ -264,11 +267,11 @@ trait AWTGraphicsProvider extends GraphicsProvider {
       }
 
 
-      override def clearRect(x: Float, y: Float, width: Float, height: Float): Unit = {
-        graphics.setColor(Color.Black)
-        rect.setRect(x, y, width, height)
-        graphics.fill(rect)
-      }
+      //override def clearRect(x: Float, y: Float, width: Float, height: Float): Unit = {
+      //  graphics.setColor(Color.Black)
+      //  rect.setRect(x, y, width, height)
+      //  graphics.fill(rect)
+      //}
 
       override def renderText(text: String, width: Int, paint: Paint): TextLayout = {
         graphics.setColor(paint.color)

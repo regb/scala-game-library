@@ -116,8 +116,8 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
 
       // TODO: canvas.getWidth is not in synced with canvas scale, we need to figure out
       //       a clear definition of width/height (does it follow scaling, is it only a pixel concept?)
-      override def width: Float = canvas.getWidth
-      override def height: Float = canvas.getHeight
+      // override def width: Float = canvas.getWidth
+      // override def height: Float = canvas.getHeight
 
       override def withSave[A](body: => A): A = {
         canvas.save()
@@ -193,13 +193,12 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
       }
 
 
-      // TODO: implement this.
-      override def clearRect(x: Float, y: Float, width: Float, height: Float): Unit = {
-        ()
-        //val paint = new NativePaint
-        //paint.setColor(NativeColor.BLACK)
-        //canvas.drawRect(x, y, x+width, y+height, paint)
-      }
+      //override def clearRect(x: Float, y: Float, width: Float, height: Float): Unit = {
+      //  ()
+      //  //val paint = new NativePaint
+      //  //paint.setColor(NativeColor.BLACK)
+      //  //canvas.drawRect(x, y, x+width, y+height, paint)
+      //}
 
       override def renderText(text: String, width: Int, paint: Paint): TextLayout = {
         AndroidTextLayout(text, width, paint)

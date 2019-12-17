@@ -119,8 +119,8 @@ trait Html5GraphicsProvider extends GraphicsProvider {
       
       val context = canvas.getContext("2d").asInstanceOf[Ctx2D]
 
-      override def height: Float = canvas.height
-      override def width: Float = canvas.width
+      // override def height: Float = canvas.height
+      // override def width: Float = canvas.width
 
       //note that the scala.js compiler is able to inline the body, so
       //you don't pay any performance cost for using the nice auto wrapping
@@ -213,14 +213,15 @@ trait Html5GraphicsProvider extends GraphicsProvider {
         text.draw(context, x, y)
       }
 
+      // TODO: Tjst this because I'm not sure it works with a scaled canvas?
       override def drawColor(color: Color): Unit = {
         context.fillStyle = color
-        context.fillRect(0, 0, Window.width, Window.height)
+        context.fillRect(0, 0, canvas.width, canvas.height)
       }
 
-      override def clearRect(x: Float, y: Float, width: Float, height: Float): Unit = {
-        context.clearRect(x, y, width, height)
-      }
+      // override def clearRect(x: Float, y: Float, width: Float, height: Float): Unit = {
+      //   context.clearRect(x, y, width, height)
+      // }
 
       override def renderText(text: String, width: Int, paint: Paint): TextLayout = {
         Html5TextLayout(text, width, context, paint)

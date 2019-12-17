@@ -105,7 +105,9 @@ trait MainScreenComponent extends ViewportComponent {
         canvas.drawOval(goalEllipse.x, goalEllipse.y, goalEllipse.width, goalEllipse.height, playerPaint)
       }
 
+      canvas.translate(0, Window.height)
       Metrics.renderMetrics(canvas, metricsPaint)
+      canvas.translate(0, -Window.height)
     }
 
   }

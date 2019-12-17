@@ -104,8 +104,8 @@ trait NativeGraphicsProvider extends GraphicsProvider {
   
     class NativeCanvas extends AbstractCanvas {
   
-      override val width: Float = 0
-      override val height: Float = 0
+      // override val width: Float = 0
+      // override val height: Float = 0
   
       override def withSave[A](body: => A): A = {
         glPushMatrix()
@@ -243,10 +243,10 @@ trait NativeGraphicsProvider extends GraphicsProvider {
         glClear(GL_COLOR_BUFFER_BIT)
       }
   
-      override def clearRect(x: Float, y: Float, width: Float, height: Float): Unit = {
-        // TODO: respect the rect.
-        glClear(GL_COLOR_BUFFER_BIT)
-      }
+      // override def clearRect(x: Float, y: Float, width: Float, height: Float): Unit = {
+      //   // TODO: respect the rect.
+      //   glClear(GL_COLOR_BUFFER_BIT)
+      // }
   
       override def renderText(text: String, width: Int, paint: Paint): TextLayout = {
         ???

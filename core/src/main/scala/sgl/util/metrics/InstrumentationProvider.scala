@@ -120,7 +120,7 @@ trait DefaultInstrumentationProvider extends InstrumentationProvider {
         // TODO: we default to bottom left, but we should have an interface to control that.
         val offset = allMetrics.size * paint.font.size
 
-        var y = canvas.height - offset
+        var y = -offset
         allMetrics.foreach(m => {
           canvas.drawString(m.renderString, 10, y, paint)
           y += paint.font.size
@@ -151,6 +151,8 @@ trait NoInstrumentationProvider extends InstrumentationProvider {
     override def init(): Unit = {}
     override def update(): Unit = {}
     override def logMetrics(): Unit = {}
+
+    /** Render the metrics with the canvas origin being the bottom left of the list of metrics. */
     override def renderMetrics(canvas: Graphics.Canvas, paint: Graphics.Paint): Unit = {}
   }
   type Metrics = NoMetrics.type
