@@ -88,12 +88,14 @@ trait SceneGraphComponent {
         input match {
           case MouseDownEvent(x, y, _) =>
             val (wx, wy) = viewport.screenToWorld(x, y)
-            downEvents(0) = (node, (wx, wy, System.millis))
+            // TODO: using currentTimeMillis might not be the best.
+            downEvents(0) = (node, (wx, wy, System.currentTimeMillis))
             node.notifyDown(wx, wy)
           case TouchDownEvent(x, y, p) =>
             // TODO: What to do with multi touch? Should we actually block that event if already in?
+            // TODO: using currentTimeMillis might not be the best.
             val (wx, wy) = viewport.screenToWorld(x, y)
-            downEvents(p) = (node, (wx, wy, System.millis))
+            downEvents(p) = (node, (wx, wy, System.currentTimeMillis))
             node.notifyDown(wx, wy)
 
           case MouseMovedEvent(x, y) =>
@@ -110,7 +112,8 @@ trait SceneGraphComponent {
               case None => // means that the downEvents was cleaned because the mouse left the node
                 ()
               case Some((n, (owx, owy, t))) =>
-                val duration = System.millis - t
+                // TODO: using currentTimeMillis might not be the best.
+                val duration = System.currentTimeMillis - t
                 if(node == n && node.mouseClickCondition((wx-owx), (wy-owy), duration)) {
                   node.notifyClick(wx, wy)
                 } // else means that the up event is in a different component
@@ -120,7 +123,7 @@ trait SceneGraphComponent {
             val (wx, wy) = viewport.screenToWorld(x, y)
             node.notifyUp(wx, wy)
             downEvents.get(p).foreach{ case (n, (owx, owy, t)) => {
-              val duration = System.millis - t
+              val duration = System.currentTimeMillis - t
               if(node == n && node.touchClickCondition((wx-owx), (wy-owy), duration)) {
                 node.notifyClick(wx, wy)
               } // else means that the up event is in a different component

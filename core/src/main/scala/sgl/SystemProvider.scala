@@ -48,15 +48,48 @@ trait SystemProvider {
      * that exiting the game should be done by stopping the game loop
      */
 
-    /** The Unix timestamp in milliseconds
+    /** The Unix timestamp in milliseconds.
       *
-      * This is the difference, in milliseconds, between the
-      * current time and midnight, January 1, 1970 UTC
+      * This is the difference, in milliseconds, between the current time and
+      * midnight, January 1, 1970 UTC. It can be used when one wants to now the
+      * real time now, but it is not very precise (it can be a few ms off, and
+      * some OS actually represents time in units of tens of milliseconds) and
+      * it is not necesarily monotonic because it is based on the system clock,
+      * which can be subject to external modification (user reset it, or it
+      * synchronized with a more precise time).
+      *
+      * It is not a good choice to measure performance, unless the operation is
+      * pretty expensive (several seconds). And even then there is the risk
+      * that a clock adjustement might falsify the result.
       */
-    def millis(): Long
+    def currentTimeMillis: Long
 
-    // TODO: nanos too? Probably useful to expose when trying to measure
-    //       perf.
+    /** The number of nanoseconds elapsed since an arbitrary starting point of the program.
+      *
+      * This is not a real time, but instead it provides a useful relative time
+      * and can be used to measure performance or manage timing events.
+      *
+      * When the program starts, an arbitrary amount of nano seconds is chosen, and
+      * then calls to nanoTime returns the number of nanoseconds from there. It
+      * is guaranteed to be monotonic and will never travel back in time. However,
+      * it cannot be used to compute the current time.
+      *
+      * Note that the values can potentially be negative, as all that matters is
+      * the deltas between them.
+      */
+    def nanoTime: Long
+
+    /*
+     * TODO: With the currentTimeMillis and nanoTime, code like System.nanoTime will
+     *       be valid in Scala whether or not the SystemProvider was inherited from.
+     *       That's probably a risk, as people might write code against the Java
+     *       System object instead of against the safe cross-platform SGL System. We
+     *       could solve this with some build tools that protect against the pattern,
+     *       or we could rename these (but I like these names), or we could rename SystemProvider
+     *       to something like SysProvider, which would make the mistake more explicit.
+     *       It could also be just fine as probably these functions are portable enough
+     *       to be safe on all platforms.
+     */
 
     /*
      * Checks if a resource is present in the resources.

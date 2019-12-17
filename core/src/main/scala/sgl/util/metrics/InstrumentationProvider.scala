@@ -63,19 +63,19 @@ trait DefaultInstrumentationProvider extends InstrumentationProvider {
     private var isWarmedUp: Boolean = false
 
     override def init(): Unit = {
-      startTime = System.millis
+      startTime = System.nanoTime
     }
     override def update(): Unit = {
       if(!isWarmedUp) {
-        val now = System.millis
-        if(now - startTime >= WarmupDuration*1000) {
+        val now = System.nanoTime
+        if(now - startTime >= WarmupDuration*1000l*1000l*1000l) {
           allMetrics.foreach(_.reset())
           isWarmedUp = true
           startTime = now
         }
       } else if(ResetPeriod.nonEmpty) {
-        val now = System.millis
-        if(now - startTime >= ResetPeriod.get*1000) {
+        val now = System.nanoTime
+        if(now - startTime >= ResetPeriod.get*1000l*1000l*1000l) {
           allMetrics.foreach(_.reset())
           startTime = now
         }

@@ -173,7 +173,7 @@ trait AndroidApp extends Activity with GameApp
       var lastTime: Long = java.lang.System.nanoTime
 
       while(running) {
-        val beginTime: Long = java.lang.System.nanoTime
+        val frameBeginTime: Long = java.lang.System.nanoTime
 
         // We check surfaceReady here, as the game loop is started on the onResume
         // callback and the surface is not necessarily ready yet. The rest of the loop
@@ -197,24 +197,27 @@ trait AndroidApp extends Activity with GameApp
           }
 
           val newTime = java.lang.System.nanoTime
+          val elapsed = newTime - lastTime
           //delta time, in ms (all time measures are in nano)
-          val dt = ((newTime - lastTime) / (1000*1000)).toLong
-          lastTime = newTime
+          val dt = (elapsed / (1000*1000)).toLong
+          // At this point, we may have lost half a ms, so we should account for it in our lastTime, by
+          // shifting it back by the lost fraction.
+          lastTime = newTime - (elapsed - dt*1000*1000)
 
           gameLoopStep(dt, Graphics.AndroidCanvas(androidCanvas))
 
           gameView.getHolder.unlockCanvasAndPost(androidCanvas)
         }
 
-        val endTime: Long = java.lang.System.nanoTime
-        val elapsedTime: Long = (endTime - beginTime)/(1000l*1000l)
+        val frameEndTime: Long = java.lang.System.nanoTime
+        val frameElapsedTime: Long = (frameEndTime - frameBeginTime)/(1000l*1000l)
 
-        val sleepTime: Long = targetFramePeriod.map(fp => fp - elapsedTime).getOrElse(0)
+        val sleepTime: Long = targetFramePeriod.map(fp => fp - frameElapsedTime).getOrElse(0)
 
         if(sleepTime > 0) {
           Thread.sleep(sleepTime)
         } else if(sleepTime < 0) {
-          logger.warning(s"negative sleep time. target frame period: $targetFramePeriod, elapsed time: $elapsedTime.")
+          logger.warning(s"negative sleep time. target frame period: $targetFramePeriod, elapsed time: $frameElapsedTime.")
         }
       }
     }

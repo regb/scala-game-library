@@ -20,7 +20,8 @@ trait AndroidSystemProvider extends SystemProvider with PartsResourcePathProvide
       self.finish()
     }
 
-    override def millis(): Long = java.lang.System.currentTimeMillis
+    override def currentTimeMillis: Long = java.lang.System.currentTimeMillis
+    override def nanoTime: Long = java.lang.System.nanoTime
 
     override def loadText(path: ResourcePath): Loader[Array[String]] = FutureLoader {
       try {

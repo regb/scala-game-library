@@ -117,7 +117,7 @@ trait NativeApp extends GameApp
       //SDL_RenderPresent(canvas.renderer)
       SDL_GL_SwapWindow(window)
 
-      val currentTime: Long = java.lang.System.nanoTime
+      val currentTime: Long = nanoTime
       val timeForScheduler: Long = targetFramePeriod.map(fp => fp - (currentTime - beginTime)/(1000l*1000l)).getOrElse(10l)
       Scheduler.run(timeForScheduler)
 

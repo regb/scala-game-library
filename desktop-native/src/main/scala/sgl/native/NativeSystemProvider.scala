@@ -18,10 +18,8 @@ trait NativeSystemProvider extends SystemProvider with PartsResourcePathProvider
       sys.exit()
     }
 
-    override def millis(): Long = {
-      // TODO: check that we can use java.lang.System ?
-      java.lang.System.currentTimeMillis
-    }
+    override def currentTimeMillis: Long = java.lang.System.currentTimeMillis
+    override def nanoTime: Long = java.lang.System.nanoTime
 
     override def loadText(path: ResourcePath): Loader[Array[String]] = {
       ???

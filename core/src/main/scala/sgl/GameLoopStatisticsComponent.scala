@@ -10,7 +10,7 @@ import util.metrics._
   * impact performence on production build, if not included.
   */
 trait GameLoopStatisticsComponent extends GameLoopComponent {
-  this: GameStateComponent with GraphicsProvider with InstrumentationProvider =>
+  this: GameStateComponent with GraphicsProvider with InstrumentationProvider with SystemProvider =>
 
   val statistics: GameLoopStatistics = new GameLoopStatistics
 

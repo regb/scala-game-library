@@ -17,9 +17,8 @@ trait AWTSystemProvider extends SystemProvider with PartsResourcePathProvider {
       sys.exit()
     }
 
-    override def millis(): Long = {
-      java.lang.System.currentTimeMillis
-    }
+    override def currentTimeMillis: Long = java.lang.System.currentTimeMillis
+    override def nanoTime: Long = java.lang.System.nanoTime
 
     override def loadText(path: ResourcePath): Loader[Array[String]] = {
       FutureLoader {
