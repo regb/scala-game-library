@@ -6,11 +6,9 @@ import sgl.{android => adr, _}
 
 import _root_.android.app.Activity
 import _root_.android.content.Intent
-import _root_.android.os.Bundle
+import _root_.android.os.{Bundle, Build}
 import _root_.android.util.AttributeSet
-import _root_.android.view.SurfaceView
-import _root_.android.view.SurfaceHolder
-import _root_.android.view.WindowManager
+import _root_.android.view.{SurfaceView, SurfaceHolder, WindowManager}
 
 /** Activity providing all providers implementation for Android.
   *
@@ -190,7 +188,13 @@ trait AndroidApp extends Activity with GameApp
             gameState.newScreen(startingScreen)
           }
 
-          val androidCanvas = gameView.getHolder.lockCanvas
+          val androidCanvas = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // The official doc says it's added in version 23 (VERSION_CODES.M) but my linter
+            // complains if it's not 26 (O).
+            gameView.getHolder.lockHardwareCanvas()
+          } else {
+            gameView.getHolder.lockCanvas()
+          }
 
           val newTime = java.lang.System.nanoTime
           //delta time, in ms (all time measures are in nano)

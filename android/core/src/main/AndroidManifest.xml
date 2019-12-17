@@ -4,6 +4,7 @@
     <uses-sdk android:minSdkVersion="16"
               android:targetSdkVersion="29"/>
 
-    <application android:isGame="true"/>
+    <application android:isGame="true"
+     	         android:hardwareAccelerated="true" />
 
 </manifest>
