@@ -48,7 +48,7 @@ trait TiledMapRendererComponent {
     * You can prepare the canvas before the render call to get any
     * effect that you want (translation, scaling).
     **/
-  class TiledMapRenderer(tiledMap: TiledMap, tilesetsBitmaps: Map[Tileset, Graphics.Bitmap], imageLayersBitmaps: Map[ImageLayer, Graphics.Bitmap]) {
+  class TiledMapRenderer(val tiledMap: TiledMap, tilesetsBitmaps: Map[Tileset, Graphics.Bitmap], imageLayersBitmaps: Map[ImageLayer, Graphics.Bitmap]) {
 
     // The drawing area within the tiledMap.
     private var x = 0
