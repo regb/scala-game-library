@@ -7,7 +7,7 @@ import sgl.html5.themes._
 import sgl._
 
 object Main extends core.AbstractApp with Html5App 
-  with InputHelpersComponent with Html5VerboseConsoleLoggingProvider with GameLoopStatisticsComponent {
+  with InputHelpersComponent with Html5VerboseConsoleLoggingProvider {
 
   override val TargetFps = None
 
