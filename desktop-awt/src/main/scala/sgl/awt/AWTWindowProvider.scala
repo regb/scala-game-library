@@ -49,6 +49,7 @@ trait AWTWindowProvider extends WindowProvider {
 
     this.setResizable(false)
     this.setLocationRelativeTo(null)
+
   }
 
   /*

@@ -22,9 +22,13 @@ trait AWTApp extends GameApp
    * instead of starting up a thread?
    */
 
+  /** Controls whether the mouse cursor should be hidden. */
+  val HideCursor: Boolean = false
+  // TODO: we should provide an API to choose a custom cursor image.
+
   def main(args: Array[String]): Unit = {
 
-    java.lang.System.setProperty("sun.java2d.opengl","True");
+    java.lang.System.setProperty("sun.java2d.opengl","True")
 
     this.gameCanvas = new awt.Canvas(AWTGraphicsConfig)
     this.applicationFrame = new ApplicationFrame(this.gameCanvas)
@@ -36,6 +40,13 @@ trait AWTApp extends GameApp
         lifecycleListener.shutdown()
       }
     })
+    
+    if(HideCursor) {
+      // Transparent 16 x 16 pixel cursor image.
+      val cursorImg = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB)
+      val blankCursor = awt.Toolkit.getDefaultToolkit().createCustomCursor(cursorImg, new awt.Point(0, 0), "blank cursor")
+      this.applicationFrame.getContentPane().setCursor(blankCursor)
+    }
 
     this.gameCanvas.createBufferStrategy(2)
 
