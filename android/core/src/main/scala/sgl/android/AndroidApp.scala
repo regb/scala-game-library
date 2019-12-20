@@ -196,17 +196,24 @@ trait AndroidApp extends Activity with GameApp
             gameView.getHolder.lockCanvas()
           }
 
-          val newTime = java.lang.System.nanoTime
-          val elapsed = newTime - lastTime
-          //delta time, in ms (all time measures are in nano)
-          val dt = (elapsed / (1000*1000)).toLong
-          // At this point, we may have lost half a ms, so we should account for it in our lastTime, by
-          // shifting it back by the lost fraction.
-          lastTime = newTime - (elapsed - dt*1000*1000)
+          // If the canvas returned is not null, the internal implementaion holds a lock until
+          // we unlock the canvas below, so there's no risk that the surface would become unready.
+          // However, there's in theory the possibility that the surface was destroy between
+          // re-entering the loop and locking the canvas, so the lock canvas could return null,
+          // in which case we just skip until the next iteration.
+          if(androidCanvas != null) {
+            val newTime = java.lang.System.nanoTime
+            val elapsed = newTime - lastTime
+            //delta time, in ms (all time measures are in nano)
+            val dt = (elapsed / (1000*1000)).toLong
+            // At this point, we may have lost half a ms, so we should account for it in our lastTime, by
+            // shifting it back by the lost fraction.
+            lastTime = newTime - (elapsed - dt*1000*1000)
 
-          gameLoopStep(dt, Graphics.AndroidCanvas(androidCanvas))
+            gameLoopStep(dt, Graphics.AndroidCanvas(androidCanvas))
 
-          gameView.getHolder.unlockCanvasAndPost(androidCanvas)
+            gameView.getHolder.unlockCanvasAndPost(androidCanvas)
+          }
         }
 
         val frameEndTime: Long = java.lang.System.nanoTime
