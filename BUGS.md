@@ -104,3 +104,22 @@ output of `identify -verbose` on the file:
 We probably need a more robust image decoding library for the AWT backend. The
 workaround for now is to re-encode the image in a more classic RGB with alpha,
 instead of using the more compact 1 bit encoding.
+
+## Play Sound hangs forever on AWT
+
+It happens on the call to .close() on the AWT Clip object. This seems due to the
+default OpenJDK implementation of sampled sound with PulseAudio (/etc/java-8-openjdk/sound.properties):
+
+    javax.sound.sampled.Clip=org.classpath.icedtea.pulseaudio.PulseAudioMixerProvider
+    javax.sound.sampled.Port=org.classpath.icedtea.pulseaudio.PulseAudioMixerProvider
+    javax.sound.sampled.SourceDataLine=org.classpath.icedtea.pulseaudio.PulseAudioMixerProvider
+    javax.sound.sampled.TargetDataLine=org.classpath.icedtea.pulseaudio.PulseAudioMixerProvider
+
+Replace the above in the same configuration file by:
+
+    javax.sound.sampled.Clip=com.sun.media.sound.DirectAudioDeviceProvider
+    javax.sound.sampled.Port=com.sun.media.sound.PortMixerProvider
+    javax.sound.sampled.SourceDataLine=com.sun.media.sound.DirectAudioDeviceProvider
+    javax.sound.sampled.TargetDataLine=com.sun.media.sound.DirectAudioDeviceProvider
+
+This should fix the problem.
