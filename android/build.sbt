@@ -59,7 +59,7 @@ lazy val androidFirebase = (project in file("firebase"))
   .settings(
     name := "sgl-android-firebase",
     libraryDependencies += "com.regblanc.sgl"   %% "sgl-android-core"   % "0.0.1",
-    libraryDependencies += "com.google.firebase" % "firebase-analytics" % "17.2.0"
+    libraryDependencies += "com.google.firebase" % "firebase-analytics" % "17.2.1"
   )
   .dependsOn(androidCore)
 
@@ -69,7 +69,7 @@ lazy val androidGoogleAnalytics = (project in file("google-analytics"))
   .settings(
     name := "sgl-android-google-analytics",
     libraryDependencies += "com.regblanc.sgl"      %% "sgl-android-core"        % "0.0.1",
-    libraryDependencies += "com.google.android.gms" % "play-services-analytics" % "16.0.8"
+    libraryDependencies += "com.google.android.gms" % "play-services-analytics" % "17.0.0"
   )
   .dependsOn(androidCore)
 
@@ -79,7 +79,7 @@ lazy val androidGooglePlay = (project in file("google-play"))
   .settings(
     name := "sgl-android-google-play",
     libraryDependencies += "com.regblanc.sgl"      %% "sgl-android-core"    % "0.0.1",
-    libraryDependencies += "com.google.android.gms" % "play-services-games" % "17.0.0"
+    libraryDependencies += "com.google.android.gms" % "play-services-games" % "19.0.0"
   )
   .dependsOn(androidCore)
 
@@ -89,6 +89,6 @@ lazy val androidGoogleAds = (project in file("google-ads"))
   .settings(
     name := "sgl-android-google-ads",
     libraryDependencies += "com.regblanc.sgl"      %% "sgl-android-core"  % "0.0.1",
-    libraryDependencies += "com.google.android.gms" % "play-services-ads" % "18.2.0"
+    libraryDependencies += "com.google.android.gms" % "play-services-ads" % "18.3.0"
   )
   .dependsOn(androidCore)
