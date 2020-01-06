@@ -4,11 +4,12 @@ package ads
 
 import sgl.ads._
 
+import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.AdListener
 import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.InterstitialAd
 
-import com.google.android.gms.ads.doubleclick.PublisherAdRequest
-import com.google.android.gms.ads.doubleclick.PublisherInterstitialAd
+import com.google.android.gms.ads.initialization.{InitializationStatus, OnInitializationCompleteListener}
 
 import com.google.android.gms.ads.rewarded.RewardItem
 import com.google.android.gms.ads.rewarded.RewardedAd
@@ -18,7 +19,7 @@ import com.google.android.gms.ads.rewarded.RewardedAdCallback
 import _root_.android.app.Activity
 import _root_.android.os.Bundle
 
-trait GoogleAdsProvider extends Activity with AdsProvider {
+trait AndroidAdMobProvider extends Activity with AdsProvider {
   self =>
 
   // TODO: We probably want to support more than one units of each type. This will
@@ -30,62 +31,66 @@ trait GoogleAdsProvider extends Activity with AdsProvider {
     *
     * This value will be used if the InterstitialAdUnitId is not set.
     */
-  val TestInterstitialAdUnitId = "/6499/example/interstitial"
+  val TestInterstitialAdUnitId = "ca-app-pub-3940256099942544/1033173712"
 
   val RewardedAdUnitId: Option[String] = None
   val TestRewardedAdUnitId = "ca-app-pub-3940256099942544/5224354917"
 
-  private var publisherInterstitialAd: PublisherInterstitialAd = null
+  private var interstitialAd: InterstitialAd = null
   private var _isInterstitialLoading = false
   private var _isInterstitialLoaded = false
 
-  private var publisherRewardedAd: RewardedAd = null
+  private var rewardedAd: RewardedAd = null
   private var _isRewardedLoading = false
   private var _isRewardedLoaded = false
 
   override def onCreate(bundle: Bundle): Unit = {
     super.onCreate(bundle)
 
-    publisherInterstitialAd = new PublisherInterstitialAd(this)
-    publisherInterstitialAd.setAdUnitId(InterstitialAdUnitId.getOrElse(TestInterstitialAdUnitId))
-    publisherInterstitialAd.setAdListener(new AdListener {
-      override def onAdLoaded(): Unit = {
-        _isInterstitialLoaded = true
-        _isInterstitialLoading = false
-      }
-
-      override def onAdFailedToLoad(errorCode: Int): Unit = {
-        // Code to be executed when an ad request fails.
-      }
-
-      override def onAdOpened(): Unit = {
-        // Code to be executed when the ad is displayed.
-      }
-
-      override def onAdClicked(): Unit = {
-        // Code to be executed when the user clicks on an ad.
-      }
-
-      override def onAdLeftApplication(): Unit = {
-        // Code to be executed when the user has left the app.
-      }
-
-      override def onAdClosed(): Unit = {
+    MobileAds.initialize(this, new OnInitializationCompleteListener() {
+      override def onInitializationComplete(status: InitializationStatus): Unit = {
+        interstitialAd = new InterstitialAd(self)
+        interstitialAd.setAdUnitId(InterstitialAdUnitId.getOrElse(TestInterstitialAdUnitId))
+        interstitialAd.setAdListener(new AdListener {
+          override def onAdLoaded(): Unit = {
+            _isInterstitialLoaded = true
+            _isInterstitialLoading = false
+          }
+  
+          override def onAdFailedToLoad(errorCode: Int): Unit = {
+            // Code to be executed when an ad request fails.
+          }
+  
+          override def onAdOpened(): Unit = {
+            // Code to be executed when the ad is displayed.
+          }
+  
+          override def onAdClicked(): Unit = {
+            // Code to be executed when the user clicks on an ad.
+          }
+  
+          override def onAdLeftApplication(): Unit = {
+            // Code to be executed when the user has left the app.
+          }
+  
+          override def onAdClosed(): Unit = {
+            if(AlwaysPreload) {
+              _isInterstitialLoading = true
+              interstitialAd.loadAd(new AdRequest.Builder().build())
+            }
+          }
+        })
+  
         if(AlwaysPreload) {
           _isInterstitialLoading = true
-          publisherInterstitialAd.loadAd(new PublisherAdRequest.Builder().build())
+          interstitialAd.loadAd(new AdRequest.Builder().build())
+  
+          rewardedAd = createRewardedAd()
+          _isRewardedLoading = true
+          loadRewardedAd()
         }
       }
     })
-
-    if(AlwaysPreload) {
-      _isInterstitialLoading = true
-      publisherInterstitialAd.loadAd(new PublisherAdRequest.Builder().build())
-
-      publisherRewardedAd = createRewardedAd()
-      _isRewardedLoading = true
-      loadRewardedAd()
-    }
   }
 
   private def createRewardedAd(): RewardedAd = new RewardedAd(this, RewardedAdUnitId.getOrElse(TestRewardedAdUnitId))
@@ -99,17 +104,20 @@ trait GoogleAdsProvider extends Activity with AdsProvider {
         _isRewardedLoading = false
       }
     }
-    publisherRewardedAd.loadAd(new AdRequest.Builder().build(), callback)
+    rewardedAd.loadAd(new AdRequest.Builder().build(), callback)
   }
 
-  object GoogleAds extends Ads {
+  object AndroidAdMobAds extends Ads {
 
     override def loadInterstitial(): Unit = {
-      if(!_isInterstitialLoading && !_isInterstitialLoaded) {
+      // TODO: If the call happen before the initialization callback, we are
+      // ignoring it.  we should instead schedule it to start loading after the
+      // end of initialization.
+      if(interstitialAd != null && !_isInterstitialLoading && !_isInterstitialLoaded) {
         _isInterstitialLoading = true
         runOnUiThread(new Runnable {
           override def run(): Unit = {
-            publisherInterstitialAd.loadAd(new PublisherAdRequest.Builder().build())
+            interstitialAd.loadAd(new AdRequest.Builder().build())
           }
         })
       }
@@ -123,7 +131,7 @@ trait GoogleAdsProvider extends Activity with AdsProvider {
             // This call is asynchronous, not that it matters a lot because we are
             // also running it in a separate thread, but just for reference, the
             // show will return right away and the ad could be shown later.
-            publisherInterstitialAd.show()
+            interstitialAd.show()
           }
         })
         true
@@ -133,7 +141,8 @@ trait GoogleAdsProvider extends Activity with AdsProvider {
     }
 
     override def loadRewarded(): Unit = {
-      if(!_isRewardedLoading && !_isRewardedLoaded) {
+      // TODO: same initialization problem as loadInterstitial.
+      if(rewardedAd != null && !_isRewardedLoading && !_isRewardedLoaded) {
         _isRewardedLoading = true
         runOnUiThread(new Runnable {
           override def run(): Unit = {
@@ -148,13 +157,13 @@ trait GoogleAdsProvider extends Activity with AdsProvider {
         _isRewardedLoaded = false
         runOnUiThread(new Runnable {
           override def run(): Unit = {
-            if(publisherRewardedAd.isLoaded()) {
+            if(rewardedAd.isLoaded()) {
               var earned = false
               val callback = new RewardedAdCallback() {
                 override def onRewardedAdOpened(): Unit = {}
                 override def onRewardedAdClosed(): Unit = {
                   if(AlwaysPreload) {
-                    publisherRewardedAd = createRewardedAd()
+                    rewardedAd = createRewardedAd()
                     _isRewardedLoading = true
                     loadRewardedAd()
                   }
@@ -173,7 +182,7 @@ trait GoogleAdsProvider extends Activity with AdsProvider {
                 }
                 override def onRewardedAdFailedToShow(errorCode: Int): Unit = {}
               }
-              publisherRewardedAd.show(self, callback)
+              rewardedAd.show(self, callback)
             }
           }
         })
@@ -184,6 +193,6 @@ trait GoogleAdsProvider extends Activity with AdsProvider {
     }
 
   }
-  override val Ads = GoogleAds
+  override val Ads = AndroidAdMobAds
 
 }

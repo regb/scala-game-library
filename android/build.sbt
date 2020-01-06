@@ -83,11 +83,11 @@ lazy val androidGooglePlay = (project in file("google-play"))
   )
   .dependsOn(androidCore)
 
-lazy val androidGoogleAds = (project in file("google-ads"))
+lazy val androidAdMob = (project in file("admob"))
   .enablePlugins(AndroidLib)
   .settings(commonSettings: _*)
   .settings(
-    name := "sgl-android-google-ads",
+    name := "sgl-android-admob",
     libraryDependencies += "com.regblanc.sgl"      %% "sgl-android-core"  % "0.0.1",
     libraryDependencies += "com.google.android.gms" % "play-services-ads" % "18.3.0"
   )
