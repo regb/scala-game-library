@@ -22,21 +22,54 @@ trait AdsProvider {
 
   trait Ads {
 
-    /** Explicitly load the interstitial ads. */
-    def loadInterstitial(): Unit
-
-    /** Show the interstitial ads.
+    /** Explicitly load the interstitial ads.
       *
-      * This will return true if the ads was shown, or false if it
-      * wasn't yet loaded (and thus not shown). Note that it might show
-      * the ads in an asynchronous way, meaning that the function will
-      * return first and then the ads might get shown half a second
-      * later.
-      */
-    def showInterstitial(): Boolean
+      * Not necessary if AlwaysPreload is on. If the ad is already loaded/loading,
+      * this will be a no-op.
+      **/
+    def loadInterstitial(): Unit
 
     /** Check if the interstitial is ready to be shown. */
     def isInterstitialLoaded: Boolean
+
+    /** Show the interstitial ads.
+      *
+      * This will return true if the ads was loaded and ready to show.  Note
+      * that it will show the ads in an asynchronous way (this returns
+      * immediately), meaning that the function will return first and then the
+      * ads might get shown half a second later.
+      */
+    def showInterstitial(): Boolean
+    // TODO: Export an onClose (and maybe onFailed) callback so that we can do
+    //       an explicit action when the ad is completed, because otherwise we
+    //       do not know when to resume the game.
+
+
+    def loadRewarded(): Unit
+
+    def isRewardedLoaded: Boolean
+
+    /** Show a rewarded ad.
+      *
+      * The policy for rewarded ads is that the player must be shown an
+      * explicit choice to see the ad before hand (it has to be opt in). If the
+      * player says yes, then we can show a rewarded ad. This will typically be
+      * a video ad, and if the user watches for long enough, it will earn the
+      * reward.  Whether the user earned the reward or not will be specified by
+      * the Boolean argument of the onClosed callback.
+      *
+      * In practice, users have the options to close the ad before the required
+      * time, meaning that they would not get the reward. Ads implementation
+      * would typically display a warning to the user that they will not
+      * receive the reward, so it is fine to process a value of false as a
+      * non-reward and to not give the user the promised reward.
+      *
+      * The showRewarded call itself is asynchronous, it returns immediately
+      * and the ad might be shown anytime within the next few seconds. The returned
+      * Boolean value is whether the ad was loaded or not, and thus whether the
+      * ad is going to show or not.
+      */
+    def showRewarded(onClosed: (Boolean) => Unit): Boolean
   }
 
   /** Ads provides the central controller for Ads displayed in the game.
@@ -70,11 +103,17 @@ trait NoAdsProvider extends AdsProvider {
   override val AlwaysPreload: Boolean = true
 
   object NoAds extends Ads {
-    def loadInterstitial(): Unit = {}
+    override def loadInterstitial(): Unit = {}
+    override def isInterstitialLoaded: Boolean = true
+    override def showInterstitial(): Boolean = true
 
-    def showInterstitial(): Boolean = true
-
-    def isInterstitialLoaded(): Boolean = true
+    override def loadRewarded(): Unit = {}
+    override def isRewardedLoaded: Boolean = true
+    override def showRewarded(onClosed: (Boolean) => Unit): Boolean = {
+      // TODO: async? How about false?
+      onClosed(true)
+      false
+    }
   }
   override val Ads = NoAds
 
