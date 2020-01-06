@@ -68,3 +68,11 @@ config which choose the best. Maybe Android supports better one kind of audio
 format, and iOS another kind, so we would have both versions as two extensions
 of the same asset in the shared asset folder, but we would package only the
 best one into the binary for each platform.
+
+## Rethink backend package path
+
+Right now, backends are in sgl.android._ or sgl.awt._, while the core is in
+sgl._
+It might make sense to have the backend in the same base directory (sgl._), because
+it's not visible anyway for the core module of the game, and the names never conflict.
+This could lead to a slightly simpler and more consistent organization.
