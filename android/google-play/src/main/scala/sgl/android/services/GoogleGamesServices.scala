@@ -7,14 +7,11 @@ import android.app.Activity
 import android.os.Bundle
 import android.content.Intent
 
-import com.google.android.gms.common.api.GoogleApiClient
-import GoogleApiClient.{ConnectionCallbacks, OnConnectionFailedListener}
-import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.games.Games
-import com.google.android.gms.games.snapshot.Snapshot
-import com.google.android.gms.games.snapshot.SnapshotMetadataChange
-import com.google.android.gms.games.GamesStatusCodes
-import com.google.android.gms.drive.Drive
+import com.google.android.gms.auth.api.Auth
+import com.google.android.gms.auth.api.signin.{GoogleSignIn, GoogleSignInAccount, GoogleSignInClient, GoogleSignInOptions}
+import com.google.android.gms.tasks.{OnCompleteListener, OnSuccessListener, Task}
+
 
 /** Provide google games services for the main activity
   * 
@@ -29,12 +26,22 @@ import com.google.android.gms.drive.Drive
   * features you need for your game. It also provides an auto-login
   * management implementation.
   */
-trait GoogleGamesServices extends Activity
-                          with ConnectionCallbacks with OnConnectionFailedListener {
+trait GoogleGamesServices extends Activity {
 
   this: LoggingProvider =>
 
   private implicit val LogTag = Logger.Tag("sgl-google-games-services")
+
+  // Status code for activity result
+  private val RcSignIn = 7001
+  private val RcAchievements = 8001
+  private val RcLeaderboads = 9001
+
+  private val SignInOptions = GoogleSignInOptions.DEFAULT_GAMES_SIGN_IN
+  // Client used to sign in with Google APIs
+  private var googleSignInClient: GoogleSignInClient = null
+  // The currently signed in account, used to check the account has changed outside of this activity when resuming.
+  var signedInAccount: GoogleSignInAccount = null
 
   private val sglConfigSave: AndroidSave = new AndroidSave("sgl-google-games-services-config", this)
   private def setAutoLogin(b: Boolean): Unit = sglConfigSave.putBoolean("google-play-auto-login", b)
@@ -59,141 +66,129 @@ trait GoogleGamesServices extends Activity
     */
   val GoogleGamesSavedGames = false
 
-  var googleApiClient: GoogleApiClient = null
-
 
   override def onCreate(bundle: Bundle): Unit = {
     super.onCreate(bundle)
 
-    val builderBase = new GoogleApiClient.Builder(this)
-                            .addConnectionCallbacks(this)
-                            .addOnConnectionFailedListener(this)
-                            .addApi(Games.API).addScope(Games.SCOPE_GAMES)
-    val builderFinal = if(GoogleGamesSavedGames)
-                         builderBase.addApi(Drive.API).addScope(Drive.SCOPE_APPFOLDER)
-                       else
-                         builderBase
-
-    googleApiClient = builderFinal.build()
+    // Create the client used to sign in.
+    googleSignInClient = GoogleSignIn.getClient(this, SignInOptions)
   }
 
-  override def onStart(): Unit = {
-    super.onStart()
-    if(googleApiClient != null && autoLogin) {
-      logger.trace("Connecting to google api")
-      googleApiClient.connect()
-    }
-  }
+  override def onResume(): Unit = {
+    super.onResume()
 
-  override def onStop(): Unit = {
-    super.onStop()
-    if(googleApiClient != null)
-      googleApiClient.disconnect()
-  }
-
-
-  override def onConnected(bundle: Bundle): Unit = {
-    logger.trace("onConnected from google play")
-    setAutoLogin(true)
-  }
-
-  override def onConnectionSuspended(cause: Int): Unit = {
-    logger.trace("onConnectedSuspend from google play")
-    if(googleApiClient != null && autoLogin) {
-      googleApiClient.connect()
-    }
-  }
-
-
-  // Request code to use when launching the resolution activity
-  private val RequestResolveError = 1001
-  // Bool to track whether the app is already resolving an error
-  private var resolvingError = false;
-
-  override def onConnectionFailed(result: ConnectionResult): Unit = {
-    logger.trace("onConnectionFailed from google play: " + result)
-    logger.trace("has resolution: " + result.hasResolution())
-    if(resolvingError) {
-      logger.trace("Ignoring connection failed because already resolving")
-    } else if(result.hasResolution()) {
-      try {
-        resolvingError = true
-        result.startResolutionForResult(this, RequestResolveError)
-      } catch {
-        case (e: Exception) =>
-          //give up
-          resolvingError = false
-          setAutoLogin(false)
-      }
+    val account = GoogleSignIn.getLastSignedInAccount(this)
+    if(account != null && GoogleSignIn.hasPermissions(account, SignInOptions.getScopeArray():_*)) {
+      logger.debug("getLastSignedInAccount(): success")
+      onConnected(account)
     } else {
-      //just give up
-      setAutoLogin(false)
+      signInSilently()
     }
   }
 
-  override protected def onActivityResult(requestCode: Int, resultCode: Int, intent: Intent): Unit = {
-    logger.trace("onActivityResult called")
-    if(requestCode == RequestResolveError) {
-      resolvingError = false
-      if(resultCode == Activity.RESULT_OK) {
-        logger.trace("RESULT_OK, trying to connect again")
-        googleApiClient.connect()
+  def signInSilently(): Unit = {
+    googleSignInClient.silentSignIn().addOnCompleteListener(this,
+      new OnCompleteListener[GoogleSignInAccount] {
+        override def onComplete(task: Task[GoogleSignInAccount]): Unit = {
+          if(task.isSuccessful()) {
+            logger.debug("signInSilently(): success")
+            onConnected(task.getResult())
+          } else {
+            logger.debug("signInSilently(): failure: " + task.getException())
+            onDisconnected()
+            if(autoLogin) {
+              signInExplicitly()
+            }
+          }
+        }
+      })
+  }
+
+  def signInExplicitly(): Unit = {
+    startActivityForResult(googleSignInClient.getSignInIntent(), RcSignIn)
+  }
+
+
+  private def onConnected(account: GoogleSignInAccount): Unit = {
+    setAutoLogin(true)
+    signedInAccount = account
+  }
+
+  private def onDisconnected(): Unit = {
+    signedInAccount = null
+  }
+
+  override protected def onActivityResult(requestCode: Int, resultCode: Int, data: Intent): Unit = {
+    super.onActivityResult(requestCode, resultCode, data)
+    if(requestCode == RcSignIn) {
+      val result = Auth.GoogleSignInApi.getSignInResultFromIntent(data)
+      if(result.isSuccess()) {
+        signedInAccount = result.getSignInAccount()
       } else {
-        //just give up
+        // Just give up.
         setAutoLogin(false)
       }
     }
   }
 
   def startDefaultLeaderboardActivity(leaderboardId: String): Unit = {
+    val that = this
     runOnUiThread(new Runnable {
       override def run(): Unit = {
-        if(googleApiClient != null && googleApiClient.isConnected()) {
-          startActivityForResult(Games.Leaderboards.getLeaderboardIntent(googleApiClient, leaderboardId), 0)
-        } else if(googleApiClient != null) {
-          googleApiClient.connect()
+        if(signedInAccount != null) {
+          Games.getLeaderboardsClient(that, signedInAccount)
+               .getLeaderboardIntent(leaderboardId)
+               .addOnSuccessListener(new OnSuccessListener[Intent] {
+                 override def onSuccess(intent: Intent): Unit = {
+                   startActivityForResult(intent, RcLeaderboads)
+                 }
+               })
+        } else {
+          signInExplicitly()
         }
       }
     })
   }
 
   def startDefaultAchievementsActivity(): Unit = {
+    val that = this
     runOnUiThread(new Runnable {
       override def run(): Unit = {
-        if(googleApiClient != null && googleApiClient.isConnected()) {
-          startActivityForResult(Games.Achievements.getAchievementsIntent(googleApiClient), 0)
-        } else if(googleApiClient != null) {
-          googleApiClient.connect()
+        if(signedInAccount != null) {
+          Games.getAchievementsClient(that, signedInAccount)
+               .getAchievementsIntent()
+               .addOnSuccessListener(new OnSuccessListener[Intent] {
+                 override def onSuccess(intent: Intent): Unit = {
+                   startActivityForResult(intent, RcAchievements)
+                 }
+               })
+        } else {
+          signInExplicitly()
         }
       }
     })
   }
-
-  /*
-   * It looks like wrapping unlock and increment really does not help much and using the direct
-   * native interface of GooglaeAPI might be better. But I believe that hiding the lifecycle and
-   * connection of the google api behind simpler functions is probably worth it, and should be
-   * the main goal of the GoogleGamesServices trait layer.
-   */
 
   //TODO: in this file we provide simple helpers without abstraction on top of google games services
   //      but it would be good to provide separately an Achievement abstraction layer with a fallback mecanisms
   //      to the local drive if there is no google games services available.
 
   def unlockAchievement(achievementId: String): Unit = {
-    if(googleApiClient != null && googleApiClient.isConnected())
-      Games.Achievements.unlock(googleApiClient, achievementId)
+    if(signedInAccount != null) {
+      Games.getAchievementsClient(this, signedInAccount).unlock(achievementId)
+    }
   }
 
   def incrementAchievement(achievementId: String, inc: Int): Unit = {
-    if(googleApiClient != null && googleApiClient.isConnected())
-      Games.Achievements.increment(googleApiClient, achievementId, inc)
+    if(signedInAccount != null) {
+      Games.getAchievementsClient(this, signedInAccount).increment(achievementId, inc)
+    }
   }
 
   def submitScoreLeaderboard(leaderboardId: String, score: Long): Unit = {
-    if(googleApiClient != null && googleApiClient.isConnected())
-      Games.Leaderboards.submitScore(googleApiClient, leaderboardId, score)
+    if(signedInAccount != null) {
+      Games.getLeaderboardsClient(this, signedInAccount).submitScore(leaderboardId, score)
+    }
   }
-
 
 }

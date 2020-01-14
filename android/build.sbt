@@ -79,7 +79,10 @@ lazy val androidGooglePlay = (project in file("google-play"))
   .settings(
     name := "sgl-android-google-play",
     libraryDependencies += "com.regblanc.sgl"      %% "sgl-android-core"    % "0.0.1",
-    libraryDependencies += "com.google.android.gms" % "play-services-games" % "19.0.0"
+    libraryDependencies += "com.google.android.gms" % "play-services-auth"  % "17.0.0",
+    libraryDependencies += "com.google.android.gms" % "play-services-games" % "19.0.0",
+    // Avoid nullable class not found compiler warnings.
+    libraryDependencies += "com.google.code.findbugs" % "jsr305" % "3.0.0" % Compile
   )
   .dependsOn(androidCore)
 
