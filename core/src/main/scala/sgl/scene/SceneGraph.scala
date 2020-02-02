@@ -41,13 +41,13 @@ trait SceneGraphComponent {
       *
       * Each input you wish to handle in the Scene must be processed by the SceneGraph 
       * in order to dispatch it to the right node. The SceneGraph returns true if
-      * the event was handled by some node, false if ignored.
+      * the event was intercepted by some node, false if ignored.
       *
       * In most case, the caller will want to stop processing an event further if it was processed
       * (typically if the caller organizes a HUD on top of its own game map). When that's the case
       * the caller can use the returned value from the SceneGraph and if it is true, it means the
-      * input was hit and handled by some of the graph nodes, thus it can be considered as intercepted
-      * and not processed further.
+      * input hit some node in the graph, thus it can be considered as
+      * intercepted and not processed further.
       */
     def processInput(input: Input.InputEvent): Boolean = {
       val hitPosition: Option[(Float, Float)] = input match {
@@ -84,58 +84,60 @@ trait SceneGraphComponent {
         case _ => ()
       }
 
-      hitNode.foreach(node => {
-        input match {
-          case MouseDownEvent(x, y, _) =>
-            val (wx, wy) = viewport.screenToWorld(x, y)
-            // TODO: using currentTimeMillis might not be the best.
-            downEvents(0) = (node, (wx, wy, System.currentTimeMillis))
-            node.notifyDown(wx, wy)
-          case TouchDownEvent(x, y, p) =>
-            // TODO: What to do with multi touch? Should we actually block that event if already in?
-            // TODO: using currentTimeMillis might not be the best.
-            val (wx, wy) = viewport.screenToWorld(x, y)
-            downEvents(p) = (node, (wx, wy, System.currentTimeMillis))
-            node.notifyDown(wx, wy)
+      hitNode match {
+        case None => false
+        case Some(node) => {
+          input match {
+            case MouseDownEvent(x, y, _) =>
+              val (wx, wy) = viewport.screenToWorld(x, y)
+              // TODO: using currentTimeMillis might not be the best.
+              downEvents(0) = (node, (wx, wy, System.currentTimeMillis))
+              node.notifyDown(wx, wy)
+            case TouchDownEvent(x, y, p) =>
+              // TODO: What to do with multi touch? Should we actually block that event if already in?
+              // TODO: using currentTimeMillis might not be the best.
+              val (wx, wy) = viewport.screenToWorld(x, y)
+              downEvents(p) = (node, (wx, wy, System.currentTimeMillis))
+              node.notifyDown(wx, wy)
 
-          case MouseMovedEvent(x, y) =>
-            val (wx, wy) = viewport.screenToWorld(x, y)
-            node.notifyMoved(wx, wy)
-          case TouchMovedEvent(x, y, p) =>
-            val (wx, wy) = viewport.screenToWorld(x, y)
-            node.notifyMoved(wx, wy)
+            case MouseMovedEvent(x, y) =>
+              val (wx, wy) = viewport.screenToWorld(x, y)
+              node.notifyMoved(wx, wy)
+            case TouchMovedEvent(x, y, p) =>
+              val (wx, wy) = viewport.screenToWorld(x, y)
+              node.notifyMoved(wx, wy)
 
-          case MouseUpEvent(x, y, _) =>
-            val (wx, wy) = viewport.screenToWorld(x, y)
-            node.notifyUp(wx, wy)
-            downEvents.get(0) match {
-              case None => // means that the downEvents was cleaned because the mouse left the node
-                ()
-              case Some((n, (owx, owy, t))) =>
-                // TODO: using currentTimeMillis might not be the best.
+            case MouseUpEvent(x, y, _) =>
+              val (wx, wy) = viewport.screenToWorld(x, y)
+              node.notifyUp(wx, wy)
+              downEvents.get(0) match {
+                case None => // means that the downEvents was cleaned because the mouse left the node
+                  ()
+                case Some((n, (owx, owy, t))) =>
+                  // TODO: using currentTimeMillis might not be the best.
+                  val duration = System.currentTimeMillis - t
+                  if(node == n && node.mouseClickCondition((wx-owx), (wy-owy), duration)) {
+                    node.notifyClick(wx, wy)
+                  } // else means that the up event is in a different component
+              }
+              downEvents.remove(0)
+            case TouchUpEvent(x, y, p) =>
+              val (wx, wy) = viewport.screenToWorld(x, y)
+              node.notifyUp(wx, wy)
+              downEvents.get(p).foreach{ case (n, (owx, owy, t)) => {
                 val duration = System.currentTimeMillis - t
-                if(node == n && node.mouseClickCondition((wx-owx), (wy-owy), duration)) {
+                if(node == n && node.touchClickCondition((wx-owx), (wy-owy), duration)) {
                   node.notifyClick(wx, wy)
                 } // else means that the up event is in a different component
-            }
-            downEvents.remove(0)
-          case TouchUpEvent(x, y, p) =>
-            val (wx, wy) = viewport.screenToWorld(x, y)
-            node.notifyUp(wx, wy)
-            downEvents.get(p).foreach{ case (n, (owx, owy, t)) => {
-              val duration = System.currentTimeMillis - t
-              if(node == n && node.touchClickCondition((wx-owx), (wy-owy), duration)) {
-                node.notifyClick(wx, wy)
-              } // else means that the up event is in a different component
-            }}
-            downEvents.remove(p)
+              }}
+              downEvents.remove(p)
 
-          case _ =>
-            throw new Exception("Should never reach that point")
+            case _ =>
+              throw new Exception("Should never reach that point")
+          }
+          true
         }
-      })
-
-      true
+      }
     }
   
     def update(dt: Long): Unit = root.update(dt)
@@ -259,28 +261,10 @@ trait SceneGraphComponent {
      * event does not guarantee a follow-up up/click event.
      */
 
-    def notifyDown(x: Float, y: Float): Boolean = false
-    def notifyUp(x: Float, y: Float): Boolean = false
-
+    def notifyDown(x: Float, y: Float): Unit = ()
+    def notifyUp(x: Float, y: Float): Unit = ()
     def notifyMoved(x: Float, y: Float): Unit = ()
-
-    /* Essentially I don't know how to design the event system, so I just add
-     * the simplest thing that works for the current game I'm working on, which
-     * is that each actor can get notified of a click event (down + up) from
-     * either mouse or touch input. One can override to perform some action on
-     * the click, and the return value should be true if the click is handled
-     * else the event will be sent higher in the hierarchy.
-     * Coordinates are local to the node (this.x + x would be local to the parent).
-     */
-     // TODO: click should only be notified when the pointer is pretty much at the same
-     //       point to when it went down. Reasons are that a natural click is down-up,
-     //       without any move in between. We can tolerate a few pixels of move, due
-     //       to small imprecsision. We should make the tolerance a parameter configurable
-     //       by the client. Also, with such implementation, buttons will work nicely on
-     //       top of scrollable pane, because we want the event to tickle down to the scrolling
-     //       pane and not be interecepted by a button click.
-    def notifyClick(x: Float, y: Float): Boolean = false
-
+    def notifyClick(x: Float, y: Float): Unit = ()
 
     /** Provide a condition to validate a click.
       *

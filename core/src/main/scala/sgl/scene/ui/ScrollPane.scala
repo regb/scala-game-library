@@ -133,7 +133,7 @@ trait ScrollPaneComponent {
      *   notifyPointerEnter.
      */
 
-    override def notifyDown(x: Float, y: Float): Boolean = {
+    override def notifyDown(x: Float, y: Float): Unit = {
       prevX = x
       prevY = y
       pressed = true
@@ -143,7 +143,6 @@ trait ScrollPaneComponent {
       val wx = x + cameraX
       val wy = y + cameraY
       delayedDownNode = root.hit(wx, wy).map(n => (n, (wx, wy, 0l)))
-      true
     }
 
     override def notifyMoved(x: Float, y: Float): Unit = {
@@ -167,7 +166,7 @@ trait ScrollPaneComponent {
       }
     }
 
-    override def notifyUp(x: Float, y: Float): Boolean = {
+    override def notifyUp(x: Float, y: Float): Unit = {
       pressed = false
       scrollingVelocityX = 0.25f*(cameraX - targetCameraX)
       scrollingVelocityY = 0.25f*(cameraY - targetCameraY)
@@ -195,7 +194,6 @@ trait ScrollPaneComponent {
         node.notifyUp(wx, wy)
         downNode = None
       }}
-      true
     }
 
     override def notifyPointerLeave(): Unit = {
@@ -229,10 +227,10 @@ trait ScrollPaneComponent {
       duration < 700 && dx < PointerMovedThreshold && dx > -PointerMovedThreshold && dy < PointerMovedThreshold && dy > -PointerMovedThreshold
     }
 
-    override def notifyClick(x: Float, y: Float): Boolean = {
+    override def notifyClick(x: Float, y: Float): Unit = {
       val wx = x + cameraX
       val wy = y + cameraY
-      root.hit(wx, wy).forall(node => node.notifyClick(wx, wy))
+      root.hit(wx, wy).foreach(node => node.notifyClick(wx, wy))
     }
 
     override def update(dt: Long): Unit = {

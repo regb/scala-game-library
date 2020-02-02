@@ -24,16 +24,14 @@ trait ButtonsComponent {
         renderRegular(canvas)
     }
 
-    override def notifyDown(x: Float, y: Float): Boolean = {
+    override def notifyDown(x: Float, y: Float): Unit = {
       pressed = true
-      true
     }
     override def notifyPointerLeave(): Unit = {
       pressed = false
     }
-    override def notifyUp(x: Float, y: Float): Boolean = {
+    override def notifyUp(x: Float, y: Float): Unit = {
       pressed = false
-      true
     }
 
   }
