@@ -43,7 +43,8 @@ lazy val coreAndroid = (project in file("./core"))
   .settings(commonAndroidSettings: _*)
   .settings(
     name         := "sgl-core-android",
-    target       := baseDirectory.value / ".android" / "target"
+    target       := baseDirectory.value / ".android" / "target",
+    libraryDependencies += "org.scalatest" %%% "scalatest" % "3.0.0" % "test"
   )
 
 lazy val jvmShared = (project in file("./jvm-shared"))
@@ -332,3 +333,20 @@ lazy val MacName = "Mac OS X"
 
 def isLinux(name: String): Boolean = name.startsWith(LinuxName.toLowerCase)
 def isMac(name: String): Boolean = name.startsWith(MacName.toLowerCase)
+
+/** Currently, the native projects are not compiling due to binary incompatibility
+ * with scalatest. Once this issue is resolved, we can revert back to the CI
+ * command being `sbt test`. For now, this hackily ensures that we don't regress
+ * being on everything else.
+ * 
+ * Missing projects from this command: coreNative, jvmSharedAndroid, platformerDesktopNative.
+ */
+lazy val verifyCiCommand = List(
+  "coreJVM","desktopAWT","desktopNative","helloCoreJS","helloCoreJVM","helloCoreNative",
+  "helloDesktopAWT","helloDesktopNative","helloHtml5","html5","jvmShared","menuCoreJS",
+  "menuCoreJVM","menuCoreNative","menuDesktopAWT","platformerCoreJS","platformerCoreJVM",
+  "platformerCoreNative","platformerDesktopAWT","snakeCoreJS","snakeCoreJVM","snakeCoreNative",
+  "snakeDesktopAWT","snakeDesktopNative","snakeHtml5"
+).map(_ + "/test").mkString("; ")
+
+addCommandAlias("verifyCI", s"; $verifyCiCommand")
