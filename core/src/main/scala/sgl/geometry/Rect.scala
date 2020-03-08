@@ -1,7 +1,7 @@
 package sgl.geometry
 
 /** an AABB Rect. */
-class Rect(var left: Float, var top: Float, var width: Float, var height: Float) {
+case class Rect(left: Float, top: Float, width: Float, height: Float) {
 
   def right: Float = left + width
   def bottom: Float = top + height
@@ -9,6 +9,9 @@ class Rect(var left: Float, var top: Float, var width: Float, var height: Float)
   def centerX = left + width/2
   def centerY = top + height/2
   def center: Point = Point(centerX, centerY)
+
+  def +(m: Vec): Rect = Rect(left + m.x, top + m.x, width, height)
+  def -(m: Vec): Rect = Rect(left - m.x, top - m.y, width, height)
 
   /*
    * names are inversed with (x,y) coordinates, unfortunate...
@@ -36,8 +39,6 @@ class Rect(var left: Float, var top: Float, var width: Float, var height: Float)
 }
 
 object Rect {
-
-  def apply(left: Float, top: Float, width: Float, height: Float) = new Rect(left, top, width, height)
 
   def fromBoundingBox(left: Float, top: Float, right: Float, bottom: Float): Rect =
     Rect(left, top, right - left, bottom - top)

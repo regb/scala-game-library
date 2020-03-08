@@ -23,4 +23,18 @@ class RectSuite extends FunSuite {
     assert(!r1.intersect(11, 10))
     assert(!r1.intersect(5, 25))
   }
+
+  test("adds a Vec") {
+    val r = Rect(0,0,10,10)
+    val v = Vec(1,1)
+    val expected = Rect(1,1,10,10)
+    assert(r + v === expected)
+  }
+  
+  test("subtracts a Vec") {
+    val r = Rect(0,0,10,10)
+    val v = Vec(1,1)
+    val expected = Rect(-1,-1,10,10)
+    assert(r - v === expected)
+  }
 }
