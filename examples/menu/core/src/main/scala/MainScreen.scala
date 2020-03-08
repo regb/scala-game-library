@@ -26,9 +26,8 @@ trait ScreensComponent {
     scene.addNode(levelsPane)
 
     class LevelButton(i: Int, _x: Float, _y: Float) extends Button(_x, _y, 100, 30) {
-      override def notifyClick(x: Float, y: Float): Boolean = {
+      override def notifyClick(x: Float, y: Float): Unit = {
         println(s"button $i clicked at ($x, $y)")
-        true
       }
       override def renderPressed(canvas: Graphics.Canvas): Unit = {
         val color = Graphics.defaultPaint.withColor(Graphics.Color.Red)

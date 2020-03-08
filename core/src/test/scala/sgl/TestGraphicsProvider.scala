@@ -83,7 +83,6 @@ trait TestGraphicsProvider extends GraphicsProvider {
       override def drawString(str: String, x: Float, y: Float, paint: Paint): Unit = ???
       override def drawText(text: TextLayout, x: Float, y: Float): Unit = ???
       override def drawColor(color: Color): Unit = ???
-      override def clearRect(x: Float, y: Float, width: Float, height: Float): Unit = ???
       override def renderText(text: String, width: Int, paint: Paint): TextLayout = ???
     }
     type Canvas = TestCanvas
