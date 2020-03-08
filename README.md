@@ -189,3 +189,7 @@ cake pattern for dependencies injection is [this
 one](http://jonasboner.com/real-world-scala-dependency-injection-di/).  There
 is also a [great talk](https://www.youtube.com/watch?v=yLbdw06tKPQ) that
 describes how to use the cake pattern, which closely ressembles our usage here.
+
+## Developing
+
+In order to run the tests for scala-native, you will need to follow the installation instructions on the Scala Native [website](https://scala-native.readthedocs.io/en/v0.3.9-docs/user/setup.html#installing-clang-and-runtime-dependencies) if you have not done so already.
