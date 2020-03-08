@@ -5,7 +5,7 @@ import org.scalatest.FunSuite
 class PolygonSuite extends FunSuite {
 
   test("Create polygon with correct vertices and edges") {
-    val p = Polygon(Array(Vec(0,0), Vec(1, 10), Vec(5, 5)))
+    val p = Polygon(Vector(Vec(0,0), Vec(1, 10), Vec(5, 5)))
     assert(p.vertices(0) === Vec(0,0))
     assert(p.vertices(1) === Vec(1,10))
     assert(p.vertices(2) === Vec(5,5))
@@ -19,7 +19,7 @@ class PolygonSuite extends FunSuite {
   }
 
   test("Correct bounding box for polygon") {
-    val p = Polygon(Array(Vec(0, 5), Vec(3, 8), Vec(7, 4), Vec(4, -2)))
+    val p = Polygon(Vector(Vec(0, 5), Vec(3, 8), Vec(7, 4), Vec(4, -2)))
     val bb = p.boundingBox
     assert(bb.top == -2)
     assert(bb.left == 0)

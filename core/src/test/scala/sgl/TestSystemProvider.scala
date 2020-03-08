@@ -11,6 +11,9 @@ trait TestSystemProvider extends SystemProvider {
     def exit(): Unit = ???
     def millis(): Long = ???
 
+    def currentTimeMillis: Long = ???
+    def nanoTime: Long = ???
+
     def loadText(path: ResourcePath): Loader[Array[String]] = ???
 
     def loadBinary(path: ResourcePath): Loader[Array[Byte]] = ???
