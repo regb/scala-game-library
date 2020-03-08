@@ -10,6 +10,9 @@ case class Circle(x: Float, y: Float, radius: Float) {
   def right: Float = x + radius
   def bottom: Float = y + radius
 
+  def +(m: Vec): Circle = Circle(x + m.x, y + m.y, radius)
+  def -(m: Vec): Circle = Circle(x - m.x, y - m.y, radius)
+
   def intersect(x: Float, y: Float): Boolean = {
     val d2 = (x - this.x)*(x - this.x) + (y - this.y)*(y - this.y)
     d2 <= radius*radius
