@@ -26,15 +26,15 @@ class RectSuite extends AnyFunSuite {
 
   test("adds a Vec") {
     val r = Rect(0,0,10,10)
-    val v = Vec(1,1)
-    val expected = Rect(1,1,10,10)
+    val v = Vec(1,2)
+    val expected = Rect(1,2,10,10)
     assert(r + v === expected)
   }
   
   test("subtracts a Vec") {
     val r = Rect(0,0,10,10)
-    val v = Vec(1,1)
-    val expected = Rect(-1,-1,10,10)
+    val v = Vec(1,2)
+    val expected = Rect(-1,-2,10,10)
     assert(r - v === expected)
   }
 }

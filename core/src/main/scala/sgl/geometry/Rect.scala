@@ -10,7 +10,7 @@ case class Rect(left: Float, top: Float, width: Float, height: Float) {
   def centerY = top + height/2
   def center: Point = Point(centerX, centerY)
 
-  def +(m: Vec): Rect = Rect(left + m.x, top + m.x, width, height)
+  def +(m: Vec): Rect = Rect(left + m.x, top + m.y, width, height)
   def -(m: Vec): Rect = Rect(left - m.x, top - m.y, width, height)
 
   /*
