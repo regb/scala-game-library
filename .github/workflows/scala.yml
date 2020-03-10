@@ -17,5 +17,7 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: 1.8
+    - name: Set up Scala Native dependencies
+      run: sudo apt-get install clang libunwind-dev libgc-dev libre2-dev
     - name: Run tests
       run: sbt verifyCI
