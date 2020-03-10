@@ -1,5 +1,7 @@
 # SGL: Scala Game Library
 
+![Scala CI](https://github.com/regb/scala-game-library/workflows/Scala%20CI/badge.svg)
+
 Scala Game Library (SGL) is a library for developing cross-platform 2D video
 games in Scala. It provides a high-level API for building 2D games, and can
 export games to the Desktop, Android, and the web.  More platforms, including
