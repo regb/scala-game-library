@@ -18,6 +18,6 @@ jobs:
       with:
         java-version: 1.8
     - name: Set up Scala Native dependencies
-      run: sudo apt-get install clang libunwind-dev libgc-dev libre2-dev
+      run: sudo apt-get install clang libunwind-dev libgc-dev libre2-dev libglu1-mesa-dev
     - name: Run tests
       run: sbt verifyCI
