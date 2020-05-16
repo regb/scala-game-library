@@ -53,13 +53,20 @@ lazy val androidCore = (project in file("core"))
     libraryDependencies += "com.regblanc.sgl" %% "sgl-jvmshared-android" % "0.0.1"
   )
 
+// TODO firebase is a lot more than just analytics, but currently we only offer analytics integration.
+// it would probably be nice to offer more firebase integration, but probably this should be as
+// a separate package, so that user can choose to just add the analytics module without extras. So
+// this package should be renamed to something like firebase-analytics.
 lazy val androidFirebase = (project in file("firebase"))
   .enablePlugins(AndroidLib)
   .settings(commonSettings: _*)
   .settings(
     name := "sgl-android-firebase",
     libraryDependencies += "com.regblanc.sgl"   %% "sgl-android-core"   % "0.0.1",
-    libraryDependencies += "com.google.firebase" % "firebase-analytics" % "17.2.1"
+    libraryDependencies += "com.google.firebase" % "firebase-analytics" % "17.4.1",
+    // Seems like reasonable to add crashlytics automatically with analytics? This is most likely as
+    // invasive in terms of SDK/privacy than just adding the firebase-analytics artifact anyway.
+    libraryDependencies += "com.google.firebase" % "firebase-crashlytics" % "17.0.0"
   )
   .dependsOn(androidCore)
 
