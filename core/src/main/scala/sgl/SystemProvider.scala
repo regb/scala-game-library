@@ -119,7 +119,7 @@ trait SystemProvider {
      */
     def loadBinary(path: ResourcePath): Loader[Array[Byte]]
 
-    /** Opens a webpage
+    /** Opens a webpage.
       *
       * The exact behaviour on the current app will depend on
       * the system, but in general this function might not pause
@@ -132,16 +132,21 @@ trait SystemProvider {
       */
     def openWebpage(uri: java.net.URI): Unit 
 
-    /** Opens the Google Play store for app id
+    /** Opens the Google Play store for app id.
       *
       * The id is the package name of the app.
-      * i.e. com.regblanc.rattrap
-      * Finds the best way to open it on the platform,
-      * typically trying to use a native app first (PlayStore
-      * on Android), then defaulting to a webpage
+      *   i.e. com.regblanc.rattrap
+      * Finds the best way to open it on the platform, typically trying to use
+      * a native app first (PlayStore on Android), then defaulting to a
+      * webpage if no native way exists (on iOS, or on the web).
+      *
+      * Use params to speicfy additional URL parameters, such as referrer for
+      * UTM.
       */
-    def openGooglePlayApp(id: String): Unit = {
-      openWebpage(new java.net.URI(s"https://play.google.com/store/apps/details?id=$id"))
+    def openGooglePlayApp(id: String, params: Map[String, String] = Map()): Unit = {
+      val base = s"https://play.google.com/store/apps/details?id=$id"
+      val uri = new java.net.URI(base + params.map{ case (k, v) => s"&$k=$v"}.mkString)
+      openWebpage(uri)
     }
 
   }

@@ -56,13 +56,16 @@ trait AndroidSystemProvider extends SystemProvider with PartsResourcePathProvide
       self.startActivity(browserIntent)
     }
 
-    override def openGooglePlayApp(id: String): Unit = {
+    override def openGooglePlayApp(id: String, params: Map[String, String]): Unit = {
       try {
-        val intent = new Intent(Intent.ACTION_VIEW, Uri.parse(s"market://details?id=$id"))
+        val base = s"market://details?id=$id"
+        val uri = Uri.parse(base + params.map{ case (k, v) => s"&$k=$v" }.mkString)
+        val intent = new Intent(Intent.ACTION_VIEW, uri)
         self.startActivity(intent)
       } catch {
         case (ex: ActivityNotFoundException) => {
-          openWebpage(new URI(s"https://play.google.com/store/apps/details?id=$id"))
+          // use the default implementation, which opens a webpage.
+          super.openGooglePlayApp(id, params)
         }
       }
     }

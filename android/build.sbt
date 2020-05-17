@@ -63,10 +63,22 @@ lazy val androidFirebase = (project in file("firebase"))
   .settings(
     name := "sgl-android-firebase",
     libraryDependencies += "com.regblanc.sgl"   %% "sgl-android-core"   % "0.0.1",
-    libraryDependencies += "com.google.firebase" % "firebase-analytics" % "17.4.1",
-    // Seems like reasonable to add crashlytics automatically with analytics? This is most likely as
-    // invasive in terms of SDK/privacy than just adding the firebase-analytics artifact anyway.
-    libraryDependencies += "com.google.firebase" % "firebase-crashlytics" % "17.0.0"
+    libraryDependencies += "com.google.firebase" % "firebase-analytics" % "17.2.1"
+    /*
+     *  Using firebase-crashlytics below would force to use version 19.3.0 of firebase-common, which
+     * which is using a tag that is unfortuntalely not supported in the sbt-android plugin.
+     * raybe we can force the dependency to 19.1.0, which seems fine, but it's not clear how I can
+     * do that without an SBT plugin, and also if it's safe for the crashlytics library: In any
+     * case, just doing the below is not enough as apparently the final application will ignore it
+     * (but this can be done in the final application, and it would work, hence why a plugin might help).
+     *   dependencyOverrides += "com.google.firebase" % "firebase-common" % "19.1.0",
+     *  
+     * These are the settings that breaks:
+     *   libraryDependencies += "com.google.firebase" % "firebase-analytics" % "17.4.1"
+     *   // Seems like reasonable to add crashlytics automatically with analytics? This is most likely as
+     *   // invasive in terms of SDK/privacy than just adding the firebase-analytics artifact anyway.
+     *   libraryDependencies += "com.google.firebase" % "firebase-crashlytics" % "17.0.0"
+     */
   )
   .dependsOn(androidCore)
 
@@ -86,7 +98,7 @@ lazy val androidGooglePlay = (project in file("google-play"))
   .settings(
     name := "sgl-android-google-play",
     libraryDependencies += "com.regblanc.sgl"      %% "sgl-android-core"    % "0.0.1",
-    libraryDependencies += "com.google.android.gms" % "play-services-auth"  % "17.0.0",
+    libraryDependencies += "com.google.android.gms" % "play-services-auth"  % "18.0.0",
     libraryDependencies += "com.google.android.gms" % "play-services-games" % "19.0.0",
     // Avoid nullable class not found compiler warnings.
     libraryDependencies += "com.google.code.findbugs" % "jsr305" % "3.0.0" % Compile
@@ -99,6 +111,6 @@ lazy val androidAdMob = (project in file("admob"))
   .settings(
     name := "sgl-android-admob",
     libraryDependencies += "com.regblanc.sgl"      %% "sgl-android-core"  % "0.0.1",
-    libraryDependencies += "com.google.android.gms" % "play-services-ads" % "18.3.0"
+    libraryDependencies += "com.google.android.gms" % "play-services-ads" % "19.1.0"
   )
   .dependsOn(androidCore)
