@@ -1,6 +1,7 @@
 import sbtcrossproject.{crossProject, CrossType}
 
-val scalaVer = "2.12.4"
+val scalaVer = "2.12.11"
+val scalatestVer = "3.1.1"
 
 val scalaNativeVer = "2.11.8"
 
@@ -26,10 +27,10 @@ lazy val core = (crossProject(JSPlatform, JVMPlatform, NativePlatform).crossType
     name := "sgl-core",
   )
   .jvmSettings(
-    libraryDependencies += "org.scalatest" %%% "scalatest" % "3.0.0" % "test"
+    libraryDependencies += "org.scalatest" %%% "scalatest" % scalatestVer % "test"
   )
   .jsSettings(
-    libraryDependencies += "org.scalatest" %%% "scalatest" % "3.0.0" % "test"
+    libraryDependencies += "org.scalatest" %%% "scalatest" % scalatestVer % "test"
   )
   .nativeSettings(scalaVersion := scalaNativeVer)
 
@@ -44,14 +45,14 @@ lazy val coreAndroid = (project in file("./core"))
   .settings(
     name         := "sgl-core-android",
     target       := baseDirectory.value / ".android" / "target",
-    libraryDependencies += "org.scalatest" %%% "scalatest" % "3.0.0" % "test"
+    libraryDependencies += "org.scalatest" %%% "scalatest" % scalatestVer % "test"
   )
 
 lazy val jvmShared = (project in file("./jvm-shared"))
   .settings(commonSettings: _*)
   .settings(
     name := "sgl-jvmshared",
-    libraryDependencies += "org.scalatest" %%% "scalatest" % "3.0.0" % "test"
+    libraryDependencies += "org.scalatest" %%% "scalatest" % scalatestVer % "test"
   )
   .dependsOn(coreJVM % "test->test;compile->compile")
 
@@ -72,8 +73,8 @@ lazy val desktopAWT = (project in file("./desktop-awt"))
     // Add .ogg support by using jorbis (transitive dependency) as a service provider
     libraryDependencies += "com.googlecode.soundlibs" % "vorbisspi" % "1.0.3-2", 
     // Additional audio format can be added in the game build config, with a standard spi for java sound API.
-    libraryDependencies += "net.liftweb"   %% "lift-json" % "3.1.1",
-    libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.0" % "test"
+    libraryDependencies += "net.liftweb"   %% "lift-json" % "3.3.0",
+    libraryDependencies += "org.scalatest" %% "scalatest" % scalatestVer % "test"
   )
   .dependsOn(coreJVM % "test->test;compile->compile", jvmShared)
 
@@ -96,8 +97,8 @@ lazy val html5 = (project in file("./html5"))
   .settings(commonSettings: _*)
   .settings(
     name := "sgl-html5",
-    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.1",
-    libraryDependencies += "org.scalatest" %%% "scalatest" % "3.0.0" % "test"
+    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "1.0.0",
+    libraryDependencies += "org.scalatest" %%% "scalatest" % scalatestVer % "test"
   )
   .dependsOn(coreJS % "test->test;compile->compile")
 
