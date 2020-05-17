@@ -13,7 +13,6 @@ trait Html5GraphicsProvider extends GraphicsProvider {
   object Html5Graphics extends Graphics {
 
     override def loadImage(path: ResourcePath): Loader[Bitmap] = {
-      println("image loading!")
       val p = new DefaultLoader[Bitmap]()
       val img = dom.document.createElement("img").asInstanceOf[HTMLImageElement]
       img.onload = (e: dom.Event) => {
@@ -22,7 +21,7 @@ trait Html5GraphicsProvider extends GraphicsProvider {
       img.addEventListener("error", (e: dom.Event) => {
         p.failure(new RuntimeException("image failed to load"))
       })
-      img.src = s"static${path.path}"
+      img.src = path.path
       p.loader
     }
 

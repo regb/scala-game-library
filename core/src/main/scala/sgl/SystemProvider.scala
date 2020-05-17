@@ -249,6 +249,12 @@ trait PartsResourcePathProvider {
 
   case class PartsResourcePath(parts: Vector[String]) extends AbstractResourcePath {
 
+    /** Return the path as a string with parts separated by '/'.
+      *
+      * Note that the path will not have a leading '/', so in
+      * case you need one (if you want to make this a rooted path),
+      * you have to add it.
+      */
     def path: String = parts.mkString("/")
 
     def / (filename: String): ResourcePath = {

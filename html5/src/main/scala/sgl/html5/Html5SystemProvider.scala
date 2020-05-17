@@ -30,7 +30,7 @@ trait Html5SystemProvider extends SystemProvider with PartsResourcePathProvider 
     override def loadText(path: ResourcePath): Loader[Array[String]] = {
       val p = new DefaultLoader[Array[String]]()
       val rawFile = new dom.XMLHttpRequest()
-      rawFile.open("GET", "static/" + path.path, true)
+      rawFile.open("GET", path.path, true)
       rawFile.onreadystatechange = (event: dom.Event) => {
         if(rawFile.readyState == 4) {
           if(rawFile.status == 200 || rawFile.status == 0) {
@@ -47,7 +47,7 @@ trait Html5SystemProvider extends SystemProvider with PartsResourcePathProvider 
     override def loadBinary(path: ResourcePath): Loader[Array[Byte]] = {
       val p = new DefaultLoader[Array[Byte]]()
       val fileReq = new dom.XMLHttpRequest()
-      fileReq.open("GET", "static/" + path.path, true)
+      fileReq.open("GET", path.path, true)
       fileReq.responseType = "arraybuffer"
       fileReq.onreadystatechange = (event: dom.Event) => {
         if(fileReq.readyState == 4) {
@@ -72,5 +72,7 @@ trait Html5SystemProvider extends SystemProvider with PartsResourcePathProvider 
 
   }
   val System = Html5System
+
+  override val ResourcesRoot = PartsResourcePath(Vector("static"))
 
 }
