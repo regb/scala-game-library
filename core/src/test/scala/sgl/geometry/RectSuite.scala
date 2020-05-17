@@ -1,8 +1,8 @@
 package sgl.geometry
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
-class RectSuite extends FunSuite {
+class RectSuite extends AnyFunSuite {
 
   test("Create rectangle with correct coordinates, dimensions, and center.") {
     val r1 = Rect(4, 7, 10, 20)

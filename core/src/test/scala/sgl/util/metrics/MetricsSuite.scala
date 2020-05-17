@@ -1,8 +1,8 @@
 package sgl.util.metrics
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
-class MetricsSuite extends FunSuite {
+class MetricsSuite extends AnyFunSuite {
 
   test("Counter is correctly initialized") {
     val c = new Counter("name")

@@ -1,8 +1,8 @@
 package sgl.util
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
-trait RandomProviderAbstractSuite extends FunSuite with RandomProvider {
+trait RandomProviderAbstractSuite extends AnyFunSuite with RandomProvider {
 
   test("Two instances from same seed produces same stream of random data") {
     val r1 = Random.fromSeed(77)

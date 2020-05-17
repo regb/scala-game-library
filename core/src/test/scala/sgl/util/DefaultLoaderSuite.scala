@@ -1,10 +1,10 @@
 package sgl.util
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
 import scala.util.{Success, Failure}
 
-class DefaultLoaderSuite extends FunSuite {
+class DefaultLoaderSuite extends AnyFunSuite {
 
   test("successful returns a loaded Loader with correct content") {
     val l = Loader.successful(13)

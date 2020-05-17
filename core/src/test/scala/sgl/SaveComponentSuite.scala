@@ -1,8 +1,8 @@
 package sgl
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
-class SaveComponentSuite extends FunSuite {
+class SaveComponentSuite extends AnyFunSuite {
 
   test("MemorySaveComponent is working") {
     val save = new MemorySaveComponent {}

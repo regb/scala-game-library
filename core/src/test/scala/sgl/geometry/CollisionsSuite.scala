@@ -1,8 +1,8 @@
 package sgl.geometry
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
-class CollisionsSuite extends FunSuite {
+class CollisionsSuite extends AnyFunSuite {
 
   test("polygonWithPolygonSat with simple rects") {
     val p1 = Polygon(Vector(Vec(0,0), Vec(0, 10), Vec(10, 10), Vec(10, 0)))

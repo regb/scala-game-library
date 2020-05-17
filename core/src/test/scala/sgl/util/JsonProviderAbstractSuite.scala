@@ -1,8 +1,8 @@
 package sgl.util
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
-trait JsonProviderAbstractSuite extends FunSuite with JsonProvider {
+trait JsonProviderAbstractSuite extends AnyFunSuite with JsonProvider {
 
   import Json._
 

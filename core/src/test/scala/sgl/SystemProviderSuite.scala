@@ -1,8 +1,8 @@
 package sgl
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
-class SystemProviderSuite extends FunSuite {
+class SystemProviderSuite extends AnyFunSuite {
 
   object InstrumentedSystemProvider extends TestSystemProvider {
     var instrumentedUri: java.net.URI = null

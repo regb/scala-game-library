@@ -1,8 +1,8 @@
 package sgl
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
-class GraphicsHelperSuite extends FunSuite {
+class GraphicsHelperSuite extends AnyFunSuite {
 
   val graphicsProvider = new TestGraphicsProvider with TestSystemProvider {}
 

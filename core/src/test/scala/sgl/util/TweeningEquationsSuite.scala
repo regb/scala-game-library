@@ -2,9 +2,9 @@ package sgl.util
 
 import TweeningEquations._
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
-class TweeningEquationsSuite extends FunSuite {
+class TweeningEquationsSuite extends AnyFunSuite {
 
   test("linear tweening starting and ending values with no or total elapsed time") {
     assert(linear(100, 0.5f, 1.5f)(0) === 0.5f)

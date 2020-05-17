@@ -1,10 +1,10 @@
 package sgl.util
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
 import scala.util.{Success, Failure}
 
-trait LoaderAbstractSuite extends FunSuite {
+trait LoaderAbstractSuite extends AnyFunSuite {
 
   def makeLoader[A](body: => A): Loader[A]
 

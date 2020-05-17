@@ -1,8 +1,8 @@
 package sgl
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
-class ViewportSuite extends FunSuite {
+class ViewportSuite extends AnyFunSuite {
 
   object TestGameApp extends ViewportComponent with TestGraphicsProvider with TestSystemProvider
   import TestGameApp.Viewport

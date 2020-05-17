@@ -1,7 +1,5 @@
 package sgl.util
 
-import org.scalatest.FunSuite
-
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class FutureLoaderSuite extends LoaderAbstractSuite {

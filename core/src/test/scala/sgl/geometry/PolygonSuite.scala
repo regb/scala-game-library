@@ -1,8 +1,8 @@
 package sgl.geometry
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
-class PolygonSuite extends FunSuite {
+class PolygonSuite extends AnyFunSuite {
 
   test("Create polygon with correct vertices and edges") {
     val p = Polygon(Vector(Vec(0,0), Vec(1, 10), Vec(5, 5)))
