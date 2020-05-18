@@ -41,7 +41,15 @@ trait SceneGraphComponent {
       *
       * Each input you wish to handle in the Scene must be processed by the SceneGraph 
       * in order to dispatch it to the right node. The SceneGraph returns true if
-      * the event was intercepted by some node, false if ignored.
+      * the event was intercepted by some node, false if ignored. Note that events that can
+      * be intercepted are click (up/down) events, but moved events are processed but never
+      * intercepted (they might change some state, but still return false).
+      * TODO: This processed event is really not satisfying, we need to come up with a better
+      *       and more consistent behavior, but intercepting no event was annoying due to
+      *       click through buttons, and intercepting move events also led to problems due
+      *       unexpected drop of events at random time. In fact, even with the current situation,
+      *       considering up event as processed can lead to unexpected consequences in client's
+      *       code...
       *
       * In most case, the caller will want to stop processing an event further if it was processed
       * (typically if the caller organizes a HUD on top of its own game map). When that's the case
@@ -93,19 +101,23 @@ trait SceneGraphComponent {
               // TODO: using currentTimeMillis might not be the best.
               downEvents(0) = (node, (wx, wy, System.currentTimeMillis))
               node.notifyDown(wx, wy)
+              true
             case TouchDownEvent(x, y, p) =>
               // TODO: What to do with multi touch? Should we actually block that event if already in?
               // TODO: using currentTimeMillis might not be the best.
               val (wx, wy) = viewport.screenToWorld(x, y)
               downEvents(p) = (node, (wx, wy, System.currentTimeMillis))
               node.notifyDown(wx, wy)
+              true
 
             case MouseMovedEvent(x, y) =>
               val (wx, wy) = viewport.screenToWorld(x, y)
               node.notifyMoved(wx, wy)
+              false
             case TouchMovedEvent(x, y, p) =>
               val (wx, wy) = viewport.screenToWorld(x, y)
               node.notifyMoved(wx, wy)
+              false
 
             case MouseUpEvent(x, y, _) =>
               val (wx, wy) = viewport.screenToWorld(x, y)
@@ -121,6 +133,7 @@ trait SceneGraphComponent {
                   } // else means that the up event is in a different component
               }
               downEvents.remove(0)
+              true
             case TouchUpEvent(x, y, p) =>
               val (wx, wy) = viewport.screenToWorld(x, y)
               node.notifyUp(wx, wy)
@@ -131,11 +144,11 @@ trait SceneGraphComponent {
                 } // else means that the up event is in a different component
               }}
               downEvents.remove(p)
+              true
 
             case _ =>
               throw new Exception("Should never reach that point")
           }
-          true
         }
       }
     }
