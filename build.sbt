@@ -280,6 +280,16 @@ lazy val menuDesktopAWT = (project in file("./examples/menu/desktop-awt"))
   )
   .dependsOn(coreJVM, desktopAWT, menuCoreJVM)
 
+lazy val menuHtml5 = (project in file("./examples/menu/html5"))
+  .enablePlugins(ScalaJSPlugin)
+  .settings(menuCommonSettings: _*)
+  .settings(noPublishSettings: _*)
+  .settings(
+    name := "menu-html5",
+    scalaJSUseMainModuleInitializer := true
+  )
+  .dependsOn(coreJS, html5, menuCoreJS)
+
 lazy val platformerCommonSettings = Seq(
   version        := "1.0",
   scalaVersion   := scalaVer,

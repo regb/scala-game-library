@@ -6,17 +6,18 @@ import sgl.html5.util._
 import sgl.html5.themes._
 import sgl._
 import sgl.scene._
+import sgl.scene.ui._
 
-object Main extends core.AbstractApp with Html5App 
-  with InputHelpersComponent with Html5VerboseConsoleLoggingProvider with GameLoopStatisticsComponent 
-  with SceneComponent with ViewportComponent {
+object Main extends Html5App with core.AbstractApp
+  with InputHelpersComponent with Html5VerboseConsoleLoggingProvider
+  with SceneComponent with PopupsComponent with ViewportComponent {
 
   override val TargetFps = None
 
   override val GameCanvasID: String = "my_canvas"
 
   override val theme = new DefaultTheme {
-    override val maxFrame = (800, 400)
+    override val maxFrame = (400, 600)
   }
 
 }
