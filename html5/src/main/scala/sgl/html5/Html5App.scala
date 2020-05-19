@@ -73,8 +73,7 @@ trait Html5App extends GameApp
 
         gameLoopStep(dt, canvas)
 
-
-        // TODO: take into account available time
+        // TODO: take into account available time.
         Scheduler.run(10l)
         
         targetFramePeriod.foreach(framePeriod => {

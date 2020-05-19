@@ -3,6 +3,7 @@ package html5
 
 import sgl.util._
 
+import scala.scalajs.js
 import org.scalajs.dom
 import dom.html
 import dom.raw.HTMLImageElement
@@ -60,11 +61,54 @@ trait Html5GraphicsProvider extends GraphicsProvider {
 
       override def create(family: String, style: Style, size: Int): Font = Html5Font(family, style, size)
 
-      // TODO: Font loading is quite complicated in the web, so we default to a standard
-      //       font for now until we manage to implement that. I know, it's bad to lie,
-      //       but the alternative is to throw an error which would break games that
-      //       could otherwise run fine except for fonts.
-      override def load(path: ResourcePath): Loader[Font] = Loader.successful(Default)
+      private var fontId = -1
+      private object fontLock
+
+      override def load(path: ResourcePath): Loader[Font] = {
+        val fontName = fontLock.synchronized {
+          fontId += 1
+          s"sgl-custom-font-$fontId"
+        }
+
+        val styleNode = dom.document.createElement("style")
+        // TODO: find a generic way to set the correct format
+        //       (opentype vs truetype vs other) A trivial but
+        //       incomplete way would be to check the file extension.
+        styleNode.textContent = raw"""
+@font-face {
+  font-family: '${fontName}';
+  src: url('${path.path}') format("opentype");
+}"""
+        dom.document.body.appendChild(styleNode)
+
+        // This is a hack to insert an invisible text node using the newly defined font.
+        // This will force to load the font right away. Otherwise, the browser waits
+        // on an actual usage of the font, so we cannot properly implement the loader
+        // interface.
+        val preloadNode = {
+          val div = dom.document.createElement("div").asInstanceOf[html.Div]
+          div.style.opacity = "0"
+          val inner = dom.document.createElement("span").asInstanceOf[html.Span]
+          inner.style.fontFamily = fontName
+          div.appendChild(inner)
+          div
+        }
+        dom.document.body.appendChild(preloadNode)
+
+        val loader = new DefaultLoader[Font]
+        // TODO: we are not checking if the font failed to load (missing file or wrong format).
+        //       Not clear what would happen if that was the case (maybe the loader would never
+        //       complete?).
+        def tryCompleteLoader(): Unit = {
+          if(js.Dynamic.global.document.fonts.check(s"1em $fontName").asInstanceOf[Boolean]) {
+            loader.success(Html5Font(fontName, Normal, 10))
+          } else {
+            dom.window.setTimeout(() => tryCompleteLoader, 30)
+          }
+        }
+        dom.window.setTimeout(() => tryCompleteLoader, 30)
+        loader
+      }
 
       def toCssStyle(s: Font.Style): String = s match {
         case Bold => "bold"
