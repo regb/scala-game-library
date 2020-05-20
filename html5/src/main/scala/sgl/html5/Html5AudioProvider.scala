@@ -19,12 +19,11 @@ trait Html5AudioProvider extends AudioProvider {
     class SoundTagInstance(val loader: Loader[HTMLAudioElement], var inUse: Boolean, var loop: Int)
 
     private class SoundTagPool(path: ResourcePath, initialTag: HTMLAudioElement) {
-      private object lock
       private var audioTags: Vector[SoundTagInstance] = Vector(
         new SoundTagInstance(Loader.successful(initialTag), false, 0)
       )
 
-      def getReadyTag(): SoundTagInstance = lock.synchronized {
+      def getReadyTag(): SoundTagInstance = {
         for(i <- 0 until audioTags.length) {
           if(!audioTags(i).inUse) {
             audioTags(i).inUse = true
@@ -37,14 +36,12 @@ trait Html5AudioProvider extends AudioProvider {
         t
       }
 
-      def returnTag(soundTag: SoundTagInstance): Unit = lock.synchronized {
+      def returnTag(soundTag: SoundTagInstance): Unit = {
         soundTag.inUse = false
       }
     }
 
     class Sound(path: ResourcePath, pool: SoundTagPool, loop: Int = 0, rate: Float = 1f) extends AbstractSound {
-
-      private object lock
 
       type PlayedSound = SoundTagInstance
 
@@ -52,7 +49,7 @@ trait Html5AudioProvider extends AudioProvider {
         val tag = pool.getReadyTag()
         tag.loop = loop
         tag.loader.foreach(a => {
-          a.onended = (e: dom.raw.Event) => lock.synchronized {
+          a.onended = (e: dom.raw.Event) => {
             if(tag.loop > 0) {
               tag.loop -= 1
               a.play()
@@ -80,7 +77,7 @@ trait Html5AudioProvider extends AudioProvider {
       }
 
       override def stop(id: PlayedSound): Unit = {
-        id.loader.foreach(a => lock.synchronized {
+        id.loader.foreach(a => {
           a.pause()
           a.onended = null
           pool.returnTag(id)
@@ -92,7 +89,7 @@ trait Html5AudioProvider extends AudioProvider {
       override def resume(id: PlayedSound): Unit = {
         id.loader.foreach(a => a.play())
       }
-      override def endLoop(id: PlayedSound): Unit = lock.synchronized {
+      override def endLoop(id: PlayedSound): Unit = {
         id.loop = 0
       }
     }
