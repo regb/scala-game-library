@@ -1,43 +1,163 @@
 package sgl
 package html5
 
-import sgl.util.Loader
+import scala.scalajs.js
+import org.scalajs.dom
+import dom.html
+import dom.raw.{HTMLSourceElement, HTMLAudioElement}
+
+import sgl.util._
 
 trait Html5AudioProvider extends AudioProvider {
-  this: Html5SystemProvider =>
+  this: Html5SystemProvider with Html5InputProvider =>
+
+  // TODO: Use the Web Audio API and rely on the current implementation as a fallback
+  //       when the API is not available.
 
   object Html5Audio extends Audio {
 
-    /** Not supported. */
-    class Sound extends AbstractSound {
+    class SoundTagInstance(val loader: Loader[HTMLAudioElement], var inUse: Boolean, var loop: Int)
 
-      type PlayedSound = Int
+    private class SoundTagPool(path: ResourcePath, initialTag: HTMLAudioElement) {
+      private object lock
+      private var audioTags: Vector[SoundTagInstance] = Vector(
+        new SoundTagInstance(Loader.successful(initialTag), false, 0)
+      )
 
-      override def play(volume: Float): Option[PlayedSound] = None
-      override def withConfig(loop: Int, rate: Float): Sound = this
-      override def dispose(): Unit = {}
+      def getReadyTag(): SoundTagInstance = lock.synchronized {
+        for(i <- 0 until audioTags.length) {
+          if(!audioTags(i).inUse) {
+            audioTags(i).inUse = true
+            return audioTags(i)
+          }
+        }
+        // None are free, we need to instantiate a new one.
+        val t = new SoundTagInstance(loadAudioTag(path), true, 0)
+        audioTags = audioTags :+ t
+        t
+      }
 
-      override def stop(id: PlayedSound): Unit = {}
-      override def pause(id: PlayedSound): Unit = {}
-      override def resume(id: PlayedSound): Unit = {}
-      override def endLoop(id: PlayedSound): Unit = {}
+      def returnTag(soundTag: SoundTagInstance): Unit = lock.synchronized {
+        soundTag.inUse = false
+      }
     }
 
-    /** Not supported. */
-    override def loadSound(path: ResourcePath): Loader[Sound] = Loader.successful(new Sound)
+    class Sound(path: ResourcePath, pool: SoundTagPool, loop: Int = 0, rate: Float = 1f) extends AbstractSound {
 
-    /** Not supported. */
-    class Music extends AbstractMusic {
-      override def play(): Unit = {}
-      override def pause(): Unit = {}
-      override def stop(): Unit = {}
-      override def setVolume(volume: Float): Unit = {}
-      override def setLooping(isLooping: Boolean): Unit = {}
-      override def dispose(): Unit = {}
+      private object lock
+
+      type PlayedSound = SoundTagInstance
+
+      override def play(volume: Float): Option[PlayedSound] = {
+        val tag = pool.getReadyTag()
+        tag.loop = loop
+        tag.loader.foreach(a => {
+          a.onended = (e: dom.raw.Event) => lock.synchronized {
+            if(tag.loop > 0) {
+              tag.loop -= 1
+              a.play()
+            } else if(tag.loop == 0) {
+              a.onended = null
+              pool.returnTag(tag)
+            }
+          }
+
+          a.volume = volume
+          a.loop = false
+          if(loop == -1)
+            a.loop = true
+          a.playbackRate = rate
+
+          a.play()
+        })
+        Some(tag)
+      }
+      override def withConfig(loop: Int, rate: Float): Sound = {
+        new Sound(path, pool, loop, rate)
+      }
+      override def dispose(): Unit = {
+        // TODO: remove tag and stop all running sounds loops.
+      }
+
+      override def stop(id: PlayedSound): Unit = {
+        id.loader.foreach(a => lock.synchronized {
+          a.pause()
+          a.onended = null
+          pool.returnTag(id)
+        })
+      }
+      override def pause(id: PlayedSound): Unit = {
+        id.loader.foreach(a => a.pause())
+      }
+      override def resume(id: PlayedSound): Unit = {
+        id.loader.foreach(a => a.play())
+      }
+      override def endLoop(id: PlayedSound): Unit = lock.synchronized {
+        id.loop = 0
+      }
     }
 
-    /** Not supported. */
-    override def loadMusic(path: ResourcePath): Loader[Music] = Loader.successful(new Music)
+    override def loadSound(path: ResourcePath): Loader[Sound] = {
+      loadAudioTag(path).map(tag => new Sound(path, new SoundTagPool(path, tag)))
+    }
+
+    /** Music implementation for HTML5.
+      *
+      * This respects the core interface, with one small exception, due to restrictions
+      * in some browsers, it's not possible to autoplay a sound, so the play() call
+      * is automatically delaying the start of the sound until the player makes their
+      * first interaction with the page, at which point it is acceptable to start playing
+      * the sound.
+      *
+      * TODO: Export a setiings to ignore this constraint and just play
+      * whenever the API receives the call.
+      */
+    class Music(audio: HTMLAudioElement) extends AbstractMusic {
+
+      override def play(): Unit = {
+        onInitialUserInteraction(() => audio.play())
+      }
+      override def pause(): Unit = {
+        audio.pause()
+      }
+      override def stop(): Unit = {
+        audio.pause()
+      }
+      override def setVolume(volume: Float): Unit = {
+        audio.volume = volume
+      }
+      override def setLooping(isLooping: Boolean): Unit = {
+        audio.loop = isLooping
+      }
+      override def dispose(): Unit = {
+        audio.pause()
+        dom.document.body.removeChild(audio)
+      }
+    }
+
+    override def loadMusic(path: ResourcePath): Loader[Music] = {
+      loadAudioTag(path).map(new Music(_))
+    }
+
+    private def loadAudioTag(path: ResourcePath): Loader[HTMLAudioElement] = {
+      val p = new DefaultLoader[HTMLAudioElement]()
+      val audio = dom.document.createElement("audio").asInstanceOf[HTMLAudioElement]
+      audio.addEventListener("canplaythrough", (e: dom.raw.Event) => {
+        // Apparently the event can fire several times, so we trySuccess instead.
+        p.trySuccess(audio)
+      })
+      // Could add more source to support more format and thus more browser.
+      val source = dom.document.createElement("source").asInstanceOf[HTMLSourceElement]
+      source.addEventListener("error", (e: dom.raw.Event) => {
+        p.failure(new RuntimeException(s"music <${path.path}> failed to load"))
+      })
+
+      source.src = path.path
+      audio.appendChild(source)
+      dom.document.body.appendChild(audio)
+
+      p.loader
+    }
   }
   override val Audio = Html5Audio
 }

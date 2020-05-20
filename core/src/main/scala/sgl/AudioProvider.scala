@@ -195,6 +195,9 @@ trait AudioProvider {
       * to play. The Loader can fail with ResourceNotFoundException or
       * ResourceFormatUnsupportedException. The format supports varies per
       * platform and configuration.
+      *
+      * The default config for the loaded sound should be a normal rate and no loop
+      * (play just once, loop=0 in the withConfig).
       */
     def loadSound(path: ResourcePath): Loader[Sound]
   

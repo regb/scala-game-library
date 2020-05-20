@@ -31,19 +31,42 @@ trait Html5InputProvider extends InputProvider {
     getCursorPosition(canvas, e.clientX.toInt, e.clientY.toInt)
   }
 
+  // We track if the user has interacted with the game in any significant way (touch, click,
+  // pressed keys?). This is because some browsers have a policy to not autoplay music, and
+  // we need to wait for an actual user action before being able to play.
+  private var hasUserInteracted = false
+  private var actionsOnUserInteraction = new scala.collection.mutable.ListBuffer[() => Unit]
+  // The function registered here will be called either immediately if the user already
+  // interacted with the page, or on the initial interaction.
+  def onInitialUserInteraction(f: () => Unit): Unit = {
+    if(hasUserInteracted) f() else {
+      actionsOnUserInteraction.append(() => f())
+    }
+  }
+  private def triggerUserInteraction(): Unit = {
+    if(!hasUserInteracted) {
+      hasUserInteracted = true
+      for(f <- actionsOnUserInteraction) {
+        f()
+      }
+    }
+  }
+
   def registerInputListeners(): Unit = {
-    this.htmlCanvas.onmousedown = (e: dom.MouseEvent) => {
+    this.htmlCanvas.addEventListener("mousedown", (e: dom.MouseEvent) => {
+      triggerUserInteraction()
       val (x,y) = getCursorPosition(this.htmlCanvas, e)
       Input.newEvent(Input.MouseDownEvent(x, y, mouseEventButton(e)))
-    }
-    this.htmlCanvas.onmouseup = (e: dom.MouseEvent) => {
+    })
+    this.htmlCanvas.addEventListener("mouseup", (e: dom.MouseEvent) => {
+      triggerUserInteraction()
       val (x,y) = getCursorPosition(this.htmlCanvas, e)
       Input.newEvent(Input.MouseUpEvent(x, y, mouseEventButton(e)))
-    }
-    this.htmlCanvas.onmousemove = (e: dom.MouseEvent) => {
+    })
+    this.htmlCanvas.addEventListener("mousemove", (e: dom.MouseEvent) => {
       val (x,y) = getCursorPosition(this.htmlCanvas, e)
       Input.newEvent(Input.MouseMovedEvent(x, y))
-    }
+    })
 
     /*
      * for touch events, we use evt.preventDefault to
@@ -64,6 +87,7 @@ trait Html5InputProvider extends InputProvider {
      */
 
     this.htmlCanvas.addEventListener("touchstart", (e: dom.Event) => {
+      triggerUserInteraction()
       val touchEvent = e.asInstanceOf[dom.raw.TouchEvent]
       touchEvent.preventDefault()
       touchEvent.stopPropagation()
@@ -79,6 +103,7 @@ trait Html5InputProvider extends InputProvider {
       }
     })
     this.htmlCanvas.addEventListener("touchend", (e: dom.Event) => {
+      triggerUserInteraction()
       val touchEvent = e.asInstanceOf[dom.raw.TouchEvent]
       touchEvent.preventDefault()
       touchEvent.stopPropagation()
@@ -109,17 +134,18 @@ trait Html5InputProvider extends InputProvider {
       }
     })
 
-    dom.document.onkeydown = (e: dom.KeyboardEvent) => {
+    dom.document.addEventListener("keydown", (e: dom.KeyboardEvent) => {
+      triggerUserInteraction()
       domEventToKey(e).foreach(key =>
         Input.newEvent(Input.KeyDownEvent(key))
       )
-    }
-    dom.document.onkeyup = (e: dom.KeyboardEvent) => {
+    })
+    dom.document.addEventListener("keyup", (e: dom.KeyboardEvent) => {
+      triggerUserInteraction()
       domEventToKey(e).foreach(key =>
         Input.newEvent(Input.KeyUpEvent(key))
       )
-    }
-
+    })
   }
 
   //TODO: will need to make it more cross browser compatible

@@ -48,7 +48,7 @@ trait MainScreenComponent extends ViewportComponent {
           m.play()
         })
         val tmpBeep = beepLoader.value.get.get
-        beep = tmpBeep.withConfig(2, 0.6f)
+        beep = tmpBeep.withConfig(2, 2f)
         beepInfinite = tmpBeep.looped(-1)
         // If we don't plan to use the original sound (if we only used the various
         // configs), we should dispose it.
@@ -86,6 +86,9 @@ trait MainScreenComponent extends ViewportComponent {
     var autoX = 0f
     var autoY = 0f
 
+    private val beepInfinite = LoadingScreen.beepInfinite
+    private var playingLoop: Option[beepInfinite.PlayedSound] = None
+
     var totalTime: Long = 0
     override def update(dt: Long): Unit = {
       InputHelpers.processEvents(e => e match {
@@ -95,7 +98,13 @@ trait MainScreenComponent extends ViewportComponent {
           this.x = wx
           this.y = wy
         case Input.KeyDownEvent(Input.Keys.L) =>
-          LoadingScreen.beepInfinite.play()
+          playingLoop match {
+            case Some(s) =>
+              beepInfinite.stop(s)
+              playingLoop = None
+            case None =>
+              playingLoop = beepInfinite.play()
+          }
         case _ => ()
       })
       totalTime += dt
