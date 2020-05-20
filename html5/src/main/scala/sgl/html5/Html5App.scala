@@ -41,10 +41,29 @@ trait Html5App extends GameApp
     registerInputListeners()
     startGameLoop()
 
+    // The scheduler is run using the task queue and not within requestAnimationFrame.
+    // This is to keep the requestAnimationFrame code consistent in speed and focused
+    // on simulating and rendering the game loop just before the refresh of the page.
+    // This also lets us use more of the available free time between frames to perform
+    // background tasks in the scheduler.
+    //
+    // We try to schedule as often as possible because apparently the browser does its
+    // own throttling to around 4ms. If the queue is empty, we can schedule with our
+    // own throttling.
+    def runScheduler(): Unit = {
+      if(Scheduler.run(5l)) {
+        // No more tasks, so we can set the next timeout a bit later.
+        dom.window.setTimeout(() => runScheduler(), 20l)
+      } else {
+        // More work to do, schedule as soon as possible.
+        dom.window.setTimeout(() => runScheduler(), 0)
+      }
+    }
+    dom.window.setTimeout(() => runScheduler, 50l)
+
     lifecycleListener.startup()
     lifecycleListener.resume()
   }
-
 
   private implicit val Tag = Logger.Tag("game-loop")
 
@@ -73,13 +92,7 @@ trait Html5App extends GameApp
 
         gameLoopStep(dt, canvas)
 
-        // TODO: take into account available time.
-        Scheduler.run(10l)
-        
         targetFramePeriod.foreach(framePeriod => {
-          //we check the time from the begininning of the frame until the end. The exact
-          //dt sent to the update function will be different, as it depends on when the
-          //setInterval fires the code, and might slightly overflow the target FPS
           val frameTime = js.Date.now.toLong - now
           logger.info("frame time: " + frameTime)
           logger.info("frame period: " + framePeriod)

@@ -1,4 +1,5 @@
-package sgl.util
+package sgl
+package util
 
 /** The provider for the platform-specific Scheduler.
   *
@@ -10,8 +11,10 @@ trait SchedulerProvider {
 
   abstract class Scheduler {
 
-    /** Register the task to be executed when there is
-      * available resources/time
+    /** Register the task to be executed asynchronously.
+      * 
+      * The task will be executed when the scheduler has available resources,
+      * the details will depend on the scheduler implementation.
       */
     def schedule(task: ChunkedTask): Unit
 
@@ -26,7 +29,7 @@ trait SchedulerProvider {
   * when invoked by the run() method.
   */
 trait SingleThreadSchedulerProvider extends SchedulerProvider {
-  this: LoggingProvider =>
+  this: LoggingProvider with SystemProvider =>
 
   import scala.collection.mutable.Queue
 
@@ -55,18 +58,22 @@ trait SingleThreadSchedulerProvider extends SchedulerProvider {
       * CPU to the pending tasks. The scheduler returns
       * either after the ms amount of time, or as soon
       * as no more work is required.
+      *
+      * Return true if the task queue is empty.
       */
-    def run(ms: Long): Unit = {
+    def run(ms: Long): Boolean = {
       logger.trace("Running SingleThreadScheduler with taskQueue size of: " + taskQueue.size)
-      var remaining = ms
+      val endTime = System.nanoTime + ms*1000l*1000l
+      var remaining = endTime - System.nanoTime
       while(remaining > 0 && taskQueue.nonEmpty) {
-        val available = remaining min 5
+        val available = (remaining/(1000l*1000l)) min 5
         val task = taskQueue.dequeue()
         task.doRun(available) 
         if(task.status == ChunkedTask.InProgress)
           taskQueue.enqueue(task)
-        remaining -= available
+        remaining = endTime - System.nanoTime
       }
+      taskQueue.isEmpty
     }
 
   }

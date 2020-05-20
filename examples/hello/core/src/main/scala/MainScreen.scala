@@ -8,7 +8,7 @@ import util._
 
 trait MainScreenComponent extends ViewportComponent {
   this: GraphicsProvider with InputProvider with SystemProvider with WindowProvider with AudioProvider
-  with GameStateComponent with InputHelpersComponent with LoggingProvider =>
+  with GameStateComponent with InputHelpersComponent with LoggingProvider with SchedulerProvider =>
 
   import Graphics.{Bitmap, Canvas, Color, BitmapRegion, Animation, RichCanvas}
   import Audio.{Music, Sound}
@@ -60,6 +60,10 @@ trait MainScreenComponent extends ViewportComponent {
   }
 
   class MainScreen extends GameScreen {
+
+    for(i <- 0 to 10000) {
+      Scheduler.schedule(new HelloChunkedTask(i))
+    }
 
     override def name: String = "TestScreen"
 
@@ -152,6 +156,16 @@ trait MainScreenComponent extends ViewportComponent {
       }
     }
 
+  }
+
+  class HelloChunkedTask(i: Int) extends ChunkedTask {
+
+    override val name = "hello-chunked-task"
+
+    override protected def run(ms: Long): ChunkedTask.Status = {
+      logger.info("Running task: " + i)
+      ChunkedTask.Completed
+    }
   }
 
 }

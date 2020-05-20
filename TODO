@@ -76,3 +76,9 @@ sgl._
 It might make sense to have the backend in the same base directory (sgl._), because
 it's not visible anyway for the core module of the game, and the names never conflict.
 This could lead to a slightly simpler and more consistent organization.
+
+## Event system for the scheduler
+
+We could do a system of events, with dependency (wait, join, then, etc) between each
+event. Each event would be a small and efficient and quick task, that takes as little
+time as possible, so that the scheduler can stop at any point within the event graph.
