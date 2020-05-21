@@ -150,19 +150,25 @@ trait GameStateComponent {
 
   /** A LoadingScreen is a screen dedicated to loading assets.
     *
+    * This screen keeps checking all the loading assets on each update call,
+    * and maintain the current progression. At the end of loading, it will
+    * invoke the onLoadingCompleted callback. If any asset failed to load, it
+    * will instead invoke the onLoadingFailed callback. The default behavior
+    * of onLoadingCompleted is to open the nextScreen, but this can be overriden.
+    *
     * Typically the game would show a progress bar and/or a splash screen with
     * the game logo.  This is intended as a way to load a large amount of
     * resources in memory, which could take several seconds.
     *
-    * By contrast, the built-in preload feature from each GameScreen is meant as
-    * a very short "last minute" loading for the screen, and should be used to
-    * load very few assets and that are truly unique to that level. One
+    * By contrast, the built-in preload feature from each GameScreen is meant
+    * as a very short "last minute" loading for the screen, and should be used
+    * to load very few assets and that are truly unique to that level. One
     * particular example would be level data (map, tilemap) for a
     * platformer/puzzle game, where we need to load the current level for the
-    * current screen. Such loading should be extermely light and only take a few
-    * frames, so that we don't need to display anything. Another, spot on, example
-    * is to actually use the preload for the splash screen background to display
-    * while loading the rest of the resources.
+    * current screen. Such loading should be extermely light and only take a
+    * few frames, so that we don't need to display anything. Another, spot on,
+    * example is to use the preload feature on the LoadingScreen to preload the
+    * asset necessary for rendering the splash screen.
     */
   abstract class LoadingScreen[A](val loaders: Seq[Loader[A]]) extends GameScreen {
     // TODO: How about using a Map[String, Loader] instead of the list? This
@@ -238,6 +244,29 @@ trait GameStateComponent {
     override def name: String = "Loading Screen"
 
     private var totalDuration = 0l
+    private var loadingCompleted = false
+
+    override def update(dt: Long): Unit = {
+      if(!loadingCompleted) {
+        totalDuration += dt
+        for(loader <- _remaining.toSet[Loader[A]]) {
+          if(loader.isLoaded) {
+            _remaining.remove(loader)
+            if(loader.value.get.isFailure) {
+              loadingErrors += loader
+            }
+          }
+        }
+        if(totalDuration >= minDuration && _remaining.isEmpty) {
+          loadingCompleted = true
+          if(loadingError) {
+            onLoadingFailed()
+          } else {
+            onLoadingCompleted()
+          }
+        }
+      }
+    }
 
     /** Control whether to exit on loading error.
       *
@@ -246,30 +275,21 @@ trait GameStateComponent {
       */
     protected val exitOnError = true
 
-    override def update(dt: Long): Unit = {
-      totalDuration += dt
-      for(loader <- _remaining.toSet[Loader[A]]) {
-        if(loader.isLoaded) {
-          _remaining.remove(loader)
-          if(loader.value.get.isFailure) {
-            loadingErrors += loader
-          }
-        }
-      }
-      if(totalDuration >= minDuration && _remaining.isEmpty) {
-        if(loadingError) {
-          logger.error("Failed to load all resources.")
-          // TODO: would be nice to identify the resource beyond just the loader. Maybe that
-          // would be better if we take a Map[String, Loader] in the constructor?
-          loadingErrors.foreach(loader => loader.value.get match {
-            case scala.util.Failure(e) => logger.error("Failed to load resource: " + e + "\n" + e.getStackTrace.mkString("\n"))
-            case _ => () // Not supposed to happen, just add the case to make the compiler happy.
-          })
-          if(exitOnError)
-            System.exit()
-        }
-        gameState.newScreen(nextScreen)
-      }
+    /** Triggers if assets failed to load.
+      *
+      * The default behavoir is to log the error and quit the
+      * application if exitOnError is true.
+      **/
+    def onLoadingFailed(): Unit = {
+      logger.error("Failed to load all resources.")
+      // TODO: would be nice to identify the resource beyond just the loader. Maybe that
+      // would be better if we take a Map[String, Loader] in the constructor?
+      loadingErrors.foreach(loader => loader.value.get match {
+        case scala.util.Failure(e) => logger.error("Failed to load resource: " + e + "\n" + e.getStackTrace.mkString("\n"))
+        case _ => () // Not supposed to happen, just add the case to make the compiler happy.
+      })
+      if(exitOnError)
+        System.exit()
     }
 
     /** The screen to instantiate and set in the game state.
@@ -287,6 +307,15 @@ trait GameStateComponent {
       * from the LoadingScreen.
       */
     def nextScreen(): GameScreen
+
+    /** Triggers when the loading is completed and assets ready to use.
+      *
+      * The default implementation just start the nextScreen on
+      * the gameState using newScreen().
+      */
+    def onLoadingCompleted(): Unit = {
+      gameState.newScreen(nextScreen)
+    }
 
   }
 
