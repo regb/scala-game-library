@@ -14,6 +14,16 @@ trait Html5AudioProvider extends AudioProvider {
   // TODO: Use the Web Audio API and rely on the current implementation as a fallback
   //       when the API is not available.
 
+  /** Control if we want to guard against the autoplay browser restrictions.
+    *
+    * Some browsers prevent the audio tag from starting to play before any
+    * other user interaction on the same page. If the GuardAutoPlay is set to
+    * true (the default), the call to play() for music is going to be
+    * deferred until the first meaningful user input has been detected (a
+    * click, touch, keydown detected on the game).
+    */
+  val GuardAutoPlay = true
+
   object Html5Audio extends Audio {
 
     class SoundTagInstance(val loader: Loader[HTMLAudioElement], var inUse: Boolean, var loop: Int)
@@ -112,7 +122,10 @@ trait Html5AudioProvider extends AudioProvider {
     class Music(audio: HTMLAudioElement) extends AbstractMusic {
 
       override def play(): Unit = {
-        onInitialUserInteraction(() => audio.play())
+        if(GuardAutoPlay)
+          onInitialUserInteraction(() => audio.play())
+        else
+          audio.play()
       }
       override def pause(): Unit = {
         audio.pause()
