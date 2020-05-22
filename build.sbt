@@ -78,8 +78,6 @@ lazy val desktopAWT = (project in file("./desktop-awt"))
   )
   .dependsOn(coreJVM % "test->test;compile->compile", jvmShared)
 
-def ghProject(repo: String, version: String, name: String) = ProjectRef(uri(s"${repo}#${version}"), name)
-
 lazy val desktopNative = (project in file("./desktop-native"))
   .enablePlugins(ScalaNativePlugin)
   .settings(commonSettings: _*)
@@ -101,6 +99,17 @@ lazy val html5 = (project in file("./html5"))
     libraryDependencies += "org.scalatest" %%% "scalatest" % scalatestVer % "test"
   )
   .dependsOn(coreJS % "test->test;compile->compile")
+
+lazy val html5Firebase = (project in file("./html5/firebase"))
+  .enablePlugins(ScalaJSPlugin)
+  .settings(commonSettings: _*)
+  .settings(
+    name := "sgl-html5-firebase",
+    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "1.0.0",
+    libraryDependencies += "org.scalatest" %%% "scalatest" % scalatestVer % "test"
+  )
+  .dependsOn(coreJS % "test->test;compile->compile")
+
 
 /*
  * I want to make sure that the test games are always buildable and
