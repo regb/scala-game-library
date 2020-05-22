@@ -86,6 +86,7 @@ trait AndroidFirebaseAnalyticsProvider extends Activity with AnalyticsProvider
       params.score.foreach(s => bundle.putLong(UFirebaseAnalytics.Param.SCORE, s))
       params.levelName.foreach(m => bundle.putString("level_map", m))
       params.character.foreach(c => bundle.putString(UFirebaseAnalytics.Param.CHARACTER, c))
+      params.customs.foreach{ case (k, v) => bundle.putString(k, v) }
       bundle
     }
 
@@ -102,7 +103,7 @@ trait AndroidFirebaseAnalyticsProvider extends Activity with AnalyticsProvider
     override def logLevelEndEvent(level: String, success: Boolean): Unit = {
       val bundle = new Bundle
       bundle.putString(UFirebaseAnalytics.Param.LEVEL_NAME, level)
-      bundle.putString(UFirebaseAnalytics.Param.SUCCESS, if(success) "1" else "0")
+      bundle.putLong(UFirebaseAnalytics.Param.SUCCESS, if(success) 1 else 0)
       firebaseAnalytics.logEvent(UFirebaseAnalytics.Event.LEVEL_END, bundle)
     }
     override def logLevelStartEvent(level: String): Unit = {
