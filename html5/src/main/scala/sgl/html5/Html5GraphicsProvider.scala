@@ -90,6 +90,9 @@ trait Html5GraphicsProvider extends GraphicsProvider {
           div.style.opacity = "0"
           val inner = dom.document.createElement("span").asInstanceOf[html.Span]
           inner.style.fontFamily = fontName
+          // On Safari, the fonts will not autoload without actual text inside the <span> element
+          // but on other browsers this seems optional.
+          inner.textContent = "abcd"
           div.appendChild(inner)
           div
         }
