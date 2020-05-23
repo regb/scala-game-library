@@ -6,6 +6,34 @@ import sgl.analytics._
 
 import scala.scalajs.js
 
+/** Provides an implementaiton of the sgl.util.AnalyticsProvider interface with Firebase analytics.
+  *
+  * This maps all the standard analytics funciton to functions exported by the
+  * firebase analytics for web. If you want to use this implementation, you will
+  * need to add the firebase dependencies yourself when building a web application
+  * and inheriting from this trait for the anlaytics provider. To set up firebase,
+  * you should follow the official documentation from Firebase, but it should look
+  * something like that in your html file:
+  *
+  *   <script src="https://www.gstatic.com/firebasejs/7.14.5/firebase-app.js"></script>
+  *   <script src="https://www.gstatic.com/firebasejs/7.14.5/firebase-analytics.js"></script>
+  *   <script>
+  *     var firebaseConfig = {
+  *       apiKey: "",
+  *       authDomain: "",
+  *       databaseURL: "",
+  *       projectId: "",
+  *       storageBucket: "",
+  *       messagingSenderId: "",
+  *       appId: "",
+  *       measurementId: ""
+  *     };
+  *     firebase.initializeApp(firebaseConfig);
+  *     firebase.analytics();
+  *   </script>
+  *
+  * This code should preferably be included before your own script.
+  */
 trait Html5FirebaseAnalyticsProvider extends AnalyticsProvider {
   self: GameStateComponent =>
 
