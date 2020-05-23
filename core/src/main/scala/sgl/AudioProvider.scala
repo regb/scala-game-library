@@ -198,8 +198,17 @@ trait AudioProvider {
       *
       * The default config for the loaded sound should be a normal rate and no loop
       * (play just once, loop=0 in the withConfig).
+      *
+      * You can provide extra resource path, which should be the same sound but with
+      * an alternative format (inferred from the filetype). Dependeing on the backend
+      * we will use the most reliable format.
+      * TODO: make the filetype as a typed argument.
       */
-    def loadSound(path: ResourcePath): Loader[Sound]
+    def loadSound(path: ResourcePath, extras: ResourcePath*): Loader[Sound]
+    def loadSound(pathes: Seq[ResourcePath]): Loader[Sound] = {
+      require(pathes.size >= 1)
+      loadSound(pathes.head, pathes.tail:_*)
+    }
   
     /*
      * Music has a similar interface to sound, but is meant to load
@@ -291,8 +300,17 @@ trait AudioProvider {
       * to play. The Loader can fail with ResourceNotFoundException or
       * ResourceFormatUnsupportedException. The format supports varies per
       * platform and configuration.
+      *
+      * You can provide extra resource path, which should be the same music but with
+      * an alternative format (inferred from the filetype). Dependeing on the backend
+      * we will use the most reliable format.
+      * TODO: make the filetype as a typed argument.
       */
-    def loadMusic(path: ResourcePath): Loader[Music]
+    def loadMusic(path: ResourcePath, extras: ResourcePath*): Loader[Music]
+    def loadMusic(pathes: Seq[ResourcePath]): Loader[Music] = {
+      require(pathes.size >= 1)
+      loadMusic(pathes.head, pathes.tail:_*)
+    }
 
   }
   val Audio: Audio
@@ -333,7 +351,7 @@ trait FakeAudioProvider extends AudioProvider {
       override def endLoop(id: PlayedSound): Unit = {}
     }
 
-    override def loadSound(path: ResourcePath): Loader[Sound] = Loader.successful(new Sound)
+    override def loadSound(path: ResourcePath, extras: ResourcePath*): Loader[Sound] = Loader.successful(new Sound)
 
     class Music extends AbstractMusic {
       override def play(): Unit = {}
@@ -344,7 +362,7 @@ trait FakeAudioProvider extends AudioProvider {
       override def dispose(): Unit = {}
     }
 
-    override def loadMusic(path: ResourcePath): Loader[Music] = Loader.successful(new Music)
+    override def loadMusic(path: ResourcePath, extras: ResourcePath*): Loader[Music] = Loader.successful(new Music)
   }
   override val Audio = FakeAudio
 }

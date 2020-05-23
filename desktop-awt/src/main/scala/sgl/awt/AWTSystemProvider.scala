@@ -63,6 +63,8 @@ trait AWTSystemProvider extends SystemProvider with PartsResourcePathProvider {
   }
   val System = AWT5System
 
+  override val ResourcesRoot = PartsResourcePath(Vector(""))
+
   /** Control whether resources can be provided dynamically.
     *
     * The standard way to provide resources/assets is by packaging them in the

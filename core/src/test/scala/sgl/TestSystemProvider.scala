@@ -4,7 +4,19 @@ import sgl.util._
 
 import scala.util._
 
-trait TestSystemProvider extends SystemProvider {
+trait TestSystemProvider extends TestSystemNoResourcePathProvider {
+
+  class TestResourcePath extends AbstractResourcePath {
+    def / (filename: String): ResourcePath = ???
+
+    override def extension: Option[String] = ???
+  }
+  type ResourcePath = TestResourcePath
+  override val ResourcesRoot: ResourcePath = new TestResourcePath
+
+}
+
+trait TestSystemNoResourcePathProvider extends SystemProvider {
 
   class TestSystem extends System {
 
@@ -22,12 +34,5 @@ trait TestSystemProvider extends SystemProvider {
 
   }
   val System = new TestSystem
-
-  class TestResourcePath extends AbstractResourcePath {
-    def / (filename: String): ResourcePath = ???
-  }
-  type ResourcePath = TestResourcePath
-
-  override val ResourcesRoot: ResourcePath = new TestResourcePath
 
 }

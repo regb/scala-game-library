@@ -185,7 +185,7 @@ lazy val helloHtml5 = (project in file("./examples/hello/html5"))
     name := "hello-html5",
     scalaJSUseMainModuleInitializer := true
   )
-  .dependsOn(coreJS, html5, helloCoreJS)
+  .dependsOn(coreJS, html5, html5Firebase, helloCoreJS)
 
 lazy val helloDesktopNative = (project in file("./examples/hello/desktop-native"))
   .enablePlugins(ScalaNativePlugin)
@@ -363,7 +363,7 @@ def isMac(name: String): Boolean = name.startsWith(MacName.toLowerCase)
  */
 lazy val verifyCiCommand = List(
   "coreJVM","desktopAWT","desktopNative","helloCoreJS","helloCoreJVM","helloCoreNative",
-  "helloDesktopAWT","helloDesktopNative","helloHtml5","html5","jvmShared","menuCoreJS",
+  "helloDesktopAWT","helloDesktopNative","helloHtml5","html5","html5Firebase","jvmShared","menuCoreJS",
   "menuCoreJVM","menuCoreNative","menuDesktopAWT","platformerCoreJS","platformerCoreJVM",
   "platformerCoreNative","platformerDesktopAWT","snakeCoreJS","snakeCoreJVM","snakeCoreNative",
   "snakeDesktopAWT","snakeDesktopNative","snakeHtml5"

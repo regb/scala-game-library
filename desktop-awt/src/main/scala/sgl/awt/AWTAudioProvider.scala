@@ -254,7 +254,7 @@ trait AWTAudioProvider extends AudioProvider {
       
     }
   
-    override def loadSound(path: ResourcePath): Loader[Sound] = FutureLoader {
+    override def loadSound(path: ResourcePath, extras: ResourcePath*): Loader[Sound] = FutureLoader {
       logger.info("Loading sound resource: " + path.path)
       val resourceAudioStream = loadAudioInputStream(path)
       val (convertedAudioStream, _) = convertToBestStream(resourceAudioStream).getOrElse{
@@ -300,7 +300,8 @@ trait AWTAudioProvider extends AudioProvider {
           clip.close()
       }
     }
-    override def loadMusic(path: ResourcePath): Loader[Music] = FutureLoader {
+    // AWT backend always uses the first option.
+    override def loadMusic(path: ResourcePath, extras: ResourcePath*): Loader[Music] = FutureLoader {
       logger.info("Loading music resource: " + path.path)
       val resourceAudioStream = loadAudioInputStream(path)
       val (convertedAudioStream, clip) = convertToBestStream(resourceAudioStream).getOrElse{

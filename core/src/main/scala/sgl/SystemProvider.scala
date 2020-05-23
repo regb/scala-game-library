@@ -175,6 +175,11 @@ trait SystemProvider {
       * output as {{{ "a" / "c" }}}.
       */
     def / (filename: String): ResourcePath
+
+    def / (filenames: Seq[String]): Seq[ResourcePath] = filenames.map(f => this / f)
+
+    /** Returns the file extension. */
+    def extension: Option[String]
   }
 
   /** A path to access a resource in the system.
@@ -257,22 +262,26 @@ trait PartsResourcePathProvider {
       */
     def path: String = parts.mkString("/")
 
-    def / (filename: String): ResourcePath = {
+    override def / (filename: String): ResourcePath = {
       val subparts = filename.split("/")
-      this / subparts
+      join(this, subparts)
     }
 
-    def / (subparts: Seq[String]): ResourcePath = if(subparts.isEmpty) this else {
+    private def join(that: PartsResourcePath, subparts: Seq[String]): ResourcePath = if(subparts.isEmpty) that else {
       val r = subparts.head match {
-        case "." => this
+        case "." => that
         case ".." => PartsResourcePath(if(parts.isEmpty) parts else parts.init)
         case file => {
           PartsResourcePath(parts :+ file)
         }
       }
-      r / subparts.tail
+      join(r, subparts.tail)
+    }
+
+    override def extension: Option[String] = {
+      val i = parts.last.lastIndexOf('.')
+      if(i > 0) Some(parts.last.substring(i+1)) else None
     }
   }
   type ResourcePath = PartsResourcePath
-  override val ResourcesRoot = PartsResourcePath(Vector())
 }

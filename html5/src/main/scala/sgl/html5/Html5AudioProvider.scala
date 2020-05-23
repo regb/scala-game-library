@@ -28,7 +28,7 @@ trait Html5AudioProvider extends AudioProvider {
 
     class SoundTagInstance(val loader: Loader[HTMLAudioElement], var inUse: Boolean, var loop: Int)
 
-    private class SoundTagPool(path: ResourcePath, initialTag: HTMLAudioElement) {
+    private class SoundTagPool(pathes: Seq[ResourcePath], initialTag: HTMLAudioElement) {
       private var audioTags: Vector[SoundTagInstance] = Vector(
         new SoundTagInstance(Loader.successful(initialTag), false, 0)
       )
@@ -41,7 +41,7 @@ trait Html5AudioProvider extends AudioProvider {
           }
         }
         // None are free, we need to instantiate a new one.
-        val t = new SoundTagInstance(loadAudioTag(path), true, 0)
+        val t = new SoundTagInstance(loadAudioTag(pathes), true, 0)
         audioTags = audioTags :+ t
         t
       }
@@ -51,7 +51,7 @@ trait Html5AudioProvider extends AudioProvider {
       }
     }
 
-    class Sound(path: ResourcePath, pool: SoundTagPool, loop: Int = 0, rate: Float = 1f) extends AbstractSound {
+    class Sound(pathes: Seq[ResourcePath], pool: SoundTagPool, loop: Int = 0, rate: Float = 1f) extends AbstractSound {
 
       type PlayedSound = SoundTagInstance
 
@@ -80,7 +80,7 @@ trait Html5AudioProvider extends AudioProvider {
         Some(tag)
       }
       override def withConfig(loop: Int, rate: Float): Sound = {
-        new Sound(path, pool, loop, rate)
+        new Sound(pathes, pool, loop, rate)
       }
       override def dispose(): Unit = {
         // TODO: remove tag and stop all running sounds loops.
@@ -104,8 +104,8 @@ trait Html5AudioProvider extends AudioProvider {
       }
     }
 
-    override def loadSound(path: ResourcePath): Loader[Sound] = {
-      loadAudioTag(path).map(tag => new Sound(path, new SoundTagPool(path, tag)))
+    override def loadSound(path: ResourcePath, extras: ResourcePath*): Loader[Sound] = {
+      loadAudioTag(path +: extras).map(tag => new Sound(path +: extras, new SoundTagPool(path +: extras, tag)))
     }
 
     /** Music implementation for HTML5.
@@ -145,25 +145,42 @@ trait Html5AudioProvider extends AudioProvider {
       }
     }
 
-    override def loadMusic(path: ResourcePath): Loader[Music] = {
-      loadAudioTag(path).map(new Music(_))
+    override def loadMusic(path: ResourcePath, extras: ResourcePath*): Loader[Music] = {
+      loadAudioTag(path +: extras).map(new Music(_))
     }
 
-    private def loadAudioTag(path: ResourcePath): Loader[HTMLAudioElement] = {
+    private def loadAudioTag(pathes: Seq[ResourcePath]): Loader[HTMLAudioElement] = {
       val p = new DefaultLoader[HTMLAudioElement]()
       val audio = dom.document.createElement("audio").asInstanceOf[HTMLAudioElement]
       audio.addEventListener("canplaythrough", (e: dom.raw.Event) => {
         // Apparently the event can fire several times, so we trySuccess instead.
         p.trySuccess(audio)
       })
-      // Could add more source to support more format and thus more browser.
-      val source = dom.document.createElement("source").asInstanceOf[HTMLSourceElement]
-      source.addEventListener("error", (e: dom.raw.Event) => {
-        p.failure(new RuntimeException(s"music <${path.path}> failed to load"))
-      })
 
-      source.src = path.path
-      audio.appendChild(source)
+      var errorCount = 0
+      def onError(): Unit = {
+        errorCount += 1
+        if(errorCount == pathes.size) {
+          p.failure(new RuntimeException(s"music <${pathes}> failed to load"))
+        }
+      }
+
+      pathes.foreach(path => {
+        val source = dom.document.createElement("source").asInstanceOf[HTMLSourceElement]
+        source.src = path.path
+        val tpe = path.extension match {
+          case Some("ogg") => "audio/ogg"
+          case Some("oga") => "audio/ogg"
+          case Some("mp3") => "audio/mpeg"
+          case Some("aac") => "audio/aac"
+          case Some("m4a") => "audio/mp4"
+          case Some("wav") => "audio/wav"
+          case _ => ""
+        }
+        source.`type` = tpe
+        source.addEventListener("error", (e: dom.raw.Event) => onError())
+        audio.appendChild(source)
+      })
       dom.document.body.appendChild(audio)
 
       p.loader

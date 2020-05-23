@@ -22,7 +22,7 @@ trait NativeAudioProvider extends AudioProvider {
       override def endLoop(id: PlayedSound): Unit = {}
     }
     /** Not supported. */
-    override def loadSound(path: ResourcePath): Loader[Sound] = Loader.successful(new Sound)
+    override def loadSound(path: ResourcePath, extras: ResourcePath*): Loader[Sound] = Loader.successful(new Sound)
   
     /** Not supported. */
     class Music extends AbstractMusic {
@@ -34,7 +34,7 @@ trait NativeAudioProvider extends AudioProvider {
       override def dispose(): Unit = {}
     }
     /** Not supported. */
-    override def loadMusic(path: ResourcePath): Loader[Music] = Loader.successful(new Music)
+    override def loadMusic(path: ResourcePath, extras: ResourcePath*): Loader[Music] = Loader.successful(new Music)
   }
   override val Audio = NativeAudio
 

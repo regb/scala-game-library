@@ -19,6 +19,13 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
 
   private implicit val LogTag = Logger.Tag("sgl-audio-provider")
 
+  /** The list of supported audio format on Android.
+    *
+    * The load methods are going to pick the first resource that
+    * matches any of these, and include it.
+    */
+  val SupportedAudioFormats: Set[String] = Set("ogg", "m4a", "mp3")
+
   // Callbacks to the audio module can come from the Activity lifecycle
   // so we want to make sure there is no concurrency going on there.
   private object AudioLocker
@@ -154,17 +161,20 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
       }
 
     }
-    override def loadSound(path: ResourcePath): Loader[Sound] = {
+    override def loadSound(path: ResourcePath, extras: ResourcePath*): Loader[Sound] = {
       // We are essentilally initing the sound pool only once for the system. But because the
       // cake initialization is sometimes a bit hard to predict, moving this here makes it
       // easier to track when the initialization code happens.
       initSoundPool()
 
+      // Get the first resource that matches, otherwise try with the default one anyway.
+      val chosenResource: ResourcePath = (path +: extras).find(p => SupportedAudioFormats.contains(p.extension.getOrElse(""))).getOrElse(path)
+
       val loader = new DefaultLoader[Sound]()
 
       try {
         val am = self.getAssets()
-        val afd = am.openFd(path.path)
+        val afd = am.openFd(chosenResource.path)
         val soundId = soundPool.load(afd, 1)
         afd.close()
 
@@ -172,13 +182,13 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
           if(status == 0) {
             loader.success(new Sound(soundId, 0, 1f, null))
           } else {
-            loader.failure(new RuntimeException(s"Sound ${path} failed to load with status: ${status}"))
+            loader.failure(new RuntimeException(s"Sound ${chosenResource} failed to load with status: ${status}"))
           }
         })
         loader
       } catch {
         case (e: java.io.IOException) =>
-          loader.failure(new ResourceNotFoundException(path))
+          loader.failure(new ResourceNotFoundException(chosenResource))
       }
     }
 
@@ -581,16 +591,18 @@ trait AndroidAudioProvider extends Activity with AudioProvider {
 
     }
 
-    override def loadMusic(path: ResourcePath): Loader[Music] = AudioLocker.synchronized {
+    override def loadMusic(path: ResourcePath, extras: ResourcePath*): Loader[Music] = AudioLocker.synchronized {
       val loader = new DefaultLoader[Music]
+      // Get the first resource that matches, otherwise try with the default one anyway.
+      val chosenResource = (path +: extras).find(p => SupportedAudioFormats.contains(p.extension.getOrElse(""))).getOrElse(path)
       try {
-        val music = new Music(path)
+        val music = new Music(chosenResource)
         loader.success(music)
         addLoadedMusic(music)
         if(activityPaused) // If this was paused in a race, make sure we freeze that music too.
           music.freezeOnPause()
       } catch {
-        case (e: java.io.IOException) => loader.failure(new ResourceNotFoundException(path))
+        case (e: java.io.IOException) => loader.failure(new ResourceNotFoundException(chosenResource))
       }
       loader
     }
