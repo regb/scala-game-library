@@ -152,10 +152,6 @@ trait Html5AudioProvider extends AudioProvider {
     private def loadAudioTag(pathes: Seq[ResourcePath]): Loader[HTMLAudioElement] = {
       val p = new DefaultLoader[HTMLAudioElement]()
       val audio = dom.document.createElement("audio").asInstanceOf[HTMLAudioElement]
-      audio.addEventListener("canplaythrough", (e: dom.raw.Event) => {
-        // Apparently the event can fire several times, so we trySuccess instead.
-        p.trySuccess(audio)
-      })
 
       var errorCount = 0
       def onError(): Unit = {
@@ -181,6 +177,27 @@ trait Html5AudioProvider extends AudioProvider {
         source.addEventListener("error", (e: dom.raw.Event) => onError())
         audio.appendChild(source)
       })
+
+      // TODO: we should set a timer and automatically fail the loader after a while, because
+      //       because it seems like browsers just do not want us to play audio in general. The
+      //       way we should probably design this is to make the implementation resistent to
+      //       issues from the browser, and just fall back to not playing any sound, which is
+      //       most likely acceptable for the game.
+      //
+      //       The alternative would be to make the Audio API explicit on the fact that some
+      //       operations could fail, but it seems like most platforms except web have a very
+      //       reliable audio, so it's not nice to have an API that returns errors all the time.
+      //       I think fall back on a silent behavior might be the best, maybe with otpional errors
+      //       that can be queried?
+      audio.addEventListener("canplaythrough", (e: dom.raw.Event) => {
+        // Apparently the event can fire several times, so we trySuccess instead.
+        p.trySuccess(audio)
+      })
+      // Let's explicitly load() the audio, it seems to be needed on iOS, as the device
+      // does not start loading the audio files otherwise. All other platforms seem to
+      // load automatically and trigger the canplaythrough event eventually.
+      audio.load()
+
       dom.document.body.appendChild(audio)
 
       p.loader
