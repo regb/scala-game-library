@@ -96,7 +96,9 @@ trait Html5GraphicsProvider extends GraphicsProvider {
           div.appendChild(inner)
           div
         }
-        dom.document.body.appendChild(preloadNode)
+        // We want to add this early in the body, in particular before the canvas, so that
+        // it does not appear on top of the canvas and could be interecpting mouse events.
+        dom.document.body.insertBefore(preloadNode, dom.document.body.firstChild)
 
         val loader = new DefaultLoader[Font]
         // TODO: we are not checking if the font failed to load (missing file or wrong format).
