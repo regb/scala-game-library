@@ -31,6 +31,29 @@ trait GameLoopComponent {
   // Convert an FPS to its corresponding frame period in in milliseconds.
   def framePeriod(fps: Int): Long = (1000.0 / fps.toDouble).toLong
 
+  /** Configure a maximum delta time (in ms) that the game loop will handle.
+    *
+    * If the actual delta time computed between two frames is larger
+    * than this value, we will cap the delta time to this value. This
+    * means that the update function will not get the correct delta time,
+    * but instead a capped value.
+    *
+    * This can lead to problems because time magically disappear, but
+    * usually that should just result in a big lag and then things
+    * should recover, as long as you never rely on the real actual time
+    * for other computations.
+    *
+    * This can be useful to avoid time jump that would not be well supported
+    * by the physics simulation (jumps of thousands of seconds). On the
+    * other hand, this should not be too low because you ideally do not
+    * want to let time disappear, but instead you would accept a choppy
+    * frame with a simulation update of few hundred ms in one step. The
+    * smallest acceptable value for this is probably around 1 second, anything
+    * lower than that is probably better handled by just simulating and
+    * accepting the frame dropped, but not losing actual data.
+    */
+  val MaxLoopStepDelta: Option[Long] = None
+
   /** Interface to hook into the game loop
     *
     * Can be used for some low level optimization
@@ -87,6 +110,8 @@ trait GameLoopComponent {
   def gameLoopStep(dt: Long, canvas: Graphics.Canvas): Unit = {
     gameLoopListener.onStepStart()
 
+    val rdt = MaxLoopStepDelta.map(m => dt min m).getOrElse(dt)
+
     //canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
     // TODO: should we clear the canvas? I don't think so, because I think
     //       the render call should have the choice to do it, and because
@@ -108,9 +133,9 @@ trait GameLoopComponent {
         currentScreen._isLoading = false
       }
 
-      if(dt > 0) {
+      if(rdt > 0) {
         gameLoopListener.onUpdateStart()
-        currentScreen.update(dt)
+        currentScreen.update(rdt)
         gameLoopListener.onUpdateComplete()
       }
 

@@ -67,6 +67,8 @@ trait Html5App extends GameApp
 
   private implicit val Tag = Logger.Tag("game-loop")
 
+  override val MaxLoopStepDelta = Some(1000)
+
   def startGameLoop(): Unit = {
 
     val canvas: Graphics.Canvas = Graphics.Html5Canvas(htmlCanvas)
@@ -78,40 +80,31 @@ trait Html5App extends GameApp
     //only at startup, we add the starting screen to the game state
     gameState.newScreen(startingScreen)
 
-    var lastTime: Long = js.Date.now.toLong
-    def frameCode(): Unit = {
-      val now = js.Date.now.toLong
-      //we cap at 1 sec, because requestAnimationFrame stops callback when
-      //switching tabs, essentially pausing the game. Also in general, doing
-      //giant update steps is extremely dangerous, but it would be nice to
-      //control this in a better way
-      val dt: Long = (now - lastTime) min 1000
-
-      if(targetFramePeriod.forall(delta => dt >= delta)) {
-        lastTime = now
-
-        gameLoopStep(dt, canvas)
-
-        targetFramePeriod.foreach(framePeriod => {
-          val frameTime = js.Date.now.toLong - now
-          logger.info("frame time: " + frameTime)
-          logger.info("frame period: " + framePeriod)
-          if(frameTime > framePeriod)
-            logger.warning("Frame took too long to execute. Losing FPS. Frame time: " + frameTime)
-        })
-      } else {
-        logger.debug("GameLoop callback invoked before enough time has elapsed. No need to perform any work, just waiting for next callback.")
-      }
-
+    var lastTime: Option[Double] = None
+    def frameCode(now: Double): Unit = {
+      // TODO: The problem with requestAnimationFrame is that it will stop firing
+      // when the user changes focus (new tab). That's good or bad depending on what
+      // behavior you want, but that means autopause from a player's perspective.
+      // Two things to address still.
+      //   1) When the player comes back, the current time will have a huge jump in the future, so
+      //      we need to guard against that, probably by capping the step to some max acceptable
+      //      time. This can be handled with the MaxLoopStepDelta settings.
+      //   2) We should handle the lifecycle methods properly, and we should offer a settings to
+      //      not pause the game when we switch tabs (some games may want to keep playing, like
+      //      simulation/tower defense/multiplayer). We could implement that by falling back on
+      //      setInterval during the time away from the tab.
+      val dt: Double = now - lastTime.getOrElse(now)
+      lastTime = Some(now)
+      gameLoopStep(dt.toLong, canvas)
       if(requestAnimationFrameSupported)
-        dom.window.requestAnimationFrame(dt => frameCode())
+        dom.window.requestAnimationFrame(t => frameCode(t))
     }
 
     if(requestAnimationFrameSupported) {
-      dom.window.requestAnimationFrame(dt => frameCode())
+      dom.window.requestAnimationFrame(t => frameCode(t))
     } else {
       logger.warning("window.requestAnimationFrame not supported, fallback to setInterval for the game loop")
-      dom.window.setInterval(() => frameCode(), targetFramePeriod.map(_.toDouble).getOrElse(10d))
+      dom.window.setInterval(() => frameCode(js.Date.now), targetFramePeriod.map(_.toDouble).getOrElse(1000d/30d))
     }
 
   }
