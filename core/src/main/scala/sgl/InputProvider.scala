@@ -62,14 +62,87 @@ trait InputProvider {
 
   private implicit val LogTag = Logger.Tag("sgl.input")
 
+  /** Control if the events should be processed synchronously or asynchronously.
+    *
+    * This settings work in conjunction with the Input.setEventProcessor, if
+    * there's no event processor then the settings is ignored. If true, the events 
+    * will be processed just before the next update loop, in the same thread as
+    * the main loop thread. If false, the events are handled immediately when they
+    * happen, potentially on a different thread than the main execution thread.
+    */
+  val ProcessInputsDuringUpdate: Boolean = true
+
   object Input {
     import scala.collection.mutable.Queue
+
+    // Provides a hook which is called whenever an event fires.
+    private var eventProcessor: Option[(InputEvent) => Unit] = None
+
+    /** Set an event processor.
+      *
+      * By default, there's no event processor set, and events will simply
+      * accumulate in the eventQueue until explicitly processed by
+      * pollEvent() or processEvents(). The eventProcessor can be set
+      * so that the Input module automatically calls it on every event.
+      *
+      * Depending on the value of ProcessInputsDuringUpdate, the processor code
+      * will be invoked synchronously on the event (if false), or
+      * asynchronously on the event during the next loop iteration (if true).
+      * If the processing is delayed to the next loop update, all the events
+      * will automatically be processed, in the order of arrival, just before
+      * the framework invokes the update() call.
+      *
+      * The difference when executed synchronously is that this is called
+      * in the same callback/thread as the event happening. Processing
+      * done here will be immediately effective in response to the
+      * event, but that also means it will happen outside an update-render
+      * loop cycle. This can be particularly useful if you target javascript,
+      * because browsers tend to require that some actions (opening links,
+      * playing music) happen in the same callback as the event, and
+      * using the eventQueue model to process events in batch does not actually
+      * work well with that requirements (the action happens in a different
+      * callstack than the user event).
+      *
+      * This has the drawback of course that these callbacks might end up racing
+      * with a loop update call. So either you need to disable the
+      * ProcessInputsDuringUpdate (most platforms set it to false by default), or
+      * you need to be aware of the potential races. It is not an issue on the web,
+      * because there's no multithreading, and thus this is a platform where this
+      * would be enabled by default.
+      */
+    def setEventProcessor(processor: (InputEvent) => Unit): Unit = synchronized {
+      eventProcessor = Some(processor)
+    }
+    def clearEventProcessor(): Unit = synchronized {
+      eventProcessor = None
+    }
+    // TODO: Maybe it would be nice to support a list of event processors, so that
+    // several processors can be added by different modules, and we would try to
+    // apply each of them to the events until we find one that processes the event.
+    // If none of the processors are able to handle the event, then the event stays
+    // in the queue, just like when no processor is set.
 
     private val eventQueue: Queue[InputEvent] = new Queue[InputEvent]()
 
     private[sgl] def newEvent(event: InputEvent): Unit = synchronized {
-      logger.trace("Adding new event: " + event + " to the queue.")
-      eventQueue.enqueue(event)
+      if(ProcessInputsDuringUpdate || eventProcessor.isEmpty) {
+        logger.info("Adding new event: " + event + " to the queue.")
+        eventQueue.enqueue(event)
+      } else {
+        logger.info("executing event right away")
+        eventProcessor.get(event)
+      }
+    }
+
+    // Called by the loop on each update, if ProcessInputsDuringUpdate is set
+    // and we have a processor, we will process all the events through the processor.
+    // If no eventProcessor is set, we just leave the events in the queue and they
+    // need to be handled by the game explicitly.
+    private[sgl] def onLoopUpdate(): Unit = synchronized {
+      if(ProcessInputsDuringUpdate) eventProcessor.foreach(p => {
+        while(Input.eventQueue.nonEmpty)
+          p(Input.eventQueue.dequeue)
+      })
     }
 
     /** Poll for the oldest non processed event.
@@ -95,6 +168,7 @@ trait InputProvider {
     }
 
     def processEvents(function:(InputEvent)=>Unit): Unit = processEvents(function,(x:InputEvent)=>true)
+
 
     //TODO: with an Event based architecture with immutable case
     //      classes, one concern is going to be garbage collecting

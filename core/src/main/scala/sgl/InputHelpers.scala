@@ -13,11 +13,19 @@ trait InputHelpersComponent {
 
     import Input._
 
+    def setEventProcessor(function: (InputEvent) => Unit): Unit = {
+      Input.setEventProcessor((e: InputEvent) => {
+        processEvent(e)
+        function(e)
+      })
+    }
+
     def pollEvent(): Option[InputEvent] = {
       val ev = Input.pollEvent()
       ev foreach processEvent
       ev
     }
+
     def processEvents(function: (InputEvent) => Unit): Unit = {
       var oev = Input.pollEvent()
       while(!oev.isEmpty) {

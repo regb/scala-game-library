@@ -93,24 +93,28 @@ trait MainScreenComponent extends ViewportComponent {
     private val beepInfinite = LoadingScreen.beepInfinite
     private var playingLoop: Option[beepInfinite.PlayedSound] = None
 
+
+    def processEvent(e: Input.InputEvent): Unit = e match {
+      case Input.PointerDownEvent(x, y, _) =>
+        LoadingScreen.beep.play()
+        val (wx, wy) = viewport.screenToWorld(x, y)
+        this.x = wx
+        this.y = wy
+      case Input.KeyDownEvent(Input.Keys.L) =>
+        playingLoop match {
+          case Some(s) =>
+            beepInfinite.stop(s)
+            playingLoop = None
+          case None =>
+            playingLoop = beepInfinite.play()
+        }
+      case _ => ()
+    }
+
+    InputHelpers.setEventProcessor(processEvent _)
+
     var totalTime: Long = 0
     override def update(dt: Long): Unit = {
-      InputHelpers.processEvents(e => e match {
-        case Input.PointerDownEvent(x, y, _) =>
-          LoadingScreen.beep.play()
-          val (wx, wy) = viewport.screenToWorld(x, y)
-          this.x = wx
-          this.y = wy
-        case Input.KeyDownEvent(Input.Keys.L) =>
-          playingLoop match {
-            case Some(s) =>
-              beepInfinite.stop(s)
-              playingLoop = None
-            case None =>
-              playingLoop = beepInfinite.play()
-          }
-        case _ => ()
-      })
       totalTime += dt
 
       if(Inputs.Keyboard.left) {

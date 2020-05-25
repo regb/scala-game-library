@@ -11,6 +11,8 @@ trait Html5InputProvider extends InputProvider {
 
   import Input._
 
+  override val ProcessInputsDuringUpdate: Boolean = false
+
   private def mouseEventButton(e: dom.MouseEvent): MouseButtons.MouseButton = e.button match {
     case 0 => MouseButtons.Left
     case 1 => MouseButtons.Middle
@@ -53,6 +55,19 @@ trait Html5InputProvider extends InputProvider {
   }
 
   def registerInputListeners(): Unit = {
+
+    /*
+     * Note that we don't listen to the click event and instead try to
+     * synthesize it from down and up (in the scene graph library). There's a
+     * chance that browsers might require some actions to take place only in
+     * callbacks of click events (play sound, open links), but in practice it
+     * seems they are ok as long as it happens during a reasonable event like a
+     * mousedown/mouseup. It would be probably more robust to try to detect the
+     * actual click event of the browser and somehow use it, but that would
+     * require a bunch of refactoring as the aggregation of events happens in
+     * the core module, and is thus platform agnostic.
+     */
+ 
     this.htmlCanvas.addEventListener("mousedown", (e: dom.MouseEvent) => {
       triggerUserInteraction()
       val (x,y) = getCursorPosition(this.htmlCanvas, e)
