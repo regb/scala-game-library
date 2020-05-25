@@ -29,7 +29,7 @@ class DefaultLoaderSuite extends AnyFunSuite {
     assert(l.value.get.get === Seq(1,2,3))
   }
 
-  test("combine with one failed loader returns a loaded loader with correct content") {
+  test("combine with one failed loader returns a loaded loader with a failure") {
     val l1 = Loader.successful(1)
     val l2 = Loader.successful(2)
     val l3 = Loader.failed(new RuntimeException)
@@ -40,6 +40,15 @@ class DefaultLoaderSuite extends AnyFunSuite {
     assert(l.value.get.isInstanceOf[Failure[Seq[Int]]])
   }
 
-  // TODO: test the DefaultLoader methods.
+  test("combine with multiple failed loaders returns a loaded loader with a failure") {
+    val l1 = Loader.successful(1)
+    val l2 = Loader.failed(new RuntimeException)
+    val l3 = Loader.failed(new RuntimeException)
+
+    val l = Loader.combine(Seq(l1, l2, l3))
+
+    assert(l.isLoaded)
+    assert(l.value.get.isInstanceOf[Failure[Seq[Int]]])
+  }
 
 }

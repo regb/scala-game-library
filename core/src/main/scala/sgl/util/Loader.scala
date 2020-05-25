@@ -151,6 +151,12 @@ object Loader {
 
   //}
 
+  /** Combine all loaders into a single one.
+    *
+    * This loader returns success when all loaders have succeeded. If any
+    * of the loader fails, the combined loader will fail with the first
+    * failure (and ignore the following ones, which will get dropped).
+    */
   def combine[A](loaders: Seq[Loader[A]]): Loader[Seq[A]] = {
     val p = new DefaultLoader[Seq[A]]
 
@@ -164,7 +170,8 @@ object Loader {
         if(totalLoaded == totalToLoad)
           p.success(loaders.map(l => l.value.get.get))
       case Failure(e) =>
-        p.failure(e)
+        // We must tryFailure becauses it could be more than one Loader would fail.
+        p.tryFailure(e)
     }}))
 
     p.loader
