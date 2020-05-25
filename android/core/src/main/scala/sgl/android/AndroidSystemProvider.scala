@@ -73,6 +73,8 @@ trait AndroidSystemProvider extends SystemProvider with PartsResourcePathProvide
   }
   val System = AndroidSystem
 
+  override val ResourcesRoot = PartsResourcePath(Vector())
+
   //Centralize the execution context used for asynchronous tasks in the Desktop backend
   //Could be overriden at wiring time
   implicit val executionContext: ExecutionContext = ExecutionContext.Implicits.global
