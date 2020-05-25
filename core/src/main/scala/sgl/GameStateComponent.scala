@@ -102,7 +102,25 @@ trait GameStateComponent {
       * only recompute them if refresh is being called.
       */
     def refresh(): Unit = {}
-  
+
+    /** Called when the player enters the screen.
+      *
+      * This is called the first time the screen is created, after
+      * initializing but before the other calls to render/update/loadingRender.
+      * This is also called if the player comes back to the screen, after
+      * pushing and then popping screens on the stack.
+      */
+    def resume(): Unit = {}
+
+    /** Called when the player leaves the screen.
+      *
+      * This is invoked when we replace this screen by a new screen,
+      * or when we push a screen on top of this one. It's not a
+      * destroy function, because the play might come back to the
+      * screen if the screen above are popped from the stack, so
+      * you should not destroy any state.
+      */
+    def pause(): Unit = {}
   }
 
   /** A GameScreen that only updates on a fixed timestep.
@@ -349,7 +367,11 @@ trait GameStateComponent {
     def screensStack: List[GameScreen] = screens
 
     def pushScreen(screen: GameScreen): Unit = {
+      if(screens.nonEmpty) {
+        screens.head.pause()
+      }
       screens ::= screen
+      screen.resume()
     }
     /** Remove the topmost screen of the game.
       *
@@ -360,13 +382,20 @@ trait GameStateComponent {
       * a screen to render anymore.
       */
     def popScreen(): Unit = {
+      screens.head.pause()
       screens = screens.tail
       if(screens.isEmpty) {
         System.exit()
+      } else {
+        screens.head.resume()
       }
     }
     def newScreen(screen: GameScreen): Unit = {
+      if(screens.nonEmpty) {
+        screens.head.pause()
+      }
       screens = List(screen)
+      screen.resume()
     }
   }
 
