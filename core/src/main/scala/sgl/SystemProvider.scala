@@ -153,6 +153,7 @@ trait SystemProvider {
   val System: System
 
   trait AbstractResourcePath {
+
     /** Compose the path with a file/directory.
       *
       * The argument can be either a directory or a file. Chain
@@ -264,18 +265,19 @@ trait PartsResourcePathProvider {
 
     override def / (filename: String): ResourcePath = {
       val subparts = filename.split("/")
-      join(this, subparts)
+      joinWithSubparts(subparts)
     }
 
-    private def join(that: PartsResourcePath, subparts: Seq[String]): ResourcePath = if(subparts.isEmpty) that else {
+    // Join this with a path broken into subparts at "/".
+    private def joinWithSubparts(subparts: Seq[String]): ResourcePath = if(subparts.isEmpty) this else {
       val r = subparts.head match {
-        case "." => that
+        case "." => this
         case ".." => PartsResourcePath(if(parts.isEmpty) parts else parts.init)
         case file => {
           PartsResourcePath(parts :+ file)
         }
       }
-      join(r, subparts.tail)
+      r.joinWithSubparts(subparts.tail)
     }
 
     override def extension: Option[String] = {

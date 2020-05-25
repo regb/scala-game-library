@@ -37,6 +37,8 @@ class SystemProviderSuite extends AnyFunSuite {
   test("PartsResourcePath creates the correct path") {
     val r = PartsResourcePathSystemProvider.ResourcesRoot / "a" / "b" / "c.txt"
     assert(r.path === "root/a/b/c.txt")
+    val r2 = PartsResourcePathSystemProvider.ResourcesRoot / "a" / "b/c.txt"
+    assert(r2.path === "root/a/b/c.txt")
   }
 
   test("PartsResourcePath creates the correct pathes with multiple filenames") {
@@ -51,5 +53,23 @@ class SystemProviderSuite extends AnyFunSuite {
     assert(r.extension === Some("txt"))
     val r2 = PartsResourcePathSystemProvider.ResourcesRoot / "a" / "b" / "c"
     assert(r2.extension === None)
+  }
+
+  test("PartsResourcePath creates the correct path with .") {
+    val r = PartsResourcePathSystemProvider.ResourcesRoot / "a" / "." / "b" / "c.txt"
+    assert(r.path === "root/a/b/c.txt")
+    val r2 = PartsResourcePathSystemProvider.ResourcesRoot / "a" / "./b/c.txt"
+    assert(r2.path === "root/a/b/c.txt")
+  }
+
+  test("PartsResourcePath creates the correct path with ..") {
+    val r = PartsResourcePathSystemProvider.ResourcesRoot / "a" / ".." / "b" / "c.txt"
+    assert(r.path === "root/b/c.txt")
+    val r2 = PartsResourcePathSystemProvider.ResourcesRoot / ".." / "a" / "b" / "c.txt"
+    assert(r2.path === "a/b/c.txt")
+    val r3 = PartsResourcePathSystemProvider.ResourcesRoot / "a" / "../b/c.txt"
+    assert(r3.path === "root/b/c.txt")
+    val r4 = PartsResourcePathSystemProvider.ResourcesRoot / "../a/b/c.txt"
+    assert(r4.path === "a/b/c.txt")
   }
 }
