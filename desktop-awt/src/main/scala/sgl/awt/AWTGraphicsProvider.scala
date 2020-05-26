@@ -266,7 +266,7 @@ trait AWTGraphicsProvider extends GraphicsProvider {
 
       override def drawColor(color: Color): Unit = {
         graphics.setColor(color)
-        rect.setRect(0, 0, width, height)
+        rect.setRect(0, 0, this.width, this.height)
         graphics.fill(rect)
       }
 

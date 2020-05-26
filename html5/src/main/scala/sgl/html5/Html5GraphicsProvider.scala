@@ -164,19 +164,28 @@ trait Html5GraphicsProvider extends GraphicsProvider {
     type Ctx2D = dom.CanvasRenderingContext2D
 
     case class Html5Canvas(canvas: html.Canvas) extends AbstractCanvas {
+      // The width/height are the transformed width/height of the canvas, if you
+      // use the width/height properties of the canvas, that would return the
+      // original canvas (or the real HTML physical dimensions on the original page).
+      var width: Float = canvas.width
+      var height: Float = canvas.height
       
       val context = canvas.getContext("2d").asInstanceOf[Ctx2D]
-
-      // override def height: Float = canvas.height
-      // override def width: Float = canvas.width
 
       //note that the scala.js compiler is able to inline the body, so
       //you don't pay any performance cost for using the nice auto wrapping
       //syntax
       override def withSave[A](body: => A): A = {
+        val owidth = this.width
+        val oheight = this.height
         context.save()
+
         val res = body
+
         context.restore()
+        this.width = owidth
+        this.height = oheight
+
         res
       }
 
@@ -191,8 +200,9 @@ trait Html5GraphicsProvider extends GraphicsProvider {
 
       override def scale(sx: Float, sy: Float): Unit = {
         context.scale(sx, sy)
+        this.width = this.width/sx
+        this.height = this.height/sy
       }
-
 
       override def clipRect(x: Float, y: Float, width: Float, height: Float): Unit = {
         context.beginPath()
@@ -261,10 +271,9 @@ trait Html5GraphicsProvider extends GraphicsProvider {
         text.draw(context, x, y)
       }
 
-      // TODO: Tjst this because I'm not sure it works with a scaled canvas?
       override def drawColor(color: Color): Unit = {
         context.fillStyle = color
-        context.fillRect(0, 0, canvas.width, canvas.height)
+        context.fillRect(0, 0, this.width, this.height)
       }
 
       // override def clearRect(x: Float, y: Float, width: Float, height: Float): Unit = {
