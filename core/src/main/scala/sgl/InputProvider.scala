@@ -126,10 +126,10 @@ trait InputProvider {
 
     private[sgl] def newEvent(event: InputEvent): Unit = synchronized {
       if(ProcessInputsDuringUpdate || eventProcessor.isEmpty) {
-        logger.info("Adding new event: " + event + " to the queue.")
+        logger.trace("Adding new event: " + event + " to the queue.")
         eventQueue.enqueue(event)
       } else {
-        logger.info("executing event right away")
+        logger.trace("executing event right away")
         eventProcessor.get(event)
       }
     }
