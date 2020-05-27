@@ -51,7 +51,7 @@ trait Html5AudioProvider extends AudioProvider {
       }
     }
 
-    class Sound(pathes: Seq[ResourcePath], pool: SoundTagPool, loop: Int = 0, rate: Float = 1f) extends AbstractSound {
+    class Html5Sound(pathes: Seq[ResourcePath], pool: SoundTagPool, loop: Int = 0, rate: Float = 1f) extends AbstractSound {
 
       type PlayedSound = SoundTagInstance
 
@@ -103,9 +103,10 @@ trait Html5AudioProvider extends AudioProvider {
         id.loop = 0
       }
     }
+    type Sound = Html5Sound
 
     override def loadSound(path: ResourcePath, extras: ResourcePath*): Loader[Sound] = {
-      loadAudioTag(path +: extras).map(tag => new Sound(path +: extras, new SoundTagPool(path +: extras, tag)))
+      loadAudioTag(path +: extras).map(tag => new Html5Sound(path +: extras, new SoundTagPool(path +: extras, tag)))
     }
 
     /** Music implementation for HTML5.
@@ -119,7 +120,7 @@ trait Html5AudioProvider extends AudioProvider {
       * TODO: Export a setiings to ignore this constraint and just play
       * whenever the API receives the call.
       */
-    class Music(audio: HTMLAudioElement) extends AbstractMusic {
+    class Html5Music(audio: HTMLAudioElement) extends AbstractMusic {
 
       override def play(): Unit = {
         if(GuardAutoPlay)
@@ -144,9 +145,10 @@ trait Html5AudioProvider extends AudioProvider {
         dom.document.body.removeChild(audio)
       }
     }
+    type Music = Html5Music
 
     override def loadMusic(path: ResourcePath, extras: ResourcePath*): Loader[Music] = {
-      loadAudioTag(path +: extras).map(new Music(_))
+      loadAudioTag(path +: extras).map(new Html5Music(_))
     }
 
     private def loadAudioTag(pathes: Seq[ResourcePath]): Loader[HTMLAudioElement] = {
@@ -203,5 +205,5 @@ trait Html5AudioProvider extends AudioProvider {
       p.loader
     }
   }
-  override val Audio = Html5Audio
+  override val Audio: Audio = Html5Audio
 }

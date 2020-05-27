@@ -90,12 +90,14 @@ lazy val desktopNative = (project in file("./desktop-native"))
   )
   .dependsOn(coreNative)
 
+val scalaJSDomVer = "1.0.0"
+
 lazy val html5 = (project in file("./html5"))
   .enablePlugins(ScalaJSPlugin)
   .settings(commonSettings: _*)
   .settings(
     name := "sgl-html5",
-    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "1.0.0",
+    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % scalaJSDomVer,
     libraryDependencies += "org.scalatest" %%% "scalatest" % scalatestVer % "test"
   )
   .dependsOn(coreJS % "test->test;compile->compile")
@@ -105,10 +107,20 @@ lazy val html5Firebase = (project in file("./html5/firebase"))
   .settings(commonSettings: _*)
   .settings(
     name := "sgl-html5-firebase",
-    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "1.0.0",
+    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % scalaJSDomVer,
     libraryDependencies += "org.scalatest" %%% "scalatest" % scalatestVer % "test"
   )
   .dependsOn(coreJS % "test->test;compile->compile")
+
+lazy val html5Cordova = (project in file("./html5/cordova"))
+  .enablePlugins(ScalaJSPlugin)
+  .settings(commonSettings: _*)
+  .settings(
+    name := "sgl-html5-cordova",
+    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % scalaJSDomVer,
+    libraryDependencies += "org.scalatest" %%% "scalatest" % scalatestVer % "test"
+  )
+  .dependsOn(coreJS % "test->test;compile->compile", html5)
 
 
 /*
@@ -185,7 +197,7 @@ lazy val helloHtml5 = (project in file("./examples/hello/html5"))
     name := "hello-html5",
     scalaJSUseMainModuleInitializer := true
   )
-  .dependsOn(coreJS, html5, html5Firebase, helloCoreJS)
+  .dependsOn(coreJS, html5, helloCoreJS)
 
 lazy val helloDesktopNative = (project in file("./examples/hello/desktop-native"))
   .enablePlugins(ScalaNativePlugin)
