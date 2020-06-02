@@ -57,8 +57,6 @@ trait AndroidFirebaseAnalyticsProvider extends Activity with AnalyticsProvider
   private var firebaseAnalytics: UFirebaseAnalytics = null
 
   override def onCreate(bundle: Bundle): Unit = {
-    super.onCreate(bundle)
-
     firebaseAnalytics = UFirebaseAnalytics.getInstance(this)
 
     // We explicitly disable the analytics if we are running in the test lab of
@@ -66,10 +64,18 @@ trait AndroidFirebaseAnalyticsProvider extends Activity with AnalyticsProvider
     // this is going to be common across most Android apps, and we do not want
     // to collect noisy analytics from these prelaunch reports.
     val testLabSetting = Settings.System.getString(getContentResolver(), "firebase.test.lab")
-    if("true".equals(testLabSetting)) {
+    if(testLabSetting == "true") {
       // We are in a testlab environment, let's not collect any Analytics.
+      // In practice I still see some events collected by testlab instances and
+      // firebase seems to count these in the DAU. I think it might be because
+      // the first_open event is still collected just before we disabled
+      // analytics.
       firebaseAnalytics.setAnalyticsCollectionEnabled(false)
     }
+
+    // We do the super.onCreate only after we potentially disabled collection, in case
+    // that's when some auto-collected events are collected.
+    super.onCreate(bundle)
   }
 
   //TODO: the name choice conflicts with firebase API (see import) so maybe
