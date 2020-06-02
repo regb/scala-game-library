@@ -93,4 +93,40 @@ trait LoaderAbstractSuite extends AnyFunSuite {
     assert(l2.isLoaded)
     assert(l2.value.get.get === 43)
   }
+
+  test("fallbackTo returns the first successful value and ignore follow up loaders") {
+    val l1 = makeLoader(42)
+
+    var called = false
+    val l2 = l1.fallbackTo(makeLoader({
+      called = true
+      10
+    }))
+    Thread.sleep(200)
+    assert(l2.isLoaded)
+    assert(l2.value.get.get === 42)
+    assert(!called)
+
+
+    // If we create the loader outside fallbackTo, it will start executing anyway.
+    called = false
+    val l3 = makeLoader({
+      called = true
+      10
+    })
+    val l4 = l1 fallbackTo l3
+    Thread.sleep(200)
+    assert(called)
+    assert(l4.isLoaded)
+    assert(l4.value.get.get === 42)
+  }
+
+  test("fallbackTo fallbacks to a successful value after a failed loader") {
+    val l1 = makeLoader(throw new Exception("failed loader"))
+    val l2 = l1.fallbackTo(makeLoader(10))
+    Thread.sleep(100)
+    assert(l2.isLoaded)
+    assert(l2.value.get.get === 10)
+  }
+
 }

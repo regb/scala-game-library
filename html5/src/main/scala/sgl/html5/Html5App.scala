@@ -31,11 +31,38 @@ trait Html5App extends GameApp
     run(js.Dynamic.global.document.getElementById(GameCanvasID).asInstanceOf[html.Canvas])
   }
 
+
+  /* 
+   * To take advantage of high density screens, we scale up
+   * the canvas according to the density, but still respect
+   * the CSS pixel size for the appearance of the canvas. The
+   * game code will however have more pixels to work with, and
+   * they can ensure similar physical appearance by using the
+   * ppi information exported by the WindowProvider. The end result
+   * is that the rendering of the game will be more crisp.
+   *
+   * Note that such a change has an impact on most of the backend, as
+   * the inputs need to be translated into canvas coordinates, and
+   * the loadImage need to select the best resource, or perform
+   * some scaling at runtime.
+   */
+  def prepareCanvas(canvas: html.Canvas): Unit = {
+    canvas.style.width = canvas.width + "px"
+    canvas.style.height = canvas.height + "px"
+    canvas.width = (dom.window.devicePixelRatio*canvas.width).toInt
+    canvas.height = (dom.window.devicePixelRatio*canvas.height).toInt
+  }
   @JSExport
   def run(canvas: html.Canvas): Unit = {
 
     theme.init(canvas)
-
+    prepareCanvas(canvas)
+    dom.window.onresize = (event: dom.Event) => {
+      theme.onResize(canvas)
+      // After a resize, the theme might reset the CSS width/height, so we
+      // need to prepare the canvas again.
+      prepareCanvas(canvas)
+    }
     this.htmlCanvas = canvas
 
     registerInputListeners()

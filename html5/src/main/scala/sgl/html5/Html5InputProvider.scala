@@ -23,10 +23,18 @@ trait Html5InputProvider extends InputProvider {
     }
   }
 
+  /* 
+   * The actual coordinates need to be translated to the canvas coordinates.
+   * First we need to offset them by the canvas top-left coordinates, then we
+   * need to adapt them to the actual canvas size.
+   * The canvas is scaled up by devicePixelRatio, and thus its internal coordinates
+   * system is finer than its size in CSS, but the click event will contain the
+   * CSS coordinates, so we need to scale these up.
+   */
   private def getCursorPosition(canvas: html.Canvas, clientX: Int, clientY: Int): (Int, Int) = {
     val rect = canvas.getBoundingClientRect()
-    val x = (clientX - rect.left).toInt
-    val y = (clientY - rect.top).toInt
+    val x = ((clientX - rect.left)*dom.window.devicePixelRatio).toInt
+    val y = ((clientY - rect.top)*dom.window.devicePixelRatio).toInt
     (x, y)
   }
   private def getCursorPosition(canvas: html.Canvas, e: dom.MouseEvent): (Int, Int) = {

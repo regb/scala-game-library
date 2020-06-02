@@ -5,6 +5,19 @@ import org.scalatest.funsuite.AnyFunSuite
 import scala.util.{Success, Failure}
 
 class DefaultLoaderSuite extends AnyFunSuite {
+  
+  // TODO: with LoaderAbstractSuite {
+  //   Try to run all the abstract loader suite test, but they don't seem to work
+  //   due to the sleep behavior.
+  // override def makeLoader[A](body: => A): Loader[A] = {
+  //   val p = new DefaultLoader[A]
+  //   try {
+  //     p.success(body)
+  //   } catch {
+  //     case (e: Exception) => p.failure(e)
+  //   }
+  //   p.loader
+  // }
 
   test("successful returns a loaded Loader with correct content") {
     val l = Loader.successful(13)

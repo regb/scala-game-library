@@ -102,6 +102,19 @@ trait Loader[+A] {
   // can be useful to parallelization.
   def zip[B](that: Loader[B]): Loader[(A, B)] = flatMap(a => that.map(b => (a, b)))
 
+  /** Fallbacks this loader to another loader in case it fails loading.
+    *
+    * Note that the other loader will start loading right when it's created,
+    * and fallbackTo takes a lazy argument, so as the caller you have the
+    * flexibility to choose when you want that to start loading (assign
+    * it to a val first if you want it to load immediately, or to a def/inlined
+    * if you want to wait for the first loader to fail.
+    */
+  def fallbackTo[B >: A](that: =>Loader[B]): Loader[B] = transformWith{
+    case Success(r) => Loader.successful[B](r)
+    case Failure(_) => that
+  }
+
   /** Whether the loader has completed loading.
     *
     * Note that it doesn't mean that the loading was

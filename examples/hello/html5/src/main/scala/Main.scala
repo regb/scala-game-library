@@ -13,8 +13,10 @@ object Main extends core.AbstractApp with Html5App
 
   override val GameCanvasID: String = "my_canvas"
 
-  override val theme = new DefaultTheme {
-    override val maxFrame = (800, 800)
-  }
+  override val theme = new FullScreenTheme
+  //override val theme = new DefaultTheme {
+  //  override val maxFrame = (600, 600)
+  //  override val optimalFrame = Some((600, 500))
+  //}
 
 }

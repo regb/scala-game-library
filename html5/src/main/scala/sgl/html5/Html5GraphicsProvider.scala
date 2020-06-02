@@ -13,11 +13,39 @@ trait Html5GraphicsProvider extends GraphicsProvider {
 
   object Html5Graphics extends Graphics {
 
-    override def loadImage(path: ResourcePath): Loader[Bitmap] = {
+    private def imageExists(path: ResourcePath): Boolean = {
+      var http = new dom.XMLHttpRequest()
+      http.open("HEAD", path.path, false)
+      http.send()
+      http.status != 404
+    }
+
+    private def dpiToRatio(dpi: String): Double = dpi match {
+      case "mdpi" => 1d
+      case "hdpi" => 1.5d
+      case "xhdpi" => 2d
+    }
+
+    private def bestDPIs(pixelRatio: Double): Seq[String] = {
+      if(pixelRatio == 1d) Seq("mdpi", "hdpi", "xhdpi")
+      else if(pixelRatio == 1.5d) Seq("hdpi", "mdpi", "xhdpi")
+      else if(pixelRatio == 2d) Seq("xhdpi", "hdpi", "mdpi")
+      else if(pixelRatio == 0.5d) Seq("mdpi", "hdpi", "xhdpi")
+      else {
+        if(pixelRatio < 1.5d) Seq("mdpi", "hdpi", "xhdpi")
+        else if(pixelRatio < 2d) Seq("hdpi", "xhdpi", "mdpi")
+        else Seq("xhdpi", "hdpi", "mdpi")
+      }
+    }
+
+    // Load an image resource which comes from resources for a given dpi.
+    // If the path is for drawable-mdpi, the dpi will be mdpi, it's the role
+    // of this function to make sure the bitmap is scaled if it needs to.
+    private def tryLoadImageDpi(path: ResourcePath, dpi: String): Loader[Bitmap] = {
       val p = new DefaultLoader[Bitmap]()
       val img = dom.document.createElement("img").asInstanceOf[HTMLImageElement]
       img.addEventListener("load", (e: dom.Event) => {
-        p.success(Html5Bitmap(img))
+        p.success(Html5Bitmap(img, dom.window.devicePixelRatio/dpiToRatio(dpi)))
       })
       img.addEventListener("error", (e: dom.Event) => {
         p.failure(new RuntimeException(s"image <${path.path}> failed to load"))
@@ -26,10 +54,35 @@ trait Html5GraphicsProvider extends GraphicsProvider {
       p.loader
     }
 
-    //could wrap that into a LoaderProxy, that makes sure image is loaded before drawing it
-    case class Html5Bitmap(image: HTMLImageElement) extends AbstractBitmap {
-      override def height: Int = image.height
-      override def width: Int = image.width
+    override def loadImage(path: ResourcePath): Loader[Bitmap] = {
+      // TODO: make this generic and robust.
+      val filename = path.parts(2)
+      val options = bestDPIs(dom.window.devicePixelRatio)
+      val pathes = options.map(dpi => (dpi, ResourcesRoot / s"drawable-$dpi" / filename))
+
+      // We try to load the image with each alternative, only starting to load a new one if the
+      // previous one failed. This should be more efficient than using a HEAD request to check
+      // if a resource is available, because if it isn't there, the loading should fail right
+      // away (nothing to load anyway), and if it doesn't fail, then we get the best image
+      // resource anyway, so it was worth trying to load.
+      pathes.foldLeft(
+        Loader.failed[Bitmap](new RuntimeException(s"Found no resources for image ${path.path}"))
+      ){ case (r, (dpi, path)) => r fallbackTo tryLoadImageDpi(path, dpi) }
+    }
+
+    /* 
+     * The HTMLImageElement might need to be scaled, if we are on a higher density but we
+     * could not find the ideal resource, we will use canvas scaling once in order to get
+     * a scaled image to be used in the rest of the system.
+     */
+    case class Html5Bitmap(image: HTMLImageElement, scaling: Double) extends AbstractBitmap {
+      val canvas = dom.document.createElement("canvas").asInstanceOf[html.Canvas]
+      canvas.width = this.width
+      canvas.height = this.height
+      canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height)
+
+      override def height: Int = (image.height*scaling).toInt
+      override def width: Int = (image.width*scaling).toInt
 
       override def release(): Unit = {}
     }
@@ -211,7 +264,7 @@ trait Html5GraphicsProvider extends GraphicsProvider {
       }
 
       override def drawBitmap(bitmap: Bitmap, x: Float, y: Float): Unit = {
-        context.drawImage(bitmap.image, x, y)
+        context.drawImage(bitmap.canvas, x, y)
       }
 
       override def drawBitmap(bitmap: Bitmap, x: Float, y: Float, s: Float): Unit = {
@@ -220,7 +273,7 @@ trait Html5GraphicsProvider extends GraphicsProvider {
 
       override def drawBitmap(bitmap: Bitmap, dx: Float, dy: Float, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f, alpha: Float = 1f): Unit = {
         context.globalAlpha = alpha
-        context.drawImage(bitmap.image, sx, sy, width, height, dx, dy, s*width, s*height)
+        context.drawImage(bitmap.canvas, sx, sy, width, height, dx, dy, s*width, s*height)
         context.globalAlpha = 1f
       }
 
