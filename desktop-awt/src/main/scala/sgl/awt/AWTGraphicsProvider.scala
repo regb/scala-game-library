@@ -19,11 +19,15 @@ trait AWTGraphicsProvider extends GraphicsProvider {
 
     override def loadImage(path: ResourcePath): Loader[Bitmap] = {
       FutureLoader {
-        val localAsset = if(DynamicResourcesEnabled) findDynamicResource(path) else None
-        val url = localAsset.map(_.toURI.toURL).getOrElse(getClass.getClassLoader.getResource(path.path))
+        // TODO: support multi dpi in desktop version.
+        val mdpiPath = PartsResourcePath(Vector("drawable-mdpi") ++ path.parts)
+        val localAsset = if(DynamicResourcesEnabled) findDynamicResource(mdpiPath) else None
+        val url = localAsset.map(_.toURI.toURL).getOrElse(getClass.getClassLoader.getResource(mdpiPath.path))
         if(url == null) {
-          throw new ResourceNotFoundException(path)
+          throw new ResourceNotFoundException(mdpiPath)
         }
+
+        // TODO: we need to scale the image to the actual DPI of the screen.
 
         val bufferedImage = {
           val sb = ImageIO.read(url)

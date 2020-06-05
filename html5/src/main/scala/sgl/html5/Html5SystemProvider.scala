@@ -74,5 +74,6 @@ trait Html5SystemProvider extends SystemProvider with PartsResourcePathProvider 
   val System = Html5System
 
   override val ResourcesRoot = PartsResourcePath(Vector("static"))
+  override val MultiDPIResourcesRoot = PartsResourcePath(Vector())
 
 }

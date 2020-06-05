@@ -30,7 +30,7 @@ trait MainScreenComponent extends ViewportComponent {
     addPreloading(levelLoader)
     addPreloading(tiledMapRendererLoader)
 
-    val playerLoader: Loader[Bitmap] = Graphics.loadImage(ResourcesRoot / "drawable" / "player.png")
+    val playerLoader: Loader[Bitmap] = Graphics.loadImage(MultiDPIResourcesRoot / "player.png")
     addPreloading(playerLoader)
 
     private var map: TiledMap = _

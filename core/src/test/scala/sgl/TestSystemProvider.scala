@@ -13,6 +13,7 @@ trait TestSystemProvider extends TestSystemNoResourcePathProvider {
   }
   type ResourcePath = TestResourcePath
   override val ResourcesRoot: ResourcePath = new TestResourcePath
+  override val MultiDPIResourcesRoot: ResourcePath = new TestResourcePath
 
 }
 

@@ -42,5 +42,7 @@ trait NativeSystemProvider extends SystemProvider with PartsResourcePathProvider
   // should instead add the assets prefix at the time when we convert the parts to
   // a path. For now, it's a fine hack to get something working though.
   override val ResourcesRoot: ResourcePath = PartsResourcePath(Vector("assets"))
+  // TODO: Add support for multi dpi in loadImage (so do not always use drawable-mdpi).
+  override val MultiDPIResourcesRoot: ResourcePath = PartsResourcePath(Vector("assets", "drawable-mdpi"))
 
 }

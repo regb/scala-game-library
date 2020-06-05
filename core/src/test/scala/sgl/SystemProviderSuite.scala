@@ -32,6 +32,7 @@ class SystemProviderSuite extends AnyFunSuite {
 
   object PartsResourcePathSystemProvider extends TestSystemNoResourcePathProvider with PartsResourcePathProvider {
     override val ResourcesRoot = PartsResourcePath(Vector("root"))
+    override val MultiDPIResourcesRoot = PartsResourcePath(Vector("root"))
   }
 
   test("PartsResourcePath creates the correct path") {

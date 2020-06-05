@@ -154,7 +154,7 @@ trait SystemProvider {
 
   trait AbstractResourcePath {
 
-    /** Compose the path with a file/directory.
+    /** Compose the path with a file or directory.
       *
       * The argument can be either a directory or a file. Chain
       * multiple / together to build a complete path.
@@ -169,7 +169,7 @@ trait SystemProvider {
       * Essentially, if you call {{{ path / "foo/bar" }}}, then the
       * implementation will do the equivalent of {{{ path / "foo" / "bar" }}}.
       *
-      * This method also make a canonical version of the path, by interpreting
+      * This method builds a canonical version of the path, by interpreting
       * "." as the current directory (just disregarding it), and ".." as the
       * previous directory (cancelling the previous one, or none if still at
       * the root). So {{{ "a" / "." / "b" / .. / "c" }}} will produce the same
@@ -219,6 +219,26 @@ trait SystemProvider {
     * which to build ResourcePath for each resource.
     */
   val ResourcesRoot: ResourcePath
+
+  /** The root path for images that support multiple DPI.
+    *
+    * In SGL, the same image resource can be provided at several resolutions
+    * (1x, 2x, 3x, etc), and the best one will be loaded by Graphics.loadImage.
+    * These images should be in drawable-X folders, where X can be mdpi, hdpi,
+    * or xhdpi. mdpi is the base resolution, hdpi is 1.5x mdpi, and xhdpi is
+    * 2x.
+    *
+    * So for example, if your base resolution is a sprite 32x32, you add this
+    * sprite to the drawable-mdpi, and you add the same sprite (with the same
+    * name) but in 64x64 to the drawable-xhdpi. The resource is identified by
+    * the MultiDPIResourcesRoot / "sprite.png", and the Graphics system will
+    * load the most-adapted resource. Note that if the density is xhdpi and you
+    * only provide an mdpi resource, the system will load the mdpi resource but
+    * then it will scale it up by 2, so at the end of the day, you always get
+    * the same dimensions for your bitmap, but providing a higher-resolution
+    * image improves quality.
+    */
+  val MultiDPIResourcesRoot: ResourcePath
 
   case class ResourceNotFoundException(path: ResourcePath) extends Exception("Resource " + path.toString + " not found")
 

@@ -17,14 +17,19 @@ trait TiledMapRendererComponent {
       * the relative path reference to the tilesets in the TiledMap encoding.
       */
     def load(tiledMap: TiledMap, root: ResourcePath): Loader[TiledMapRenderer] = {
+      def multiDPIImagePath(path: String): ResourcePath = {
+        val parts = path.split("/")
+        val filename = parts.dropWhile(_ != "drawable-mdpi").tail
+        MultiDPIResourcesRoot / filename.mkString("/")
+      }
       val tilesetsBitmaps: Vector[Loader[Graphics.Bitmap]] = tiledMap.tilesets.map(ts =>
         // We can combine the image with / because the method handles '/' in the filename.
         // Note that this is only true if the TIledMap format uses '/' for separators, as
         // no other separators are accepted by the ResourcePath method /.
-        Graphics.loadImage(root / ts.image)
+        Graphics.loadImage(multiDPIImagePath(ts.image))
       )
       val imageLayersBitmaps: Vector[Loader[Graphics.Bitmap]] = tiledMap.imageLayers.map(il =>
-        Graphics.loadImage(root / il.image)
+        Graphics.loadImage(multiDPIImagePath(il.image))
       )
 
       Loader.combine(tilesetsBitmaps ++ imageLayersBitmaps).map(imgs => {

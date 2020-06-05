@@ -30,7 +30,7 @@ trait MainScreenComponent extends ViewportComponent {
 
     override def update(dt: Long): Unit = {
       if(characterBitmapLoader == null) {
-        characterBitmapLoader = Graphics.loadImage(ResourcesRoot / "drawable" / "character.png")
+        characterBitmapLoader = Graphics.loadImage(MultiDPIResourcesRoot / "character.png")
       }
       if(musicLoader == null) {
         //musicLoader = Audio.loadMusic(ResourcesRoot / "audio" / "music.wav")

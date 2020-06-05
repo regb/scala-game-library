@@ -31,18 +31,19 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
     // TODO: export this as a queriyable metric.
     private var totalBytes: Long = 0
     override def loadImage(path: ResourcePath): Loader[Bitmap] = FutureLoader {
-      val filename = path.path.split("/")(1).dropRight(4)
-      val resources = self.getResources
-      val drawableId = resources.getIdentifier(filename, "drawable", self.getPackageName())
+      if(path.parts.size != 1)
+        throw new IllegalArgumentException("Android drawable resources must be just a filename, without subdirectory")
+      val filename = path.parts.head
+
+      val drawableId = self.getResources.getIdentifier(filename, "drawable", self.getPackageName())
       if(drawableId == 0) { // 0 is returned when no resource if found.
         throw new ResourceNotFoundException(path)
       }
+
       val opts = new BitmapFactory.Options
       opts.inPreferredConfig = NativeBitmap.Config.ARGB_8888
-      val bitmap = BitmapFactory.decodeResource(resources, drawableId, opts)
-      //println(s"bitmap ${path}; config: ${bitmap.getConfig}; size: ${bitmap.getWidth}x${bitmap.getHeight}; byte count: ${bitmap.getByteCount}")
+      val bitmap = BitmapFactory.decodeResource(self.getResources, drawableId, opts)
       totalBytes += bitmap.getByteCount
-      //println("total bytes used: " + totalBytes)
       AndroidBitmap(bitmap)
     }
 
