@@ -3,9 +3,9 @@
 ![Scala CI](https://github.com/regb/scala-game-library/workflows/Scala%20CI/badge.svg)
 
 Scala Game Library (SGL) is a library for developing cross-platform 2D video
-games in Scala. It provides a high-level API for building 2D games, and can
-export games to the Desktop, Android, and the web.  More platforms, including
-iOS and consoles, are on the roadmap.
+games in Scala. It provides a high-level API for building games, and can export
+games to the Desktop, Android, and the web. More platforms, including iOS and
+consoles, are on the roadmap.
 
 SGL is still in development, but is intended to provide an extensive toolkit to
 facilitate game development in Scala, with a layer of abstraction on top of the
@@ -35,15 +35,18 @@ The current implementation provides the following backends:
     Mac, and Linux.
   * *Android*. The Android backend is implemented with the native Android SDK
     for Java, which means that SGL supports Android natively.
-  * *Web (Experimental)* with Scalajs. This is still an experimental backend
-    and some features are missing. The web backend is implemented with scalajs
-    and uses the HTML5 canvas for graphics.
+  * *Web* with Scalajs. The web backend is implemented with scalajs
+    and uses the HTML5 canvas for graphics, the HTML5 audio tag for audio, and
+    other standard web features.
   * *Native (Experimental)*. The native backend implemented with scala-native
     is able to generate a native executable that can then be run on the target
     platform without a JVM.  The support for native is not complete yet, but
     the current implementation is a proof of concept. Further extensions to
     this backend should enable SGL to eventually target iOS and various
     consoles.
+  * *iOS* while we do not yet support iOS natively, it is possible to use the
+    web backend combined with a tool like Cordova, to make an iOS app. This
+    has been proven with [this game](https://apps.apple.com/us/app/fish-escape-lite/id1515164224).
 
 ## Work in Progress
 
@@ -104,7 +107,7 @@ work with the most recent sbt version.
 
 For a long time, the only way to use SGL was to declare direct source
 dependencies. That proved relatively unsuccessful and most of the Scala
-community seems to belive that binary dependencies is the way to go. Since SGL
+community seems to believe that binary dependencies is the way to go. Since SGL
 is still an early prototype, I wasn't very keen on publishing a stable version
 as a binary that people could just depend on through Maven.
 
@@ -126,24 +129,33 @@ backward compatibility.
 At the current time, version `0.0.1` is not yet released on Sonatype. Most of
 the build config and code is there, but I want to make a few adjustments before
 publishing.  Until then, you can use `publishLocal` to publish the version
-locally and depend on it from your own games.
+locally and use it on your own games.
 
 ## Getting Started
 
-I developed a small, but complete, [open-source
-game](https://github.com/regb/scalavator) that can be used as a starting point
-for configuration. The game is intended to demonstrate some of the features of
-the library. Other subsets of the features are demonstrated in the
-[examples](examples/) projects.
+You can start with [a step-by-step tutorial on writing a game with
+SGL](https://regblanc.com/blog/cross-platform-game-development-in-scala-natively/).
+The tutorial explains some of the concept of the library.
+
+If you feel ready to start a project from scratch, you can fork the [starter
+project](https://github.com/regb/sgl-starter-project) as a mostly blank slate.
+You can check out the [examples](examples/) projects for how to use some of the
+features of SGL.
+
+If you want to see how a small, but complete, game looks like, I developed [an
+open-source game](https://github.com/regb/scalavator) with SGL.  The game is
+intended to demonstrate some of the features of the library. 
 
 ## Some Design Principles
 
 * Games and only games. This is not a general media toolkit. The only things
-  that should be build with this library are games.
+  that should be build with this library are games. Yes, there's a feeling like
+  we can do more with this cross-platform style, and that's probably true, but
+  this is better left to other frameworks.
 
-* True Scala library. We want to expose a Scala-like library a much as
-  possible. That means very clean and elegant design with type-safety. We are
-  not going to compromise for compatibility with Java.
+* Pure and true Scala library. We want to expose a Scala-like library a much as
+  possible. No compromise for compatibility with other languages, everything is
+  done in Scala.
 
 * Entirely cross-platform, no cheating. The core library should abstract
   everything and only exposes features that are truly cross-platform. Any
@@ -151,46 +163,54 @@ the library. Other subsets of the features are demonstrated in the
 
 * Generic but pragmatic. We try to remain as generic as possible, in the sense
   that only features that would be useful for at least two different games
-  would be integrated. However, we want to provide a very effective tool, so
+  would be integrated. However, we want to provide a very effective toolkit, so
   almost anything that is remotely useful for building games should be made
   available. Whenever a problem has many alternative implementations, we should
   try to provide an abstract interface, with each alternative implementation
-  available and let the user select the one he prefers.
+  available and let the user select the one they prefer.
 
 * 2D only. The library does not target 3D games. I believe there are an
   infinite number of wonderful games that can be build entirely in 2D, and I
   would rather focus on getting a great library to build 2D games than an
   average library to do everything.
 
-* No magic build tricks. Everything is explicitly implemented in Scala. No
-  additional code generator to handle the different platform, setting up a
+* No building magic. Everything is explicitly implemented in Scala. No
+  additional code generator to handle the different platforms. Setting up a
   deployment platform should be simple enough to be done manually. That said,
   eventually a good sbt plugin would come in handy, as long as it is a light,
   and optional, layer on top.
 
 ## Gallery
 
-SGL has been used to produce a small, but non-zero, number of published games.
+SGL has been used to produce the cross-platform commercial game *Fish Escape*,
+available on:
+* [Android](https://play.google.com/store/apps/details?id=com.limetalesgames.fishescapelite)
+* [iOS](https://apps.apple.com/us/app/fish-escape-lite/id1515164224)
+* the web with [Kongregate](https://www.kongregate.com/games/limetales/fish-escape)
+  and [Facebook](https://www.facebook.com/games/fish-escape/)
 
+Additionally, a small number of experimental games have been published with
+SGL:
 * [WinSmash](http://regblanc.com/games/winsmash/), available for
 [Android](https://play.google.com/store/apps/details?id=com.regblanc.winsmash)
 * [Scalavator](http://regblanc.com/games/scalavator/), available for
 [Android](https://play.google.com/store/apps/details?id=com.regblanc.scalavator)
 and for the [Web](http://regblanc.com/games/scalavator/play.html). Code source
 available on [GitHub](https://github.com/regb/scalavator).
-* [Fish
-  Escape](https://play.google.com/store/apps/details?id=com.limetalesgames.fishescapelite),
-  a sequel to the Android title [Rat
-  Trap](https://play.google.com/store/apps/details?id=com.regblanc.rattrap).
 
 ## Code Organization
 
 I heavily use the cake pattern as a means to abstract the different backends
 and to correctly modularize the system. A good article to introduce using the
 cake pattern for dependencies injection is [this
-one](http://jonasboner.com/real-world-scala-dependency-injection-di/).  There
+one](http://jonasboner.com/real-world-scala-dependency-injection-di/). There
 is also a [great talk](https://www.youtube.com/watch?v=yLbdw06tKPQ) that
 describes how to use the cake pattern, which closely ressembles our usage here.
+
+More recent articles seem to criticise the Cake pattern and many people seem
+to have drop it. The choice of using the cake pattern was made more than 4
+years ago and I still haven't reached the point where I think the drawbacks
+outweight the benefits.
 
 ## Developing
 
