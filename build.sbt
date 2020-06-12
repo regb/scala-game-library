@@ -358,6 +358,62 @@ lazy val platformerDesktopNative = (project in file("./examples/platformer/deskt
   )
   .dependsOn(coreNative, desktopNative, platformerCoreNative)
 
+lazy val boardCommonSettings = Seq(
+  version        := "1.0",
+  scalaVersion   := scalaVer,
+  scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
+)
+
+lazy val boardCore = (crossProject(JSPlatform, JVMPlatform, NativePlatform).crossType(CrossType.Pure) in file("./examples/board/core"))
+  .settings(boardCommonSettings: _*)
+  .settings(noPublishSettings: _*)
+  .settings(name := "board-core")
+  .jvmSettings(
+    exportJars := true
+  )
+  .nativeSettings(scalaVersion := scalaNativeVer)
+  .jvmConfigure(_.dependsOn(coreJVM))
+  .jsConfigure(_.dependsOn(coreJS))
+  .nativeConfigure(_.dependsOn(coreNative))
+
+lazy val boardCoreJVM = boardCore.jvm
+lazy val boardCoreJS = boardCore.js
+lazy val boardCoreNative = boardCore.native
+
+lazy val boardDesktopAWT = (project in file("./examples/board/desktop-awt"))
+  .settings(boardCommonSettings: _*)
+  .settings(noPublishSettings: _*)
+  .settings(
+    name := "board-desktop-awt",
+    fork in run := true
+  )
+  .dependsOn(coreJVM, desktopAWT, boardCoreJVM)
+
+lazy val boardHtml5 = (project in file("./examples/board/html5"))
+  .enablePlugins(ScalaJSPlugin)
+  .settings(boardCommonSettings: _*)
+  .settings(noPublishSettings: _*)
+  .settings(
+    name := "board-html5",
+    scalaJSUseMainModuleInitializer := true
+  )
+  .dependsOn(coreJS, html5, boardCoreJS)
+
+lazy val boardDesktopNative = (project in file("./examples/board/desktop-native"))
+  .enablePlugins(ScalaNativePlugin)
+  .settings(boardCommonSettings: _*)
+  .settings(noPublishSettings: _*)
+  .settings(scalaVersion := scalaNativeVer)
+  .settings(
+    name := "board-desktop-native",
+    if(isLinux(OS))
+      nativeLinkingOptions ++= Seq("-lGL")
+    else if(isMac(OS))
+      nativeLinkingOptions ++= Seq("-framework", "OpenGL")
+    else
+      ???
+  )
+  .dependsOn(coreNative, desktopNative, boardCoreNative)
 
 lazy val OS = sys.props("os.name").toLowerCase
 lazy val LinuxName = "Linux"
@@ -375,10 +431,11 @@ def isMac(name: String): Boolean = name.startsWith(MacName.toLowerCase)
  */
 lazy val verifyCiCommand = List(
   "coreJVM","desktopAWT","desktopNative","helloCoreJS","helloCoreJVM","helloCoreNative",
-  "helloDesktopAWT","helloDesktopNative","helloHtml5","html5","html5Firebase","jvmShared","menuCoreJS",
-  "menuCoreJVM","menuCoreNative","menuDesktopAWT","platformerCoreJS","platformerCoreJVM",
-  "platformerCoreNative","platformerDesktopAWT","snakeCoreJS","snakeCoreJVM","snakeCoreNative",
-  "snakeDesktopAWT","snakeDesktopNative","snakeHtml5"
+  "helloDesktopAWT","helloDesktopNative","helloHtml5","html5","html5Firebase","jvmShared",
+  "menuCoreJS","menuCoreJVM","menuCoreNative","menuDesktopAWT",
+  "platformerCoreJS","platformerCoreJVM","platformerCoreNative","platformerDesktopAWT",
+  "snakeCoreJS","snakeCoreJVM","snakeCoreNative","snakeDesktopAWT","snakeDesktopNative","snakeHtml5",
+  "boardCoreJS","boardCoreJVM","boardCoreNative","boardDesktopAWT","boardDesktopNative","boardHtml5"
 ).map(_ + "/test").mkString("; ")
 
 addCommandAlias("verifyCI", s"; $verifyCiCommand")
