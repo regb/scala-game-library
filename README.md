@@ -111,15 +111,15 @@ community seems to believe that binary dependencies is the way to go. Since SGL
 is still an early prototype, I wasn't very keen on publishing a stable version
 as a binary that people could just depend on through Maven.
 
-Nevertheless, to encourage more people to try SGL, I will start officially
-releasing on Sonatype. The first release will be `0.0.1`, with the intent to be
-clear that this is a highly experimental version. Future versions will simply
-increase the last digit, i.e. `0.0.2` and then `0.0.3`. As long as SGL stays in
-the `0.0` version line, there will be no guarantee on backward compatibility,
-and each new version could break absolutely everything the previous version
-introduced.  This is all in the name of velocity and innovation, of course. If you
-do give a chance to SGL `0.0.X`, just be aware that there will be bugs, and updates
-will likely break your code. You must be willing to actively engage with the
+Nevertheless, to make SGL easier to use, I will soon start officially releasing
+on Maven. The first release will be `0.0.1`, with the intent to be clear that
+this is a highly experimental version. Future versions will simply increase the
+last digit, i.e. `0.0.2` and then `0.0.3`. As long as SGL stays in the `0.0`
+version line, there will be no guarantee on backward compatibility, and each
+new version could break absolutely everything the previous version introduced.
+This is all in the name of velocity and innovation, of course. If you do give a
+chance to SGL `0.0.X`, just be aware that there will be bugs, and updates will
+likely break your code. You must be willing to actively engage with the
 developers of SGL.
 
 The eventual goal is to reach the `0.1` version line, which at that point will
@@ -130,6 +130,53 @@ At the current time, version `0.0.1` is not yet released on Sonatype. Most of
 the build config and code is there, but I want to make a few adjustments before
 publishing.  Until then, you can use `publishLocal` to publish the version
 locally and use it on your own games.
+
+### Roadmap to 0.0.1
+
+I would like to ensure that the artifact for 0.0.1 is good enough to write interesting
+games without constantly requiring tweaking SGL. Currently, as I'm working on
+my games, I constantly need to go back and tweak SGL a little bit in order to
+get something working as I would expect. That tells me that the library is not
+quite stable enough to reach the highly unstable and experimental version 0.0.1.
+Of course, 0.0.1 should not be perfect, but we should have a reasonable chance
+to be able to complete a game without requiring an update to the library. There are
+a few things that I would like to get done before getting there:
+
+1. Get a commercial game published. Fish Escape fits the bill here and is already
+published on iOS and Android. There are still extra features that I want to implement
+to tweak the games (ads on iOS, analytics on iOS, iAP on both platforms), so these
+should be implemented and deployed (although maybe iAP can wait for 0.0.2).
+
+This would prove that SGL can get the job done and make a feature-complete game.
+
+2. Make sure that Desktop, Web, Android, and iOS (through Cordova) have
+complete support for the core providers. It's ok to be missing some addon
+providers (ads, analytics, etc) on some of the platforms, but we should at
+least be able to get a game with the fundamental providers on each of these
+platforms. We can ship with the experimental native backend, but we need to be
+clear that this is not supported and is still a PoC.
+
+3. Provide a basic tutorial.
+
+4. Provide a demo game. Scalavator is good for that, but it needs updating.
+This also doubles as another proof that the library can build games.
+
+5. We probably don't need a website, but we should publish the scaladoc
+somehow.
+
+6. Expand the scaladoc. In particular, we should have a starting point in the
+sgl root package, where we explain the high level design of the library and
+how to put a game together with the cake. Ideally this would serve as the
+documentation until we have a proper documentation (like an actual system
+manual, much more verbose).
+
+7. Review the core API and make sure most of the obvious mistakes have been
+fixed. Examples that have already been fixed are using int coordinates in the
+canvas. Another one that is in the process of being addressed is the weird
+behavior when loading multi-dpi bitmaps. There are probably many more such stupid
+mistakes, and I should do a pass to make sure we are releasing something that's
+obviously bad. There will be plenty more design mistakes, and that's fine we
+can fix them later, but let's at least fix the ones we know today.
 
 ## Getting Started
 
