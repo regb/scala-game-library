@@ -42,6 +42,19 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
 
       val opts = new BitmapFactory.Options
       opts.inPreferredConfig = NativeBitmap.Config.ARGB_8888
+
+      // inScaled should default to true, but let's just make it explicit anyway to avoid any surprise,
+      // and because it helps with documenting our intent here.
+      opts.inScaled = true
+      // Similarly, the inTargetDensity defaults to the screen densityDpi, but again we want to be
+      // explicit here as it simplifies reasoning about what SGL does, instead of needing to dive
+      // into Android code source to figure out the default.
+      opts.inTargetDensity = Window.logicalPpi
+      // A last note on opts.inDensity, this one is set to the density of the bitmap loaded, so
+      // we should leave it at 0 (the default), which means we do not want to override this,
+      // we instead let Android figure out what was the density (probably based on which drawable-X folder
+      // the resource came from).
+
       val bitmap = BitmapFactory.decodeResource(self.getResources, drawableId, opts)
       totalBytes += bitmap.getByteCount
       AndroidBitmap(bitmap)

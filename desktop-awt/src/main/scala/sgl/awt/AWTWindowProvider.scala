@@ -73,13 +73,15 @@ trait AWTWindowProvider extends WindowProvider {
      * dpi with a constant chosen at compile time. This is motly helpful
      * for development in the local machine, to play around with different
      * PPI and also to make the game looks nice in case the JVM ppi is totally
-     * out of whack with reality (as I\ve witnessed with a value of 95 provided
+     * out of whack with reality (as I've witnessed with a value of 95 provided
      * by the JVM while my actual PPI is about 200, which makes the game
      * unplayable).
      */
     override def xppi: Float = ScreenForcePPI.getOrElse(Toolkit.getDefaultToolkit().getScreenResolution())
     override def yppi: Float = ScreenForcePPI.getOrElse(Toolkit.getDefaultToolkit().getScreenResolution())
     override def ppi: Float = ScreenForcePPI.getOrElse(Toolkit.getDefaultToolkit().getScreenResolution())
+
+    override def logicalPpi: Float = ScreenForcePPI.getOrElse(Toolkit.getDefaultToolkit().getScreenResolution())
   }
   type Window = AWTWindow
   override val Window = new AWTWindow

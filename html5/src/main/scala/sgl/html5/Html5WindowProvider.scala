@@ -60,6 +60,14 @@ trait Html5WindowProvider extends WindowProvider {
     override def yppi: Float = (160*dom.window.devicePixelRatio).toFloat
     override def ppi: Float = (160*dom.window.devicePixelRatio).toFloat
 
+    /*
+     * The above comment is also relevant ot the logicalPpi, but essentially
+     * in this case the devicePixelRatio is exactly the meaning of a logical
+     * ppi, because it's not exact, but it's a convenient value to use. We
+     * still need to arbitrarily bring it to a 160 base though.
+     */
+    override def logicalPpi: Float = (160*dom.window.devicePixelRatio).toFloat
+
   }
   type Window = Html5Window
   override val Window = new Html5Window

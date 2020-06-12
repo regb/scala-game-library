@@ -41,6 +41,12 @@ trait NativeWindowProvider extends WindowProvider {
       computePPIs()
       _ppi
     }
+
+    // TODO: rounding?
+    override def logicalPpi: Float = if(_ppi != 0f) _ppi else {
+      computePPIs()
+      _ppi
+    }
   }
   type Window = NativeWindow
   override val Window = new NativeWindow
