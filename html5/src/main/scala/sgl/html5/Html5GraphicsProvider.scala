@@ -323,8 +323,11 @@ trait Html5GraphicsProvider extends GraphicsProvider {
       }
 
       override def drawColor(color: Color): Unit = {
+        context.save()
+	context.setTransform(1, 0, 0, 1, 0, 0)
         context.fillStyle = color
-        context.fillRect(0, 0, this.width, this.height)
+        context.fillRect(0, 0, Window.width, Window.height)
+	context.restore()
       }
 
       // override def clearRect(x: Float, y: Float, width: Float, height: Float): Unit = {

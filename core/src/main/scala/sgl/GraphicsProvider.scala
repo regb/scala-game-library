@@ -332,14 +332,26 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
         */
       def drawCircle(x: Float, y: Float, radius: Float, paint: Paint): Unit = drawOval(x, y, 2*radius, 2*radius, paint)
 
-      /** Draw a color on the canvas.
+      /** Fill the canvas (restricted to the clip) with a color.
         *
         * This is a convenient way to fill the canvas with a color, it could
         * instead be done by drawing a large rectangle, but it is potentially
         * more efficient depending on the implementation.
+	*
+	* This always fills the visible area of the canvas. If the canvas
+	* origin is translated to the center of the screen, and we then call
+	* drawColor, the screen will be drawn from (-x,y) to (+x,+y), which
+	* will visually cover the entire screen. This also holds through a
+	* rotation of the canvas, the drawColor will still fill the entire
+	* space from top left to bottom right. You can think of it as drawing a
+	* rectangle from (0, 0) to (Window.width, Window.height) without any of
+	* the canvas transformations applied. However, it will respect clipped
+	* area, and it will not draw outside the clip.
         *
         * Note that it is unspecified if the color is drawn in the infinite
-        * canvas space, or only in the visible area.
+        * canvas space, or only in the visible area. If you draw the color at
+	* some point, and then translate the canvas after that, the newly
+	* visible pixels might or might not be colored with the color.
         */
       def drawColor(color: Color): Unit
 

@@ -158,8 +158,6 @@ trait AWTGraphicsProvider extends GraphicsProvider {
       }
 
       override def translate(x: Float, y: Float): Unit = {
-        //using .toDouble is important as there is a Graphics2D method on Int, but it does not
-        //modify the current translation and instead set absolute x and y positions
         graphics.translate(x, y)
       }
 
@@ -269,9 +267,14 @@ trait AWTGraphicsProvider extends GraphicsProvider {
       }
 
       override def drawColor(color: Color): Unit = {
+	val oldTransform = graphics.getTransform
+	graphics.setTransform(new java.awt.geom.AffineTransform)
+
         graphics.setColor(color)
-        rect.setRect(0, 0, this.width, this.height)
+        rect.setRect(0, 0, Window.width, Window.height)
         graphics.fill(rect)
+
+	graphics.setTransform(oldTransform)
       }
 
 
