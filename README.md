@@ -180,6 +180,15 @@ intended to demonstrate some of the features of the library.
   eventually a good sbt plugin would come in handy, as long as it is a light,
   and optional, layer on top.
 
+* Try to be as native as possible. We want to always use the platform native
+  and standard APIs. We should try to map the SGL API as directly as possible
+  to each system API. For example on Android, we want to try to map to the
+  drawable-Xdpi built-in system to handle multiple pixel densities, instead of
+  building a custom asset loading code. By mapping directly into the platform
+  behavior, we get more optimized apps, and can take advantage of future
+  evolution of the system (like app bundles on Android, which requires to use
+  the standard drawable-xdpi layout).
+
 ## Gallery
 
 SGL has been used to produce the cross-platform commercial game *Fish Escape*,
