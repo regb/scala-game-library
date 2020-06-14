@@ -186,7 +186,6 @@ trait MainScreenComponent extends ViewportComponent {
     override val name = "hello-chunked-task"
 
     override protected def run(ms: Long): ChunkedTask.Status = {
-      logger.info("Running task: " + i)
       ChunkedTask.Completed
     }
   }

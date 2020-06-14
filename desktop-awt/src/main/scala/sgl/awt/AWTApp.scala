@@ -27,23 +27,26 @@ trait AWTApp extends GameApp
   // TODO: we should provide an API to choose a custom cursor image.
 
 
-  /** Set the anti-aliasing rendering hint (default is enabled).
+  /** Set the anti-aliasing rendering hint (default is disabled).
     *
     * The hint is not guaranteed to be respected by java2d, but
     * the rendering will try to respect it if it can.
     */
-  val EnableAntiAliasingHint = true
+  val EnableAntiAliasingHint = false
 
-  /** Set the bilinear interpolation rendering hint (default is enabled).
+  /** Set the bilinear interpolation rendering hint (default is disabled).
     *
     * This is particularly useful when scaling up bitmaps, as
     * the default interpolation does not do enough interpolation
     * and the resulting bitmap is very pixely.
     *
+    * This seems to cause slowness on some systems (old, no hardware
+    * acceleation maybe), so it might sometimes make sense to disable.
+    *
     * The hint is not guaranteed to be respected by java2d, but
     * the rendering will try to respect it if it can.
     */
-  val EnableBilinearInterpolationHint = true
+  val EnableBilinearInterpolationHint = false
 
   def main(args: Array[String]): Unit = {
 
@@ -133,10 +136,15 @@ trait AWTApp extends GameApp
     override def run(): Unit = {
       var lastTime: Long = java.lang.System.nanoTime
 
-      val strategy = gameCanvas.getBufferStrategy()
-
       while(running) {
         val frameBeginTime: Long = java.lang.System.nanoTime
+
+        // Not sure why, but it seems like getting the getBufferStrategy on
+        // each frame is important, otherwise sometimes the screen stays blank
+        // (even though the strategy is not null, and the loop is running
+        // forever). Here we get it back from the gameCanvas on each frame, and
+        // it seems to work better.
+        val strategy = gameCanvas.getBufferStrategy()
 
         // TODO: probably want to have some ways to extract such monitoring data
         // println("heap used: " + java.lang.Runtime.getRuntime.totalMemory())
@@ -184,7 +192,7 @@ trait AWTApp extends GameApp
           } while(strategy.contentsRestored())
 
           strategy.show()
-        } while(strategy.contentsLost())
+        } while(strategy != null && strategy.contentsLost())
 
         val frameEndTime: Long = java.lang.System.nanoTime
         val frameElapsedTime: Long = frameEndTime - frameBeginTime
