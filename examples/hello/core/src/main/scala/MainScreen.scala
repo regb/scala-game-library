@@ -82,6 +82,20 @@ trait MainScreenComponent extends ViewportComponent {
       BitmapRegion(characterBitmap, 2*characterWidth, 0, characterWidth, characterBitmap.height),
       BitmapRegion(characterBitmap, 3*characterWidth, 0, characterWidth, characterBitmap.height)
     )
+    //private val characterFrames = {
+    //  val region = BitmapRegion(characterBitmap, 0*characterWidth, 0, characterWidth, characterBitmap.height)
+    //  val t1 = new Graphics.BitmapTransformed(region)
+    //  val t2 = new Graphics.BitmapTransformed(region)
+    //  t2.angle = 0.5f
+    //  t2.setOrigin(characterWidth/2, characterBitmap.height/2)
+    //  val t3 = new Graphics.BitmapTransformed(region)
+    //  t3.angle = 1f
+    //  t3.setOrigin(characterWidth/2, characterBitmap.height/2)
+    //  val t4 = new Graphics.BitmapTransformed(region)
+    //  t4.angle = 1.5f
+    //  t4.setOrigin(characterWidth/2, characterBitmap.height/2)
+    //  Array(t1, t2, t3, t4)
+    //}
     val characterAnimation = new Animation(200, characterFrames, Animation.Loop)
 
     var x = 0f
@@ -142,7 +156,12 @@ trait MainScreenComponent extends ViewportComponent {
         canvas.drawRect(0, 0, Width, Height, Graphics.defaultPaint.withColor(Color.rgb(204, 242, 204)))
         canvas.drawCircle(autoX, autoY, dp2px(50), Graphics.defaultPaint.withColor(Color.Black))
 
-        canvas.drawBitmap(characterAnimation.currentFrame(totalTime), x, y, 1f, 0.5f)
+	val frame = characterAnimation.currentFrame(totalTime)
+        canvas.drawBitmap(frame, x, y, 1f, 0.5f)
+	// Version with the BitmapTransformed.
+	//canvas.translate(x, y)
+	//frame.render(canvas)
+	//canvas.translate(-x, -y)
 
         var rectWidth: Float = dp2px(50f)
         canvas.translate(dp2px(200f), dp2px(10f))

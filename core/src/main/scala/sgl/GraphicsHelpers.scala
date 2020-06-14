@@ -22,11 +22,11 @@ private[sgl] trait GraphicsHelpersComponent {
   trait GraphicsExtension {
     this: Graphics =>
 
-    /** Provides non-primitive methods for Canvas
+    /** Provides non-primitive methods for Canvas.
       *
       * Most methods here involve some computation and composition
       * of the primitives method of the Canvas, thus, mostly for
-      * maintanability, they are provided in a separate class
+      * maintanability, they are provided in a separate class.
       */
     trait RichCanvas {
       this: AbstractCanvas =>
@@ -119,7 +119,6 @@ private[sgl] trait GraphicsHelpersComponent {
       def render(canvas: Canvas): Unit = {
         canvas.drawBitmap(this, 0, 0)
       }
-
     }
     object BitmapRegion {
       // This Should not be implicit. It would hide a wrapping into a bitmap region, which
@@ -146,40 +145,73 @@ private[sgl] trait GraphicsHelpersComponent {
       }
     }
 
-    /** Stores a transformation around a BitmapRegion.
+    /** Stores (and render) a transformation of a BitmapRegion.
       *
-      * BitmapTransformed stores the current state of a transformation
-      * around a bitmap region. It can typically be used to scale or
-      * rotate the underlying bitmap. One use case it to build
-      * animations around a bitmap. One of the main use case for this
-      * is to store the standard bit of states that most game will need to
-      * store around an object in the world.
+      * BitmapTransformed stores the current state of a transformation around a
+      * bitmap region. It can typically be used to scale or rotate the
+      * underlying bitmap. One of the main use case for this is to store the
+      * standard bits of states that most game will need to store around an
+      * object in the world, such as their position and how to map them to the
+      * screen (scaling).
       *
-      * Although we build a BitmapTransformed from a bitmap which has a
-      * fully discrete (integral number of pixels) dimensions, the transformation
-      * can introduce floating point by scaling or rotating, which is why we
-      * need floating point functions for most of the state.
+      * One use case, particularly with the angle, is to build an animation
+      * of a bitmap, with a sequence of BitmapTransformed instance of the same
+      * base bitmap. In that case, you would use the BitmapTransformed as an
+      * immutable convenient class.
       *
-      * This class mixes many concerns (position, transformations, transparency) and
-      * relies on state. It can serve well for some purpose, but it should be avoided
-      * when trying to use a design pattern that fully separates concerns (model vs rendering)
-      * or when using a functional architecture (stream vs update-render loop). In these
-      * cases, it can still come in handy as a way to describe a geometric transformation
-      * on a bitmap (a 2x scaling instead of shipping a larger bitmap in the game), but
-      * one must be disciplined in how to use and set the internal state in that case.
+      * The bitmap itself is a fully discrete object (array of pixels), but the
+      * BitmapTransformed introduce infinite precision and will map the underlying
+      * bitmap to this new coordinate system. This is a good class to abstract away
+      * the pixel/bitmap coordinates and map them to the game world coordinates.
+      *
+      * Note that this class mixes many concerns (position, transformations,
+      * transparency, bitmap) and is mutable. It can serve well for some
+      * purpose, but it doesn't play well when trying to use a design pattern
+      * that fully separates concerns (model vs rendering) or when using a
+      * functional architecture (stream vs update-render loop). In these cases,
+      * it can still come in handy as a way to describe an immutable (by
+      * convention) geometric transformation on a bitmap, but one must be
+      * disciplined in how to use.
       */
     class BitmapTransformed(val bitmap: BitmapRegion) extends Renderable {
 
+      def this(b: Bitmap) = this(BitmapRegion(b))
+
+      /** The x coordinates where to render the bitmap on the canvas. */
       var x: Float = 0
+      /** The y coordinates where to render the bitmap on the canvas. */
       var y: Float = 0
 
-      /** Set the position x and y accoring to the center cx,cy.
+      // We also store origin points (not exported), which are used for rotation.
+      private var originX: Float = 0
+      private var originY: Float = 0
+
+      /** The scaling to use when rendering the bitmap. */
+      var scaling: Float = 1
+
+      /** The rotation angle (in radian) with which to draw this bitmap.
+        *
+        * The angle follows the positive axises direction, so a Pi/2
+        * angle means that we will rotate the image towards the right
+        * and down direction around the origin set by [[setOrigin]].
+        */
+      var angle: Float = 0f
+
+      /** Transparency to use when rendering the bitmap. */
+      var alpha: Float = 1f
+
+      /** The width when rendered. */
+      def width: Float = scaling*bitmap.width
+      /** The height when rendered. */
+      def height: Float = scaling*bitmap.height
+
+      /** Set the position x and y accoring to the center (cx,cy).
         *
         * This is a convenient way to set x and y position of the
         * bitmap by setting which coordinates should be at the
         * center of the bitmaps. For example, setCenter(0, 0) will
         * have the effect that when we render the bitmap it will appeared
-        * centered on 0,0 in the canvas.
+        * centered on (0,0) in the canvas.
         */
       def setCenter(cx: Float, cy: Float): Unit = {
         x = cx - width/2
@@ -187,48 +219,68 @@ private[sgl] trait GraphicsHelpersComponent {
       }
       def center(): Unit = setCenter(0, 0)
 
+      /** Translate the (x,y) coordinates by (tx,ty). */
       def translate(tx: Float, ty: Float): Unit = {
         x += tx
         y += ty
       }
 
-      var scalingFactor: Float = 1
-
-      var alpha: Float = 1f
-
-      def width = scalingFactor*bitmap.width
-      def height = scalingFactor*bitmap.height
-
-      private var originX: Float = 0
-      private var originY: Float = 0
-
-      /** Set the origin coordinates, relative to the bitmap.
+      /** Set the origin coordinates in the bitmap (pixel) coordinates.
         *
-        * The origin is never modified by transformation, it is always
-        * relative to the underlying bitmap, in the bitmap coordinates.
-        * The origin is used for rotations.
+        * The origin is never modified by transformation, It is set in
+        * the local pixel coordinates of the bitmap, and is used as the
+        * rotation point for applying rotation when rendering the bitmap.
+        *
+        * The coordinates are stil expressed with floats, because you can
+        * set a point between two pixels.
         */
       def setOrigin(ox: Float, oy: Float): Unit = {
         originX = ox
         originY = oy
       }
 
+      /** Set the origin coordinates to the center of the bitmap. */
       def centerOrigin(): Unit = {
         originX = bitmap.width/2f
         originY = bitmap.height/2f
       }
 
-      // TODO
-      // def rotate
+      /** Rotate the bitmap by theta around the origin.
+        *
+        * This will not move the (x,y) coordinates of the bitmap.
+        */
+      def rotate(theta: Float): Unit = {
+        angle += theta
+      }
 
+      /** Modify the current scaling of the bitmap by s. */
       def scale(s: Float): Unit = {
-        scalingFactor *= s
+        scaling *= s
       }
 
+      /** Render the bitmap on the canvas, according to its internal state. */
       def render(canvas: Canvas): Unit = {
-        canvas.drawBitmap(bitmap, x.toInt, y.toInt, scalingFactor, alpha)
-      }
+        if(angle == 0) {
+          // No rotation means we can do efficient rendering.
+          canvas.drawBitmap(bitmap, x, y, scaling, alpha)
+        } else {
+          // If there's some active rotation, we need to manipulate the canvas first.
+          canvas.withSave{
+            // Let's move the canvas to the coordinates first.
+            canvas.translate(x, y)
 
+            // Now we will rotate it correctly, first we need to move to the origin.
+            val ox = originX*scaling
+            val oy = originY*scaling
+            canvas.translate(ox, oy)
+            canvas.rotate(angle)
+            // Let's move back to the bitmap coordinates.
+            canvas.translate(-ox, -oy)
+
+            canvas.drawBitmap(bitmap, 0, 0, scaling, alpha)
+          }
+        }
+      }
     }
 
     /** Animation encapsulates a series of frames to be rendered.
@@ -379,7 +431,6 @@ private[sgl] trait GraphicsHelpersComponent {
       def fromTotalDuration[F](totalDuration: Long, frames: Array[F], playMode: Animation.PlayMode): Animation[F] = {
         new Animation(totalDuration/frames.length, frames, playMode)
       }
-
     }
 
   }
