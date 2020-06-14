@@ -49,7 +49,7 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
       // Similarly, the inTargetDensity defaults to the screen densityDpi, but again we want to be
       // explicit here as it simplifies reasoning about what SGL does, instead of needing to dive
       // into Android code source to figure out the default.
-      opts.inTargetDensity = Window.logicalPpi
+      opts.inTargetDensity = gameView.getResources.getDisplayMetrics.densityDpi
       // A last note on opts.inDensity, this one is set to the density of the bitmap loaded, so
       // we should leave it at 0 (the default), which means we do not want to override this,
       // we instead let Android figure out what was the density (probably based on which drawable-X folder
