@@ -82,3 +82,14 @@ This could lead to a slightly simpler and more consistent organization.
 We could do a system of events, with dependency (wait, join, then, etc) between each
 event. Each event would be a small and efficient and quick task, that takes as little
 time as possible, so that the scheduler can stop at any point within the event graph.
+
+## Texture atlas
+
+This seems like the most popular tool: https://www.codeandweb.com/texturepacker
+It has a cli tool, so could be eventually integrated with sbt in the build.
+
+We need to design how the atlas loading can be integrated in the API. The best would
+be that it happens behind the scene, and we could either use it or not, and no
+game code need to change (so essentially the loadImage with an individual image
+would magically go into the atlas and extract the part of the atlas that we need,
+the system should then lazily load the atlas behind the scene and share it.
