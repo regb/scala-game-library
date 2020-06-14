@@ -26,6 +26,25 @@ trait AWTApp extends GameApp
   val HideCursor: Boolean = false
   // TODO: we should provide an API to choose a custom cursor image.
 
+
+  /** Set the anti-aliasing rendering hint (default is enabled).
+    *
+    * The hint is not guaranteed to be respected by java2d, but
+    * the rendering will try to respect it if it can.
+    */
+  val EnableAntiAliasingHint = true
+
+  /** Set the bilinear interpolation rendering hint (default is enabled).
+    *
+    * This is particularly useful when scaling up bitmaps, as
+    * the default interpolation does not do enough interpolation
+    * and the resulting bitmap is very pixely.
+    *
+    * The hint is not guaranteed to be respected by java2d, but
+    * the rendering will try to respect it if it can.
+    */
+  val EnableBilinearInterpolationHint = true
+
   def main(args: Array[String]): Unit = {
 
     java.lang.System.setProperty("sun.java2d.opengl","True")
@@ -124,11 +143,6 @@ trait AWTApp extends GameApp
         // println("heap max: " + java.lang.Runtime.getRuntime.maxMemory())
         // println("heap free: " + java.lang.Runtime.getRuntime.freeMemory())
         
-
-        // Set these two with option
-        //g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, if(???) RenderingHints.VALUE_ANTIALIAS_ON else RenderingHints.VALUE_ANTIALIAS_OFF)
-        //g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, if(???) RenderingHints.VALUE_INTERPOLATION_BILINEAR else RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR)
-
         // Not too sure why we do these loops, but it seems like the buffers
         // used in the strategy can get lost/restored and if that happens
         // while rendering, we need to perform the rendering again. The tricky
@@ -139,6 +153,14 @@ trait AWTApp extends GameApp
         do {
           do {
             val g = strategy.getDrawGraphics().asInstanceOf[Graphics2D]
+
+            if(EnableAntiAliasingHint)
+              g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+            if(EnableBilinearInterpolationHint) {
+              // There's also the BICUBIC interpolation, but that seems too slow for games on the
+              // few examples I used it, the FPS dropped significantly.
+              g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+            }
 
             val bounds = new Rectangle(0, 0, gameCanvas.getWidth, gameCanvas.getHeight)
             g.setClip(bounds)
