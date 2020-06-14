@@ -73,7 +73,7 @@ trait TestGraphicsProvider extends GraphicsProvider {
       override def scale(sx: Float, sy: Float): Unit = ???
       override def clipRect(x: Float, y: Float, width: Float, height: Float): Unit = ???
 
-      override def drawBitmap(bitmap: Bitmap, dx: Float, dy: Float, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f, alpha: Float = 1f): Unit = ???
+      override def drawBitmap(bitmap: Bitmap, dx: Float, dy: Float, dw: Float, dh: Float, sx: Int, sy: Int, sw: Int, sh: Int, alpha: Float): Unit = ???
 
       override def drawRect(x: Float, y: Float, width: Float, height: Float, paint: Paint): Unit = ???
 

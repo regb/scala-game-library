@@ -298,12 +298,22 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
         * will have width and height s*width and h*width. s is the scaling
         * factor between 0 and 1 factor and alpha is the transparency between 0
         * and 1 (with 1 being fully opaque).
-        *
-        * This is slightly simpler than the more general drawing from a source
-        * rect to a dest rect, but SGL only supports aligned rectangle and
-        * symmetric scaling, for now.
         */
-      def drawBitmap(bitmap: Bitmap, dx: Float, dy: Float, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f, alpha: Float = 1f): Unit
+      def drawBitmap(bitmap: Bitmap, dx: Float, dy: Float, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f, alpha: Float = 1f): Unit =
+        drawBitmap(bitmap, dx, dy, s*width, s*height, sx, sy, width, height, alpha)
+
+      /** draw a rectangle from the bitmap to a rectangle in the canvas.
+        *
+        * The dx and dy are the destination coordinates to draw in the canvas,
+        * the dw and dh are the width and height to draw into the canvas. So
+        * (dx, dy, dw, dh) forms the destination rectangle in the canvas. The
+        * next 4 parameters, (sx, sy, sw, sh) forms the source rectangle in the
+        * bitmap (hence why these are integers, they are pixel coordinates).
+        *
+        * The source rectangle of the bitmap is drawned and scaled to fit the
+        * destination rectangle in the canvas.
+        */
+      def drawBitmap(bitmap: Bitmap, dx: Float, dy: Float, dw: Float, dh: Float, sx: Int, sy: Int, sw: Int, sh: Int, alpha: Float): Unit
 
       // TODO: provide a way to control pencil thickness. Probably in Paint? Could also be just one extra argument, since it might not
       // be used in two many other places (although, font size feels slightly similar).

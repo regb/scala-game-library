@@ -184,18 +184,18 @@ trait AWTGraphicsProvider extends GraphicsProvider {
         // Not sure all the backends are respecting that though?
       }
 
-      override def drawBitmap(bitmap: Bitmap, dx: Float, dy: Float, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f, alpha: Float = 1f): Unit = {
+      override def drawBitmap(bitmap: Bitmap, dx: Float, dy: Float, dw: Float, dh: Float, sx: Int, sy: Int, sw: Int, sh: Int, alpha: Float): Unit = {
         val ac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha)
         graphics.setComposite(ac)
         
         // Save the current clip, before setting the clip for the draw area.
         val c = graphics.getClip
-        rect.setRect(dx, dy, width*s, height*s)
+        rect.setRect(dx, dy, dw, dh)
         graphics.clip(rect)
 
         affineTransform.setToIdentity()
         affineTransform.translate(dx - sx, dy - sy)
-        affineTransform.scale(s, s)
+        affineTransform.scale(dw/sw, dh/sh)
         graphics.drawImage(bitmap.img, affineTransform, null)
         
         graphics.setClip(c)

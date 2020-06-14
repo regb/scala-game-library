@@ -160,14 +160,14 @@ trait NativeGraphicsProvider extends GraphicsProvider {
         drawBitmap(bitmap, x, y, 0, 0, bitmap.width, bitmap.height, s)
       }
 
-      override def drawBitmap(bitmap: Bitmap, dx: Float, dy: Float, sx: Int, sy: Int, width: Int, height: Int, s: Float = 1f, alpha: Float = 1f): Unit = {
+      override def drawBitmap(bitmap: Bitmap, dx: Float, dy: Float, dw: Float, dh: Float, sx: Int, sy: Int, sw: Int, sh: Int, alpha: Float): Unit = {
 
         glColor4f(1f, 1f, 1f, alpha)
   
         val sxf: Float = sx/bitmap.width.toFloat
         val syf: Float = sy/bitmap.height.toFloat
-        val swf: Float = width/bitmap.width.toFloat
-        val shf: Float = height/bitmap.height.toFloat
+        val swf: Float = sw/bitmap.width.toFloat
+        val shf: Float = sh/bitmap.height.toFloat
   
         glEnable(GL_TEXTURE_2D)
         glBindTexture(GL_TEXTURE_2D, bitmap.texture)
@@ -178,9 +178,9 @@ trait NativeGraphicsProvider extends GraphicsProvider {
   
         glBegin(GL_QUADS)
           glTexCoord2f(sxf, syf); glVertex2f(dx, dy)
-          glTexCoord2f(sxf+swf, syf); glVertex2f(dx + s*width, dy)
-          glTexCoord2f(sxf+swf, syf+shf); glVertex2f(dx + s*width, dy + s*height)
-          glTexCoord2f(sxf, syf+shf); glVertex2f(dx, dy + s*height)
+          glTexCoord2f(sxf+swf, syf); glVertex2f(dx + dw, dy)
+          glTexCoord2f(sxf+swf, syf+shf); glVertex2f(dx + dw, dy + dh)
+          glTexCoord2f(sxf, syf+shf); glVertex2f(dx, dy + dh)
         glEnd()
   
         glDepthMask(GL_TRUE)
