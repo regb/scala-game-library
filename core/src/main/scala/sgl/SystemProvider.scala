@@ -132,7 +132,7 @@ trait SystemProvider {
       */
     def openWebpage(uri: java.net.URI): Unit 
 
-    /** Opens the Google Play store for app id.
+    /** Opens the Google Play Store at the app page.
       *
       * The id is the package name of the app.
       *   i.e. com.regblanc.rattrap
@@ -147,6 +147,15 @@ trait SystemProvider {
       val base = s"https://play.google.com/store/apps/details?id=$id"
       val uri = new java.net.URI(base + params.map{ case (k, v) => s"&$k=$v"}.mkString)
       openWebpage(uri)
+    }
+
+    /** Opens the App Store at the app page.
+      *
+      * The id is the unique app id assigned by Apple for the app.
+      * It is typically a long integer number.
+      **/
+    def openAppStoreApp(id: Long): Unit = {
+      openWebpage(new java.net.URI(s"https://itunes.apple.com/app/id$id"))
     }
 
   }
