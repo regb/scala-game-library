@@ -33,7 +33,9 @@ trait AndroidGraphicsProvider extends GraphicsProvider {
     override def loadImage(path: ResourcePath): Loader[Bitmap] = FutureLoader {
       if(path.parts.size != 1)
         throw new IllegalArgumentException("Android drawable resources must be just a filename, without subdirectory")
-      val filename = path.parts.head
+      // TODO: We should actually parse the extension and check it instead of just dropping the last 4
+      // characters (assuming .png here).
+      val filename = path.parts.head.dropRight(4)
 
       val drawableId = self.getResources.getIdentifier(filename, "drawable", self.getPackageName())
       if(drawableId == 0) { // 0 is returned when no resource if found.
