@@ -194,8 +194,9 @@ trait AWTGraphicsProvider extends GraphicsProvider {
         graphics.clip(rect)
 
         affineTransform.setToIdentity()
-        affineTransform.translate(dx - sx, dy - sy)
+        affineTransform.translate(dx, dy)
         affineTransform.scale(dw/sw, dh/sh)
+        affineTransform.translate(-sx, -sy)
         graphics.drawImage(bitmap.img, affineTransform, null)
         
         graphics.setClip(c)
