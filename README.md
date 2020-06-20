@@ -13,6 +13,44 @@ platform-specific functionalities, and an out-of-the-box implementation for
 many common features needed in games, such as physics, collision detection,
 tilemaps, and scenes management.
 
+## Objectives
+
+SGL aims at providing a generic and cross-platform 2D game API. The API provides
+some layers of abstraction on top of the underlying systems, and a game written
+using the API should be able to get compiled and run on each platform with very
+litle platform-specific code. However, there are several non-goals of SGL:
+
+  * The exported API hides the non-game specific features of each system,
+    however it will export an API that ressembles the underlying systems, with
+    a slight Scala stylisation when possible. What that means is that the API will
+    be imperative as this is the prevalent system architecture, and it will look
+    familiar to people used to write games directly on some of these systems.  In
+    case you are interested in writing games with a fully functional style, you
+    will need to either build an abstraction on top of this API, or you can check
+    out [Indigo](https://indigoengine.io/), another Scala game engine but with an
+    explicit goal of providing a purely functional API for game developers.
+  * SGL is not an opiniated way of building games. It's trying to provide the
+    most simple yet general API that is cross-platform and enable programmers
+    to create any 2D game. The design decisions are centered around what to export
+    in the API, in the best possible style without losing low-level control. SGL
+    can be thought of as a [libGDX](https://libgdx.badlogicgames.com/) in pure
+    Scala and optimized for 2D games. Another source of inspiration for the
+    design of SGL is the [Simple DirectMedia Layer](https://www.libsdl.org/), and
+    the name SGL was chosen partly because it tries to be a sort of SDL for Scala.
+  * Although SGL is currently providing a lot of extra toolkit library (scene
+    management, game screen management, tiled maps, etc) to facilitate building
+    games, internally there's a relatively clear distinction between what is the
+    core cross-platform API and what are the components built on top of that. A
+    lot of thoughts goes into desiging these core APIs, but components are kind
+    of piled on top of each other quickly, mostly as the need arise in an actual
+    game development project. In the long term, it's possible that SGL will be split
+    between the core layers of abstraction, and the components that are built on top.
+    The objective of SGL is to build the correct core abstraction, while the components
+    are one possible take on a game engine API, it should be eventually possible to
+    replace all the components and choose a totally different programming style
+    (including functional reactive programming) and still share the same
+    underlying platform abstractions.
+
 ## Features
 
 The main selling point of SGL is to provide a platform-independent Scala game
@@ -47,6 +85,43 @@ The current implementation provides the following backends:
   * *iOS* while we do not yet support iOS natively, it is possible to use the
     web backend combined with a tool like Cordova, to make an iOS app. This
     has been proven with [this game](https://apps.apple.com/us/app/fish-escape-lite/id1515164224).
+
+## Alternatives
+
+If you want to write games in Scala, you have a few alternatives. Here's a
+biased opinion on how SGL compares with these alternatives. But first a
+disclaimer: SGL is not production-ready and is under heavy development, so if
+you want ot limit your interaction with the game engine, you probably should
+look somewhere else for now.
+
+* [libGDX](https://libgdx.badlogicgames.com/) is an extremely mature game library
+  written in Java and thus fully useable in Scala. It provides solid support for
+  many platforms, and it supports 3D and you can make full use of OpenGL with it.
+  You can't really compare SGL to libGDX, as they are just not playing in the same
+  league. Today, if you decide to use SGL, you are betting on the future. You are
+  betting on a future where SGL will get to feature-parity with libGDX, and where
+  the Scala-first approach will pay off for your game.
+
+  I do think there are fundamental technical advantages with having the engine written
+  in Scala, which might eventually justify using SGL over libGDX:
+  * Scala is a better language than Java (biased opinion, but I think it's true).
+  * Scala opens up extremely powerful design pattern for the core engine and the
+    plugins built arount it.
+  * SGL leverages Scala Native and Scala.js to provide a high-level of control on each
+    target platform, which I think is superior to what can be done with traditional
+    cross-platform development offered by libGDX.
+
+* [Indigo](https://indigoengine.io/) is a pure Scala game engine with a design
+  focused on developer productivity. It offers a purely functional way of writing
+  games, which is likely to appeal more to Scala developers. By contrast, SGL
+  does not emphasize the funcitonal programming style, it limits itself at
+  abstracting away multiple platforms into a consistent API. Indigo is currently in
+  development so the set of features is constantly moving (just like SGL), so it's
+  hard to truly compare them. Given the current state of the engines, I think it's
+  fair to say that Indigo invested a lot of work into building the right API for
+  the developer, while SGL invested a lot of work into supporting multiple platforms
+  in a very native way (Android, AWT, Native, HTML5 are supported, while today Indigo
+  runs only with Scala.js).
 
 ## Work in Progress
 
