@@ -56,7 +56,7 @@ trait Html5GraphicsProvider extends GraphicsProvider {
 
     override def loadImage(path: ResourcePath): Loader[Bitmap] = {
       val options = bestDPIs(dom.window.devicePixelRatio)
-      val pathes = options.map(dpi => (dpi, PartsResourcePath(Vector("static", s"drawable-$dpi") ++ path.parts)))
+      val pathes = options.map(dpi => (dpi, PartsResourcePath((ResourcesRoot.parts :+ s"drawable-$dpi") ++ path.parts)))
 
       // We try to load the image with each alternative, only starting to load a new one if the
       // previous one failed. This should be more efficient than using a HEAD request to check

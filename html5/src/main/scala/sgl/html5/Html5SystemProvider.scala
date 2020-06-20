@@ -73,7 +73,28 @@ trait Html5SystemProvider extends SystemProvider with PartsResourcePathProvider 
   }
   val System = Html5System
 
+  /** The root for all resources in an HTML5 game (Default to static/).
+    *
+    * All load* methods will search for resources starting in a static/ directory
+    * at the same level as where the script is being executed. Typically the
+    * script is going to be included by an HTML file, so say you have a layout as
+    * follows:
+    *
+    *   index.html
+    *   /game/index.html
+    *   /game/game.js
+    *   /game/static/drawable-mdpi
+    *
+    * And assuming the compiled game is in /game/game.js, and the script is
+    * included in /game/index.html, the default implementation is going to
+    * search for resources starting in /game/static/, because that's the
+    * static/ directory at the same level as the point where the game is running.
+    *
+    * You can override this value to choose an arbitrary directory to look
+    * for resources. This can be useful depending on your setup and how you
+    * plan to deploy the web game.
+    */
   override val ResourcesRoot = PartsResourcePath(Vector("static"))
-  override val MultiDPIResourcesRoot = PartsResourcePath(Vector())
+  final override val MultiDPIResourcesRoot = PartsResourcePath(Vector())
 
 }
