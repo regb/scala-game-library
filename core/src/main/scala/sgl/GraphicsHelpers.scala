@@ -83,6 +83,13 @@ private[sgl] trait GraphicsHelpersComponent {
       def drawBitmap(region: BitmapRegion, x: Float, y: Float, s: Float, alpha: Float): Unit = {
         this.drawBitmap(region.bitmap, x, y, region.x, region.y, region.width, region.height, s, alpha)
       }
+      /** Draw the region into the rectangle (x,y,w,h) on the canvas.
+        *
+        * This will scale the bitmap region to fit the rectangle.
+        */
+      def drawBitmap(region: BitmapRegion, x: Float, y: Float, w: Float, h: Float, alpha: Float): Unit = {
+        this.drawBitmap(region.bitmap, x, y, w, h, region.x, region.y, region.width, region.height, alpha)
+      }
 
     }
 
@@ -129,6 +136,15 @@ private[sgl] trait GraphicsHelpersComponent {
       // not always?
       def apply(bitmap: Bitmap): BitmapRegion = BitmapRegion(bitmap, 0, 0, bitmap.width, bitmap.height)
 
+      /** Extract BitmapRegions from a Bitmap.
+        *
+        * Can typically be used to extract animation frames out of a sprite sheet. This
+        * works when the Bitmap has a series of predictable frames (same h/w) that you can
+        * then just identify by indices.
+        *
+        * Split the bitmap at the starting (x,y) position, extracting BitmapRegion of size
+        * widthxheight, for nbColumns columns and nbRows rows.
+        */
       def split(bitmap: Bitmap, x: Int, y: Int, width: Int, height: Int, nbColumns: Int, nbRows: Int): Array[BitmapRegion] = {
         var cx = x
         var cy = y
