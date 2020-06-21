@@ -249,7 +249,7 @@ manual, much more verbose).
 fixed. Examples that have already been fixed are using int coordinates in the
 canvas. Another one that is in the process of being addressed is the weird
 behavior when loading multi-dpi bitmaps. There are probably many more such stupid
-mistakes, and I should do a pass to make sure we are releasing something that's
+mistakes, and I should do a pass to make sure we aren't releasing something that's
 obviously bad. There will be plenty more design mistakes, and that's fine we
 can fix them later, but let's at least fix the ones we know today.
 
@@ -315,7 +315,7 @@ intended to demonstrate some of the features of the library.
 
 SGL has been used so far to produce mobile-friendly games, usually cross-published
 to Android, iOS, and the web. That said it could be used to make more classic
-indie title for Steam, it just hasn't been done yet.
+indie titles for Steam, it just hasn't been done yet.
 
 The most ambitious game created with SGL is the cross-platform commercial game
 [Fish Escape](https://www.limetalesgames.com/press/fish-escape.html), available
