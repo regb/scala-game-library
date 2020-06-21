@@ -8,10 +8,10 @@ import util._
 import sgl.util.metrics.InstrumentationProvider
 import tiled._
 
-trait MainScreenComponent extends ViewportComponent {
+trait MainScreenComponent extends ViewportComponent with TiledMapRendererComponent {
   this: GraphicsProvider with InputProvider with SystemProvider with WindowProvider with AudioProvider
   with GameStateComponent with InputHelpersComponent with InstrumentationProvider
-  with LoggingProvider with TiledMapRendererComponent with TmxJsonParserComponent =>
+  with LoggingProvider with TmxJsonParserComponent =>
 
   import Graphics.{Bitmap, BitmapRegion, Canvas, Color, Animation}
 
@@ -26,7 +26,7 @@ trait MainScreenComponent extends ViewportComponent {
     private val playerPaint = Graphics.defaultPaint.withColor(Color.Blue)
 
     val levelLoader: Loader[TiledMap] = System.loadText(ResourcesRoot / "levels" / "level.json").map(lvl => TmxJsonParser.parse(lvl.iterator))
-    val tiledMapRendererLoader: Loader[TiledMapRenderer] = levelLoader.flatMap(lvl => TiledMapRenderer.load(lvl, ResourcesRoot / "levels"))
+    val tiledMapRendererLoader: Loader[TiledMapRenderer] = levelLoader.flatMap(lvl => TiledMapRenderer.load(lvl))
     addPreloading(levelLoader)
     addPreloading(tiledMapRendererLoader)
 

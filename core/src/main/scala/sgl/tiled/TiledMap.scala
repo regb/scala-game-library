@@ -1,20 +1,32 @@
 package sgl
 package tiled
 
-import geometry._
+// TODO: not a big fan of having the dependency on the geometry package, it's not clear
+//       that we want this package to be pervasive across SGL. Also it's confusing because
+//       there's a Point object defined in the TMX format, and another one (not imported here)
+//       in the geometry package.
+//       It might make sense to extract these functionalities into a PhysicsTiledMap class or
+//       a subpackage, or something else? And leave this file as a pure dependency-less syntax
+//       representation of the tiled map data.
+import geometry.{Vec, Rect, Circle, Ellipse, Polygon}
 
-/** A typesafe representation of a TMX map.
+/** A Scala representation of a TMX map.
   *
   * The role of this is to provide a lightweight Scala abstraction
   * on top of the TMX file format for tile maps (from the tiled editor).
   * It adds only a few convenient methods to manipulate the tilemap, and
   * mostly focus on mapping the representation of a tmx map to a typesafe
   * representation that is easily useable from Scala. Other methods such as
-  * renderer can then be built on top.
+  * renderer can then be built on top. This class is mostly addressing the
+  * syntax issue of manipulating a map stored in the TMX format, it tries
+  * to avoid interpreting any of the semantics of the format, this is best
+  * left to other classes that can work on the TiledMap.
   *
   * The point is not to abstract away low level information from tmx (that is
   * something that could be done with a Map interface somewhere else), but just
-  * to provide a parser from textual representation to a Scala structure.
+  * to provide a parser from textual representation to a Scala structure. Most
+  * of the structure below are directly mapped from the official TMX format
+  * documentation.
   */
 case class TiledMap(
 
@@ -25,8 +37,9 @@ case class TiledMap(
     *
     * The order might be slightly counter-intuitive, as we typically
     * think of them as a stack of layers, but it actually follows
-    * the internal JSON representation that Tiled used for serializing
-    * the map.
+    * the internal JSON representation that Tiled uses for serializing
+    * the map. That doesn't make it right, but instead of making a
+    * decision here I just copied what the JSON file was doing.
     */
   override val layers: Vector[Layer],
 
@@ -51,10 +64,10 @@ case class TiledMap(
   stagger: Stagger
 ) extends LayersContainer(layers) {
 
-  /** map total width in pixels */
+  /** Map total width in pixels. */
   val totalWidth: Int = width*tileWidth
 
-  /** map total height in pixels */
+  /** Map total height in pixels. */
   val totalHeight: Int = height*tileHeight
 
   def getTilesetForTileId(gid: Int): Tileset = {
@@ -63,38 +76,12 @@ case class TiledMap(
       val ts = tilesets(i)
       if(ts.firstGlobalId <= gid && gid < ts.firstGlobalId + ts.tileCount)
         return ts
+      i += 1
     }
     throw new IllegalArgumentException("gid not pointing to existing tileset")
   }
 
   def getTilesetTile(gid: Int): Tileset.Tile = getTilesetForTileId(gid).getTileByGlobalId(gid)
-
-  //convert the tilemap (which is in device indepent pixels, into correct pixels coordinates
-  //should probably be independent of this TiledMap (tilemap is a pure pixel level information,
-  //tied to a bitmap tileset). is assuming that the tileset has been scaled indepenndently in
-  //the same way.
-  //def toDp(dp2px: (Int) => Int): TiledMap = {
-  //  TiledMap(
-  //    layers.map(layer => layer match {
-  //      case TileLayer(name, id, tiles, visible, opacity, offsetX, offsetY) => {
-  //        val newTiles = tiles.map(row => row.map(tile => tile.copy(x = dp2px(tile.x), y = dp2px(tile.y), width = dp2px(tile.width), height = dp2px(tile.height))))
-  //        TileLayer(name, id, newTiles, visible, opacity, dp2px(offsetX), dp2px(offsetY))
-  //      }
-  //      case ObjectLayer(name, id, objs, drawOrder, visible, opacity, offsetX, offsetY) => {
-  //        val newObjects = objs.map(obj => obj.copy(x = dp2px(obj.x), y = dp2px(obj.y), width = dp2px(obj.width), height = dp2px(obj.height)))
-  //        ObjectLayer(name, id, newObjects, drawOrder, visible, opacity, dp2px(offsetX), dp2px(offsetY))
-  //      }
-  //    }),
-  //    tilesets.map(tileSet => 
-  //      tileSet.copy(tileWidth = dp2px(tileSet.tileWidth), tileHeight = dp2px(tileSet.tileHeight),
-  //                   margin = dp2px(tileSet.margin), spacing = dp2px(tileSet.spacing))
-  //    ),
-  //    tileWidth = dp2px(tileWidth), tileHeight = dp2px(tileHeight), backgroundColor = backgroundColor,
-  //    stagger = stagger.copy(hexSideLength=dp2px(stagger.hexSideLength)),
-  //    nextObjectId = nextObjectId, orientation = orientation, renderOrder = renderOrder
-  //  )
-
-  //}
 
 }
 
@@ -120,8 +107,15 @@ abstract sealed trait Layer {
 
 /** A Layer containing a matrix of tiles.
   *
-  * 
-  */
+  * The tiles matrix is represented as a Vector of rows, the first
+  * index is the topmost row, the last index is the bottommost row.
+  * Within a row, the first index is the leftmost tile, and the last
+  * index is the rightmost tile. Essentially this is the same axis
+  * orientation as the rest of SGL (top-left towards bottom-right),
+  * although there's a bit of inversion when indexing into the matrix because
+  * we first get the row (using the y axis) and then the column (using the x
+  * axis).
+  **/
 case class TileLayer(
   name: String, id: Int, tiles: Vector[Vector[TileLayer.Tile]],
   isVisible: Boolean, opacity: Float,
@@ -133,12 +127,12 @@ case class TileLayer(
   // and we can do random access very efficiently. The following methods
   // are efficient (O(1)) ways to find relevant tiles in the tile layer.
 
-  def intersectingTile(pos: Point): Option[TileLayer.Tile] = {                     
+  def intersectingTile(x: Float, y: Float): Option[TileLayer.Tile] = {                     
     if(tiles.isEmpty || tiles(0).isEmpty) None else {
       val tileWidth = tiles(0)(0).width
       val tileHeight = tiles(0)(0).height
-      val i = (pos.y / tileHeight).toInt
-      val j = (pos.x / tileWidth).toInt
+      val i = (y / tileHeight).toInt
+      val j = (x / tileWidth).toInt
       if(i >= 0 && i < tiles.length && j >= 0 && j < tiles(i).length)
         Some(tiles(i)(j))
       else
@@ -241,13 +235,13 @@ sealed trait TiledMapObject {
   val properties: Vector[Property]
 }
 
-case class TiledMapPoint(name: String, id: Int, tpe: String, x: Float, y: Float, properties: Vector[Property]) extends TiledMapObject {
-  def point: Point = Point(x, y)
-}
+case class TiledMapPoint(name: String, id: Int, tpe: String, x: Float, y: Float, properties: Vector[Property]) extends TiledMapObject
 
 case class TiledMapRect(
   name: String, id: Int, tpe: String,
-  x: Float, y: Float, width: Float, height: Float,
+  /** The top-left coordinates of the rectangle object. */
+  x: Float, y: Float,
+  width: Float, height: Float,
   /** Angle in degrees, clockwise. */
   rotation: Float,
   properties: Vector[Property]) extends TiledMapObject {
@@ -262,7 +256,9 @@ case class TiledMapRect(
   */
 case class TiledMapEllipse(
   name: String, id: Int, tpe: String,
-  x: Float, y: Float, width: Float, height: Float,
+  /** The top-left coordinates of the rectangle object. */
+  x: Float, y: Float,
+  width: Float, height: Float,
   /** Angle in degrees, clockwise. */
   rotation: Float,
   properties: Vector[Property]) extends TiledMapObject {
@@ -272,7 +268,20 @@ case class TiledMapEllipse(
 
 case class TiledMapPolygon(
   name: String, id: Int, tpe: String,
-  x: Float, y: Float, points: Vector[Point],
+  /** The coordinates of the first point of the polygon.
+    *
+    * This the position of the polygon in the tiledmap, by convention this
+    * is the first point set on the editor.
+    **/
+  x: Float, y: Float,
+  /** The sequence of points to draw the polygon, in the local coordinates.
+    *
+    * The points are relative to the starting point of the polygon, in particular,
+    * the first point is (0,0), and the following points are all relative in the
+    * coordinate systems started at (0,0), with the positive axis pointing towards
+    * bottom-right.
+    */
+  points: Vector[Point],
   rotation: Float,
   properties: Vector[Property]) extends TiledMapObject {
   
@@ -357,7 +366,19 @@ case class Tileset(
 
 object Tileset {
 
-  /** A tile object from a tileset. */
+  /** A tile object from a tileset.
+    *
+    * Tiles are rectangular regions within a tileset bitmap image. They are
+    * meant to be referenced from the [TileLayer] map matrix. Note that they
+    * can potentially be of a different size than the tiles on the tile layer.
+    * When that happens, the tile in the layer is considered to match with the
+    * bottom-left part of the tile in the tileset, and the tileset must be
+    * drawn to expand top-right. As an example, suppose the tilemap layer has
+    * tiles of size 1x1, and the tiles that we are drawing (this Tile) has size
+    * 2x2. If we draw in the very first (top-left) tile, the top half of the
+    * drawn 2x2 tile will disappear outside the actual tilemap, and we will see
+    * the bottom part aligned on the first tile.
+    **/
   case class Tile(
     /** The local id of the tile.
       *
@@ -368,7 +389,15 @@ object Tileset {
       */
     id: Int,
     tpe: Option[String],
-    x: Int, y: Int, width: Int, height: Int,
+    /** The (x,y) top-left pixel coordinates of the tile within the tileset.
+      *
+      * These are computed automatically and exposed for convenience,
+      * they identify the region in the tileset bitmap where this
+      * particular tile is defined.
+      **/
+    x: Int, y: Int,
+    /** The width and height in pixels of the tile, in the tileset. */
+    width: Int, height: Int,
     /** Any tile can be animated with a sequence of tiles.
       *
       * The animation can recursively point to the current tile, in
@@ -380,7 +409,19 @@ object Tileset {
       * animation frame points to itself.
       */
     animation: Vector[TileFrame],
-    objectLayer: Option[ObjectLayer], properties: Vector[Property]) {
+    /** An object layer for collision shapes defined on this tile.
+      *
+      * Note that the ObjectLayer should have an ID but it's not clear what
+      * is the meaning of the ID and how globally unique it is. I've seen
+      * instances where Tiled would generate a TMX JSON file where this ID
+      * is missing, and usually this ID is a duplicate of top level layer
+      * IDs.
+      *
+      * The TmxJsonParser will accept a missing ID for the object layer (only
+      * in the context of a tile) and will instead set it to -1.
+      */
+    objectLayer: Option[ObjectLayer],
+    properties: Vector[Property]) {
 
   
     /** Return the bottom-left pixel location of the tile in the tileset.

@@ -6,30 +6,43 @@ import sgl.util.{Loader, Math}
 trait TiledMapRendererComponent {
   this: SystemProvider with GraphicsProvider with WindowProvider =>
 
-  object TiledMapRenderer {
+  /** The function used to map a raw path from the Tiled editor to an SGL ResourcePath.
+    *
+    * The most likely is that the path will end with something like
+    * drawable-mdpi/tileset.png, so the default implementation splits the path
+    * at the '/' and keep everything on the right of the part that starts with
+    * "drawable". You're free to provide your custom implementation if that
+    * doesn't fit your situation.
+    */
+  def tiledMapPathTransform(path: String): ResourcePath = {
+    val parts = path.split("/")
+    val filename = parts.dropWhile(part => !part.startsWith("drawable")).tail
+    MultiDPIResourcesRoot / filename.mkString("/")
+  }
 
+  object TiledMapRenderer {
     /** Prepare a TiledMapRenderer.
       *
-      * This loads the TiledMap by loading all the tilesets bitmaps. The
-      * tilesets are loaded assuming the provided root directory. Typically,
-      * the root directory will be the prefix path to the tiled map file,
-      * because that's most likely from where the tiled editor will have set
-      * the relative path reference to the tilesets in the TiledMap encoding.
+      * This loads the TiledMap by loading all the tilesets bitmaps.
+      *
+      * Finding the proper path for the images can be slightly tricky, as it
+      * depends on how you opened and configured the Tiled editor, and on
+      * the relative path between your tiled map format and the tileset. The
+      * mapping from the tiledmap path to the SGL ResourcePath is controlled by
+      * [[tiledMapPathTransform], which you can override if you need to.
+      *
+      * The most likely is that the end of the path will contain something
+      * like drawable-mdpi/tileset.png, so the default implementation that
+      * is provided split the path at the '/' and keep everything on the right
+      * of the part that starts with "drawable". You're free to provide your
+      * custom implementation if that doesn't fit your situation.
       */
-    def load(tiledMap: TiledMap, root: ResourcePath): Loader[TiledMapRenderer] = {
-      def multiDPIImagePath(path: String): ResourcePath = {
-        val parts = path.split("/")
-        val filename = parts.dropWhile(_ != "drawable-mdpi").tail
-        MultiDPIResourcesRoot / filename.mkString("/")
-      }
+     def load(tiledMap: TiledMap): Loader[TiledMapRenderer] = {
       val tilesetsBitmaps: Vector[Loader[Graphics.Bitmap]] = tiledMap.tilesets.map(ts =>
-        // We can combine the image with / because the method handles '/' in the filename.
-        // Note that this is only true if the TIledMap format uses '/' for separators, as
-        // no other separators are accepted by the ResourcePath method /.
-        Graphics.loadImage(multiDPIImagePath(ts.image))
+        Graphics.loadImage(tiledMapPathTransform(ts.image))
       )
       val imageLayersBitmaps: Vector[Loader[Graphics.Bitmap]] = tiledMap.imageLayers.map(il =>
-        Graphics.loadImage(multiDPIImagePath(il.image))
+        Graphics.loadImage(tiledMapPathTransform(il.image))
       )
 
       Loader.combine(tilesetsBitmaps ++ imageLayersBitmaps).map(imgs => {
@@ -38,7 +51,6 @@ trait TiledMapRendererComponent {
         new TiledMapRenderer(tiledMap, tilesetsBitmaps, imageLayersBitmaps)
       })
     }
-
   }
 
   /** An object to render a TiledMap.
@@ -52,8 +64,23 @@ trait TiledMapRendererComponent {
     * is then always drawn starting from the canvas coordinates (0,0).
     * You can prepare the canvas before the render call to get any
     * effect that you want (translation, scaling).
+    *
+    * The coordinates in the tiled map are pixel based, the base size is the
+    * width/height of tiles in the tileset (obviously set in pixels).  The rest
+    * of the object in the tiledmap then uses the same coordinates space to
+    * place objects and other offsets on the map (although the precision is up
+    * to floating point instead of just integers for pixels). The renderer will
+    * simply map this one-to-one to the canvas, and it's up to the user of the
+    * Renderer to potentially map the tiled map coordinates to the screen.
+    *
+    * The renderer will render all tile layers, including the animations, all
+    * the tile object within an object layer (but will ignore all other
+    * objects), and will also render the image layers.
     **/
-  class TiledMapRenderer(val tiledMap: TiledMap, tilesetsBitmaps: Map[Tileset, Graphics.Bitmap], imageLayersBitmaps: Map[ImageLayer, Graphics.Bitmap]) {
+  class TiledMapRenderer(
+    val tiledMap: TiledMap,
+    tilesetsBitmaps: Map[Tileset, Graphics.Bitmap],
+    imageLayersBitmaps: Map[ImageLayer, Graphics.Bitmap]) {
 
     // The drawing area within the tiledMap.
     private var x = 0
@@ -154,8 +181,8 @@ trait TiledMapRendererComponent {
       }
     }
 
-    //TODO: take into account renderorder
-    // the opacity parameter is to be applied in addition to the actual opacity of the layer.
+    // TODO: take into account renderorder
+    // the opacity argument is applied in addition to the actual opacity of the layer.
     private def render(canvas: Graphics.Canvas, tileLayer: TileLayer, totalTime: Long, opacity: Float): Unit = {
       val i1 = y / tiledMap.tileHeight
       val i2 = (y + height - 1) / tiledMap.tileHeight
@@ -176,12 +203,13 @@ trait TiledMapRendererComponent {
               val t = ts.tiles(ts.getTileByGlobalId(index).tileId(totalTime))
               // Now when drawing we must adjust the y position in the canvas and in the image,
               // because the tiled map format allows for larger tiles in the tileset, and when
-              // that happens it's defined to expand "top-right", meaning that we need to draw
-              // from bottom-left to top-right, which we accomplish by moving up the y coordinates
-              // by the ts.tileHeight, from the bottom coordinates.
+              // that happens it's defined such that the bottom-left of the drawn tile aligns with
+              // the tile in which we are drawing. We accomplish by moving up the target y 
+              // coordinates by the delta between the tilemap tile height and the tileset tile
+              // height.
               canvas.drawBitmap(tilesetsBitmaps(ts),
                                 dx, dy + tiledMap.tileHeight - ts.tileHeight,
-                                t.x, t.y + tiledMap.tileHeight - ts.tileHeight, ts.tileWidth, ts.tileHeight,
+                                t.x, t.y, ts.tileWidth, ts.tileHeight,
                                 1f, tileLayer.opacity*opacity)
             }
           }

@@ -3,6 +3,12 @@ package tiled
 
 import sgl.util.JsonProvider
 
+// TODO: Return clear errors (missing attribute X/Y) instead of random match exception.
+//       It's probably ok to use exception to return the error, as usually we work with
+//       a well-formed asset (since we produced it ourself and will ship it ourself), but
+//       we should make the exception clear on what is the syntax error.
+//       We also need to return line and column number (like a real parser essentially).
+
 trait TmxJsonParserComponent {
   this: JsonProvider =>
 
@@ -90,11 +96,18 @@ trait TmxJsonParserComponent {
         Point(jsonToFloat(point \ "x").get, jsonToFloat(point \ "y").get)
       }
   
-      def parseLayer(layer: JValue): Layer = {
+      def parseLayer(layer: JValue, acceptMissingId: Boolean = false): Layer = {
         val JString(name) = layer \ "name"
         val JString(tpe) = layer \ "type"
 
-        val AsInt(layerId) = layer \ "id"
+        val layerId = (layer \ "id") match {
+          case AsInt(x) => x
+          // In some cases, Tiled seems to forget to set the ID, maybe because
+          // the ID doesn't matter in that context, in any case we try to
+          // accept it if that happens.
+          case _ if acceptMissingId => -1
+          case _ => throw new Exception("Missing attribute id in layer: " + layer)
+        }
   
         //we don't parse x/y coordinates, as apparently they are always 0
   
@@ -222,7 +235,7 @@ trait TmxJsonParserComponent {
           }
           case "group" => {
             val JArray(subLayers) = layer \ "layers"
-            val parsedSubLayers = subLayers map parseLayer
+            val parsedSubLayers = subLayers.map(l => parseLayer(l, false))
             GroupLayer(name, layerId, parsedSubLayers.toVector, visible, opacity, offsetX.toInt, offsetY.toInt, properties)
           }
           case "imagelayer" => {
@@ -275,7 +288,7 @@ trait TmxJsonParserComponent {
           }
           val objectLayer = (tile \ "objectgroup") match {
             case JNothing => None
-            case v => Some(parseLayer(v).asInstanceOf[ObjectLayer])
+            case v => Some(parseLayer(v, true).asInstanceOf[ObjectLayer])
           }
           val properties = parseProperties(tile \ "properties")
 
@@ -320,7 +333,7 @@ trait TmxJsonParserComponent {
         case _ => None
       }
   
-      val parsedLayers = layers map parseLayer
+      val parsedLayers = layers.map(l => parseLayer(l, false))
       val parsedTilesets =  tilesets map parseTileset
   
       TiledMap(parsedLayers.toVector, parsedTilesets.toVector, 
@@ -340,6 +353,13 @@ trait TmxJsonParserComponent {
     private def jsonToFloat(json: JValue): Option[Float] = json match {
       case JNumber(v) => Some(v.toFloat)
       case _ => None
+    }
+
+    private def parseInt(obj: JValue, attr: String): Int = (obj \ attr) match {
+      case AsInt(v) => v
+      // TODO: Maybe we can make a typed exception with obj,attr, and got? throw that instead
+      //       (and still use the same exception message).
+      case x => throw new RuntimeException(s"Expected Int for attribute <$attr> in obj <$obj>, got: $x")
     }
   }
 
