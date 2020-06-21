@@ -2,6 +2,7 @@ target
 .history
 *.swp
 *.swo
+*.log
 .metals/
 .bloop/
 project/metals.sbt
