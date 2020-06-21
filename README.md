@@ -313,8 +313,13 @@ intended to demonstrate some of the features of the library.
 
 ## Gallery
 
-SGL has been used to produce the cross-platform commercial game *Fish Escape*,
-available on:
+SGL has been used so far to produce mobile-friendly games, usually cross-published
+to Android, iOS, and the web. That said it could be used to make more classic
+indie title for Steam, it just hasn't been done yet.
+
+The most ambitious game created with SGL is the cross-platform commercial game
+[Fish Escape](https://www.limetalesgames.com/press/fish-escape.html), available
+on:
 * [Android](https://play.google.com/store/apps/details?id=com.limetalesgames.fishescapelite)
 * [iOS](https://apps.apple.com/us/app/fish-escape-lite/id1515164224)
 * the web with [Kongregate](https://www.kongregate.com/games/limetales/fish-escape)
@@ -328,6 +333,9 @@ SGL:
 [Android](https://play.google.com/store/apps/details?id=com.regblanc.scalavator)
 and for the [Web](http://regblanc.com/games/scalavator/play.html). Code source
 available on [GitHub](https://github.com/regb/scalavator).
+
+If you are using SGL for your commercial game, please contact me and I'll be
+happy to mention you in this section.
 
 ## Code Organization
 
