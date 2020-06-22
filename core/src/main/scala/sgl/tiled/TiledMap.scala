@@ -221,7 +221,8 @@ sealed trait TiledMapObject {
     * How to interpret the (x,y) coordinates depends on the actual object type,
     * for example for rectangls that would be the top-left, but for polygons
     * that would be the starting point of the polygon (from which all following
-    * points are relative to).
+    * points are relative to). And actually for tile object that would be the
+    * bottom-left, for added consistency.
     **/
   val x: Float
 
@@ -301,8 +302,50 @@ case class TiledMapPolyline(
   properties: Vector[Property]) extends TiledMapObject
 
 case class TiledMapTileObject(
-  name: String, id: Int, tpe: String, gid: Int,
-  x: Float, y: Float, width: Float, height: Float, rotation: Float,
+  name: String, id: Int, tpe: String,
+  /** The global tile id for identifying the tile to render. */
+  gid: Int,
+  /** The bottom-left coordinates of the object.
+    *
+    * Yes, that's bottom-left, not top-left like pretty much everything else in
+    * the TMX tile format. The tile image is defined to be aligned with the bottom-left
+    * point.
+    *
+    * This is unclear why, but it seems to be on purpose, at least it's
+    * confirmed to be the proper behavior in a long issue discussion:
+    *   https://github.com/bjorn/tiled/issues/91
+    * Given that a ton of engines out there probably handle it already, it's unlikely
+    * to ever change, and if it does change it will likely be with some additional
+    * attribute to make it explicit.
+    *
+    * It's actually consistent with another somewhat strange behavior, which is
+    * that tiles should also be rendered aligned bottom-left, although in most
+    * cases it doesn't make any difference (since the tile position is an
+    * index, and not coordinates), when the tile to render is larger than the
+    * tile destination in the map, it turns out that it is aligned bottom-left
+    * and expands top-right.
+    *
+    * Note that there's a new concept in Tiled 1.4, of object alignment, in the
+    * tileset. It seems like a way to control this alignment on the tileset
+    * directly. Since SGL is not supporting it yet , the rest of this
+    * documentation holds.
+    */
+  x: Float, y: Float,
+  /** Width and height in which to render the tile.
+    *
+    * These might potentially not match the tile image, in that
+    * case it is expected to scale the image to fit these.
+    */
+  width: Float, height: Float,
+  /** The rotation angle in degrees, clockwise.
+    *
+    * This is defined as a rotation if we were to draw the tile at
+    * (x, y), but rotated around the bottom-left (origin) point of the tile.
+    * So the bottom-left pixel of the tile should be rendered at (x, y) and
+    * thus aligned in this way, according to the clockwise rotation in
+    * degree.
+    */
+  rotation: Float,
   properties: Vector[Property]) extends TiledMapObject
 
 case class GroupLayer(

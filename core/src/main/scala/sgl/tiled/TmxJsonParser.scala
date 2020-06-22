@@ -9,6 +9,16 @@ import sgl.util.JsonProvider
 //       we should make the exception clear on what is the syntax error.
 //       We also need to return line and column number (like a real parser essentially).
 
+/** Provides a parser for TMX tiled map encoded as JSON.
+  *
+  * Known missing features and solutions:
+  *   - No support for external tileset. You should use the export feature of the Tiled
+  *     editor to embed the external tileset. Note that you can still work with external
+  *     tilesets in Tiled, just make sure that when you export your map, you export them
+  *     embeded. This can be controlled with one preference settings.
+  *   - Templates are not supported as well, for similar reasons. Again, you should export
+  *     them detached.
+  */
 trait TmxJsonParserComponent {
   this: JsonProvider =>
 
@@ -249,6 +259,16 @@ trait TmxJsonParserComponent {
   
       def parseTileset(tileset: JValue): Tileset = {
         val AsInt(firstGlobalId) = tileset \ "firstgid"
+
+        // We do not support external tilesets, they can be embeded easily by
+        // the Editor or some build tools, and they add too much trouble
+        // because of relative path and the need to load a separate file.
+        tileset \ "source" match {
+          case JString(externalSource) =>
+            throw new RuntimeException(s"The parser does not support external tileset (defined in $externalSource). Please use the export tools of your editor to embed the tileset prior to loading it in SGL")
+          case _ => ()
+        }
+
         val JString(name) = tileset \ "name"
         val JString(image) = tileset \ "image"
   
