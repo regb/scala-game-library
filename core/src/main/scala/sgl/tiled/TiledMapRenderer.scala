@@ -29,7 +29,7 @@ trait TiledMapRendererComponent {
       * depends on how you opened and configured the Tiled editor, and on
       * the relative path between your tiled map format and the tileset. The
       * mapping from the tiledmap path to the SGL ResourcePath is controlled by
-      * [[tiledMapPathTransform], which you can override if you need to.
+      * [[tiledMapPathTransform]], which you can override if you need to.
       *
       * The most likely is that the end of the path will contain something
       * like drawable-mdpi/tileset.png, so the default implementation that
