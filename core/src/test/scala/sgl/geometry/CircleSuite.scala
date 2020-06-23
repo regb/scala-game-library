@@ -1,8 +1,8 @@
 package sgl.geometry
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
-class CircleSuite extends FunSuite {
+class CircleSuite extends AnyFunSuite {
 
   test("adds a Vec") {
     val c = Circle(0, 0, 10)
