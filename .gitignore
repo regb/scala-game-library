@@ -6,3 +6,5 @@ target
 .metals/
 .bloop/
 project/metals.sbt
+*.tiled-project
+*.tiled-session
