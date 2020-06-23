@@ -1,6 +1,13 @@
 package sgl.geometry
 
-/** an AABB Rect. */
+/** an AABB Rect.
+  *
+  * This class is mutable, and several of its methods modify the state instead
+  * of just returning a new Rect. This is very much not idiomatic Scala (which
+  * favors immutable objects), but this is also a trade-off necessary for games
+  * to avoid generating too much garbage to collect. Time will tell if this
+  * design decision was good or bad.
+  **/
 class Rect(var left: Float, var top: Float, var width: Float, var height: Float) {
 
   def right: Float = left + width
