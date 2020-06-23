@@ -43,5 +43,8 @@ case class Ellipse(x: Float, y: Float, width: Float, height: Float) {
   def right: Float = x + width/2
   def bottom: Float = y + height/2
 
+  def +(m: Vec): Ellipse = Ellipse(x + m.x, y + m.y, width, height)
+  def -(m: Vec): Ellipse = Ellipse(x - m.x, y - m.y, width, height)
+
   def boundingBox: Rect = Rect(x - width/2, y - height/2, width, height)
 }
