@@ -8,6 +8,11 @@ import sgl.util.JsonProvider
 //       a well-formed asset (since we produced it ourself and will ship it ourself), but
 //       we should make the exception clear on what is the syntax error.
 //       We also need to return line and column number (like a real parser essentially).
+//
+// TODO: Support external tileset and templates, by embedding them directly in the TiledMap
+//       representation. This has been documented in the TiledMap object as the expected
+//       behavior for such raw data. Also Tiled support mixing .tmx,.json, so we should
+//       try to support this as well as soon as we have a parser for both format.
 
 /** Provides a parser for TMX tiled map encoded as JSON.
   *

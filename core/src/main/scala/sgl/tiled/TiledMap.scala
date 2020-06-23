@@ -15,12 +15,20 @@ import geometry.{Vec, Rect, Circle, Ellipse, Polygon}
   * The role of this is to provide a lightweight Scala abstraction
   * on top of the TMX file format for tile maps (from the tiled editor).
   * It adds only a few convenient methods to manipulate the tilemap, and
-  * mostly focus on mapping the representation of a tmx map to a typesafe
+  * mostly focus on mapping the representation of a TMX map to a typesafe
   * representation that is easily useable from Scala. Other methods such as
   * renderer can then be built on top. This class is mostly addressing the
   * syntax issue of manipulating a map stored in the TMX format, it tries
   * to avoid interpreting any of the semantics of the format, this is best
   * left to other classes that can work on the TiledMap.
+  *
+  * In parsing, the line is often blurry between syntax and semantics, so the
+  * mapping from the raw TMX data to the TiledMap object might sometimes lose
+  * data or transform the data a tiny bit to make it more convenient to use. One
+  * example is how external tilesets and templates are embeded explicitly in this
+  * representation and thus there's no way to map back to the original raw data.
+  * This seems like an acceptable trade-off, as there's no concrete use cases today
+  * for mapping from SGL back to the original TMX data.
   *
   * The point is not to abstract away low level information from tmx (that is
   * something that could be done with a Map interface somewhere else), but just
@@ -257,7 +265,7 @@ case class TiledMapRect(
   */
 case class TiledMapEllipse(
   name: String, id: Int, tpe: String,
-  /** The top-left coordinates of the rectangle object. */
+  /** The top-left coordinates of the ellipse object. */
   x: Float, y: Float,
   width: Float, height: Float,
   /** Angle in degrees, clockwise. */
@@ -346,7 +354,13 @@ case class TiledMapTileObject(
     * degree.
     */
   rotation: Float,
-  properties: Vector[Property]) extends TiledMapObject
+  properties: Vector[Property]) extends TiledMapObject {
+
+  // This is the correct rect, by shifting up the y coordinates. It's
+  // sort of useful to have this, so that the user does not need to
+  // know all the tricky details.
+  def rect: Rect = Rect(x, y-height, width, height)
+}
 
 case class GroupLayer(
   name: String, id: Int, override val layers: Vector[Layer],
@@ -373,6 +387,22 @@ case class ImageLayer(
   *
   * The margin/spacing help specify where the tiles are located in the tileset,
   * the rest of the pixels will be ignored by the rendering system.
+  *
+  * Note that this representation does not represent external tileset. The idea
+  * is that a parser would embed the external tileset directly into this
+  * tileset representation. While most of the tiled map representation attempts
+  * to be syntax-only (no interpretation), this is one case where we would do
+  * some amount of interpretation by embedding the external source of data.
+  * Although, arguably this could be seen as some sort of simple
+  * text-replacement (like good-old preprocessor macros), and the embedding of
+  * the external resource is rather trivial. What we gain by doing this embedding
+  * is that it's much easier for the users and renderers to work with a flat
+  * data structure rather than having to worry about the possibility that there's
+  * a link to another tileset to follow. The drawback is the loss of some information
+  * from the parsed data, but this drawback seems acceptable as there's really no
+  * use case within SGL with having that information (this is an information that
+  * makes a lot of sense when you are building an editor, like tiled, but not
+  * when you are consuming the map, like in the game engine).
   */
 case class Tileset(
   firstGlobalId: Int, name: String,
@@ -465,17 +495,6 @@ object Tileset {
       */
     objectLayer: Option[ObjectLayer],
     properties: Vector[Property]) {
-
-  
-    /** Return the bottom-left pixel location of the tile in the tileset.
-      *
-      * Knowing the bottom coordinates can be useful because if the tileset
-      * tileWidth/tileHeight are larger than the tiles in the map, the rendering
-      * should expan top-right and not bottom-right.
-      **/
-    def bottomLeft: (Int, Int) = {
-      (x, y + height - 1)
-    }
 
     val animationDuration: Int = animation.map(_.duration).sum
 
