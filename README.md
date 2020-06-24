@@ -320,8 +320,10 @@ indie titles for Steam, it just hasn't been done yet.
 The most ambitious game created with SGL is the cross-platform commercial game
 [Fish Escape](https://www.limetalesgames.com/press/fish-escape.html), available
 on:
-* [Android](https://play.google.com/store/apps/details?id=com.limetalesgames.fishescapelite)
-* [iOS](https://apps.apple.com/us/app/fish-escape-lite/id1515164224)
+* [Android](https://play.google.com/store/apps/details?id=com.limetalesgames.fishescape)
+  ([free lite version](https://play.google.com/store/apps/details?id=com.limetalesgames.fishescapelite))
+* [iOS](https://apps.apple.com/us/app/fish-escape/id1519111295)
+  ([free lite version](https://apps.apple.com/us/app/fish-escape-lite/id1515164224))
 * the web with [Kongregate](https://www.kongregate.com/games/limetales/fish-escape)
   and [Facebook](https://www.facebook.com/games/fish-escape/)
 
