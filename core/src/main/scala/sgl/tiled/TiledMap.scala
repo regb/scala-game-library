@@ -573,6 +573,10 @@ sealed trait Axis
 case object XAxis extends Axis
 case object YAxis extends Axis
 
+// TODO: All objects that have Vector[Property] should export a convenient
+//       function to get any property of any type, essentially getInt(name), getFloat(name), etc
+//       Ideally this should be computed once only (maybe with a cache, or if we can at init time).
+//       Or maybe we define a class Properties, and replace our Vector[Property] with this.
 sealed trait Property {
   val name: String
 
