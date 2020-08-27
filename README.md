@@ -91,7 +91,7 @@ The current implementation provides the following backends:
 If you want to write games in Scala, you have a few alternatives. Here's a
 biased opinion on how SGL compares with these alternatives. But first a
 disclaimer: SGL is not production-ready and is under heavy development, so if
-you want ot limit your interaction with the game engine, you probably should
+you want to limit your interaction with the game engine, you probably should
 look somewhere else for now.
 
 * [libGDX](https://libgdx.badlogicgames.com/) is an extremely mature game library
