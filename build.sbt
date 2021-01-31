@@ -1,6 +1,6 @@
 import sbtcrossproject.{crossProject, CrossType}
 
-val scalaVer = "2.12.11"
+val scalaVer = "2.13.4"
 val scalatestVer = "3.1.1"
 
 val scalaNativeVer = "2.11.8"
@@ -73,7 +73,7 @@ lazy val desktopAWT = (project in file("./desktop-awt"))
     // Add .ogg support by using jorbis (transitive dependency) as a service provider
     libraryDependencies += "com.googlecode.soundlibs" % "vorbisspi" % "1.0.3-2", 
     // Additional audio format can be added in the game build config, with a standard spi for java sound API.
-    libraryDependencies += "net.liftweb"   %% "lift-json" % "3.3.0",
+    libraryDependencies += "net.liftweb"   %% "lift-json" % "3.4.3",
     libraryDependencies += "org.scalatest" %% "scalatest" % scalatestVer % "test"
   )
   .dependsOn(coreJVM % "test->test;compile->compile", jvmShared)
