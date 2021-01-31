@@ -3,8 +3,6 @@ import sbtcrossproject.{crossProject, CrossType}
 val scalaVer = "2.13.4"
 val scalatestVer = "3.1.1"
 
-val scalaNativeVer = "2.11.8"
-
 lazy val commonSettings = Seq(
   version      := "0.0.1",
   organization := "com.regblanc.sgl",
@@ -32,7 +30,7 @@ lazy val core = (crossProject(JSPlatform, JVMPlatform, NativePlatform).crossType
   .jsSettings(
     libraryDependencies += "org.scalatest" %%% "scalatest" % scalatestVer % "test"
   )
-  .nativeSettings(scalaVersion := scalaNativeVer)
+  .nativeSettings(scalaVersion := scalaVer)
 
 lazy val coreJVM = core.jvm
 lazy val coreJS = core.js
@@ -81,12 +79,12 @@ lazy val desktopAWT = (project in file("./desktop-awt"))
 lazy val desktopNative = (project in file("./desktop-native"))
   .enablePlugins(ScalaNativePlugin)
   .settings(commonSettings: _*)
-  .settings(scalaVersion := scalaNativeVer)
+  .settings(scalaVersion := scalaVer)
   .settings(
     name := "sgl-desktop-native",
-    libraryDependencies += "com.regblanc" %%% "native-sdl2" % "0.1",
-    libraryDependencies += "com.regblanc" %%% "native-sdl2-image" % "0.1",
-    libraryDependencies += "com.regblanc" %%% "native-opengl" % "0.1"
+    libraryDependencies += "com.regblanc" %%% "native-sdl2" % "0.2",
+    libraryDependencies += "com.regblanc" %%% "native-sdl2-image" % "0.2",
+    libraryDependencies += "com.regblanc" %%% "native-opengl" % "0.2"
   )
   .dependsOn(coreNative)
 
@@ -168,7 +166,7 @@ lazy val helloCore = (crossProject(JSPlatform, JVMPlatform, NativePlatform).cros
   .jvmSettings(
     exportJars := true
   )
-  .nativeSettings(scalaVersion := scalaNativeVer)
+  .nativeSettings(scalaVersion := scalaVer)
   .jvmConfigure(_.dependsOn(coreJVM))
   .jsConfigure(_.dependsOn(coreJS))
   .nativeConfigure(_.dependsOn(coreNative))
@@ -203,7 +201,7 @@ lazy val helloDesktopNative = (project in file("./examples/hello/desktop-native"
   .enablePlugins(ScalaNativePlugin)
   .settings(helloCommonSettings: _*)
   .settings(noPublishSettings: _*)
-  .settings(scalaVersion := scalaNativeVer)
+  .settings(scalaVersion := scalaVer)
   .settings(
     name := "hello-desktop-native",
     unmanagedResourceDirectories in Compile := Seq(helloAssets),
@@ -226,7 +224,7 @@ lazy val snakeCore = (crossProject(JSPlatform, JVMPlatform, NativePlatform).cros
   .settings(snakeCommonSettings: _*)
   .settings(noPublishSettings: _*)
   .settings(name := "snake-core")
-  .nativeSettings(scalaVersion := scalaNativeVer)
+  .nativeSettings(scalaVersion := scalaVer)
   .jvmConfigure(_.dependsOn(coreJVM))
   .jsConfigure(_.dependsOn(coreJS))
   .nativeConfigure(_.dependsOn(coreNative))
@@ -258,7 +256,7 @@ lazy val snakeDesktopNative = (project in file("./examples/snake/desktop-native"
   .enablePlugins(ScalaNativePlugin)
   .settings(snakeCommonSettings: _*)
   .settings(noPublishSettings: _*)
-  .settings(scalaVersion := scalaNativeVer)
+  .settings(scalaVersion := scalaVer)
   .settings(
     name := "snake-desktop-native",
     if(isLinux(OS))
@@ -283,7 +281,7 @@ lazy val menuCore = (crossProject(JSPlatform, JVMPlatform, NativePlatform).cross
   .jvmSettings(
     exportJars := true
   )
-  .nativeSettings(scalaVersion := scalaNativeVer)
+  .nativeSettings(scalaVersion := scalaVer)
   .jvmConfigure(_.dependsOn(coreJVM))
   .jsConfigure(_.dependsOn(coreJS))
   .nativeConfigure(_.dependsOn(coreNative))
@@ -321,7 +319,7 @@ lazy val platformerCore = (crossProject(JSPlatform, JVMPlatform, NativePlatform)
   .settings(platformerCommonSettings: _*)
   .settings(noPublishSettings: _*)
   .settings(name := "platformer-core")
-  .nativeSettings(scalaVersion := scalaNativeVer)
+  .nativeSettings(scalaVersion := scalaVer)
   .jvmConfigure(_.dependsOn(coreJVM))
   .jsConfigure(_.dependsOn(coreJS))
   .nativeConfigure(_.dependsOn(coreNative))
@@ -346,7 +344,7 @@ lazy val platformerDesktopNative = (project in file("./examples/platformer/deskt
   .enablePlugins(ScalaNativePlugin)
   .settings(platformerCommonSettings: _*)
   .settings(noPublishSettings: _*)
-  .settings(scalaVersion := scalaNativeVer)
+  .settings(scalaVersion := scalaVer)
   .settings(
     name := "platformer-desktop-native",
     if(isLinux(OS))
@@ -371,7 +369,7 @@ lazy val boardCore = (crossProject(JSPlatform, JVMPlatform, NativePlatform).cros
   .jvmSettings(
     exportJars := true
   )
-  .nativeSettings(scalaVersion := scalaNativeVer)
+  .nativeSettings(scalaVersion := scalaVer)
   .jvmConfigure(_.dependsOn(coreJVM))
   .jsConfigure(_.dependsOn(coreJS))
   .nativeConfigure(_.dependsOn(coreNative))
@@ -403,7 +401,7 @@ lazy val boardDesktopNative = (project in file("./examples/board/desktop-native"
   .enablePlugins(ScalaNativePlugin)
   .settings(boardCommonSettings: _*)
   .settings(noPublishSettings: _*)
-  .settings(scalaVersion := scalaNativeVer)
+  .settings(scalaVersion := scalaVer)
   .settings(
     name := "board-desktop-native",
     if(isLinux(OS))
