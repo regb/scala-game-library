@@ -109,7 +109,7 @@ trait PopupsComponent extends ButtonsComponent {
 
     override def render(canvas: Canvas): Unit = {
       val labelText = canvas.renderText(label, (_width - leftMargin - rightMargin).toInt, paint)
-      val totalHeight = topMargin + labelText.height + labelOptionsSpace + fontSize + bottomMargin
+      val totalHeight = (topMargin + labelText.height + labelOptionsSpace + fontSize + bottomMargin).toFloat
       this.height = totalHeight
       val buttonsY = totalHeight - bottomMargin - fontSize
 

@@ -191,7 +191,7 @@ object TileLayer {
     * the layer that contains it.
     */
   case class Tile(index: Option[Int], x: Int, y: Int, width: Int, height: Int) {
-    val rect: Rect = Rect(x, y, width, height)
+    val rect: Rect = Rect(x.toFloat, y.toFloat, width.toFloat, height.toFloat)
 
     def isEmpty = index.isEmpty
     def nonEmpty = index.nonEmpty

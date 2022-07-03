@@ -176,7 +176,7 @@ trait AWTApp extends GameApp
             // Maybe set background color and then fill it.
             // g.fill(bounds)
 
-            val canvas: Graphics.Canvas = Graphics.AWTCanvas(g, gameCanvas.getWidth, gameCanvas.getHeight)
+            val canvas: Graphics.Canvas = Graphics.AWTCanvas(g, gameCanvas.getWidth.toFloat, gameCanvas.getHeight.toFloat)
 
             val newTime = java.lang.System.nanoTime
             val elapsed = newTime - lastTime
@@ -197,7 +197,7 @@ trait AWTApp extends GameApp
         val frameEndTime: Long = java.lang.System.nanoTime
         val frameElapsedTime: Long = frameEndTime - frameBeginTime
 
-        val sleepTime: Long = targetFramePeriod.map(fp => fp - frameElapsedTime/(1000l*1000l)).getOrElse(0)
+        val sleepTime: Long = targetFramePeriod.map(fp => fp - frameElapsedTime/(1000L*1000L)).getOrElse(0)
 
         if(sleepTime > 0) {
           Thread.sleep(sleepTime)

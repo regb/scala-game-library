@@ -113,7 +113,7 @@ trait TiledMapRendererComponent {
       */
     def render(canvas: Graphics.Canvas, totalTime: Long): Unit = {
       if(backgroundColorPaint.nonEmpty)
-        canvas.drawRect(x, y, width, height, backgroundColorPaint.get)
+        canvas.drawRect(x.toFloat, y.toFloat, width.toFloat, height.toFloat, backgroundColorPaint.get)
 
       var i = 0
       while(i < tiledMap.layers.size) {
@@ -135,7 +135,7 @@ trait TiledMapRendererComponent {
     // the opacity parameter is to be applied in addition to the actual opacity of the layer.
     def render(canvas: Graphics.Canvas, groupLayer: GroupLayer, totalTime: Long, opacity: Float): Unit = {
       var i = 0
-      canvas.translate(groupLayer.offsetX, groupLayer.offsetY)
+      canvas.translate(groupLayer.offsetX.toFloat, groupLayer.offsetY.toFloat)
       while(i < groupLayer.layers.size) {
         val layer = groupLayer.layers(i)
         if(layer.isVisible) {
@@ -143,12 +143,12 @@ trait TiledMapRendererComponent {
         }
         i += 1
       }
-      canvas.translate(-groupLayer.offsetX, -groupLayer.offsetY)
+      canvas.translate(-groupLayer.offsetX.toFloat, -groupLayer.offsetY.toFloat)
     }
 
     // the opacity parameter is to be applied in addition to the actual opacity of the layer.
     def render(canvas: Graphics.Canvas, imageLayer: ImageLayer, totalTime: Long, opacity: Float): Unit = {
-      canvas.drawBitmap(imageLayersBitmaps(imageLayer), imageLayer.offsetX, imageLayer.offsetY, imageLayer.opacity*opacity)
+      canvas.drawBitmap(imageLayersBitmaps(imageLayer), imageLayer.offsetX.toFloat, imageLayer.offsetY.toFloat, imageLayer.opacity*opacity)
     }
 
     // the opacity parameter is to be applied in addition to the actual opacity of the layer.
@@ -170,7 +170,7 @@ trait TiledMapRendererComponent {
               canvas.translate(x, y)
               canvas.rotate(theta)
               canvas.scale(sx, sy)
-              canvas.drawBitmap(tilesetsBitmaps(ts), 0, -ts.tileHeight,
+              canvas.drawBitmap(tilesetsBitmaps(ts), 0, -ts.tileHeight.toFloat,
                                 tl.x, tl.y, ts.tileWidth, ts.tileHeight,
                                 1f, objectLayer.opacity * opacity)
             }
@@ -198,8 +198,8 @@ trait TiledMapRendererComponent {
             if(tile.index.nonEmpty) {
               val index = tile.index.get
               val ts = tiledMap.getTilesetForTileId(index)
-              val dx = tileLayer.offsetX + tile.x - x
-              val dy = tileLayer.offsetY + tile.y - y
+              val dx = tileLayer.offsetX.toFloat + tile.x - x
+              val dy = tileLayer.offsetY.toFloat + tile.y - y
               val t = ts.tiles(ts.getTileByGlobalId(index).tileId(totalTime))
               // Now when drawing we must adjust the y position in the canvas and in the image,
               // because the tiled map format allows for larger tiles in the tileset, and when

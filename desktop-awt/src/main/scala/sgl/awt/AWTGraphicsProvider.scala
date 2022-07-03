@@ -61,7 +61,7 @@ trait AWTGraphicsProvider extends GraphicsProvider {
     type Bitmap = AWTBitmap
 
     case class AWTFont(f: java.awt.Font) extends AbstractFont {
-      override def withSize(s: Int): Font = AWTFont(f.deriveFont(f.getStyle, s))
+      override def withSize(s: Int): Font = AWTFont(f.deriveFont(f.getStyle, s.toFloat))
       override def withStyle(s: Font.Style): Font = AWTFont(f.deriveFont(AWTFontCompanion.toAWTStyle(s)))
 
       override def size: Int = f.getSize
@@ -249,13 +249,13 @@ trait AWTGraphicsProvider extends GraphicsProvider {
         }
       }
 
-      private def drawCenteredString(str: String, x: Float, y: Float, paint: Paint) {
+      private def drawCenteredString(str: String, x: Float, y: Float, paint: Paint): Unit = {
         val metrics = graphics.getFontMetrics
         val realX = x - metrics.stringWidth(str)/2
         //val y = ((rect.height - metrics.getHeight()) / 2) - metrics.getAscent();
         graphics.drawString(str, realX, y)
       }
-      private def drawRightAlignedString(str: String, x: Float, y: Float, paint: Paint) {
+      private def drawRightAlignedString(str: String, x: Float, y: Float, paint: Paint): Unit = {
         val metrics = graphics.getFontMetrics
         val realX = x - metrics.stringWidth(str)
         graphics.drawString(str, realX, y)
@@ -272,7 +272,7 @@ trait AWTGraphicsProvider extends GraphicsProvider {
 	graphics.setTransform(new java.awt.geom.AffineTransform)
 
         graphics.setColor(color)
-        rect.setRect(0, 0, Window.width, Window.height)
+        rect.setRect(0, 0, Window.width.toFloat, Window.height.toFloat)
         graphics.fill(rect)
 
 	graphics.setTransform(oldTransform)

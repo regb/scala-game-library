@@ -27,7 +27,7 @@ trait AWTSystemProvider extends SystemProvider with PartsResourcePathProvider {
         if(is == null) {
           throw new ResourceNotFoundException(path)
         }
-        scala.io.Source.fromInputStream(is).getLines.toArray
+        scala.io.Source.fromInputStream(is).getLines().toArray
       }
     }
 

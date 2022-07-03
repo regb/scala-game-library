@@ -48,8 +48,8 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
       /** The point size specified by withSize. */
       def size: Int
 
-      def isBold(): Boolean
-      def isItalic(): Boolean
+      def isBold: Boolean
+      def isItalic: Boolean
     }
     /** A typeface represents the typeface (font family) and style of a font 
       *
