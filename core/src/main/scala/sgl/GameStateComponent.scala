@@ -149,7 +149,7 @@ trait GameStateComponent {
     //      could provide a "def panic(): Unit" function that gets called
     //      when we need to call fixedUpdate more than a configurable maxUpdateSteps
 
-    private var accumulatedDelta = 0l
+    private var accumulatedDelta = 0L
     final override def update(dt: Long): Unit = {
       accumulatedDelta += dt
 
@@ -171,11 +171,15 @@ trait GameStateComponent {
     * This screen keeps checking all the loading assets on each update call,
     * and maintain the current progression. At the end of loading, it will
     * invoke the onLoadingCompleted callback. If any asset failed to load, it
-    * will instead invoke the onLoadingFailed callback. The default behavior
-    * of onLoadingCompleted is to open the nextScreen, but this can be overriden.
+    * will instead invoke the onLoadingFailed callback, unless if all failed assets
+    * are non-critical, in which case it invokes the onLoadingCompleted as well.
+    * The default behavior of onLoadingCompleted is to open the nextScreen, but
+    * this can be overriden. Once the callback is invoked, it is guaranteed that
+    * all Loader in the loaders list have completed, either with a success or
+    * a failure, but there's nothing more to wait for.
     *
     * Typically the game would show a progress bar and/or a splash screen with
-    * the game logo.  This is intended as a way to load a large amount of
+    * the game logo. This is intended as a way to load a large amount of
     * resources in memory, which could take several seconds.
     *
     * By contrast, the built-in preload feature from each GameScreen is meant
@@ -261,7 +265,28 @@ trait GameStateComponent {
 
     override def name: String = "Loading Screen"
 
-    private var totalDuration = 0l
+    /** The critical resources that must be loaded.
+      *
+      * This should be a subset of the main list of resources to load, loaders.
+      * This is used once loading is completed to decided whether to continue
+      * or failed if some resources failed to load. If any resource failed to load
+      * and it was critical (returned by this method), then the screen will enter
+      * the failure mode (and by default exit). Otherwise, it will succeed, potentially
+      * with the non-critical subset of resources that failed to load.
+      *
+      * By default it returns all the resources in loaders (all resources are
+      * critical by default).  You can override it to change the behavior. A
+      * typical use case could be to make sound resources non-critical and just
+      * play the game without sound.
+      *
+      * Note that the Screen will wait for all non-critical resources to
+      * complete loading (with or without an error), so on the next callback
+      * you are guaranteed that all the loaders have completed loading either
+      * with success or failure.
+      */
+    def criticalResources: Set[Loader[A]] = loaders.toSet
+
+    private var totalDuration = 0L
     private var loadingCompleted = false
 
     override def update(dt: Long): Unit = {
@@ -277,9 +302,19 @@ trait GameStateComponent {
         }
         if(totalDuration >= minDuration && _remaining.isEmpty) {
           loadingCompleted = true
-          if(loadingError) {
+
+          loadingErrors.foreach(loader => loader.value.get match {
+            case scala.util.Failure(e) => logger.error("Failed to load resource: " + e + "\n" + e.getStackTrace.mkString("\n"))
+            case _ => () // Not supposed to happen, just add the case to make the compiler happy.
+          })
+
+          if(criticalResources.exists(ld => loadingErrors.contains(ld))) {
+            logger.error("Failed to load some critical resources.")
             onLoadingFailed()
           } else {
+            if(loadingErrors.nonEmpty) {
+              logger.warning("Some non-critical resources failed to load, continuing without them.")
+            }
             onLoadingCompleted()
           }
         }
@@ -289,23 +324,20 @@ trait GameStateComponent {
     /** Control whether to exit on loading error.
       *
       * If true, the screen automatically exit the application at the
-      * end of loading, if there is any failed loaders.
+      * end of loading, if there is any failed loaders among the critical
+      * resources (by default all, unless you override the criticalResources
+      * method).
       */
     protected val exitOnError = true
 
-    /** Triggers if assets failed to load.
+    /** Triggers if critical assets failed to load.
       *
       * The default behavoir is to log the error and quit the
       * application if exitOnError is true.
       **/
     def onLoadingFailed(): Unit = {
-      logger.error("Failed to load all resources.")
       // TODO: would be nice to identify the resource beyond just the loader. Maybe that
       // would be better if we take a Map[String, Loader] in the constructor?
-      loadingErrors.foreach(loader => loader.value.get match {
-        case scala.util.Failure(e) => logger.error("Failed to load resource: " + e + "\n" + e.getStackTrace.mkString("\n"))
-        case _ => () // Not supposed to happen, just add the case to make the compiler happy.
-      })
       if(exitOnError)
         System.exit()
     }
@@ -324,7 +356,7 @@ trait GameStateComponent {
       * insertion of the new screen, such as releasing resources
       * from the LoadingScreen.
       */
-    def nextScreen(): GameScreen
+    def nextScreen: GameScreen
 
     /** Triggers when the loading is completed and assets ready to use.
       *
