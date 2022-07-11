@@ -8,36 +8,40 @@ trait ViewportComponent {
   /** A screen view of the virtual world.
     *
     * Viewport is meant to map a virtual world into a physical screen. It
-    * essentially exports a mapping from two coordinate systems. Given that
-    * it's 2D, it's a relatively straightforward mapping, but the class is
+    * essentially exports a mapping between two coordinate systems. Given that
+    * it's 2D, it's a relatively straightforward mapping (although it can still
+    * help with things like scaling and stretching), but the class is
     * convenient as an abstraction of how to render the virtual world into the
     * screen, and is used by various components of the framework as a standard
     * way to express this mapping. For example, the [[sgl.scene]] extension
-    * needs the notion of a viewport to properly map click events (on the pixels
-    * on the screen) to the right world coordinates.
+    * needs the notion of a viewport to properly map click events (on the
+    * pixels on the screen) to the right world coordinates.
     *
-    * The Viewport is constructed with the screen coordinates, screenWidth, and
-    * screenHeight. In general, this should be the Window.width and
-    * Window.height, but you can use the viewport for various mapping strategy
-    * so it could be something else (think split screens for example).  The
-    * coordinates of the physical screen are discrete, since the screen is made
-    * of individual pixels. The dimensions are the number of pixels in both
-    * width and height.
+    * The Viewport is instantiated with the width and height of the screen
+    * where it should map the world to. In general, this should be the
+    * Window.width and Window.height, but it doesn't have to be, it could be an
+    * area of it (for split screens or minimaps by layering two Viewport on top
+    * of each others).  The coordinates of the physical screen are discrete,
+    * since the screen is made of individual pixels. The dimensions are the
+    * number of pixels in both width and height.
     *
-    * Once created, we need to set a camera, which represents the world and how 
-    * which part to map into the viewport. It defines the dimensions of the world that we
-    * render. It can be smaller/larger and potentially it might not have the same
-    * aspect ratio. It should match a convenient size for your game, and you use
-    * [[Viewport.withViewport]] to prepare your canvas before rendering your world.
-    * By setting up the camera, you can also explicitly query the coordinates mapping
-    * from world to screen and screen to world.
+    * Once created, we need to set a camera, which represents the part the game
+    * world that should be rendered into the viewport. It can be smaller or larger
+    * than the viewport screen, and it might not have the same aspect ratio. The camera
+    * should use a coordinate system that is convenient for describing your game.
+    * You use [[Viewport.withViewport]] to prepare your canvas before rendering
+    * your world. By setting up the camera, you can also explicitly query the
+    * coordinates mapping from world to screen and screen to world. As the camera
+    * coordinates are mutable, you can move it around depending on the state of the
+    * game.
     *
-    * If you don't set a camera, it defaults to top-left and the entire screen
-    * (1:1 mapping to the screen). The camera is defined in floating point
-    * coordinates, as these are the world coordinates, and they could be
-    * arbitrary (for example, the whole world could be defined within [0,1] and
-    * the mapping to a physical viewport should do the rest). The axis of the
-    * camera are the same as the underlying canvas axis.
+    * If you don't set a camera, it defaults to the entire screen (top-left at
+    * (0,0) with width and height equal to the screenWidth and heightWidth
+    * parameters), providing a 1:1 mapping to the screen. The camera is defined
+    * in floating point coordinates, as these are the world coordinates, and
+    * they could be arbitrary (for example, the whole world could be defined
+    * within [0,1] and the mapping to a physical viewport should do the rest).
+    * The axis of the camera are the same as the underlying canvas axis.
     *
     * You can use the camera as the state of your scrolling implementation. If
     * you create a runner, and it moves horizontally all the time, you can simply
@@ -86,6 +90,8 @@ trait ViewportComponent {
       * This is the camera into the world coordinates. The region
       * defined by the camera will be mapped to the physical screen
       * when rendering a canvas through this Viewport.
+      *
+      * The camera origin (x,y) is set at the top-left.
       */
     def setCamera(x: Float, y: Float, w: Float, h: Float): Unit = {
       _cameraX = x
@@ -270,42 +276,62 @@ trait ViewportComponent {
 
   object Viewport {
 
-    /** The strategy for how to scale the world coordinates to the physical screen. */
+    /** The strategy for how to scale the world camera to the physical screen. */
     sealed trait ScalingStrategy
 
-    /** Scale the world to fit the viewport without maintaining the aspect ratio.
+    /** Scale the world to fit entirely in the viewport without maintaining the aspect ratio.
       *
-      * This will fully fill the viewport, but at the cost of breaking the
-      * aspect ratio.  There won't be any blank borders.
+      * This will fully fill the viewport with the content of the camera, but
+      * at the cost of breaking the aspect ratio. There won't be any blank
+      * borders. All the content of the camera will be visible in the viewport.
       */
     case object Stretch extends ScalingStrategy
 
-    /** Scale the world to fit the viewport while keeping the aspect ratio.
+    /** Scale the world to fit entirely in the viewport while keeping the aspect ratio.
       *
       * This could leave some blank areas in order to maintain the aspect
-      * ratio.  At least one dimension of the world will fit the available
-      * space, while on the other dimension the game will be centered with
-      * blank/black screen around.
+      * ratio. At least one dimension of the world will fit the available
+      * space, while on the other dimension of the game will be centered with
+      * blank/black screen around. All the content of the camera will be
+      * visible in the viewport.
       */
     case object Fit extends ScalingStrategy
 
-    /** Scale the world to fit the viewport while keeping the aspect ratio.
+    /** Scale the world to fit entirely in the viewport while keeping the aspect ratio.
       *
       * Same scaling rules as [[Fit]], but instead of adding black bars this
-      * will keep the world in the top right and extend the world by the blank
-      * area.
+      * will keep the world in the top left and extend the world by the blank
+      * area. Thie will show all the content of the camera as well as some
+      * extra part of the world that might not be camera, so it's important to
+      * draw the virtual world even if it's not visible in the current camera.
       */
     case object Extend extends ScalingStrategy
 
     /** Scale the world to entirely fill the viewport while keeping the aspect ratio.
       *
-      * This could result in one dimension of the world overflowing the size of
-      * the viewport, in that case the world will be centered along that
-      * dimension and will be cropped.
+      * This scale the world to use up all of the viewport, to keept the aspect
+      * ratio, and to show as much of the camera as possible.  This could
+      * result in one dimension of the world overflowing the size of the
+      * viewport, in that case the world will be centered along that dimension
+      * and will be cropped.
+      * 
+      * With this scaling strategy, not all the content of the camera might be
+      * visible in the viewport. This could be useful for things with
+      * non-critical content, like splash screens.
       */
     case object Fill extends ScalingStrategy
 
-    /** Does not scale the world, maps world to screen 1:1. */
+    /** Does not scale the world, maps world to screen 1:1.
+      *
+      * This might result in the world being mapped to a small part of the
+      * screen only, if the world coordinates were small, or inversely the
+      * screen might display only a tiny part of the world.
+      *
+      * This mapping could make sense when one wants to optimize the rendering
+      * of pixel-based resources (by using exactly the right px dimension of
+      * the images/fonts and rendering them 1:1 on the screen), this should
+      * most-likely be combined with density-independent loading of assets.
+      */
     case object NoScaling extends ScalingStrategy
   }
 
