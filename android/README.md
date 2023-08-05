@@ -21,3 +21,7 @@ Anyway, good luck.
 * Android SDK must be downloaded and installed in home directory, then set
   `ANDROID_HOME` to the root. The `sbt-android` plugin should use this and
   automatically download what it needs.
+
+## How to use
+
+TODO, extract important parts of https://github.com/scala-android/sbt-android for how to package/sign/release
