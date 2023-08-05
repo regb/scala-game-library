@@ -309,7 +309,7 @@ trait ViewportComponent {
 
     /** Scale the world to entirely fill the viewport while keeping the aspect ratio.
       *
-      * This scale the world to use up all of the viewport, to keept the aspect
+      * This scale the world to use up all of the viewport, to keep the aspect
       * ratio, and to show as much of the camera as possible.  This could
       * result in one dimension of the world overflowing the size of the
       * viewport, in that case the world will be centered along that dimension

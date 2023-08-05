@@ -9,7 +9,7 @@
 val commonSettings = Seq(
   version         := "0.0.1",
   organization    := "com.regblanc.sgl",
-  scalaVersion    := "2.11.8",
+  scalaVersion    := "2.11.12",
   scalacOptions  ++= Seq("-unchecked", "-deprecation", "-feature", "-target:jvm-1.7"),
   javacOptions   ++= Seq("-source", "1.7", "-target", "1.7"),
   exportJars      := true,

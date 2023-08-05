@@ -13,7 +13,7 @@ lazy val commonSettings = Seq(
 // Android cannot run on Java8 so we stick with 2.11 and Java7. We
 // need to build core separately for the right version.
 val commonAndroidSettings = Seq(
-    scalaVersion  := "2.11.8",
+    scalaVersion  := "2.11.12",
     scalacOptions += "-target:jvm-1.7",
     javacOptions ++= Seq("-source", "1.7", "-target", "1.7"),
     exportJars    := true
