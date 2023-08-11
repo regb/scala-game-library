@@ -4,7 +4,7 @@ package awt
 import sgl.util._
 import awt.util._
 
-import java.awt.{FontMetrics, Image, Graphics, Graphics2D, Color, AlphaComposite, GraphicsEnvironment, GraphicsConfiguration, Transparency}
+import java.awt.{RenderingHints, FontMetrics, Image, Graphics, Graphics2D, Color, AlphaComposite, GraphicsEnvironment, GraphicsConfiguration, Transparency}
 import java.awt.image.BufferedImage
 import java.awt.geom.{Rectangle2D, Ellipse2D, Line2D, AffineTransform}
 import javax.imageio.ImageIO
@@ -20,6 +20,7 @@ trait AWTGraphicsProvider extends GraphicsProvider {
     override def loadImage(path: ResourcePath): Loader[Bitmap] = {
       FutureLoader {
         // TODO: support multi dpi in desktop version.
+        // For now we just always use mdpi assets and scale them to map to the ppi.
         val mdpiPath = PartsResourcePath(Vector("drawable-mdpi") ++ path.parts)
         val localAsset = if(DynamicResourcesEnabled) findDynamicResource(mdpiPath) else None
         val url = localAsset.map(_.toURI.toURL).getOrElse(getClass.getClassLoader.getResource(mdpiPath.path))
@@ -27,16 +28,24 @@ trait AWTGraphicsProvider extends GraphicsProvider {
           throw new ResourceNotFoundException(mdpiPath)
         }
 
-        // TODO: we need to scale the image to the actual DPI of the screen.
+        // MDPI is meant for 160dpi, so we check Window.logicalPpi to determine how to scale the asset.
+        // This is similar to how Android loads drawables and then scale them to fit the actual dpi of the screen.
+        // However Android also selects the graphics from the closest density provided (mdpi/hdpi/etc) and only then
+        // scale it, but that's something we will implement eventually.
+        // TODO: We want to select the asset from the most appropriate drawable-?dpi folder.
+        val scalingFactor = Window.logicalPpi / 160f
 
         val bufferedImage = {
           val sb = ImageIO.read(url)
+          val scaledWidth = (scalingFactor*sb.getWidth).toInt
+          val scaledHeight = (scalingFactor*sb.getHeight).toInt
           // Now we copy the read buffered image into a new buffered image which
           // has a compatibly TYPE_INT_ARGB with the target buffer in which we will
           // render the image.
-          val b = AWTGraphicsConfig.createCompatibleImage(sb.getWidth, sb.getHeight, Transparency.TRANSLUCENT)
+          val b = AWTGraphicsConfig.createCompatibleImage(scaledWidth, scaledHeight, Transparency.TRANSLUCENT)
           val g = b.createGraphics
-          g.drawImage(sb, 0, 0, null)
+          g.addRenderingHints(new RenderingHints(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY));
+          g.drawImage(sb, 0, 0, scaledWidth, scaledHeight, null)
           g.dispose()
           sb.flush()
           b

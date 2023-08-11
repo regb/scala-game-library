@@ -16,4 +16,6 @@ object Main extends AbstractApp with AWTApp
 
   override val frameDimension = (800, 800)
 
+  override val ScreenForcePPI = Some(160)
+
 }

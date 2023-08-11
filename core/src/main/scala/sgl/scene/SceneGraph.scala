@@ -396,6 +396,10 @@ trait SceneGraphComponent {
     * Update does nothing (it's a static bitmap) and render renders it.
     */
   class BitmapNode(bitmap: Graphics.BitmapRegion, _x: Float, _y: Float) extends SceneNode(_x, _y, bitmap.width, bitmap.height) {
+    // TODO: this is probably not a good design to have such a node, instead we should migrate towards game object + attached
+    // components, and to render simple bitmaps we should just attach a sprite renderer.
+    // One problem with this is that it doesn't adapt well to the automated scaling of bitmaps depending on density.
+
     // A bitmap is just static, so nothing to do on update.
     override def update(dt: Long): Unit = {}
     override def render(canvas: Graphics.Canvas): Unit = canvas.drawBitmap(bitmap, this.x, this.y)

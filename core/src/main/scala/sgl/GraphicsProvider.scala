@@ -7,11 +7,47 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
 
   trait Graphics extends GraphicsExtension {
 
+    /** Load a bitmap identified by a resource path.
+      *
+      * Note that this automatically adapts the bitmap to the screen density.
+      * You can provide several version of the same resources, for targeting
+      * multiple screen densities (mdpi, hdpi, xhdpi, etc, following Android conventions).
+      * This function will automatically choose the most appropriate resource and load it.
+      *
+      * In addition, it will then scale the bitmap to be the expected size given the provided
+      * density and the actual density. So, for example, if you provide the asset only
+      * in `drawable-mdpi`, and the platform where you are running has a `xhdpi` density,
+      * then the bitmap returned will be loaded from the `mdpi` resource and then scaled 2x
+      * (mdpi is 160ppi, xhdpi is 320ppi, so 320/160 = 2). The returned Bitmap will be
+      * bigger than the asset provided on disk.
+      */
     def loadImage(path: ResourcePath): Loader[Bitmap]
 
     abstract class AbstractBitmap {
-      def height: Int
+
+      /** The width in pixel of the bitmap, in memory.
+        *
+        * Note that this is not necessary the width of the
+        * resource on file, it is scaled automatically by SGL
+        * depending on the screen density (see Window.LogicalPpi).
+        *
+        * Typically you will provide several resolutions for the same
+        * game assets, one per screen density (in the `drawable-?dpi` folders),
+        * and the system will load the most appropriate one. In addition the
+        * system could scale up or down whatever it has loaded, to adapt it
+        * to the actual screen dpi (mdpi -> 160, hdpi -> 240, xhdpi -> 320, etc).
+        *
+        * In general, if you want consistent look across platforms, you probably
+        * don't want to rely on the width of the bitmap but instead use a world
+        * coordinates system and draw the bitmap into that system.
+        */
       def width: Int
+
+      /** The height in pixel of the bitmap, in memory.
+        *
+        * Same notes as for width.
+        */
+      def height: Int
 
       /** Release the bitmap resources.
         *

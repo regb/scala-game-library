@@ -74,15 +74,23 @@ private[sgl] trait GraphicsHelpersComponent {
         }
       }
 
+      /** Draw the region at the point (x,y) on the canvas.
+        *
+        * This will use the size of the bitmap region to draw as is (no scaling) in the canvas.
+        */
       def drawBitmap(region: BitmapRegion, x: Float, y: Float): Unit = {
         this.drawBitmap(region.bitmap, x, y, region.x, region.y, region.width, region.height)
       }
+
+      /** Draw the region scaled by a factor s at the point (x,y) on the canvas.  */
       def drawBitmap(region: BitmapRegion, x: Float, y: Float, s: Float): Unit = {
         this.drawBitmap(region.bitmap, x, y, region.x, region.y, region.width, region.height, s, 1f)
       }
+
       def drawBitmap(region: BitmapRegion, x: Float, y: Float, s: Float, alpha: Float): Unit = {
         this.drawBitmap(region.bitmap, x, y, region.x, region.y, region.width, region.height, s, alpha)
       }
+
       /** Draw the region into the rectangle (x,y,w,h) on the canvas.
         *
         * This will scale the bitmap region to fit the rectangle.

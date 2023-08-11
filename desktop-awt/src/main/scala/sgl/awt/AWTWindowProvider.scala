@@ -86,6 +86,7 @@ trait AWTWindowProvider extends WindowProvider {
   type Window = AWTWindow
   override val Window = new AWTWindow
 
-  /** Override this if you want to force an arbitrary PPI. */
+  /** Override this if you want to force an arbitrary PPI. Typically it's useful for testing how your game will adapt
+   *  to multiple screen densities, instead of testing on multiple platforms. */
   val ScreenForcePPI: Option[Float] = None
 }
