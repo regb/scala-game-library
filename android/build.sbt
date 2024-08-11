@@ -14,7 +14,7 @@ val commonSettings = Seq(
   javacOptions   ++= Seq("-source", "1.7", "-target", "1.7"),
   exportJars      := true,
   resolvers       += "GoogleAndroid" at "https://maven.google.com/",
-  platformTarget  := "android-29",
+  platformTarget  := "android-34",
   useProguard     := true,
   proguardOptions ++= Seq(
       "-dontobfuscate",
