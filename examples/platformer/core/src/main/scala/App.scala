@@ -7,7 +7,7 @@ import sgl.util.metrics.InstrumentationProvider
 import sgl.tiled._
 
 trait AbstractApp extends MainScreenComponent {
-  this: GameApp with InputHelpersComponent with InstrumentationProvider
+  this: GameApp with InstrumentationProvider
   with TiledMapRendererComponent with TmxJsonParserComponent with LoggingProvider =>
 
   override def startingScreen: GameScreen = new MainScreen

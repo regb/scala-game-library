@@ -1,6 +1,6 @@
 package sgl
 
-trait InputHelpersComponent {
+private[sgl] trait InputHelpersComponent {
   this: InputProvider =>
 
   object InputHelpers {

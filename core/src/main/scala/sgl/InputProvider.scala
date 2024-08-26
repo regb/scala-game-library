@@ -57,9 +57,8 @@ import util._
   * higher-level events that require some buffering/history (another word for state),
   * such as tap (touch down and up, with a reasonable time in between) and scroll events.
   */
-trait InputProvider {
+trait InputProvider extends InputHelpersComponent {
   self: LoggingProvider =>
-
   private implicit val LogTag = Logger.Tag("sgl.input")
 
   /** Control if the events should be processed synchronously or asynchronously.

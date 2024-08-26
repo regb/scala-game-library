@@ -3,7 +3,7 @@ package desktop
 
 import core._
 
-import sgl.{InputHelpersComponent, GameLoopStatisticsComponent, ViewportComponent}
+import sgl.{GameLoopStatisticsComponent, ViewportComponent}
 import sgl.awt._
 import sgl.awt.util._
 

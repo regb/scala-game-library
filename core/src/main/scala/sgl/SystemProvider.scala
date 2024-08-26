@@ -227,7 +227,7 @@ trait SystemProvider {
     * This provides the base ResourcePath on
     * which to build ResourcePath for each resource.
     */
-  val ResourcesRoot: ResourcePath
+  def ResourcesRoot: ResourcePath
 
   /** The root path for images that support multiple DPI.
     *
@@ -247,7 +247,7 @@ trait SystemProvider {
     * the same dimensions for your bitmap, but providing a higher-resolution
     * image improves quality.
     */
-  val MultiDPIResourcesRoot: ResourcePath
+  def MultiDPIResourcesRoot: ResourcePath
 
   case class ResourceNotFoundException(path: ResourcePath) extends Exception("Resource " + path.toString + " not found")
 

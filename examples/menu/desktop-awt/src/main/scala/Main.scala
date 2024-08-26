@@ -3,7 +3,7 @@ package desktop
 
 import core._
 
-import sgl.{InputHelpersComponent, GameLoopStatisticsComponent, ViewportComponent}
+import sgl.{GameLoopStatisticsComponent, ViewportComponent}
 import sgl.awt._
 import sgl.awt.util._
 import sgl.scene._
@@ -11,7 +11,7 @@ import sgl.scene.ui._
 
 /** Wire backend to the App here */
 object Main extends AbstractApp with AWTApp
-  with InputHelpersComponent with VerboseStdErrLoggingProvider
+  with VerboseStdErrLoggingProvider
   with SceneComponent with PopupsComponent with ViewportComponent {
 
   override val TargetFps = Some(60)

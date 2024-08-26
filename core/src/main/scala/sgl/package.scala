@@ -30,4 +30,20 @@
   */
 package object sgl {
 
+
+
 }
+
+
+/* TODO
+ *
+ * I'd like to do a large refactoring and expose a simpler lifecycle for end implementations.
+ *
+ * Instead of mixing LifecycleProvider and GameLoopState, I think we need to define the set
+ * of functions that will be called (init, shutdown, resume, pause, update) by the framework,
+ * and any game simply implements the ones that they need. This unifies lifecycleprovider into
+ * the core game loop, and also remove all the complexity of the GameScreen abstractions, which
+ * should be moved to something built on top of the base abstraction, just like a scene 2D would
+ * be. The game state and GameScreen needs to become obsolete and just one possible abstraction on
+ * top of the core lifecycle methods.
+ */

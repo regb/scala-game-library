@@ -9,7 +9,7 @@ import sgl.scene._
 import sgl.scene.ui._
 
 object Main extends Html5App with core.AbstractApp
-  with InputHelpersComponent with Html5VerboseConsoleLoggingProvider
+  with Html5VerboseConsoleLoggingProvider
   with SceneComponent with PopupsComponent with ViewportComponent {
 
   override val TargetFps = None

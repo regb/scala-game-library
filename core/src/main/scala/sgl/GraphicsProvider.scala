@@ -109,11 +109,11 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
         */
       def load(path: ResourcePath): Loader[Font]
 
-      val Default: Font
-      val DefaultBold: Font
-      val Monospace: Font
-      val SansSerif: Font
-      val Serif: Font
+      def Default: Font
+      def DefaultBold: Font
+      def Monospace: Font
+      def SansSerif: Font
+      def Serif: Font
 
       sealed trait Style
       case object Bold extends Style
@@ -353,7 +353,7 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
 
       // TODO: provide a way to control pencil thickness. Probably in Paint? Could also be just one extra argument, since it might not
       // be used in two many other places (although, font size feels slightly similar).
-      def drawLine(x1: Float, y1: Float, x2: Float, y2: Float, pain: Paint): Unit
+      def drawLine(x1: Float, y1: Float, x2: Float, y2: Float, paint: Paint): Unit
 
       def drawRect(x: Float, y: Float, width: Float, height: Float, paint: Paint): Unit
 

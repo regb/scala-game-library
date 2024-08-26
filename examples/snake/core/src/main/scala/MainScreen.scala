@@ -8,7 +8,7 @@ import util._
 
 trait MainScreenComponent {
   self: GraphicsProvider with InputProvider with GameStateComponent with WindowProvider
-  with InputHelpersComponent with LoggingProvider with SystemProvider =>
+  with LoggingProvider with SystemProvider =>
 
   import Graphics._
 
