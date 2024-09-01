@@ -108,8 +108,8 @@ import scala.collection.mutable.HashMap
   */
 object Input {
 
-  // The default event processor simply ignores all events.
-  private[sgl] var inputProcessor: InputProcessor = new InputProcessor{}
+  // By default, there's no input processor from the game, but we still run the StateInputProcessor.
+  private[sgl] var inputProcessor: InputProcessor = new StateInputProcessor{}
 
   /** Sets the main application InputProcessor.
     *
