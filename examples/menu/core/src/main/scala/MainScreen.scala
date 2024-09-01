@@ -22,7 +22,7 @@ trait ScreensComponent {
 
     val scene = new SceneGraph(Window.width, Window.height, viewport)
 
-    val levelsPane = new ScrollPane(0, 0, Window.width, Window.height, Window.width, 3*Window.height)
+    val levelsPane = new ScrollPane(0, 0, Window.width.toFloat, Window.height.toFloat, Window.width.toFloat, 3*Window.height.toFloat)
     scene.addNode(levelsPane)
 
     class LevelButton(i: Int, _x: Float, _y: Float) extends Button(_x, _y, 100, 30) {
@@ -48,8 +48,8 @@ trait ScreensComponent {
     }
     val dialog =
       new DialogPopup(
-        Window.width, Window.height,
-        new Dialog(Window.dp2px(400),
+        Window.width.toFloat, Window.height.toFloat,
+        new Dialog(Window.dp2px(400).toFloat,
                    "Hey there, do you like the weather ok?",
                    List(("Yes", () => { println("yes") }),
                         ("Nope", () => { println("nope") }),
@@ -60,8 +60,13 @@ trait ScreensComponent {
       }
     scene.addNode(dialog)
 
-    Input.setInputProcessor(scene)
-            //case Input.KeyDownEvent(Input.Keys.P) => dialog.show()
+    Input.setInputProcessor(new CombinedInputProcessor(scene, new InputProcessor {
+      override def keyDown(key: Input.Keys.Key): Boolean = {
+        if(key == Input.Keys.P)
+          dialog.show()
+        true
+      }
+    }))
 
     override def update(dt: Long): Unit = {
       scene.update(dt)
