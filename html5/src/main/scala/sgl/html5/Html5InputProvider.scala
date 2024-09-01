@@ -6,12 +6,15 @@ import sgl.util._
 import org.scalajs.dom
 import dom.html
 
-trait Html5InputProvider extends InputProvider {
+
+/* TODO: Explain that due to JS event loop, the input events are always handled outside
+ * game loop update.
+ * But it's important that game loop update also happen with regular the regular event loop.
+ */
+trait Html5InputProvider {
   this: Html5App with LoggingProvider =>
 
   import Input._
-
-  override val ProcessInputsDuringUpdate: Boolean = false
 
   private def mouseEventButton(e: dom.MouseEvent): MouseButtons.MouseButton = e.button match {
     case 0 => MouseButtons.Left
@@ -79,16 +82,16 @@ trait Html5InputProvider extends InputProvider {
     this.htmlCanvas.addEventListener("mousedown", (e: dom.MouseEvent) => {
       triggerUserInteraction()
       val (x,y) = getCursorPosition(this.htmlCanvas, e)
-      Input.newEvent(Input.MouseDownEvent(x, y, mouseEventButton(e)))
+      Input.inputProcessor.mouseDown(x, y, mouseEventButton(e))
     })
     this.htmlCanvas.addEventListener("mouseup", (e: dom.MouseEvent) => {
       triggerUserInteraction()
       val (x,y) = getCursorPosition(this.htmlCanvas, e)
-      Input.newEvent(Input.MouseUpEvent(x, y, mouseEventButton(e)))
+      Input.inputProcessor.mouseUp(x, y, mouseEventButton(e))
     })
     this.htmlCanvas.addEventListener("mousemove", (e: dom.MouseEvent) => {
       val (x,y) = getCursorPosition(this.htmlCanvas, e)
-      Input.newEvent(Input.MouseMovedEvent(x, y))
+      Input.inputProcessor.mouseMoved(x, y)
     })
 
     /*
@@ -122,7 +125,7 @@ trait Html5InputProvider extends InputProvider {
         i += 1
         val (x,y) = getCursorPosition(this.htmlCanvas, touch.clientX.toInt, touch.clientY.toInt)
         val id = touch.identifier.toInt
-        Input.newEvent(Input.TouchDownEvent(x, y, id))
+        Input.inputProcessor.touchDown(x, y, id)
       }
     })
     this.htmlCanvas.addEventListener("touchend", (e: dom.Event) => {
@@ -138,7 +141,7 @@ trait Html5InputProvider extends InputProvider {
         i += 1
         val (x,y) = getCursorPosition(this.htmlCanvas, touch.clientX.toInt, touch.clientY.toInt)
         val id = touch.identifier.toInt
-        Input.newEvent(Input.TouchUpEvent(x, y, id))
+        Input.inputProcessor.touchUp(x, y, id)
       }
     })
     this.htmlCanvas.addEventListener("touchmove", (e: dom.Event) => {
@@ -153,20 +156,20 @@ trait Html5InputProvider extends InputProvider {
         i += 1
         val (x,y) = getCursorPosition(this.htmlCanvas, touch.clientX.toInt, touch.clientY.toInt)
         val id = touch.identifier.toInt
-        Input.newEvent(Input.TouchMovedEvent(x, y, id))
+        Input.inputProcessor.touchMoved(x, y, id)
       }
     })
 
     dom.document.addEventListener("keydown", (e: dom.KeyboardEvent) => {
       triggerUserInteraction()
       domEventToKey(e).foreach(key =>
-        Input.newEvent(Input.KeyDownEvent(key))
+        Input.inputProcessor.keyDown(key)
       )
     })
     dom.document.addEventListener("keyup", (e: dom.KeyboardEvent) => {
       triggerUserInteraction()
       domEventToKey(e).foreach(key =>
-        Input.newEvent(Input.KeyUpEvent(key))
+        Input.inputProcessor.keyUp(key)
       )
     })
   }

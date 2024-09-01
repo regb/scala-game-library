@@ -84,7 +84,7 @@ trait ParticleSystemComponent {
       p.vy = math.sin(direction) * random(config.minParticleVelocity, config.maxParticleVelocity)
     }
 
-    private var age = 0l
+    private var age = 0L
 
     private var spawnCarry = 0f
     private var nextSpawnBurst = config.spawnBursts
@@ -175,9 +175,9 @@ trait ParticleSystemComponent {
 
     var radius = 0
 
-    var maxAge = 0l
+    var maxAge = 0L
 
-    var age = 0l
+    var age = 0L
 
     var keyColors: Array[(Int, Int, Int, Int)] = null
 

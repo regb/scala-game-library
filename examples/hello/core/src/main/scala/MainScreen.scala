@@ -7,7 +7,7 @@ import scene._
 import util._
 
 trait MainScreenComponent extends ViewportComponent {
-  this: GraphicsProvider with InputProvider with SystemProvider with WindowProvider with AudioProvider
+  this: GraphicsProvider with SystemProvider with WindowProvider with AudioProvider
   with GameStateComponent with LoggingProvider with SchedulerProvider =>
 
   import Graphics.{Bitmap, Canvas, Color, BitmapRegion, Animation, RichCanvas}
@@ -61,14 +61,14 @@ trait MainScreenComponent extends ViewportComponent {
 
   class MainScreen extends GameScreen {
 
-    for(i <- 0 to 10000) {
+    for(i <- 0 to 10) {
       Scheduler.schedule(new HelloChunkedTask(i))
     }
 
     override def name: String = "TestScreen"
 
-    val Width = 480
-    val Height = 320
+    val Width = 480f
+    val Height = 320f
 
     val viewport = new Viewport(Window.width, Window.height)
     viewport.setCamera(0, 0, Width, Height)
@@ -108,40 +108,47 @@ trait MainScreenComponent extends ViewportComponent {
     private var playingLoop: Option[beepInfinite.PlayedSound] = None
 
 
-    def processEvent(e: Input.InputEvent): Unit = e match {
-      case Input.PointerDownEvent(x, y, _) =>
+    private val self = this
+
+    Input.setInputProcessor(new InputProcessor with PointerInputProcessor {
+      override def pointerDown(x: Int, y: Int, p: Int, b: Input.MouseButtons.MouseButton): Boolean = {
         LoadingScreen.beep.play()
         val (wx, wy) = viewport.screenToWorld(x, y)
-        this.x = wx
-        this.y = wy
-      case Input.KeyDownEvent(Input.Keys.L) =>
-        playingLoop match {
-          case Some(s) =>
-            beepInfinite.stop(s)
-            playingLoop = None
-          case None =>
-            playingLoop = beepInfinite.play()
-        }
-      case _ => ()
-    }
+        self.x = wx
+        self.y = wy
+        true
+      }
 
-    InputHelpers.setEventProcessor(processEvent _)
+      override def keyDown(key: Input.Keys.Key): Boolean = {
+        if(key == Input.Keys.L) {
+          playingLoop match {
+            case Some(s) =>
+              beepInfinite.stop(s)
+              playingLoop = None
+            case None =>
+              playingLoop = beepInfinite.play()
+          }
+        }
+        true
+      }
+
+    })
 
     var totalTime: Long = 0
     override def update(dt: Long): Unit = {
       totalTime += dt
 
-      if(Inputs.Keyboard.left) {
+      if(Input.isKeyPressed(Input.Keys.Left)) {
         x -= dp2px(50)*(dt/1000f)
       }
-      if(Inputs.Keyboard.right) {
+      if(Input.isKeyPressed(Input.Keys.Right)) {
         x += dp2px(50)*(dt/1000f)
       }
 
-      if(Inputs.Keyboard.up) {
+      if(Input.isKeyPressed(Input.Keys.Up)) {
         y -= dp2px(50)*(dt/1000f)
       }
-      if(Inputs.Keyboard.down) {
+      if(Input.isKeyPressed(Input.Keys.Down)) {
         y += dp2px(50)*(dt/1000f)
       }
 
@@ -150,11 +157,11 @@ trait MainScreenComponent extends ViewportComponent {
     }
 
     override def render(canvas: Canvas): Unit = {
-      canvas.drawRect(0, 0, Window.width, Window.height, Graphics.defaultPaint.withColor(Color.rgb(0, 0, 0)))
+      canvas.drawRect(0, 0, Window.width.toFloat, Window.height.toFloat, Graphics.defaultPaint.withColor(Color.rgb(0, 0, 0)))
       viewport.withViewport(canvas){
-        canvas.drawRect(0, 0, Window.width, Window.height, Graphics.defaultPaint.withColor(Color.rgb(0, 0, 200)))
+        canvas.drawRect(0, 0, Window.width.toFloat, Window.height.toFloat, Graphics.defaultPaint.withColor(Color.rgb(0, 0, 200)))
         canvas.drawRect(0, 0, Width, Height, Graphics.defaultPaint.withColor(Color.rgb(204, 242, 204)))
-        canvas.drawCircle(autoX, autoY, dp2px(50), Graphics.defaultPaint.withColor(Color.Black))
+        canvas.drawCircle(autoX, autoY, dp2px(50).toFloat, Graphics.defaultPaint.withColor(Color.Black))
 
 	val frame = characterAnimation.currentFrame(totalTime)
         canvas.drawBitmap(frame, x, y, 1f, 0.5f)

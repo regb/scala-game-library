@@ -11,7 +11,7 @@ import util.metrics._
   */
 trait GameLoopStatisticsComponent extends GameLoopComponent {
   this: GameStateComponent with InstrumentationProvider
-  with GraphicsProvider with InputProvider with SystemProvider =>
+  with GraphicsProvider with SystemProvider =>
 
   val statistics: GameLoopStatistics = new GameLoopStatistics
 

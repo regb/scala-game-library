@@ -15,7 +15,7 @@ import util._
   * the game loop itself.
   */
 trait GameLoopComponent {
-  self: GameStateComponent with GraphicsProvider with InputProvider =>
+  self: GameStateComponent with GraphicsProvider =>
 
   /** Defines the target FPS of the game
     *
@@ -135,9 +135,6 @@ trait GameLoopComponent {
 
       if(rdt > 0) {
         gameLoopListener.onUpdateStart()
-        // We pretend to be processing inputs at the same time as the update call, so
-        // it must happens between the timers.
-        Input.onLoopUpdate()
         currentScreen.update(rdt)
         gameLoopListener.onUpdateComplete()
       }

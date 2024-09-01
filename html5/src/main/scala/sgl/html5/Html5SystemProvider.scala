@@ -15,11 +15,11 @@ trait Html5SystemProvider extends SystemProvider with PartsResourcePathProvider 
 
     override def exit(): Unit = {}
 
-    override def currentTimeMillis: Long = js.Date.now.toLong
+    override def currentTimeMillis: Long = js.Date.now().toLong
 
     // Note that there is no way to get nanosecond precision in Javascript, so we
     // have to do with microsecond granularity.
-    override def nanoTime: Long = (dom.window.performance.now()*1000l*1000l).toLong
+    override def nanoTime: Long = (dom.window.performance.now()*1000L*1000L).toLong
 
     //probably cleaner to return lazily and block only when iterator is called
     //class LazyTextResource(rawFile: dom.XMLHttpRequest) extends Iterator[String] = {

@@ -13,7 +13,6 @@
   *   - {{sgl.AudioProvider}}
   *   - {{sgl.SystemProvider}}
   *   - {{sgl.WindowProvider}}
-  *   - {{sgl.InputProvider}}
   *
   * They are implemented in the various backend provided on separate projects.
   * Component trait are usually cross-platform implementation, but they are

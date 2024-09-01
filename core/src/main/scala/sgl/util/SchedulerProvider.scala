@@ -63,10 +63,10 @@ trait SingleThreadSchedulerProvider extends SchedulerProvider {
       */
     def run(ms: Long): Boolean = {
       logger.trace("Running SingleThreadScheduler with taskQueue size of: " + taskQueue.size)
-      val endTime = System.nanoTime + ms*1000l*1000l
+      val endTime = System.nanoTime + ms*1000L*1000L
       var remaining = endTime - System.nanoTime
       while(remaining > 0 && taskQueue.nonEmpty) {
-        val available = (remaining/(1000l*1000l)) min 5
+        val available = (remaining/(1000L*1000L)) min 5
         val task = taskQueue.dequeue()
         task.doRun(available) 
         if(task.status == ChunkedTask.InProgress)

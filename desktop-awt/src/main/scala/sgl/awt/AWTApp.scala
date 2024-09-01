@@ -134,79 +134,92 @@ trait AWTApp extends GameApp
     //private val backBufferGraphics = backBuffer.createGraphics
 
     override def run(): Unit = {
-      var lastTime: Long = java.lang.System.nanoTime
 
-      while(running) {
-        val frameBeginTime: Long = java.lang.System.nanoTime
+      try {
+        var lastTime: Long = java.lang.System.nanoTime
 
-        // Not sure why, but it seems like getting the getBufferStrategy on
-        // each frame is important, otherwise sometimes the screen stays blank
-        // (even though the strategy is not null, and the loop is running
-        // forever). Here we get it back from the gameCanvas on each frame, and
-        // it seems to work better.
-        val strategy = gameCanvas.getBufferStrategy()
+        while(running) {
 
-        // TODO: probably want to have some ways to extract such monitoring data
-        // println("heap used: " + java.lang.Runtime.getRuntime.totalMemory())
-        // println("heap max: " + java.lang.Runtime.getRuntime.maxMemory())
-        // println("heap free: " + java.lang.Runtime.getRuntime.freeMemory())
-        
-        // Not too sure why we do these loops, but it seems like the buffers
-        // used in the strategy can get lost/restored and if that happens
-        // while rendering, we need to perform the rendering again. The tricky
-        // bit is that we call gameLoopStep multiple times, but it should work
-        // as the first call gets the real dt, then the next call will have
-        // a dt of about 0, and it should not simulate anything new in the physics,
-        // and instead just re-render.
-        do {
+          // Dispatch all input events
+          processInputEvents()
+
+          val frameBeginTime: Long = java.lang.System.nanoTime
+
+          // Not sure why, but it seems like getting the getBufferStrategy on
+          // each frame is important, otherwise sometimes the screen stays blank
+          // (even though the strategy is not null, and the loop is running
+          // forever). Here we get it back from the gameCanvas on each frame, and
+          // it seems to work better.
+          val strategy = gameCanvas.getBufferStrategy()
+
+          // TODO: probably want to have some ways to extract such monitoring data
+          // println("heap used: " + java.lang.Runtime.getRuntime.totalMemory())
+          // println("heap max: " + java.lang.Runtime.getRuntime.maxMemory())
+          // println("heap free: " + java.lang.Runtime.getRuntime.freeMemory())
+          
+          // Not too sure why we do these loops, but it seems like the buffers
+          // used in the strategy can get lost/restored and if that happens
+          // while rendering, we need to perform the rendering again. The tricky
+          // bit is that we call gameLoopStep multiple times, but it should work
+          // as the first call gets the real dt, then the next call will have
+          // a dt of about 0, and it should not simulate anything new in the physics,
+          // and instead just re-render.
           do {
-            val g = strategy.getDrawGraphics().asInstanceOf[Graphics2D]
+            do {
+              val g = strategy.getDrawGraphics().asInstanceOf[Graphics2D]
 
-            if(EnableAntiAliasingHint)
-              g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-            if(EnableBilinearInterpolationHint) {
-              // There's also the BICUBIC interpolation, but that seems too slow for games on the
-              // few examples I used it, the FPS dropped significantly.
-              g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
-            }
+              if(EnableAntiAliasingHint)
+                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+              if(EnableBilinearInterpolationHint) {
+                // There's also the BICUBIC interpolation, but that seems too slow for games on the
+                // few examples I used it, the FPS dropped significantly.
+                g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+              }
 
-            val bounds = new Rectangle(0, 0, gameCanvas.getWidth, gameCanvas.getHeight)
-            g.setClip(bounds)
+              val bounds = new Rectangle(0, 0, gameCanvas.getWidth, gameCanvas.getHeight)
+              g.setClip(bounds)
 
-            // Maybe set background color and then fill it.
-            // g.fill(bounds)
+              // Maybe set background color and then fill it.
+              // g.fill(bounds)
 
-            val canvas: Graphics.Canvas = Graphics.AWTCanvas(g, gameCanvas.getWidth.toFloat, gameCanvas.getHeight.toFloat)
+              val canvas: Graphics.Canvas = Graphics.AWTCanvas(g, gameCanvas.getWidth.toFloat, gameCanvas.getHeight.toFloat)
 
-            val newTime = java.lang.System.nanoTime
-            val elapsed = newTime - lastTime
-            // delta time, in ms (all time measures are in nanos).
-            val dt = (elapsed / (1000*1000)).toLong
-            // At this point, we may have lost half a ms, so we should account for it in our lastTime, by
-            // shifting it back by the lost fraction.
-            lastTime = newTime - (elapsed - dt*1000*1000)
+              val newTime = java.lang.System.nanoTime
+              val elapsed = newTime - lastTime
+              // delta time, in ms (all time measures are in nanos).
+              val dt = (elapsed / (1000*1000)).toLong
+              // At this point, we may have lost half a ms, so we should account for it in our lastTime, by
+              // shifting it back by the lost fraction.
+              lastTime = newTime - (elapsed - dt*1000*1000)
 
-            gameLoopStep(dt, canvas)
+              gameLoopStep(dt, canvas)
 
-            g.dispose()
-          } while(strategy.contentsRestored())
+              g.dispose()
+            } while(strategy.contentsRestored())
 
-          strategy.show()
-        } while(strategy != null && strategy.contentsLost())
+            strategy.show()
+          } while(strategy != null && strategy.contentsLost())
 
-        val frameEndTime: Long = java.lang.System.nanoTime
-        val frameElapsedTime: Long = frameEndTime - frameBeginTime
+          val frameEndTime: Long = java.lang.System.nanoTime
+          val frameElapsedTime: Long = frameEndTime - frameBeginTime
 
-        val sleepTime: Long = targetFramePeriod.map(fp => fp - frameElapsedTime/(1000L*1000L)).getOrElse(0)
+          val sleepTime: Long = targetFramePeriod.map(fp => fp - frameElapsedTime/(1000L*1000L)).getOrElse(0)
 
-        if(sleepTime > 0) {
-          Thread.sleep(sleepTime)
-        } else if(sleepTime < 0) {
-          logger.warning(s"negative sleep time. target frame period: $targetFramePeriod, elapsed time: ${frameElapsedTime/(1000*1000)}.")
+          if(sleepTime > 0) {
+            Thread.sleep(sleepTime)
+          } else if(sleepTime < 0) {
+            logger.warning(s"negative sleep time. target frame period: $targetFramePeriod, elapsed time: ${frameElapsedTime/(1000*1000)}.")
+          }
+        }
+      } catch {
+        case e: Exception => {
+          println("A fatal error happened")
+          e.printStackTrace()
         }
       }
 
       Scheduler.shutdown()
+      System.exit()
     }
   }
 

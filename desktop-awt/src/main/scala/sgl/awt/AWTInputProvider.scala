@@ -4,8 +4,69 @@ package awt
 import java.awt.event._
 import sgl.util._
 
-trait AWTInputProvider extends InputProvider {
-  this: AWTWindowProvider with LoggingProvider =>
+import scala.collection.mutable.{Queue, HashSet}
+
+// This is an internal object that we re-use as part of an object pool. Its
+// fields will always be overriden when a new instance is created.
+class InputEvent {
+  var eventType: InputEvent.EventType = InputEvent.MousePressed
+  var mouseEvent: MouseEvent = null
+  var keyEvent: KeyEvent = null
+}
+
+object InputEvent {
+  sealed trait EventType
+  case object MousePressed extends EventType
+  case object MouseReleased extends EventType
+  case object MouseMoved extends EventType
+
+  case object KeyPressed extends EventType
+  case object KeyReleased extends EventType
+}
+
+trait AWTInputProvider {
+  this: AWTWindowProvider =>
+
+  
+  private val pool = new Pool(() => new InputEvent, 15)
+
+  val inputEventsQueue = new Queue[InputEvent]
+
+
+  def processInputEvents(): Unit = {
+    while(inputEventsQueue.nonEmpty) {
+      val event = inputEventsQueue.dequeue()
+
+      event.eventType match {
+        case InputEvent.MousePressed => {
+          val e = event.mouseEvent
+          Input.inputProcessor.mouseDown(e.getX, e.getY, mouseEventButton(e))
+        }
+        case InputEvent.MouseReleased => {
+          val e = event.mouseEvent
+          Input.inputProcessor.mouseUp(e.getX, e.getY, mouseEventButton(e))
+        }
+        case InputEvent.MouseMoved => {
+          val e = event.mouseEvent
+          Input.inputProcessor.mouseMoved(e.getX, e.getY)
+        }
+        case InputEvent.KeyPressed => {
+          val e = event.keyEvent
+          keyEventKey(e).foreach(key => {
+            Input.inputProcessor.keyDown(key)
+          })
+        }
+        case InputEvent.KeyReleased => {
+          val e = event.keyEvent
+          keyEventKey(e).foreach(key => {
+            Input.inputProcessor.keyUp(key)
+          })
+        }
+      }
+
+      pool.release(event)
+    }
+  }
 
   private def mouseEventButton(e: MouseEvent): Input.MouseButtons.MouseButton = {
     if(javax.swing.SwingUtilities.isLeftMouseButton(e))
@@ -18,6 +79,9 @@ trait AWTInputProvider extends InputProvider {
       Input.MouseButtons.Left
   }
 
+  // TODO: probably leads to lots of garbage collection, we should not create all
+  // these Some objects.
+  // TODO: there must be a way to turn a partial match into a map structure?
   private def keyEventKey(e: KeyEvent): Option[Input.Keys.Key] = e.getKeyCode match {
     case KeyEvent.VK_SPACE => Some(Input.Keys.Space)
 
@@ -71,10 +135,16 @@ trait AWTInputProvider extends InputProvider {
     gameCanvas.addMouseListener(new MouseAdapter() {
       override def mouseClicked(e: MouseEvent): Unit = { }
       override def mousePressed(e: MouseEvent): Unit = {
-        Input.newEvent(Input.MouseDownEvent(e.getX, e.getY, mouseEventButton(e)))
+        val event = pool.acquire()
+        event.eventType = InputEvent.MousePressed
+        event.mouseEvent = e
+        inputEventsQueue.enqueue(event)
       }
       override def mouseReleased(e: MouseEvent): Unit = {
-        Input.newEvent(Input.MouseUpEvent(e.getX, e.getY, mouseEventButton(e)))
+        val event = pool.acquire()
+        event.eventType = InputEvent.MouseReleased
+        event.mouseEvent = e
+        inputEventsQueue.enqueue(event)
       }
     })
     gameCanvas.addMouseMotionListener(new MouseAdapter() {
@@ -83,23 +153,45 @@ trait AWTInputProvider extends InputProvider {
       //the dragged can be detected with the MouseDownEvent happening
       //before
       override def mouseDragged(e: MouseEvent): Unit = {
-        Input.newEvent(Input.MouseMovedEvent(e.getX, e.getY))
+        val event = pool.acquire()
+        event.eventType = InputEvent.MouseMoved
+        event.mouseEvent = e
+        inputEventsQueue.enqueue(event)
       }
       override def mouseMoved(e: MouseEvent): Unit = {
-        Input.newEvent(Input.MouseMovedEvent(e.getX, e.getY))
+        val event = pool.acquire()
+        event.eventType = InputEvent.MouseMoved
+        event.mouseEvent = e
+        inputEventsQueue.enqueue(event)
       }
     })
 
     gameCanvas.addKeyListener(new KeyListener() {
+      private var currentlyPressed = new HashSet[Int]
+
       override def keyPressed(e: KeyEvent): Unit = {
-        keyEventKey(e).foreach(key => {
-          Input.newEvent(Input.KeyDownEvent(key))
-        })
+        // keyPressed event will actually automatically repeat the key event
+        // if it's remaining pressed for some time. This seems to be an OS-behavior
+        // and might even be JVM-platform-dependent. For us, all we want is to
+        // prevent such a repeat from being exposed to the game code, so we detect
+        // these and filter out.
+        // Also, as far as my tests go, even if the KeyPressed is repeated, the
+        // KeyReleased event will only occur once, at the very end.
+        if(currentlyPressed.contains(e.getKeyCode))
+          return
+        currentlyPressed.add(e.getKeyCode)
+
+        val event = pool.acquire()
+        event.eventType = InputEvent.KeyPressed
+        event.keyEvent = e
+        inputEventsQueue.enqueue(event)
       }
       override def keyReleased(e: KeyEvent): Unit = {
-        keyEventKey(e).foreach(key => {
-          Input.newEvent(Input.KeyUpEvent(key))
-        })
+        currentlyPressed.remove(e.getKeyCode)
+        val event = pool.acquire()
+        event.eventType = InputEvent.KeyReleased
+        event.keyEvent = e
+        inputEventsQueue.enqueue(event)
       }
       override def keyTyped(e: KeyEvent): Unit = {}
     })

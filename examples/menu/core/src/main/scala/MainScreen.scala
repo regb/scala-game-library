@@ -8,7 +8,7 @@ import scene.ui._
 import util._
 
 trait ScreensComponent {
-  this: GraphicsProvider with InputProvider with SystemProvider with WindowProvider 
+  this: GraphicsProvider with SystemProvider with WindowProvider 
   with GameStateComponent with LoggingProvider
   with ViewportComponent with SceneComponent with PopupsComponent =>
 
@@ -37,9 +37,13 @@ trait ScreensComponent {
         val color = Graphics.defaultPaint.withColor(Graphics.Color.Green)
         canvas.drawRect(x, y, width, height, color)
       }
+
+      override def notifyMoved(x: Float, y: Float): Unit = {
+        println("moved")
+      }
     }
     for(i <- 1 to 100) {
-      val button = new LevelButton(i, 20, i*50)
+      val button = new LevelButton(i, 20, (i*50).toFloat)
       levelsPane.addNode(button)
     }
     val dialog =
@@ -56,20 +60,10 @@ trait ScreensComponent {
       }
     scene.addNode(dialog)
 
-    def processInputs(): Unit = {
-      Input.pollEvent() match {
-        case Some(event) =>
-          event match {
-            case Input.KeyDownEvent(Input.Keys.P) => dialog.show()
-            case _ => scene.processInput(event)
-          }
-          processInputs()
-        case None => ()
-      }
-    }
+    Input.setInputProcessor(scene)
+            //case Input.KeyDownEvent(Input.Keys.P) => dialog.show()
 
     override def update(dt: Long): Unit = {
-      processInputs()
       scene.update(dt)
     }
 

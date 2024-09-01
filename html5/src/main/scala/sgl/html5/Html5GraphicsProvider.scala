@@ -159,10 +159,10 @@ trait Html5GraphicsProvider extends GraphicsProvider {
           if(js.Dynamic.global.document.fonts.check(s"1em $fontName").asInstanceOf[Boolean]) {
             loader.success(Html5Font(fontName, Normal, 10))
           } else {
-            dom.window.setTimeout(() => tryCompleteLoader, 30)
+            dom.window.setTimeout(() => tryCompleteLoader(), 30)
           }
         }
-        dom.window.setTimeout(() => tryCompleteLoader, 30)
+        dom.window.setTimeout(() => tryCompleteLoader(), 30)
         loader
       }
 
@@ -218,8 +218,8 @@ trait Html5GraphicsProvider extends GraphicsProvider {
       // The width/height are the transformed width/height of the canvas, if you
       // use the width/height properties of the canvas, that would return the
       // original canvas (or the real HTML physical dimensions on the original page).
-      var width: Float = canvas.width
-      var height: Float = canvas.height
+      var width: Float = canvas.width.toFloat
+      var height: Float = canvas.height.toFloat
       
       val context = canvas.getContext("2d").asInstanceOf[Ctx2D]
 

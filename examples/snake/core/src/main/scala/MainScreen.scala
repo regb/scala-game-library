@@ -7,7 +7,7 @@ import scene._
 import util._
 
 trait MainScreenComponent {
-  self: GraphicsProvider with InputProvider with GameStateComponent with WindowProvider
+  self: GraphicsProvider with GameStateComponent with WindowProvider
   with LoggingProvider with SystemProvider =>
 
   import Graphics._
@@ -59,17 +59,23 @@ trait MainScreenComponent {
       }
     }
 
+    private var userDirection: Vec = snake(0) - snake(1)
+    Input.setInputProcessor(new InputProcessor {
+      override def keyDown(key: Input.Keys.Key): Boolean = {
+        key match {
+          case Input.Keys.Up    => userDirection = Up
+          case Input.Keys.Down  => userDirection = Down
+          case Input.Keys.Left  => userDirection = Left
+          case Input.Keys.Right => userDirection = Right
+          case _ => ()
+        }
+        true
+      }
+    })
+
     override def fixedUpdate(): Unit = {
       val head :: second :: rest = snake
-      val direction              = head - second
-      var userDirection: Vec = direction
-      Input.processEvents(e => e match {
-        case Input.KeyDownEvent(Input.Keys.Up)    => userDirection = Up
-        case Input.KeyDownEvent(Input.Keys.Down)  => userDirection = Down
-        case Input.KeyDownEvent(Input.Keys.Left)  => userDirection = Left
-        case Input.KeyDownEvent(Input.Keys.Right) => userDirection = Right
-        case _ => ()
-      })
+      val direction = head - second
 
       if(head + userDirection != second)
         move(head + userDirection)
@@ -81,13 +87,13 @@ trait MainScreenComponent {
     def newApple(): Point = {
       var pos = Point(0, 0)
       do {
-        pos = Point(rand.nextInt(NbCols), rand.nextInt(NbRows))
+        pos = Point(rand.nextInt(NbCols).toFloat, rand.nextInt(NbRows).toFloat)
       } while (snake.exists(_ == pos))
       pos
     }
 
     def drawSquare(canvas: Canvas, point: Point, paint: Paint) = {
-      canvas.drawRect(point.x * squareSize, point.y * squareSize, squareSize, squareSize, paint)
+      canvas.drawRect(point.x * squareSize, point.y * squareSize.toFloat, squareSize.toFloat, squareSize.toFloat, paint)
     }
 
     def drawSnake(canvas: Canvas): Unit = {
@@ -100,7 +106,7 @@ trait MainScreenComponent {
     }
 
     override def render(canvas: Canvas): Unit = {
-      canvas.drawRect(0, 0, Window.width, Window.height, defaultPaint.withColor(Color.Black))
+      canvas.drawRect(0, 0, Window.width.toFloat, Window.height.toFloat, defaultPaint.withColor(Color.Black))
       drawApple(canvas)
       drawSnake(canvas)
     }

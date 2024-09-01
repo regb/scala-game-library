@@ -9,7 +9,7 @@ import sgl.util.metrics.InstrumentationProvider
 import tiled._
 
 trait MainScreenComponent extends ViewportComponent with TiledMapRendererComponent {
-  this: GraphicsProvider with InputProvider with SystemProvider with WindowProvider with AudioProvider
+  this: GraphicsProvider with SystemProvider with WindowProvider with AudioProvider
   with GameStateComponent with InstrumentationProvider
   with LoggingProvider with TmxJsonParserComponent =>
 
@@ -17,7 +17,7 @@ trait MainScreenComponent extends ViewportComponent with TiledMapRendererCompone
 
   private implicit val LogTag = Logger.Tag("main-screen")
 
-  private val dt: Long = 5l
+  private val dt: Long = 5L
 
   class MainScreen extends FixedTimestepGameScreen(dt) {
 
@@ -44,7 +44,7 @@ trait MainScreenComponent extends ViewportComponent with TiledMapRendererCompone
     override def onLoaded(): Unit = {
       map = levelLoader.value.get.get
       tiledMapRenderer = tiledMapRendererLoader.value.get.get
-      viewport.setCamera(0, 0, map.totalWidth, map.totalHeight)
+      viewport.setCamera(0, 0, map.totalWidth.toFloat, map.totalHeight.toFloat)
       viewport.scalingStrategy = Viewport.Fit
       val objectLayer = map.objectLayer("GameObjects")
       playerRect = objectLayer("player").asInstanceOf[TiledMapRect].rect
@@ -57,14 +57,11 @@ trait MainScreenComponent extends ViewportComponent with TiledMapRendererCompone
     private var totalTime: Long = 0
     override def fixedUpdate(): Unit = {
       totalTime += dt
-      InputHelpers.processEvents(e => e match {
-        case _ => ()
-      })
 
-      if(Inputs.Keyboard.left) {
+      if(Input.isKeyPressed(Input.Keys.Left)) {
         playerRect.left = playerRect.left - 0.15f*dt
       }
-      if(Inputs.Keyboard.right) {
+      if(Input.isKeyPressed(Input.Keys.Right)) {
         playerRect.left = playerRect.left + 0.15f*dt
       }
       val collidingX = solidCollisionLayers.exists(tl => {
@@ -76,10 +73,10 @@ trait MainScreenComponent extends ViewportComponent with TiledMapRendererCompone
         oldPlayerRect.left = playerRect.left
       }
 
-      if(Inputs.Keyboard.up) {
+      if(Input.isKeyPressed(Input.Keys.Up)) {
         playerRect.top = playerRect.top - 0.15f*dt
       }
-      if(Inputs.Keyboard.down) {
+      if(Input.isKeyPressed(Input.Keys.Down)) {
         playerRect.top = playerRect.top + 0.15f*dt
       }
       val collidingY = solidCollisionLayers.exists(tl => {
@@ -105,9 +102,9 @@ trait MainScreenComponent extends ViewportComponent with TiledMapRendererCompone
         canvas.drawOval(goalEllipse.x, goalEllipse.y, goalEllipse.width, goalEllipse.height, playerPaint)
       }
 
-      canvas.translate(0, Window.height)
+      canvas.translate(0, Window.height.toFloat)
       Metrics.renderMetrics(canvas, metricsPaint)
-      canvas.translate(0, -Window.height)
+      canvas.translate(0, -Window.height.toFloat)
     }
 
   }

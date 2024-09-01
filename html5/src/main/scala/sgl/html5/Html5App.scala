@@ -47,8 +47,8 @@ trait Html5App extends GameApp
    * some scaling at runtime.
    */
   def prepareCanvas(canvas: html.Canvas): Unit = {
-    canvas.style.width = canvas.width + "px"
-    canvas.style.height = canvas.height + "px"
+    canvas.style.width = s"${canvas.width}px"
+    canvas.style.height = s"${canvas.height}px"
     canvas.width = (dom.window.devicePixelRatio*canvas.width).toInt
     canvas.height = (dom.window.devicePixelRatio*canvas.height).toInt
   }
@@ -78,15 +78,15 @@ trait Html5App extends GameApp
     // own throttling to around 4ms. If the queue is empty, we can schedule with our
     // own throttling.
     def runScheduler(): Unit = {
-      if(Scheduler.run(5l)) {
+      if(Scheduler.run(5L)) {
         // No more tasks, so we can set the next timeout a bit later.
-        dom.window.setTimeout(() => runScheduler(), 20l)
+        dom.window.setTimeout(() => runScheduler(), 20L)
       } else {
         // More work to do, schedule as soon as possible.
         dom.window.setTimeout(() => runScheduler(), 0)
       }
     }
-    dom.window.setTimeout(() => runScheduler, 50l)
+    dom.window.setTimeout(() => runScheduler(), 50L)
 
     lifecycleListener.startup()
     lifecycleListener.resume()
@@ -131,7 +131,7 @@ trait Html5App extends GameApp
       dom.window.requestAnimationFrame(t => frameCode(t))
     } else {
       logger.warning("window.requestAnimationFrame not supported, fallback to setInterval for the game loop")
-      dom.window.setInterval(() => frameCode(js.Date.now), targetFramePeriod.map(_.toDouble).getOrElse(1000d/30d))
+      dom.window.setInterval(() => frameCode(js.Date.now()), targetFramePeriod.map(_.toDouble).getOrElse(1000d/30d))
     }
 
   }

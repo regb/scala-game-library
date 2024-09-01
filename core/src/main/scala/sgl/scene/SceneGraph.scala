@@ -4,7 +4,7 @@ package scene
 import scala.collection.mutable.HashMap
 
 trait SceneGraphComponent {
-  this: GraphicsProvider with InputProvider with SystemProvider with ViewportComponent =>
+  this: GraphicsProvider with SystemProvider with ViewportComponent =>
 
   import Input._
 
@@ -26,7 +26,7 @@ trait SceneGraphComponent {
     * (likely less efficient) abstraction on top of the core providers of
     * graphics and other platform features.
     */
-  class SceneGraph(width: Int, height: Int, val viewport: Viewport) {
+  class SceneGraph(width: Int, height: Int, val viewport: Viewport) extends InputProcessor {
     // TODO: should width and height also be float? What do they mean exactly?
 
     /*
@@ -37,7 +37,8 @@ trait SceneGraphComponent {
      */
     private val downEvents: HashMap[Int, (SceneNode, (Float, Float, Long))] = new HashMap
 
-    /** Process an input event in the graph.
+     /* The SceneGraph is an InputProcessor and act as the dispatcher of events for the entire
+      * scene.
       *
       * Each input you wish to handle in the Scene must be processed by the SceneGraph 
       * in order to dispatch it to the right node. The SceneGraph returns true if
@@ -57,102 +58,98 @@ trait SceneGraphComponent {
       * input hit some node in the graph, thus it can be considered as
       * intercepted and not processed further.
       */
-    def processInput(input: Input.InputEvent): Boolean = {
-      val hitPosition: Option[(Float, Float)] = input match {
-        case MouseDownEvent(x, y, _) => Some(viewport.screenToWorld(x, y))
-        case MouseMovedEvent(x, y) => Some(viewport.screenToWorld(x, y))
-        case MouseUpEvent(x, y, _) => Some(viewport.screenToWorld(x, y))
-        case TouchDownEvent(x, y, _) => Some(viewport.screenToWorld(x, y))
-        case TouchMovedEvent(x, y, _) => Some(viewport.screenToWorld(x, y))
-        case TouchUpEvent(x, y, _) => Some(viewport.screenToWorld(x, y))
-        case _ => None
-      }
 
-      val hitNode: Option[SceneNode] = hitPosition.flatMap{case (x, y) => root.hit(x, y)}
-    
-      input match {
-        case MouseMovedEvent(x, y) =>
-          downEvents.get(0).foreach{ case (n, _) => {
-            val (wx, wy) = viewport.screenToWorld(x, y)
-            val hitNode = root.hit(wx, wy)
-            if(!hitNode.exists(_ == n)) { // we just left the node that we were pressing down.
-              n.notifyPointerLeave()
-              downEvents.remove(0)
-            }
-          }}
-        case TouchMovedEvent(x, y, p) =>
-          downEvents.get(p).foreach{ case (n, _) => {
-            val (wx, wy) = viewport.screenToWorld(x, y)
-            val hitNode = root.hit(wx, wy)
-            if(!hitNode.exists(_ == n)) { // we just left the node that we were touching down.
-              n.notifyPointerLeave()
-              downEvents.remove(p)
-            }
-          }}
-        case _ => ()
-      }
 
-      hitNode match {
-        case None => false
-        case Some(node) => {
-          input match {
-            case MouseDownEvent(x, y, _) =>
-              val (wx, wy) = viewport.screenToWorld(x, y)
-              // TODO: using currentTimeMillis might not be the best.
-              downEvents(0) = (node, (wx, wy, System.currentTimeMillis))
-              node.notifyDown(wx, wy)
-              true
-            case TouchDownEvent(x, y, p) =>
-              // TODO: What to do with multi touch? Should we actually block that event if already in?
-              // TODO: using currentTimeMillis might not be the best.
-              val (wx, wy) = viewport.screenToWorld(x, y)
-              downEvents(p) = (node, (wx, wy, System.currentTimeMillis))
-              node.notifyDown(wx, wy)
-              true
-
-            case MouseMovedEvent(x, y) =>
-              val (wx, wy) = viewport.screenToWorld(x, y)
-              node.notifyMoved(wx, wy)
-              false
-            case TouchMovedEvent(x, y, p) =>
-              val (wx, wy) = viewport.screenToWorld(x, y)
-              node.notifyMoved(wx, wy)
-              false
-
-            case MouseUpEvent(x, y, _) =>
-              val (wx, wy) = viewport.screenToWorld(x, y)
-              node.notifyUp(wx, wy)
-              downEvents.get(0) match {
-                case None => // means that the downEvents was cleaned because the mouse left the node
-                  ()
-                case Some((n, (owx, owy, t))) =>
-                  // TODO: using currentTimeMillis might not be the best.
-                  val duration = System.currentTimeMillis - t
-                  if(node == n && node.mouseClickCondition((wx-owx), (wy-owy), duration)) {
-                    node.notifyClick(wx, wy)
-                  } // else means that the up event is in a different component
-              }
-              downEvents.remove(0)
-              true
-            case TouchUpEvent(x, y, p) =>
-              val (wx, wy) = viewport.screenToWorld(x, y)
-              node.notifyUp(wx, wy)
-              downEvents.get(p).foreach{ case (n, (owx, owy, t)) => {
-                val duration = System.currentTimeMillis - t
-                if(node == n && node.touchClickCondition((wx-owx), (wy-owy), duration)) {
-                  node.notifyClick(wx, wy)
-                } // else means that the up event is in a different component
-              }}
-              downEvents.remove(p)
-              true
-
-            case _ =>
-              throw new Exception("Should never reach that point")
-          }
+    override def mouseMoved(x: Int, y: Int): Boolean = {
+      val (wx, wy) = viewport.screenToWorld(x, y)
+      val hitNode = root.hit(wx, wy)
+      downEvents.get(0).foreach{ case (n, _) => {
+        if(!hitNode.exists(_ == n)) { // we just left the node that we were pressing down.
+          n.notifyPointerLeave()
+          downEvents.remove(0)
         }
+      }}
+      hitNode.foreach(_.notifyMoved(wx, wy))
+      false
+    }
+    override def touchMoved(x: Int, y: Int, p: Int): Boolean = {
+      val (wx, wy) = viewport.screenToWorld(x, y)
+      val hitNode = root.hit(wx, wy)
+      downEvents.get(p).foreach{ case (n, _) => {
+        if(!hitNode.exists(_ == n)) { // we just left the node that we were pressing down.
+          n.notifyPointerLeave()
+          downEvents.remove(p)
+        }
+      }}
+      hitNode.foreach(_.notifyMoved(wx, wy))
+      false
+    }
+
+    override def mouseDown(x: Int, y: Int, b: Input.MouseButtons.MouseButton): Boolean = {
+      val (wx, wy) = viewport.screenToWorld(x, y)
+      root.hit(wx, wy) match {
+        case Some(node) => {
+          // TODO: using currentTimeMillis might not be the best.
+          downEvents(0) = (node, (wx, wy, System.currentTimeMillis))
+          node.notifyDown(wx, wy)
+          true
+        }
+        case None => false
       }
     }
-  
+    override def touchDown(x: Int, y: Int, p: Int): Boolean = {
+      val (wx, wy) = viewport.screenToWorld(x, y)
+      root.hit(wx, wy) match {
+        case Some(node) => {
+          // TODO: What to do with multi touch? Should we actually block that event if already in?
+          // TODO: using currentTimeMillis might not be the best.
+          downEvents(p) = (node, (wx, wy, System.currentTimeMillis))
+          node.notifyDown(wx, wy)
+          true
+        }
+        case None => false
+      }
+    }
+
+    override def mouseUp(x: Int, y: Int, b: Input.MouseButtons.MouseButton): Boolean = {
+      val (wx, wy) = viewport.screenToWorld(x, y)
+      root.hit(wx, wy) match {
+        case Some(node) => {
+          node.notifyUp(wx, wy)
+          downEvents.get(0) match {
+            case None => // means that the downEvents was cleaned because the mouse left the node
+              ()
+            case Some((n, (owx, owy, t))) =>
+              // TODO: using currentTimeMillis might not be the best.
+              val duration = System.currentTimeMillis - t
+              if(node == n && node.mouseClickCondition((wx-owx), (wy-owy), duration)) {
+                node.notifyClick(wx, wy)
+              } // else means that the up event is in a different component
+          }
+          downEvents.remove(0)
+          true
+        }
+        case None => false
+      }
+    }
+    override def touchUp(x: Int, y: Int, p: Int): Boolean = {
+      val (wx, wy) = viewport.screenToWorld(x, y)
+      root.hit(wx, wy) match {
+        case Some(node) => {
+          node.notifyUp(wx, wy)
+          downEvents.get(p).foreach{ case (n, (owx, owy, t)) => {
+            val duration = System.currentTimeMillis - t
+            if(node == n && node.touchClickCondition((wx-owx), (wy-owy), duration)) {
+              node.notifyClick(wx, wy)
+            } // else means that the up event is in a different component
+          }}
+          downEvents.remove(p)
+          true
+        }
+        case None => false
+      }
+    }
+
     def update(dt: Long): Unit = root.update(dt)
   
     def render(canvas: Graphics.Canvas): Unit = {
@@ -169,7 +166,7 @@ trait SceneGraphComponent {
       * the whole scene to manage the list of nodes added to
       * it.
       */
-    val root: SceneGroup = new SceneGroup(0, 0, width, height)
+    val root: SceneGroup = new SceneGroup(0, 0, width.toFloat, height.toFloat)
 
     /** Add a node at the root level of the scene
       *
@@ -362,8 +359,8 @@ trait SceneGraphComponent {
   
     final override def render(canvas: Graphics.Canvas): Unit = {
       canvas.withSave {
-        canvas.translate(x.toInt, y.toInt)
-        canvas.clipRect(0, 0, width.toInt, height.toInt)
+        canvas.translate(x, y)
+        canvas.clipRect(0, 0, width, height)
 
         nodes.reverse.foreach(_.render(canvas))
       }
@@ -395,7 +392,7 @@ trait SceneGraphComponent {
     * This uses the dimensions of the bitmap to set the node dimensions.
     * Update does nothing (it's a static bitmap) and render renders it.
     */
-  class BitmapNode(bitmap: Graphics.BitmapRegion, _x: Float, _y: Float) extends SceneNode(_x, _y, bitmap.width, bitmap.height) {
+  class BitmapNode(bitmap: Graphics.BitmapRegion, _x: Float, _y: Float) extends SceneNode(_x, _y, bitmap.width.toFloat, bitmap.height.toFloat) {
     // TODO: this is probably not a good design to have such a node, instead we should migrate towards game object + attached
     // components, and to render simple bitmaps we should just attach a sprite renderer.
     // One problem with this is that it doesn't adapt well to the automated scaling of bitmaps depending on density.

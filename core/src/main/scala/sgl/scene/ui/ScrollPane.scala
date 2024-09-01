@@ -6,7 +6,7 @@ import scala.collection.mutable.HashSet
 
 trait ScrollPaneComponent {
   this: SceneGraphComponent with ViewportComponent
-  with GraphicsProvider with InputProvider with SystemProvider with WindowProvider =>
+  with GraphicsProvider with SystemProvider with WindowProvider =>
 
   /** A scrollable pane to hold SceneNodes.
     *
