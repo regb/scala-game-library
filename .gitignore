@@ -9,3 +9,4 @@ project/metals.sbt
 *.tiled-project
 *.tiled-session
 .DS_Store
+.bsp
