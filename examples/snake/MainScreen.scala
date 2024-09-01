@@ -34,7 +34,7 @@ trait MainScreenComponent {
 
     val snakeHeadPaint = defaultPaint.withColor(Color.Green)
     val snakePaint = defaultPaint.withColor(Color.Blue)
-    val applePaint = defaultPaint.withColor(Color.Red)
+    val applePaint = defaultPaint.withColor(Color.Yellow)
 
     def gameOver(): Unit = {
       println("game over")

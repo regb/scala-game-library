@@ -2,6 +2,7 @@ package sgl
 package proxy
 
 import sgl.util._
+import scala.util.Failure
 
 
 trait ProxyGraphicsProvider extends GraphicsProvider {
@@ -11,7 +12,10 @@ trait ProxyGraphicsProvider extends GraphicsProvider {
 
   object ProxyGraphics extends Graphics {
 
-    override def loadImage(path: ResourcePath): Loader[Bitmap] = PlatformProxy.graphicsProxy.loadImage(path.path).map(b => ProxyBitmap(b))
+    override def loadImage(path: ResourcePath): Loader[Bitmap] = PlatformProxy.graphicsProxy.loadImage(path.path).transform {
+      case Failure(_: ProxyResourceNotFoundException) => Failure(ResourceNotFoundException(path))
+      case other => other
+    }.map(b => ProxyBitmap(b))
 
     case class ProxyBitmap(bitmap: BitmapProxy) extends AbstractBitmap {
       override def height: Int = bitmap.height
@@ -31,7 +35,10 @@ trait ProxyGraphicsProvider extends GraphicsProvider {
 
     object ProxyFontCompanion extends FontCompanion {
       override def create(family: String, style: Style, size: Int): Font = ProxyFont(PlatformProxy.graphicsProxy.fontCompanionProxy.create(family, fromStyle(style), size))
-      override def load(path: ResourcePath): Loader[Font] = PlatformProxy.graphicsProxy.fontCompanionProxy.load(path.path).map(f => ProxyFont(f))
+      override def load(path: ResourcePath): Loader[Font] = PlatformProxy.graphicsProxy.fontCompanionProxy.load(path.path).transform {
+        case Failure(_: ProxyResourceNotFoundException) => Failure(ResourceNotFoundException(path))
+        case other => other
+      }.map(f => ProxyFont(f))
       override def Default: Font = ProxyFont(PlatformProxy.graphicsProxy.fontCompanionProxy.Default)
       override def DefaultBold: Font = ProxyFont(PlatformProxy.graphicsProxy.fontCompanionProxy.DefaultBold)
       override def Monospace: Font = ProxyFont(PlatformProxy.graphicsProxy.fontCompanionProxy.Monospace)

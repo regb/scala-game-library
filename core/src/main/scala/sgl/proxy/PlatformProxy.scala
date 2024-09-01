@@ -2,6 +2,7 @@ package sgl
 package proxy
 
 import sgl.util._
+import java.util.{List => JList, Map => JMap}
 
 /** A platform abstraction to define for implementing a backend of SGL.
  *
@@ -35,11 +36,38 @@ trait PlatformProxy {
   val graphicsProxy: GraphicsProxy
   val schedulerProxy: SchedulerProxy
   val audioProxy: AudioProxy
+  val loggerProxy: LoggerProxy
+  val jsonProxy: JsonProxy
 }
+
+case class ProxyResourceNotFoundException(path: ResourcePathProxy) extends Exception("Resource " + path.toString + " not found")
 
 trait ResourcePathProxy {
   def / (filename: String): ResourcePathProxy
   def extension: Option[String]
+}
+
+trait LoggerProxy {
+  /** Same ordinal convention as LoggingProvider.Logger.LogLevel. */
+  def logLevelOrdinal: Int
+  def error(tag: String, msg: String): Unit
+  def warning(tag: String, msg: String): Unit
+  def info(tag: String, msg: String): Unit
+  def debug(tag: String, msg: String): Unit
+  def trace(tag: String, msg: String): Unit
+}
+
+trait JsonProxy {
+  def parse(raw: String): AnyRef
+  def select(ast: AnyRef, field: String): AnyRef
+  def jNothing: AnyRef
+  def isJNothing(ast: AnyRef): Boolean
+  def isJNull(ast: AnyRef): Boolean
+  def asString(ast: AnyRef): Option[String]
+  def asNumber(ast: AnyRef): Option[Double]
+  def asBoolean(ast: AnyRef): Option[Boolean]
+  def objectFields(ast: AnyRef): JMap[String, AnyRef]
+  def arrayItems(ast: AnyRef): JList[AnyRef]
 }
 
 trait SystemProxy {
@@ -48,7 +76,12 @@ trait SystemProxy {
   def nanoTime: Long
   def loadText(path: ResourcePathProxy): Loader[Array[String]]
   def loadBinary(path: ResourcePathProxy): Loader[Array[Byte]]
-  def openWebpage(uri: java.net.URI): Unit 
+  def openWebpage(uri: java.net.URI): Unit
+  def openGooglePlayApp(id: String, params: Map[String, String]): Unit = {
+    val base = s"https://play.google.com/store/apps/details?id=$id"
+    val uri = new java.net.URI(base + params.map{ case (k, v) => s"&$k=$v"}.mkString)
+    openWebpage(uri)
+  }
 }
 
 trait WindowProxy {
@@ -144,8 +177,8 @@ trait SchedulerProxy {
 }
 
 trait AudioProxy {
-  def loadSound(path: ResourcePathProxy): Loader[SoundProxy]
-  def loadMusic(path: ResourcePathProxy): Loader[MusicProxy]
+  def loadSound(path: ResourcePathProxy, extras: java.util.List[ResourcePathProxy]): Loader[SoundProxy]
+  def loadMusic(path: ResourcePathProxy, extras: java.util.List[ResourcePathProxy]): Loader[MusicProxy]
 }
 
 trait SoundProxy {

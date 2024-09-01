@@ -2,6 +2,7 @@ package sgl
 package proxy
 
 import sgl.util._
+import scala.util.Failure
 
 trait ProxySystemProvider extends SystemProvider {
 
@@ -11,9 +12,16 @@ trait ProxySystemProvider extends SystemProvider {
     def exit(): Unit = PlatformProxy.systemProxy.exit()
     def currentTimeMillis: Long = PlatformProxy.systemProxy.currentTimeMillis
     def nanoTime: Long = PlatformProxy.systemProxy.nanoTime
-    def loadText(path: ResourcePath): Loader[Array[String]] = PlatformProxy.systemProxy.loadText(path.path)
-    def loadBinary(path: ResourcePath): Loader[Array[Byte]] = PlatformProxy.systemProxy.loadBinary(path.path)
+    def loadText(path: ResourcePath): Loader[Array[String]] = PlatformProxy.systemProxy.loadText(path.path).transform {
+      case Failure(_: ProxyResourceNotFoundException) => Failure(ResourceNotFoundException(path))
+      case other => other
+    }
+    def loadBinary(path: ResourcePath): Loader[Array[Byte]] = PlatformProxy.systemProxy.loadBinary(path.path).transform {
+      case Failure(_: ProxyResourceNotFoundException) => Failure(ResourceNotFoundException(path))
+      case other => other
+    }
     def openWebpage(uri: java.net.URI): Unit  = PlatformProxy.systemProxy.openWebpage(uri)
+    override def openGooglePlayApp(id: String, params: Map[String, String]): Unit = PlatformProxy.systemProxy.openGooglePlayApp(id, params)
   }
   override val System: System = ProxySystem
 
