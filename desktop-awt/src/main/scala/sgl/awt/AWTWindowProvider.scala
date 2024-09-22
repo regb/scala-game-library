@@ -79,7 +79,6 @@ trait AWTWindowProvider extends WindowProvider {
      */
     override def xppi: Float = ScreenForcePPI.getOrElse(Toolkit.getDefaultToolkit().getScreenResolution().toFloat)
     override def yppi: Float = ScreenForcePPI.getOrElse(Toolkit.getDefaultToolkit().getScreenResolution().toFloat)
-    override def ppi: Float = ScreenForcePPI.getOrElse(Toolkit.getDefaultToolkit().getScreenResolution().toFloat)
 
     override def logicalPpi: Float = ScreenForcePPI.getOrElse(Toolkit.getDefaultToolkit().getScreenResolution().toFloat)
   }

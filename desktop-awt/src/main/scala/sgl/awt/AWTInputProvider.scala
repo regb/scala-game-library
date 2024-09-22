@@ -27,11 +27,9 @@ object InputEvent {
 trait AWTInputProvider {
   this: AWTWindowProvider =>
 
-  
   private val pool = new Pool(() => new InputEvent, 15)
 
   val inputEventsQueue = new Queue[InputEvent]
-
 
   def processInputEvents(): Unit = {
     while(inputEventsQueue.nonEmpty) {

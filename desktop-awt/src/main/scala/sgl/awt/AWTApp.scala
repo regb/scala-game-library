@@ -83,7 +83,7 @@ trait AWTApp extends GameApp
 
     println("xppi: " + Window.xppi)
     println("yppi: " + Window.yppi)
-    println("ppi: " + Window.ppi)
+    println("logical ppi: " + Window.logicalPpi)
 
     resumeThread()
   }
@@ -129,10 +129,6 @@ trait AWTApp extends GameApp
 
     var running = true
 
-    // Apparently using the buffer strategy is much more efficient.
-    //private val backBuffer = AWTGraphicsConfig.createCompatibleImage(Window.width, Window.height, Transparency.TRANSLUCENT)
-    //private val backBufferGraphics = backBuffer.createGraphics
-
     override def run(): Unit = {
 
       try {
@@ -140,7 +136,7 @@ trait AWTApp extends GameApp
 
         while(running) {
 
-          // Dispatch all input events
+          // Dispatch all input events.
           processInputEvents()
 
           val frameBeginTime: Long = java.lang.System.nanoTime

@@ -85,34 +85,31 @@ trait WindowProvider {
       */
     def height: Int 
 
-    /** The horizontal number of pixels per inch.
+    /** The exact horizontal number of pixels per inch.
       *
-      * This refers to the physical size of the pixels of the screen on which
-      * the Window is rendered. This is typically a property of the screen
-      * and will not change with different window size or resolution.
+      * This refers to the exact physical size of the pixels of the screen on
+      * which the Window is rendered. This is typically a property of the
+      * screen and will not change with different window size or resolution.
       *
       * The larger this value is, the smaller the pixels are (to the human
       * eye), and potentially the more you should use of them for drawing
       * some objects (or not, depending on the game style). Note that if
       * you have more pixels to draw the same physical size object, you 
       * naturally get a crisper image.
+      *
+      * Note that this is an exact value, and usually it is not convenient or
+      * wise to use it for scaling. It's mostly here as informational, and
+      * might only be useful in very particular situations where you want very
+      * tight control. SGL actually uses the logicalPpi, which is rounded to a
+      * bucket, for scaling calculation.
       */
     def xppi: Float
 
-    /** The vertical number of pixels per inch.
+    /** The exact vertical number of pixels per inch.
       *
       * See [[xppi]] for more details.
       */
     def yppi: Float
-
-    /** The diagnoal number of pixels per inch.
-      *
-      * See [[xppi]] and [[yppi]] for more details.
-      * 
-      * If you want to perform your own runtime scaling, use [[logicalPpi]]
-      * instead.
-      **/
-    def ppi: Float
 
     /** The screen ppi (dpi) used for scaling device-independent pixels.
       *

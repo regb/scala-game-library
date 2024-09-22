@@ -55,7 +55,6 @@ trait WindowProxy {
     def height: Int
     def xppi: Float
     def yppi: Float
-    def ppi: Float
     def logicalPpi: Float
 }
 

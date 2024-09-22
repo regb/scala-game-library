@@ -37,6 +37,7 @@ trait AWTGraphicsProvider extends GraphicsProvider {
 
         val bufferedImage = {
           val sb = ImageIO.read(url)
+
           val scaledWidth = (scalingFactor*sb.getWidth).toInt
           val scaledHeight = (scalingFactor*sb.getHeight).toInt
           // Now we copy the read buffered image into a new buffered image which

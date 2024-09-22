@@ -20,8 +20,56 @@ trait GraphicsProvider extends GraphicsHelpersComponent {
       * then the bitmap returned will be loaded from the `mdpi` resource and then scaled 2x
       * (mdpi is 160ppi, xhdpi is 320ppi, so 320/160 = 2). The returned Bitmap will be
       * bigger than the asset provided on disk.
+      *
+      * There's no guarantee that the screen density (Window.logicalPpi) will be exactly
+      * one of the buckets (mdpi, hdpi, etc), instead it could land in between two buckets
+      * (value could be 420, while xhdpi is 320 and xxhdpi is 480). However, it is guaranteed
+      * that the bitmap will have a scale that is consistent with the existing resource at
+      * the specified density, mapped into the actual screen density as returned by
+      * Window.logicalPpi. It's important that if you provide multiple resolutions for one image,
+      * you respect the relative sizes between each bucket (these are the Android official specs,
+      * from ldpi -> xxxhdpi).
+      *
+      * A game cannot assume the loaded bitmap will have a specific width and height, because
+      * there's no way to know what is the screen density. However, the bitmap will be in a
+      * consistent size, which will depend on its expected size in mdpi divided by the logicalPpi.
       */
     def loadImage(path: ResourcePath): Loader[Bitmap]
+    // We fundamentally need to abstract this multi-dpi interface, because it then enables
+    // optimization on various platforms (at least Android is taking advantage of it today).
+    // When a game runs in a low density screen, you do not need the higher density assets, and
+    // you can thus ship a smaller game to the user.
+    // It seems like in a lot of game engine, there is a single type of texture and it gets
+    // loaded exactly as it is in memory (and then all the scaling happens during rendering).
+    // This is a bit easier to use, but this means that if you want to provide higher resolution
+    // assets, you need to add some logic on top. Additionally, if your logic is fully dynamic,
+    // there's no way to do a build-time optimization of the assets and automatically build
+    // games with different resolutions (which is what Android does so that App bundles
+    // are able to ship games with different assets resolutions to different devices).
+    //
+    // As we want to preserve Android behavior, we need to auto-scale the bitmap, and potentially
+    // introduce artifacts or lose details. This is because that's the behavior of Android, it
+    // will find the closest asset and then scale it into the right density bucket.
+    // In particular, this means we can't assume the loaded bitmap will have the same size
+    // as it had on disk. This can be a problem for external tools that rely on the
+    // image data (for example, tiled, will use original pixels for various things, so these
+    // would need to be translated).
+    //
+    // There's also optimization that can be done when drawing bitmaps close to their actual
+    // native resolution. If instead of projecting the game directly into the screen, by just
+    // using a full-screen mapping, we instead draw all the assets at their natural resolution
+    // (except some background), we can get higher quality by avoiding any scaling artifacts.
+    // This might be more tricky to program, because the usual game engine approach to this is
+    // to define a camera and map everything into that camera, which might in the end require
+    // a 1.07 scaling factor for each bitmap, which could introduce small artifacts. If instead
+    // we keep all these to their native size (as loaded) and draw them without scaling, we avoid
+    // some artifacts. This requires to have more dynamic logic on where to render elements.
+    // Using the multiple dpi buckets we can roughly get assets on a size that will make sense
+    // for the given screen, and we can take advantage of this directly.
+    //
+    // TODO: Android can disable the autoscaling, so we could have a mode where there's no auto-scaling
+    // but the engine still load the most appropriate image.
+
 
     abstract class AbstractBitmap {
 
