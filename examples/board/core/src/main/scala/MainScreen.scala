@@ -47,7 +47,7 @@ trait ScreensComponent {
     override def update(dt: Long): Unit = { }
 
     override def render(canvas: Graphics.Canvas): Unit = {
-      canvas.drawColor(Graphics.Color.Red)
+      canvas.drawRect(0, 0, Window.width, Window.height, Graphics.defaultPaint.withColor(Graphics.Color.Blue))
       viewport.withViewport(canvas) {
         for(i <- 0 until 100) {
           for(j <- 0 until 100) {

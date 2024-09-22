@@ -277,24 +277,6 @@ trait AWTGraphicsProvider extends GraphicsProvider {
         text.draw(graphics, x, y)
       }
 
-      override def drawColor(color: Color): Unit = {
-	val oldTransform = graphics.getTransform
-	graphics.setTransform(new java.awt.geom.AffineTransform)
-
-        graphics.setColor(color)
-        rect.setRect(0, 0, Window.width.toFloat, Window.height.toFloat)
-        graphics.fill(rect)
-
-	graphics.setTransform(oldTransform)
-      }
-
-
-      //override def clearRect(x: Float, y: Float, width: Float, height: Float): Unit = {
-      //  graphics.setColor(Color.Black)
-      //  rect.setRect(x, y, width, height)
-      //  graphics.fill(rect)
-      //}
-
       override def renderText(text: String, width: Int, paint: Paint): TextLayout = {
         graphics.setColor(paint.color)
         graphics.setFont(paint.font.f)

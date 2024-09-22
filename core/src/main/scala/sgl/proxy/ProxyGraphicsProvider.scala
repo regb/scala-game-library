@@ -102,7 +102,6 @@ trait ProxyGraphicsProvider extends GraphicsProvider {
       override def drawLine(x1: Float, y1: Float, x2: Float, y2: Float, paint: Paint): Unit = canvas.drawLine(x1, y1, x2, y2, paint.paint)
       override def drawRect(x: Float, y: Float, width: Float, height: Float, paint: Paint): Unit = canvas.drawRect(x, y, width, height, paint.paint)
       override def drawOval(x: Float, y: Float, width: Float, height: Float, paint: Paint): Unit = canvas.drawOval(x,y,width, height, paint.paint)
-      override def drawColor(color: Color): Unit = canvas.drawColor(color)
       override def drawString(str: String, x: Float, y: Float, paint: Paint): Unit = canvas.drawString(str,x,y,paint.paint)
       override def drawText(text: TextLayout, x: Float, y: Float): Unit = canvas.drawText(text.textLayout, x, y)
       override def renderText(text: String, width: Int, paint: Paint): TextLayout = ProxyTextLayout(canvas.renderText(text, width, paint.paint))

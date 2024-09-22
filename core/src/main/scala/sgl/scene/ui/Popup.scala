@@ -45,8 +45,9 @@ trait PopupsComponent extends ButtonsComponent {
     }
 
     override def render(canvas: Canvas): Unit = {
+      val backgroundFont = Graphics.defaultPaint.withColor(backgroundColor)
       if(active) {
-        canvas.drawColor(backgroundColor)
+        canvas.drawRect(0, 0, Window.width.toFloat, Window.height.toFloat, backgroundFont)
         inner.render(canvas)
       }
     }

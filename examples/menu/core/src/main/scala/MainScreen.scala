@@ -73,7 +73,7 @@ trait ScreensComponent {
     }
 
     override def render(canvas: Graphics.Canvas): Unit = {
-      canvas.drawColor(Graphics.Color.Black)
+      canvas.drawRect(0, 0, Window.width.toFloat, Window.height.toFloat, Graphics.defaultPaint.withColor(Graphics.Color.Black))
       scene.render(canvas)
     }
 
