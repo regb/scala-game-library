@@ -239,16 +239,6 @@ trait NativeGraphicsProvider extends GraphicsProvider {
         ???
       }
   
-      override def drawColor(color: Color): Unit = {
-        glClearColor(color.red/255f, color.green/255f, color.blue/255f, color.alpha/255f)
-        glClear(GL_COLOR_BUFFER_BIT)
-      }
-  
-      // override def clearRect(x: Float, y: Float, width: Float, height: Float): Unit = {
-      //   // TODO: respect the rect.
-      //   glClear(GL_COLOR_BUFFER_BIT)
-      // }
-  
       override def renderText(text: String, width: Int, paint: Paint): TextLayout = {
         ???
       }

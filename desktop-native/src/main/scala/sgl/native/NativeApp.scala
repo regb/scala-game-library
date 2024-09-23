@@ -119,13 +119,13 @@ trait NativeApp extends GameApp
       SDL_GL_SwapWindow(window)
 
       val currentTime: Long = nanoTime
-      val timeForScheduler: Long = targetFramePeriod.map(fp => fp - (currentTime - beginTime)/(1000l*1000l)).getOrElse(10l)
+      val timeForScheduler: Long = targetFramePeriod.map(fp => fp - (currentTime - beginTime)/(1000L*1000L)).getOrElse(10L)
       Scheduler.run(timeForScheduler)
 
       val endTime: Long = nanoTime
       val elapsedTime: Long = endTime - beginTime
 
-      val sleepTime: Long = targetFramePeriod.map(fp => fp - elapsedTime/(1000l*1000l)).getOrElse(0)
+      val sleepTime: Long = targetFramePeriod.map(fp => fp - elapsedTime/(1000L*1000L)).getOrElse(0)
 
       if(sleepTime > 0) {
         SDL_Delay(sleepTime.toUInt)

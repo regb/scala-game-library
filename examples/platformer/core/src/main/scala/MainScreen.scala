@@ -94,7 +94,7 @@ trait MainScreenComponent extends ViewportComponent with TiledMapRendererCompone
     private val metricsPaint = Graphics.defaultPaint.withColor(Color.White).withFont(Graphics.Font.Monospace.withSize(20))
 
     override def render(canvas: Canvas): Unit = {
-      canvas.drawColor(BackgroundColor)
+      canvas.drawRect(0, 0, Window.width.toFloat, Window.height.toFloat, Graphics.defaultPaint.withColor(BackgroundColor))
       viewport.withViewport(canvas){
         tiledMapRenderer.render(canvas, totalTime)
 

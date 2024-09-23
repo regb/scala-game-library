@@ -122,6 +122,9 @@ object Input {
     // of forwarding events?
     inputProcessor = new CombinedInputProcessor(new StateInputProcessor(), processor)
   }
+  def clearInputProcessor(): Unit = {
+    inputProcessor = new StateInputProcessor()
+  }
 
   private val keyStates = new HashMap[Keys.Key, Boolean]
   def isKeyPressed(key: Keys.Key): Boolean = {

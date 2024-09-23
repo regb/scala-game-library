@@ -37,10 +37,6 @@ trait NativeWindowProvider extends WindowProvider {
       computePPIs()
       _yppi
     }
-    override def ppi: Float = if(_ppi != 0f) _ppi else {
-      computePPIs()
-      _ppi
-    }
 
     // TODO: rounding?
     override def logicalPpi: Float = if(_ppi != 0f) _ppi else {

@@ -58,7 +58,6 @@ trait Html5WindowProvider extends WindowProvider {
      */
     override def xppi: Float = (160*dom.window.devicePixelRatio).toFloat
     override def yppi: Float = (160*dom.window.devicePixelRatio).toFloat
-    override def ppi: Float = (160*dom.window.devicePixelRatio).toFloat
 
     /*
      * The above comment is also relevant ot the logicalPpi, but essentially

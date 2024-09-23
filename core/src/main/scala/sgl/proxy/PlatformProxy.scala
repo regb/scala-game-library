@@ -133,7 +133,6 @@ trait CanvasProxy {
   def drawLine(x1: Float, y1: Float, x2: Float, y2: Float, paint: PaintProxy): Unit
   def drawRect(x: Float, y: Float, width: Float, height: Float, paint: PaintProxy): Unit
   def drawOval(x: Float, y: Float, width: Float, height: Float, paint: PaintProxy): Unit
-  def drawColor(color: ColorProxy): Unit
   def drawString(str: String, x: Float, y: Float, paint: PaintProxy): Unit
   def drawText(text: TextLayoutProxy, x: Float, y: Float): Unit
   def renderText(text: String, width: Int, paint: PaintProxy): TextLayoutProxy

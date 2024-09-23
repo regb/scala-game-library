@@ -9,13 +9,14 @@ import scalanative.unsigned._
 import sdl2.SDL._
 import sdl2.Extras._
 
-trait NativeInputProvider extends InputProvider {
+trait NativeInputProvider {
   this: NativeWindowProvider with NativeGraphicsProvider with LoggingProvider =>
 
   private implicit val LogTag = Logger.Tag("sgl.native.input")
 
   def registerInputListeners(): Unit = { }
 
+  // Events are being processed in the game loop main thread, so they can be dispatched right away.
   def handleEvent(event: Ptr[SDL_Event]): Unit = {
     event.type_ match {
       case SDL_KEYDOWN =>
@@ -23,13 +24,13 @@ trait NativeInputProvider extends InputProvider {
         if(keyEvent.repeat == 0.toUByte) //SDL2 re-trigger events when holding the key for some time
           keycodeToEvent
           .andThen(key =>
-            Input.newEvent(Input.KeyDownEvent(key)))
+            Input.inputProcessor.keyDown(key))
           .applyOrElse(keyEvent.keysym.sym,
                        (keycode: SDL_Keycode) => logger.debug("ignoring event with keycode: " + keycode))
       case SDL_KEYUP =>
         keycodeToEvent
         .andThen(key =>
-          Input.newEvent(Input.KeyUpEvent(key)))
+          Input.inputProcessor.keyUp(key))
         .applyOrElse(event.key.keysym.sym,
                      (keycode: SDL_Keycode) => logger.debug("ignoring event with keycode: " + keycode))
 
@@ -37,19 +38,19 @@ trait NativeInputProvider extends InputProvider {
         //TODO: check 'which' field to ignore TOUCH events
         val mouseButtonEvent = event.button
         buttonToMouseButton(mouseButtonEvent.button).foreach(mb =>
-          Input.newEvent(Input.MouseDownEvent(mouseButtonEvent.x, mouseButtonEvent.y, mb))
+          Input.inputProcessor.mouseDown(mouseButtonEvent.x, mouseButtonEvent.y, mb)
         )
 
       case SDL_MOUSEBUTTONUP =>
         //TODO: check 'which' field to ignore TOUCH events
         val mouseButtonEvent = event.button
         buttonToMouseButton(mouseButtonEvent.button).foreach(mb =>
-          Input.newEvent(Input.MouseUpEvent(mouseButtonEvent.x, mouseButtonEvent.y, mb))
+          Input.inputProcessor.mouseUp(mouseButtonEvent.x, mouseButtonEvent.y, mb)
         )
 
       case SDL_MOUSEMOTION =>
         val motionEvent = event.motion
-        Input.newEvent(Input.MouseMovedEvent(motionEvent.x, motionEvent.y))
+        Input.inputProcessor.mouseMoved(motionEvent.x, motionEvent.y)
 
       case _ =>
         ()

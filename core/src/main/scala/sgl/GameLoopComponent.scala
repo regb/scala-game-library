@@ -112,13 +112,6 @@ trait GameLoopComponent {
 
     val rdt = MaxLoopStepDelta.map(m => dt min m).getOrElse(dt)
 
-    //canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
-    // TODO: should we clear the canvas? I don't think so, because I think
-    //       the render call should have the choice to do it, and because
-    //       when we skip the render due to setting a new screen stack, we
-    //       get an ugly black frame of transition.
-    //canvas.clear()
-
     // Save the screen stack first as it could get modified during an update.
     val screensStack = gameState.screensStack
 
