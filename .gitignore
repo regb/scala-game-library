@@ -10,3 +10,5 @@ project/metals.sbt
 *.tiled-session
 .DS_Store
 .bsp
+
+/bazel-*
