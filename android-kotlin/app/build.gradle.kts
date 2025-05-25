@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.myapplication"
-        minSdk = 28
+        minSdk = 26
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -50,7 +50,6 @@ android {
 }
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -59,11 +58,13 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation("com.regblanc.sgl:sgl-core_2.13:0.0.1")
-    implementation("com.regblanc.sgl:sgl-jvmshared_2.13:0.0.1")
-    implementation("com.regblanc.sgl:hello-core_2.13:0.0.1")
-    implementation("com.regblanc.sgl:snake-core_2.13:0.0.1")
+    
+    // Local JAR files instead of Maven dependencies
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
+    
+    // Scala library from Maven
     implementation("org.scala-lang:scala-library:2.13.12")
+    
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

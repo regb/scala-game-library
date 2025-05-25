@@ -307,12 +307,6 @@ class AndroidCanvasProxy(val canvas: Canvas): CanvasProxy {
         canvas.drawOval(rect, paint.paint)
     }
 
-    override fun drawColor(color: ColorProxy?) {
-        if(color !is AndroidColorProxy)
-            throw Exception()
-
-        canvas.drawColor(color.color)
-    }
 
     override fun drawString(str: String?, x: Float, y: Float, paint: PaintProxy?) {
         if(paint !is AndroidPaintProxy)

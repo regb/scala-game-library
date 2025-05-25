@@ -19,10 +19,6 @@ class AndroidWindowProxy(val gameView: GameView): WindowProxy {
         return gameView.resources.displayMetrics.ydpi
     }
 
-    override fun ppi(): Float {
-        return gameView.resources.displayMetrics.densityDpi.toFloat()
-    }
-
     override fun logicalPpi(): Float {
         return gameView.resources.displayMetrics.densityDpi.toFloat()
     }
