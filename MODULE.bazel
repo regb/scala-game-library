@@ -51,5 +51,6 @@ maven.install(
     repositories = [
         "https://repo1.maven.org/maven2",
     ],
+    lock_file = "//third_party:maven_install.json",
 )
 use_repo(maven, "maven")
