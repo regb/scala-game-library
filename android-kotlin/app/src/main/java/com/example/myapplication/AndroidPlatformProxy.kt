@@ -2,6 +2,7 @@ package sgl.android
 
 import android.app.Activity
 import android.content.Context
+import sgl.proxy.AudioProxy
 
 import sgl.proxy.GraphicsProxy
 import sgl.proxy.PlatformProxy
@@ -36,5 +37,9 @@ class AndroidPlatformProxy(val context: Context, val gameView: GameView): Platfo
 
     override fun schedulerProxy(): SchedulerProxy {
         return AndroidSchedulerProxy()
+    }
+
+    override fun audioProxy(): AudioProxy {
+        return AndroidAudioProxy(context)
     }
 }
