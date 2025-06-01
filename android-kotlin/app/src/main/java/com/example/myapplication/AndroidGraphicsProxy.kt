@@ -68,7 +68,7 @@ class AndroidGraphicsProxy(val context: Context): GraphicsProxy {
     }
 
     override fun fontCompanionProxy(): FontCompanionProxy {
-        return AndroidFontCompanionProxy()
+        return AndroidFontCompanionProxy(context)
     }
 
     override fun colorCompanionProxy(): ColorCompanionProxy {
@@ -154,7 +154,7 @@ private fun fromAndroidAlignment(alignment: Align): AlignmentsProxy.Alignment {
     throw Exception("Unexpected unmatched alignment: " + alignment)
 }
 
-class AndroidFontCompanionProxy: FontCompanionProxy {
+class AndroidFontCompanionProxy(private val context: Context): FontCompanionProxy {
     override fun create(family: String?, style: FontProxy.Style?, size: Int): FontProxy {
         return AndroidFontProxy(Typeface.create(family, toAndroidStyle(style)), size)
     }
@@ -166,8 +166,24 @@ class AndroidFontCompanionProxy: FontCompanionProxy {
     override fun Serif(): FontProxy { return AndroidFontProxy(Typeface.SERIF, 14) }
 
     override fun load(path: ResourcePathProxy?): Loader<FontProxy> {
-        TODO("Not yet implemented")
-        //AndroidFont(Typeface.createFromAsset(self.getAssets(), path.path), 14)
+        if (path == null) {
+            return Loader.failed(IllegalArgumentException("ResourcePathProxy cannot be null"))
+        }
+        // Assuming AndroidResourcePathProxy and a way to get the asset path string
+        // This might need adjustment based on actual AndroidResourcePathProxy structure.
+        if (path !is AndroidResourcePathProxy) {
+            return Loader.failed(IllegalArgumentException("Path must be an AndroidResourcePathProxy"))
+        }
+
+        // Construct asset path from parts
+        val assetPath = path.parts.joinToString("/")
+
+        return try {
+            val typeface = Typeface.createFromAsset(context.assets, assetPath)
+            Loader.successful(AndroidFontProxy(typeface, 14)) // Assuming default size 14
+        } catch (e: Exception) {
+            Loader.failed(e)
+        }
     }
 
 }

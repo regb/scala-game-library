@@ -8,13 +8,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.myapplication.ui.theme.MyApplicationTheme
 import sgl.android.AndroidPlatformProxy
+import sgl.android.AndroidSave
 import sgl.android.BaseMainActivity
 import sgl.android.GameView
 import sgl.proxy.ProxiedGameApp
 
 fun makeGameApp(context: Context, gameView: GameView): ProxiedGameApp {
     //return com.regblanc.sgl.snake.core.Wiring.wire(AndroidPlatformProxy(context, gameView))
-    return com.regblanc.sgl.test.core.Wiring.wire(AndroidPlatformProxy(context, gameView))
+    //return com.regblanc.sgl.test.core.Wiring.wire(AndroidPlatformProxy(context, gameView))
+    return com.smartdinogames.rattrap.Wiring.wire(AndroidPlatformProxy(context, gameView),  AndroidSave("rattrap", context))
 
 }
 

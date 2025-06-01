@@ -1,61 +1,137 @@
 package sgl.android
 
-import scala.None
-import scala.`None$`
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
 import scala.Option
-import scala.Some
-import sgl.PartsResourcePathProvider.PartsResourcePath
 import sgl.proxy.ResourcePathProxy
 import sgl.proxy.SystemProxy
 import sgl.util.Loader
+import java.io.IOException
+import java.io.InputStream
+import java.io.BufferedInputStream
+import java.io.ByteArrayOutputStream
 import java.net.URI
+import android.content.ActivityNotFoundException
+import sgl.SystemProvider
+import sgl.SystemProvider.ResourceNotFoundException
 
 class AndroidResourcePathProxy(val parts: List<String>): ResourcePathProxy {
     override fun `$div`(filename: String?): ResourcePathProxy {
         if(filename == null)
-            throw Exception("Unexpected null agr")
+            throw NullPointerException("Filename cannot be null for ResourcePathProxy.div")
         val newParts: MutableList<String> = parts.toMutableList()
         newParts.add(filename)
         return AndroidResourcePathProxy(newParts.toList())
     }
 
     override fun extension(): Option<String> {
+        if (parts.isEmpty()) return Option.empty()
         val end: String = parts.last()
         val i = end.lastIndexOf('.')
-        if(i > 0)
-            return Some(end.substring(i+1))
+        return if(i > 0 && i < end.length - 1) // ensure dot is not last char
+            Option.apply(end.substring(i+1))
         else
-            return Option.apply(null)
+            Option.empty()
     }
 
-    override fun toString(): String {
+    fun generatePathString(): String {
         return parts.joinToString("/")
     }
 
+    override fun toString(): String {
+        return generatePathString()
+    }
 }
 
-class AndroidSystemProxy: SystemProxy {
+// Changed constructor to accept Activity
+class AndroidSystemProxy(private val activity: Activity): SystemProxy {
     override fun exit() {
-        TODO("Not yet implemented")
+        activity.finish()
     }
 
     override fun currentTimeMillis(): Long {
-        TODO("Not yet implemented")
+        return java.lang.System.currentTimeMillis()
     }
 
     override fun nanoTime(): Long {
-        TODO("Not yet implemented")
+        return java.lang.System.nanoTime()
     }
 
     override fun loadText(path: ResourcePathProxy?): Loader<Array<String>> {
-        TODO("Not yet implemented")
+        if (path == null) {
+            return Loader.failed(IllegalArgumentException("ResourcePathProxy cannot be null for loadText"))
+        }
+        if (path !is AndroidResourcePathProxy) {
+            return Loader.failed(IllegalArgumentException("Path must be an AndroidResourcePathProxy for loadText"))
+        }
+        val assetPath = (path as AndroidResourcePathProxy).generatePathString()
+        return try {
+            val lines = activity.assets.open(assetPath).bufferedReader().use {
+                it.readLines().toTypedArray()
+            }
+            Loader.successful(lines)
+        } catch (e: IOException) {
+            Loader.failed(Exception("Resource not found: " + path))
+        }
     }
 
     override fun loadBinary(path: ResourcePathProxy?): Loader<ByteArray> {
-        TODO("Not yet implemented")
+        if (path == null) {
+            return Loader.failed(IllegalArgumentException("ResourcePathProxy cannot be null for loadBinary"))
+        }
+        if (path !is AndroidResourcePathProxy) {
+            return Loader.failed(IllegalArgumentException("Path must be an AndroidResourcePathProxy for loadBinary"))
+        }
+        val assetPath = (path as AndroidResourcePathProxy).generatePathString()
+        return try {
+            val byteArrayOutputStream = ByteArrayOutputStream()
+            activity.assets.open(assetPath).use { inputStream ->
+                BufferedInputStream(inputStream).use { bufferedInputStream ->
+                    val buffer = ByteArray(1024)
+                    var len: Int
+                    while (bufferedInputStream.read(buffer).also { len = it } != -1) {
+                        byteArrayOutputStream.write(buffer, 0, len)
+                    }
+                }
+            }
+            Loader.successful(byteArrayOutputStream.toByteArray())
+        } catch (e: IOException) {
+            Loader.failed(Exception("Resource not found: " + path))
+        }
     }
 
     override fun openWebpage(uri: URI?) {
-        TODO("Not yet implemented")
+        if (uri == null) {
+            // Optionally log or handle this error, but Scala version didn't explicitly
+            return
+        }
+        try {
+            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(uri.toString()))
+            activity.startActivity(browserIntent)
+        } catch (e: Exception) {
+            // Log error or handle, e.g., if no browser is available, though typically Android handles this.
+            // For now, mimicking Scala's lack of explicit catch here for this specific method.
+        }
     }
+
+    // Commented out as it's not in SystemProxy interface
+    /*
+    override fun openGooglePlayApp(id: String, params: Map<String, String>) {
+        val paramString = params.map { (k, v) -> "&$k=$v" }.joinToString("")
+        try {
+            val marketUri = Uri.parse("market://details?id=$id$paramString")
+            val intent = Intent(Intent.ACTION_VIEW, marketUri)
+            activity.startActivity(intent)
+        } catch (ex: ActivityNotFoundException) {
+            // Fallback to opening webpage
+            val webUriString = "https://play.google.com/store/apps/details?id=$id$paramString"
+            try {
+                openWebpage(URI(webUriString))
+            } catch (e: Exception) {
+                // Failed to even open fallback webpage, log or handle.
+            }
+        }
+    }
+    */
 }

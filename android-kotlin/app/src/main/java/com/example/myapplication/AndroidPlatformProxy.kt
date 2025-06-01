@@ -1,5 +1,6 @@
 package sgl.android
 
+import android.app.Activity
 import android.content.Context
 
 import sgl.proxy.GraphicsProxy
@@ -11,7 +12,10 @@ import sgl.proxy.WindowProxy
 
 class AndroidPlatformProxy(val context: Context, val gameView: GameView): PlatformProxy {
     override fun systemProxy(): SystemProxy {
-        return AndroidSystemProxy()
+        if (context !is Activity) {
+            throw IllegalStateException("Context provided to AndroidPlatformProxy must be an Activity to initialize AndroidSystemProxy")
+        }
+        return AndroidSystemProxy(context)
     }
 
     override fun resourcesRoot(): ResourcePathProxy {
