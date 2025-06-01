@@ -97,6 +97,13 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
     override fun onDestroy() {
         super.onDestroy()
 
+        platformProxy?.let { platform ->
+            val audioProxy = platform.audioProxy()
+            if (audioProxy is AndroidAudioProxy) {
+                audioProxy.disposeAllMusic()
+            }
+        }
+
         //Scheduler.shutdown()
 
         //lifecycle of SGL
