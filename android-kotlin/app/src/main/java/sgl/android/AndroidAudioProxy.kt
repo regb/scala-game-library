@@ -27,20 +27,16 @@ class AndroidAudioProxy(private val context: Context) : AudioProxy {
     
     private fun initSoundPool() {
         if (soundPool == null) {
-            soundPool = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                val attrs = AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_GAME)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
-                SoundPool.Builder()
-                    .setAudioAttributes(attrs)
-                    .setMaxStreams(MAX_SIMULTANEOUS_SOUNDS)
-                    .build()
-            } else {
-                @Suppress("DEPRECATION")
-                SoundPool(MAX_SIMULTANEOUS_SOUNDS, AudioManager.STREAM_MUSIC, 0)
-            }
-            
+
+            val attrs = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_GAME)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+            soundPool = SoundPool.Builder()
+                .setAudioAttributes(attrs)
+                .setMaxStreams(MAX_SIMULTANEOUS_SOUNDS)
+                .build()
+
             soundPoolOnLoadCompleteListener = SoundPoolOnLoadCompleteListener()
             soundPool?.setOnLoadCompleteListener(soundPoolOnLoadCompleteListener)
         }
@@ -239,6 +235,7 @@ class AndroidMusicProxy(
     }
     
     override fun play() {
+        println("playing music")
         synchronized(musicLock) {
             if (state is State.Released) {
                 throw RuntimeException("Trying to play a released resource")
@@ -414,6 +411,14 @@ class AndroidMusicProxy(
         val afd = am.openFd(assetPath)
         mp.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
         afd.close()
+        
+        // Set audio attributes for consistent volume behavior with sound effects
+        val attrs = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_GAME)
+            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+            .build()
+        mp.setAudioAttributes(attrs)
+
         mp.setVolume(androidVolume, androidVolume)
         mp.setOnPreparedListener(this)
         mp.setOnCompletionListener(this)
