@@ -1,7 +1,10 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
+
+    // Firebase
     id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
 }
 
 android {
@@ -12,8 +15,8 @@ android {
         applicationId = "com.smartdinogames.rattrap"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -54,15 +57,11 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     
-    // Firebase Analytics
-    // implementation("com.google.firebase:firebase-analytics-ktx:21.6.1")
-    // Import the Firebase BoM
-    implementation(platform("com.google.firebase:firebase-bom:33.14.0"))
-    // TODO: Add the dependencies for Firebase products you want to use
+
+    implementation(platform(libs.firebase.bom))
     // When using the BoM, don't specify versions in Firebase dependencies
-    implementation("com.google.firebase:firebase-analytics")
-    // Add the dependencies for any other desired Firebase products
-    // https://firebase.google.com/docs/android/setup#available-libraries
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.crashlytics)
     
     // Local JAR files for SGL and the game classes
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))

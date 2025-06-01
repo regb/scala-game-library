@@ -20,7 +20,5 @@ fun makeGameApp(context: Context, platformProxy: AndroidPlatformProxy): ProxiedG
 }
 
 class MainActivity : BaseMainActivity(::makeGameApp) {
-    //override fun onCreate(savedInstanceState: Bundle?) {
-      //  super.onCreate(savedInstanceState)
-    //}
+
 }
