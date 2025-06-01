@@ -143,6 +143,7 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, gv: GameView) -> Pro
 
     var EnableMenuButtonEvents = false
 
+    @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         if(EnableBackButtonEvents) {
             `Input$`.`MODULE$`.inputProcessor().systemAction(InputActions.`Back$`())

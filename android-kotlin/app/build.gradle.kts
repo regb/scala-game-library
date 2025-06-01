@@ -1,14 +1,16 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
+    alias(libs.plugins.compose.compiler)
+    id("com.google.gms.google-services")
 }
 
 android {
-    namespace = "com.example.myapplication"
+    namespace = "com.smartdinogames.rattrap"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.myapplication"
+        applicationId = "com.smartdinogames.rattrap"
         minSdk = 26
         targetSdk = 34
         versionCode = 1
@@ -62,6 +64,20 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    
+    // Firebase Analytics
+    // implementation("com.google.firebase:firebase-analytics-ktx:21.6.1")
+    // Import the Firebase BoM
+    implementation(platform("com.google.firebase:firebase-bom:33.14.0"))
+
+
+    // TODO: Add the dependencies for Firebase products you want to use
+    // When using the BoM, don't specify versions in Firebase dependencies
+    implementation("com.google.firebase:firebase-analytics")
+
+
+    // Add the dependencies for any other desired Firebase products
+    // https://firebase.google.com/docs/android/setup#available-libraries
     
     // Local JAR files instead of Maven dependencies
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
