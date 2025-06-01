@@ -13,7 +13,7 @@ import util.LoggingProvider
 trait LoggedAnalyticsProvider extends AnalyticsProvider {
   this: GameStateComponent with LoggingProvider =>
 
-  class LoggedAnalytics extends Analytics {
+  class LoggedAnalytics extends AbstractAnalytics {
 
     implicit val tag = Logger.Tag("analytics")
 
@@ -49,7 +49,7 @@ trait LoggedAnalyticsProvider extends AnalyticsProvider {
       logger.info(s"post_score: {score=${score}, level=${level}, character=${character}}")
     }
 
-    override def setGameScreen(gameScreen: GameScreen): Unit = {
+    override def setGameScreen(gameScreen: String): Unit = {
       logger.info(s"setting current game screen: $gameScreen")
     }
 
@@ -57,6 +57,8 @@ trait LoggedAnalyticsProvider extends AnalyticsProvider {
       logger.info(s"setting player property ${name}=${value}")
     }
   }
+
+  override type Analytics = LoggedAnalytics
 
   override val Analytics: Analytics = new LoggedAnalytics
 

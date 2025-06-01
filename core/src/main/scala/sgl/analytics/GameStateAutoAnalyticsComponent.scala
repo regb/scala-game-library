@@ -25,11 +25,11 @@ trait GameStateAutoAnalyticsComponent extends GameStateComponent {
 
   class GameStateAutoAnalytics extends GameState {
     override def pushScreen(screen: GameScreen): Unit = {
-      Analytics.setGameScreen(screen)
+      Analytics.setGameScreen(screen.name)
       super.pushScreen(screen)
     }
     override def newScreen(screen: GameScreen): Unit = {
-      Analytics.setGameScreen(screen)
+      Analytics.setGameScreen(screen.name)
       super.newScreen(screen)
     }
   }

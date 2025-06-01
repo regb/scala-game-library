@@ -75,7 +75,7 @@ package analytics
   * game-specific data as possible, and let the underlying implementation collect the rest.
   * 
   */
-trait AnalyticsProvider { this: GameStateComponent =>
+trait AnalyticsProvider {
 
   /*
    * The design chosen here is to expose a very lightweight API to log
@@ -91,126 +91,7 @@ trait AnalyticsProvider { this: GameStateComponent =>
    * parameters) and having the parameters to be separated from the Event object.
    */
 
-  abstract class Analytics {
-
-    /** Log a generic custom event
-      *
-      * The name of the event will be used as the event ID for grouping in
-      * the reporting dashboard. There are important considerations when
-      * choosing a name. Two events with the same name are essentially the same
-      * event, but triggered at different point in time with potentially different
-      * parameters (and for potentially different users). In general, one should try
-      * to limit the number of unique events to a constant (that is, not dynamically
-      * generating the name).
-      *
-      * As an example, an event that a map was completed could have a name "complete-map"
-      * and include a parameter for the mapid. Alternatively, if the game has a small and bounded
-      * number of levels, one could consider generating the event name by including the map id
-      * into the name, and being parameterless. Both designs have merits, and it does depend
-      * on the kind of analysis that want to be done in the end, although both should
-      * enable to query essentially the same data in the end.
-      *
-      * In general, the name should be a self-sufficient indication for the event, and the
-      * parameters should be used as additional dimensions to observe the event on.
-      */
-    def logCustomEvent(name: String, params: EventParams): Unit
-
-    /* log semantics events 
-     * Some predefined events, the implementation will either
-     * map them to a semantically corresponding event in the
-     * analytics implementation, or with a reasonable custom event
-     * Note that we don't provide default implementation with standard
-     * name, as the naming convention will be dependendent of the platform
-     * used for analytics. This is also why you should try to use a
-     * built-in event rather than your own custom event.
-     */
-
-    /*
-     * TODO: A custom event name could interfer with a default name used for one of
-     *       the built-in event that we had to implement using the underlying custom
-     *       event of the platform. One solution could be to export a function to 
-     *       create an event as an object, using a name prefix, and then ensure in
-     *       the backend that the actual names are unique.
-     *       Providing a way to build the immutable unique event (without the params) once
-     *       is also probably a good design, since logging it will then be cheaper (and
-     *       we never have to garbage collect it).
-     */
-
-    /** Log an event that the player has leveled up.
-      *
-      * Typically used in games where the player gains XP points.  You can log
-      * that event whenever the player goes from one level to the next. You
-      * must provide the new level that the player reached. This event can
-      * help to identify difficult phase in the game.
-      */
-    def logLevelUpEvent(level: Long): Unit
-
-
-    /** Log an event when the player starts a new level.
-      *
-      * Identify the level with a string.
-      */
-    def logLevelStartEvent(level: String): Unit
-
-    /** Log an event when the player starts a new level.
-      *
-      * Identify the level with a string. 
-      */
-    def logLevelEndEvent(level: String, success: Boolean): Unit
-
-    def logShareEvent(itemId: Option[String]): Unit
-    def logGameOverEvent(score: Option[Long], map: Option[String]): Unit
-    def logBeginTutorialEvent(): Unit
-    def logCompleteTutorialEvent(): Unit
-
-    def logUnlockAchievementEvent(achievementId: String): Unit
-
-    // TODO: currency typesafe.
-    // def logIAPEvent(cartId: String, itemId: String, amount: Long, currency: String): Unit
-
-    /** post a score in the game
-      *
-      * post might be a bit misleading, this has nothing to do with
-      * sharing or posting on social media, it is just about completing
-      * a score (scoring a score) in the game. The level param is the
-      * current level of the player (or some other value reflecting the
-      * level of the player, such as current stage, or total xp, as long
-      * as it is used consistently).
-      */
-    def logPostScoreEvent(score: Long, level: Option[Long], character: Option[String]): Unit
-
-
-    /** Set the current game screen.
-      *
-      * A game screen is usually a screen that is loaded only once
-      * and that the player stays in for some time. For example, a player starts
-      * in a menu screen, then transition into a level screen, then back
-      * at the menu screen. Setting the current game screen helps tracking the
-      * journey of the player through the app.
-      *
-      * In SGL, the game screen standard implementation should set that value, but
-      * since the Analytics can be used in situations where the GameScreen module is not
-      * used, the method is still exposed.
-      */
-    def setGameScreen(gameScreen: GameScreen): Unit
-
-    /** Set a custom player property.
-      *
-      * A player property is associated to the player and will be
-      * associated with each future event logged by this game. This
-      * gives you a way to segment your players according to some
-      * property and then analyze how each population behave.
-      *
-      * An example of a player property could be some settings chosen
-      * by the player, such as the game difficulty, set them once
-      * in the analytics and then have every event logged associated
-      * with that property and filterable against it.
-      */
-    def setPlayerProperty(name: String, value: String): Unit
-
-    // TODO: expose a Metrics API as well
-    // class Metrics { ... }
-  }
+  type Analytics <: AbstractAnalytics
 
   /** The entry point to the Analytics module
     *
@@ -231,7 +112,7 @@ trait AnalyticsProvider { this: GameStateComponent =>
     * to have a history of data to compare against before performing the
     * switch. Or just while testing new analytics solutions.
     */
-  class MultipleAnalytics(analytics: Seq[Analytics]) extends Analytics {
+  class MultipleAnalytics(analytics: Seq[Analytics]) extends AbstractAnalytics {
     override def logCustomEvent(name: String, params: EventParams): Unit = {
       analytics.foreach(_.logCustomEvent(name, params))
     }
@@ -266,7 +147,7 @@ trait AnalyticsProvider { this: GameStateComponent =>
       analytics.foreach(_.logPostScoreEvent(score, level, character))
     }
 
-    override def setGameScreen(gameScreen: GameScreen): Unit = {
+    override def setGameScreen(gameScreen: String): Unit = {
       analytics.foreach(_.setGameScreen(gameScreen))
     }
 
@@ -274,7 +155,6 @@ trait AnalyticsProvider { this: GameStateComponent =>
       analytics.foreach(_.setPlayerProperty(name, value))
     }
   }
-
 }
 
 
@@ -303,3 +183,129 @@ case class EventParams(
   levelName: Option[String] = None, character: Option[String] = None,
   customs: Map[String, String] = Map()
 )
+
+abstract class AbstractAnalytics {
+
+  /** Log a generic custom event
+    *
+    * The name of the event will be used as the event ID for grouping in
+    * the reporting dashboard. There are important considerations when
+    * choosing a name. Two events with the same name are essentially the same
+    * event, but triggered at different point in time with potentially different
+    * parameters (and for potentially different users). In general, one should try
+    * to limit the number of unique events to a constant (that is, not dynamically
+    * generating the name).
+    *
+    * As an example, an event that a map was completed could have a name "complete-map"
+    * and include a parameter for the mapid. Alternatively, if the game has a small and bounded
+    * number of levels, one could consider generating the event name by including the map id
+    * into the name, and being parameterless. Both designs have merits, and it does depend
+    * on the kind of analysis that want to be done in the end, although both should
+    * enable to query essentially the same data in the end.
+    *
+    * In general, the name should be a self-sufficient indication for the event, and the
+    * parameters should be used as additional dimensions to observe the event on.
+    */
+  def logCustomEvent(name: String, params: EventParams): Unit
+
+  /* log semantics events 
+   * Some predefined events, the implementation will either
+   * map them to a semantically corresponding event in the
+   * analytics implementation, or with a reasonable custom event
+   * Note that we don't provide default implementation with standard
+   * name, as the naming convention will be dependendent of the platform
+   * used for analytics. This is also why you should try to use a
+   * built-in event rather than your own custom event.
+   */
+
+  /*
+   * TODO: A custom event name could interfer with a default name used for one of
+   *       the built-in event that we had to implement using the underlying custom
+   *       event of the platform. One solution could be to export a function to 
+   *       create an event as an object, using a name prefix, and then ensure in
+   *       the backend that the actual names are unique.
+   *       Providing a way to build the immutable unique event (without the params) once
+   *       is also probably a good design, since logging it will then be cheaper (and
+   *       we never have to garbage collect it).
+   */
+
+  /** Log an event that the player has leveled up.
+    *
+    * Typically used in games where the player gains XP points.  You can log
+    * that event whenever the player goes from one level to the next. You
+    * must provide the new level that the player reached. This event can
+    * help to identify difficult phase in the game.
+    */
+  def logLevelUpEvent(level: Long): Unit
+
+
+  /** Log an event when the player starts a new level.
+    *
+    * Identify the level with a string.
+    */
+  def logLevelStartEvent(level: String): Unit
+
+  /** Log an event when the player starts a new level.
+    *
+    * Identify the level with a string. 
+    */
+  def logLevelEndEvent(level: String, success: Boolean): Unit
+
+  def logShareEvent(itemId: Option[String]): Unit
+  def logGameOverEvent(score: Option[Long], map: Option[String]): Unit
+  def logBeginTutorialEvent(): Unit
+  def logCompleteTutorialEvent(): Unit
+
+  def logUnlockAchievementEvent(achievementId: String): Unit
+
+  // TODO: currency typesafe.
+  // def logIAPEvent(cartId: String, itemId: String, amount: Long, currency: String): Unit
+
+  /** post a score in the game
+    *
+    * post might be a bit misleading, this has nothing to do with
+    * sharing or posting on social media, it is just about completing
+    * a score (scoring a score) in the game. The level param is the
+    * current level of the player (or some other value reflecting the
+    * level of the player, such as current stage, or total xp, as long
+    * as it is used consistently).
+    */
+  def logPostScoreEvent(score: Long, level: Option[Long], character: Option[String]): Unit
+
+
+  /** Set the current game screen.
+    *
+    * A game screen is usually a screen that is loaded only once
+    * and that the player stays in for some time. For example, a player starts
+    * in a menu screen, then transition into a level screen, then back
+    * at the menu screen. Setting the current game screen helps tracking the
+    * journey of the player through the app.
+    *
+    * Games can decide what concepts they map to game screens, there is an
+    * optional package to build game logic from a stack of game screen
+    * abstractions, and it provides an integration that automatically set the
+    * screen when one becomes active. If a game is not using a game screen
+    * architecture, it can choose to use that method or not, but the method
+    * is defined to map the most naturally to the underlying analyitics
+    * platform which often supports a concept of "screen" natively.
+    */
+  def setGameScreen(gameScreen: String): Unit
+
+  /** Set a custom player property.
+    *
+    * A player property is associated to the player and will be
+    * associated with each future event logged by this game. This
+    * gives you a way to segment your players according to some
+    * property and then analyze how each population behave.
+    *
+    * An example of a player property could be some settings chosen
+    * by the player, such as the game difficulty, set them once
+    * in the analytics and then have every event logged associated
+    * with that property and filterable against it.
+    */
+  def setPlayerProperty(name: String, value: String): Unit
+
+  // TODO: expose a Metrics API as well
+  // class Metrics { ... }
+}
+

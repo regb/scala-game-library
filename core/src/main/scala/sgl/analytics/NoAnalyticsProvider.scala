@@ -11,9 +11,14 @@ package analytics
   * a release version to actually log the analytics.
   */
 trait NoAnalyticsProvider extends AnalyticsProvider {
-  this: GameStateComponent =>
 
-  class NoAnalytics extends Analytics {
+  override val Analytics: Analytics = new NoAnalytics
+
+  override type Analytics = NoAnalytics
+
+}  
+
+class NoAnalytics extends AbstractAnalytics {
 
     override def logCustomEvent(name: String, params: EventParams): Unit = {}
 
@@ -27,11 +32,7 @@ trait NoAnalyticsProvider extends AnalyticsProvider {
     override def logUnlockAchievementEvent(achievement: String): Unit = {}
     override def logPostScoreEvent(score: Long, level: Option[Long], character: Option[String]): Unit = {}
 
-    override def setGameScreen(gameScreen: GameScreen): Unit = {}
+    override def setGameScreen(gameScreen: String): Unit = {}
 
     override def setPlayerProperty(name: String, value: String): Unit = {}
   }
-
-  override val Analytics: Analytics = new NoAnalytics
-
-}
