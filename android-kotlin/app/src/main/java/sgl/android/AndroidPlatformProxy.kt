@@ -12,34 +12,46 @@ import sgl.proxy.SystemProxy
 import sgl.proxy.WindowProxy
 
 class AndroidPlatformProxy(val context: Context, val gameView: GameView): PlatformProxy {
-    override fun systemProxy(): SystemProxy {
+    
+    // Cache all proxy instances to ensure state consistency
+    private val _systemProxy: SystemProxy by lazy { 
         if (context !is Activity) {
             throw IllegalStateException("Context provided to AndroidPlatformProxy must be an Activity to initialize AndroidSystemProxy")
         }
-        return AndroidSystemProxy(context)
+        AndroidSystemProxy(context)
+    }
+    private val _resourcesRoot: ResourcePathProxy by lazy { AndroidResourcePathProxy(listOf<String>()) }
+    private val _multiDPIResourcesRoot: ResourcePathProxy by lazy { AndroidResourcePathProxy(listOf<String>()) }
+    private val _windowProxy: WindowProxy by lazy { AndroidWindowProxy(gameView) }
+    private val _graphicsProxy: GraphicsProxy by lazy { AndroidGraphicsProxy(context) }
+    private val _schedulerProxy: SchedulerProxy by lazy { AndroidSchedulerProxy() }
+    private val _audioProxy: AudioProxy by lazy { AndroidAudioProxy(context) }
+    
+    override fun systemProxy(): SystemProxy {
+        return _systemProxy
     }
 
     override fun resourcesRoot(): ResourcePathProxy {
-        return AndroidResourcePathProxy(listOf<String>())
+        return _resourcesRoot
     }
 
     override fun multiDPIResourcesRoot(): ResourcePathProxy {
-        return AndroidResourcePathProxy(listOf<String>())
+        return _multiDPIResourcesRoot
     }
 
     override fun windowProxy(): WindowProxy {
-        return AndroidWindowProxy(gameView)
+        return _windowProxy
     }
 
     override fun graphicsProxy(): GraphicsProxy {
-        return AndroidGraphicsProxy(context)
+        return _graphicsProxy
     }
 
     override fun schedulerProxy(): SchedulerProxy {
-        return AndroidSchedulerProxy()
+        return _schedulerProxy
     }
 
     override fun audioProxy(): AudioProxy {
-        return AndroidAudioProxy(context)
+        return _audioProxy
     }
 }

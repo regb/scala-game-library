@@ -19,7 +19,7 @@ import sgl.proxy.ProxiedGameApp
  * the activity and start a game loop invoking the update/render functions,
  * rendering to the SurfaceView.
  */
-open class BaseMainActivity(val makeGameApp: (ctx: Context, gv: GameView) -> ProxiedGameApp): Activity() {
+open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPlatformProxy) -> ProxiedGameApp): Activity() {
 
 
     /** Control if the screen should always stay on.
@@ -54,6 +54,8 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, gv: GameView) -> Pro
 
     var gameApp: ProxiedGameApp? = null
 
+    var platformProxy: AndroidPlatformProxy? = null
+
     //private implicit val LogTag: Logger.Tag = Logger.Tag("sgl-main-activity")
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,7 +69,9 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, gv: GameView) -> Pro
         gameView?.setOnTouchListener(AndroidInputListener(this))
         setContentView(gameView)
 
-        gameApp = makeGameApp(this, gameView!!)
+        // Create the platform proxy first
+        platformProxy = AndroidPlatformProxy(this, gameView!!)
+        gameApp = makeGameApp(this, platformProxy!!)
 
         /* make sure that if the activity is launched again and the previous
          * one is still around, it will finish the new one and use the existing one
@@ -107,7 +111,6 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, gv: GameView) -> Pro
     // invoked when the user loses focus for a significant amount of time.
     override fun onResume() {
         super.onResume()
-        //logger.trace("onResumed called")
 
         appResumed = true
 
@@ -117,6 +120,13 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, gv: GameView) -> Pro
         t.start()
         //Scheduler.resume()
 
+        platformProxy?.let { platform ->
+            val audioProxy = platform.audioProxy()
+            if (audioProxy is AndroidAudioProxy) {
+                audioProxy.resumeAllMusic()
+            }
+        }
+
         // TODO: maybe the lifecycle resume event should be more precise and take into account
         //       things like surfaceReady and focus flags.
         //lifecycleListener.resume()
@@ -124,9 +134,15 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, gv: GameView) -> Pro
 
     override fun onPause() {
         super.onPause()
-        //logger.trace("onPause called")
 
         appResumed = false
+
+        platformProxy?.let { platform ->
+            val audioProxy = platform.audioProxy()
+            if (audioProxy is AndroidAudioProxy) {
+                audioProxy.pauseAllMusic()
+            }
+        }
 
         gameLoop?.running = false
         //Scheduler.pause()

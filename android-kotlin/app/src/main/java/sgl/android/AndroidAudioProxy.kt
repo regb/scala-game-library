@@ -25,6 +25,10 @@ class AndroidAudioProxy(private val context: Context) : AudioProxy {
     internal var soundPool: SoundPool? = null
     private var soundPoolOnLoadCompleteListener: SoundPoolOnLoadCompleteListener? = null
     
+    // Track active music instances for lifecycle management
+    private val activeMusicInstances = mutableListOf<AndroidMusicProxy>()
+    private val musicLock = Object()
+    
     private fun initSoundPool() {
         if (soundPool == null) {
 
@@ -39,6 +43,39 @@ class AndroidAudioProxy(private val context: Context) : AudioProxy {
 
             soundPoolOnLoadCompleteListener = SoundPoolOnLoadCompleteListener()
             soundPool?.setOnLoadCompleteListener(soundPoolOnLoadCompleteListener)
+        }
+    }
+    
+    // Add methods for app lifecycle management
+    fun pauseAllMusic() {
+        println("pausing musics")
+        synchronized(musicLock) {
+            for (music in activeMusicInstances) {
+                println("music to pause")
+                music.pauseForAppLifecycle()
+            }
+        }
+    }
+    
+    fun resumeAllMusic() {
+        synchronized(musicLock) {
+            for (music in activeMusicInstances) {
+                music.resumeForAppLifecycle()
+            }
+        }
+    }
+    
+    internal fun registerMusicInstance(music: AndroidMusicProxy) {
+        synchronized(musicLock) {
+            activeMusicInstances.add(music)
+            println("Registered music instance. Total active: ${activeMusicInstances.size}")
+        }
+    }
+    
+    internal fun unregisterMusicInstance(music: AndroidMusicProxy) {
+        synchronized(musicLock) {
+            activeMusicInstances.remove(music)
+            println("Unregistered music instance. Total active: ${activeMusicInstances.size}")
         }
     }
     
@@ -96,7 +133,7 @@ class AndroidAudioProxy(private val context: Context) : AudioProxy {
         }
         
         return try {
-            val music = AndroidMusicProxy(context, chosenResource)
+            val music = AndroidMusicProxy(context, chosenResource, this)
             Loader.successful<MusicProxy>(music)
         } catch (e: IOException) {
             Loader.failed<MusicProxy>(Exception("Resource not found: $path"))
@@ -203,7 +240,8 @@ class AndroidSoundProxy(
 
 class AndroidMusicProxy(
     private val context: Context,
-    private val path: AndroidResourcePathProxy
+    private val path: AndroidResourcePathProxy,
+    private val audioProxy: AndroidAudioProxy
 ) : MusicProxy, MediaPlayer.OnPreparedListener, MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener {
     
     // State management
@@ -224,6 +262,9 @@ class AndroidMusicProxy(
     private var backupPlayerPrepared = false
     private var androidVolume: Float = 1f
     
+    // Track if we were paused due to app lifecycle vs user action
+    private var wasPlayingBeforeAppPause = false
+    
     private var mainPlayer: MediaPlayer? = null
     private var backupPlayer: MediaPlayer? = null
     
@@ -231,6 +272,29 @@ class AndroidMusicProxy(
         synchronized(musicLock) {
             mainPlayer = initPlayer(path)
             mainPlayer?.prepareAsync()
+        }
+        // Register this instance with the audio proxy
+        audioProxy.registerMusicInstance(this)
+    }
+    
+    // Add lifecycle management methods
+    internal fun pauseForAppLifecycle() {
+        synchronized(musicLock) {
+            wasPlayingBeforeAppPause = state is State.Playing
+            if (wasPlayingBeforeAppPause && mainPlayer != null) {
+                mainPlayer?.pause()
+                state = State.Paused
+            }
+        }
+    }
+    
+    internal fun resumeForAppLifecycle() {
+        synchronized(musicLock) {
+            if (wasPlayingBeforeAppPause && state is State.Paused && mainPlayer != null) {
+                mainPlayer?.start()
+                state = State.Playing
+                wasPlayingBeforeAppPause = false
+            }
         }
     }
     
@@ -240,6 +304,8 @@ class AndroidMusicProxy(
             if (state is State.Released) {
                 throw RuntimeException("Trying to play a released resource")
             }
+            
+            wasPlayingBeforeAppPause = false // Reset lifecycle flag when user explicitly plays
             
             if (mainPlayerPrepared) {
                 mainPlayer?.start()
@@ -256,6 +322,8 @@ class AndroidMusicProxy(
                 throw RuntimeException("Trying to pause a released resource")
             }
             
+            wasPlayingBeforeAppPause = false // Reset lifecycle flag when user explicitly pauses
+            
             if (mainPlayer != null && state is State.Playing) {
                 mainPlayer?.pause()
             }
@@ -269,6 +337,8 @@ class AndroidMusicProxy(
             if (state is State.Released) {
                 throw RuntimeException("Trying to stop a released resource")
             }
+            
+            wasPlayingBeforeAppPause = false // Reset lifecycle flag when user explicitly stops
             
             mainPlayer?.let { player ->
                 if (state is State.Playing || state is State.PlayingComplete || state is State.Paused) {
@@ -321,6 +391,8 @@ class AndroidMusicProxy(
             }
             state = State.Released
         }
+        // Unregister this instance from the audio proxy
+        audioProxy.unregisterMusicInstance(this)
     }
     
     override fun onPrepared(mp: MediaPlayer) {
