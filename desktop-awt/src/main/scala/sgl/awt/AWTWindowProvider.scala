@@ -30,26 +30,24 @@ trait AWTWindowProvider extends WindowProvider {
   class ApplicationFrame(canvas: awt.Canvas) extends JFrame {
     
     this.setTitle(frameTitle)
+    this.setUndecorated(false)
+    this.setResizable(false)
 
     // TODO: borderless, but no exit button.
     // this.setUndecorated(true)
 
     val (w, h) = frameDimension
     this.getContentPane().setPreferredSize(new Dimension(w, h))
-    canvas.setSize(w, h)
-
-    canvas.setFocusable(true)
-
-    this.add(canvas, 0)
     this.pack()
 
+    this.setLocationRelativeTo(null)
     this.setDefaultCloseOperation(EXIT_ON_CLOSE)
+
+    canvas.setSize(w, h)
+    this.add(canvas, 0)
+    canvas.setFocusable(true)
   
     this.setVisible(true)
-
-    this.setResizable(false)
-    this.setLocationRelativeTo(null)
-
   }
 
   /*
