@@ -7,7 +7,7 @@ import sgl.util.NoLoggingProvider
 trait ProxyPlatformProvider extends ProxiedGameApp with SchedulerProvider
   with ProxySystemProvider with ProxyWindowProvider with ProxySchedulerProvider 
   with ProxyGraphicsProvider
-  with FakeAudioProvider with NoLoggingProvider {
+  with ProxyAudioProvider with NoLoggingProvider {
 
   val PlatformProxy: PlatformProxy
 

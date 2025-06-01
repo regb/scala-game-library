@@ -34,6 +34,7 @@ trait PlatformProxy {
   val windowProxy: WindowProxy
   val graphicsProxy: GraphicsProxy
   val schedulerProxy: SchedulerProxy
+  val audioProxy: AudioProxy
 }
 
 trait ResourcePathProxy {
@@ -140,4 +141,31 @@ trait CanvasProxy {
 
 trait SchedulerProxy {
     def schedule(task: ChunkedTask): Unit
+}
+
+trait AudioProxy {
+  def loadSound(path: ResourcePathProxy): Loader[SoundProxy]
+  def loadMusic(path: ResourcePathProxy): Loader[MusicProxy]
+}
+
+trait SoundProxy {
+  type PlayedSoundProxy
+  
+  def play(volume: Float): Option[PlayedSoundProxy]
+  def withConfig(loop: Int, rate: Float): SoundProxy
+  def dispose(): Unit
+
+  def pause(id: PlayedSoundProxy): Unit
+  def resume(id: PlayedSoundProxy): Unit
+  def stop(id: PlayedSoundProxy): Unit
+  def endLoop(id: PlayedSoundProxy): Unit
+}
+
+trait MusicProxy {
+  def play(): Unit
+  def pause(): Unit
+  def stop(): Unit
+  def setVolume(volume: Float): Unit
+  def setLooping(isLooping: Boolean): Unit
+  def dispose(): Unit
 }
