@@ -12,3 +12,4 @@ project/metals.sbt
 .bsp
 
 /bazel-*
+/games
