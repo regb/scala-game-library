@@ -11,15 +11,14 @@ scala_library(
     visibility=["//visibility:public"],
 )
 
-
-
 scala_library(
     name="sgl-core-testlib",
-    srcs=["src/test/scala/sgl/util/LoaderAbstractSuite.scala"],
+    srcs=glob(["src/test/scala/sgl/util/*"]),
     testonly = True,
     deps = [
         ":sgl-core",
         "@maven//:org_scalatest_scalatest_2_13",
+        "@rules_scala//testing/toolchain:scalatest_classpath",
     ],
     visibility=["//visibility:public"],
 )

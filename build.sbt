@@ -1,24 +1,6 @@
 // organization := "com.regblanc.sgl",
 // scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 
-
-lazy val core = (crossProject(JSPlatform, JVMPlatform, NativePlatform).crossType(CrossType.Pure) in file("./core"))
-  .settings(commonSettings: _*)
-  .settings(
-    name := "sgl-core",
-  )
-  .jvmSettings(
-    libraryDependencies += "org.scalatest" %%% "scalatest" % scalatestVer % "test"
-  )
-  .jsSettings(
-    libraryDependencies += "org.scalatest" %%% "scalatest" % scalatestVer % "test"
-  )
-  .nativeSettings(scalaVersion := scalaVer)
-
-lazy val coreJVM = core.jvm
-lazy val coreJS = core.js
-lazy val coreNative = core.native
-
 // We need to build the core classes for a different JVM version for Android.
 lazy val coreAndroid = (project in file("./core"))
   .settings(commonSettings: _*)

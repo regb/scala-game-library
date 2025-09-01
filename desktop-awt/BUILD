@@ -23,7 +23,7 @@ scala_test(
     deps = [
         ":sgl-desktop-awt",
         "//core:sgl-core",
-        "//core:sgl-core-tests",
+        "//core:sgl-core-testlib",
         "//jvm-shared:jvm-shared",
         "@maven//:org_scalatest_scalatest_2_13",
     ],

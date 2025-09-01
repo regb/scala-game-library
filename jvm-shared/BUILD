@@ -20,7 +20,7 @@ scala_test(
     deps = [
         ":jvm-shared",
         "//core:sgl-core",
-        "//core:sgl-core-tests",
+        "//core:sgl-core-testlib",
         "@maven//:org_scalatest_scalatest_2_13",
     ],
     visibility=["//visibility:public"],
