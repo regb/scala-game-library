@@ -10,15 +10,6 @@ lazy val coreAndroid = (project in file("./core"))
     target       := baseDirectory.value / ".android" / "target",
     libraryDependencies += "org.scalatest" %%% "scalatest" % scalatestVer % "test"
   )
-
-lazy val jvmShared = (project in file("./jvm-shared"))
-  .settings(commonSettings: _*)
-  .settings(
-    name := "sgl-jvmshared",
-    libraryDependencies += "org.scalatest" %%% "scalatest" % scalatestVer % "test"
-  )
-  .dependsOn(coreJVM % "test->test;compile->compile")
-
 lazy val jvmSharedAndroid = (project in file("./jvm-shared"))
   .settings(commonSettings: _*)
   .settings(commonAndroidSettings: _*)
@@ -27,20 +18,6 @@ lazy val jvmSharedAndroid = (project in file("./jvm-shared"))
     target := baseDirectory.value / ".android" / "target"
   )
   .dependsOn(coreAndroid)
-
-lazy val desktopAWT = (project in file("./desktop-awt"))
-  .settings(commonSettings: _*)
-  .settings(
-    name                := "sgl-desktop-awt",
-
-    // Add .ogg support by using jorbis (transitive dependency) as a service provider
-    libraryDependencies += "com.googlecode.soundlibs" % "vorbisspi" % "1.0.3-2", 
-    // Additional audio format can be added in the game build config, with a standard spi for java sound API.
-    libraryDependencies += "net.liftweb"   %% "lift-json" % "3.4.3",
-    libraryDependencies += "org.scalatest" %% "scalatest" % scalatestVer % "test"
-  )
-  .dependsOn(coreJVM % "test->test;compile->compile", jvmShared)
-
 lazy val desktopNative = (project in file("./desktop-native"))
   .enablePlugins(ScalaNativePlugin)
   .settings(commonSettings: _*)
@@ -54,7 +31,6 @@ lazy val desktopNative = (project in file("./desktop-native"))
   .dependsOn(coreNative)
 
 val scalaJSDomVer = "1.0.0"
-
 lazy val html5 = (project in file("./html5"))
   .enablePlugins(ScalaJSPlugin)
   .settings(commonSettings: _*)
@@ -86,193 +62,38 @@ lazy val html5Cordova = (project in file("./html5/cordova"))
   .dependsOn(coreJS % "test->test;compile->compile", html5)
 
 
-/*
- * I want to make sure that the test games are always buildable and
- * their build is kept in sync with the library. The original approach used to 
- * define the build for each game directly in its own subfolder.
- * 
- * Since I also wanted to directly depend on the sources (by opposition to a
- * published artifact), that required also declaring a sub project/ directory
- * that included the right version of sbt and every plugins. Then we could
- * define the dependency to the root library (i.e. 
- * ProjectRef(file("../../core"))). Dependency on source is important because
- * we want to be able to test modifications to the core library without having
- * to publish (even locally). With the source dependency, we can edit the
- * library code, and compile/run from the example game sbt console and verify
- * that the new version of the library still works.
- *
- * The drawback is of course the need to update the sbt version (the passage
- * from 0.13 to 1.0 was annoying) and the sbt plugins in the library as well
- * as in all example game projects. It would also be nice to be able, in one
- * command, to compile all games on all platform, to verify that changes are
- * not breaking anything too obvious. We can achieve this by defining the
- * projects at the top level, along with the core library definitions. We
- * use a set of settings (noPublishSettings) to avoid publishing the game
- * projects.
- */
+//lazy val helloDesktopNative = (project in file("./examples/hello/desktop-native"))
+//  .enablePlugins(ScalaNativePlugin)
+//  .settings(helloCommonSettings: _*)
+//  .settings(noPublishSettings: _*)
+//  .settings(scalaVersion := scalaVer)
+//  .settings(
+//    name := "hello-desktop-native",
+//    unmanagedResourceDirectories in Compile := Seq(helloAssets),
+//    if(isLinux(OS))
+//      nativeLinkingOptions ++= Seq("-lGL")
+//    else if(isMac(OS))
+//      nativeLinkingOptions ++= Seq("-framework", "OpenGL")
+//    else
+//      ???
+//  )
+//  .dependsOn(coreNative, desktopNative, helloCoreNative)
+//lazy val snakeDesktopNative = (project in file("./examples/snake/desktop-native"))
+//  .enablePlugins(ScalaNativePlugin)
+//  .settings(snakeCommonSettings: _*)
+//  .settings(noPublishSettings: _*)
+//  .settings(scalaVersion := scalaVer)
+//  .settings(
+//    name := "snake-desktop-native",
+//    if(isLinux(OS))
+//      nativeLinkingOptions += "-lGL"
+//    else if(isMac(OS))
+//      nativeLinkingOptions ++= Seq("-framework", "OpenGL")
+//    else
+//      ???
+//  )
+//  .dependsOn(coreNative, desktopNative, snakeCoreNative)
 
-lazy val noPublishSettings = Seq(
-  publishArtifact := false,
-  packagedArtifacts := Map.empty,
-  publish := {},
-  publishLocal := {}
-)
-
-lazy val helloCommonSettings = Seq(
-  version        := "1.0",
-  scalaVersion   := scalaVer,
-  scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
-)
-
-lazy val helloCore = (crossProject(JSPlatform, JVMPlatform, NativePlatform).crossType(CrossType.Pure) in file("./examples/hello/core"))
-  .settings(helloCommonSettings: _*)
-  .settings(noPublishSettings: _*)
-  .settings(name := "hello-core")
-  .jvmSettings(
-    exportJars := true
-  )
-  .nativeSettings(scalaVersion := scalaVer)
-  .jvmConfigure(_.dependsOn(coreJVM))
-  .jsConfigure(_.dependsOn(coreJS))
-  .nativeConfigure(_.dependsOn(coreNative))
-
-lazy val helloCoreJVM = helloCore.jvm
-lazy val helloCoreJS = helloCore.js
-lazy val helloCoreNative = helloCore.native
-
-lazy val helloAssets = file("./examples/hello/assets")
-
-lazy val helloDesktopAWT = (project in file("./examples/hello/desktop-awt"))
-  .settings(helloCommonSettings: _*)
-  .settings(noPublishSettings: _*)
-  .settings(
-    name := "hello-desktop-awt",
-    fork in run := true,
-    unmanagedResourceDirectories in Compile := Seq(helloAssets)
-  )
-  .dependsOn(coreJVM, desktopAWT, helloCoreJVM)
-
-lazy val helloHtml5 = (project in file("./examples/hello/html5"))
-  .enablePlugins(ScalaJSPlugin)
-  .settings(helloCommonSettings: _*)
-  .settings(noPublishSettings: _*)
-  .settings(
-    name := "hello-html5",
-    scalaJSUseMainModuleInitializer := true
-  )
-  .dependsOn(coreJS, html5, helloCoreJS)
-
-lazy val helloDesktopNative = (project in file("./examples/hello/desktop-native"))
-  .enablePlugins(ScalaNativePlugin)
-  .settings(helloCommonSettings: _*)
-  .settings(noPublishSettings: _*)
-  .settings(scalaVersion := scalaVer)
-  .settings(
-    name := "hello-desktop-native",
-    unmanagedResourceDirectories in Compile := Seq(helloAssets),
-    if(isLinux(OS))
-      nativeLinkingOptions ++= Seq("-lGL")
-    else if(isMac(OS))
-      nativeLinkingOptions ++= Seq("-framework", "OpenGL")
-    else
-      ???
-  )
-  .dependsOn(coreNative, desktopNative, helloCoreNative)
-
-lazy val snakeCommonSettings = Seq(
-  version        := "1.0",
-  scalaVersion   := scalaVer,
-  scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
-)
-
-lazy val snakeCore = (crossProject(JSPlatform, JVMPlatform, NativePlatform).crossType(CrossType.Pure) in file("./examples/snake/core"))
-  .settings(snakeCommonSettings: _*)
-  .settings(noPublishSettings: _*)
-  .settings(name := "snake-core")
-  .nativeSettings(scalaVersion := scalaVer)
-  .jvmConfigure(_.dependsOn(coreJVM))
-  .jsConfigure(_.dependsOn(coreJS))
-  .nativeConfigure(_.dependsOn(coreNative))
-
-lazy val snakeCoreJVM = snakeCore.jvm
-lazy val snakeCoreJS = snakeCore.js
-lazy val snakeCoreNative = snakeCore.native
-
-lazy val snakeDesktopAWT = (project in file("./examples/snake/desktop-awt"))
-  .settings(snakeCommonSettings: _*)
-  .settings(noPublishSettings: _*)
-  .settings(
-    name        := "snake-desktop-awt",
-    fork in run := true
-  )
-  .dependsOn(coreJVM, desktopAWT, snakeCoreJVM)
-
-lazy val snakeHtml5 = (project in file("./examples/snake/html5"))
-  .enablePlugins(ScalaJSPlugin)
-  .settings(snakeCommonSettings: _*)
-  .settings(noPublishSettings: _*)
-  .settings(
-    name := "snake-html5",
-    scalaJSUseMainModuleInitializer := true
-  )
-  .dependsOn(coreJS, html5, snakeCoreJS)
-
-lazy val snakeDesktopNative = (project in file("./examples/snake/desktop-native"))
-  .enablePlugins(ScalaNativePlugin)
-  .settings(snakeCommonSettings: _*)
-  .settings(noPublishSettings: _*)
-  .settings(scalaVersion := scalaVer)
-  .settings(
-    name := "snake-desktop-native",
-    if(isLinux(OS))
-      nativeLinkingOptions += "-lGL"
-    else if(isMac(OS))
-      nativeLinkingOptions ++= Seq("-framework", "OpenGL")
-    else
-      ???
-  )
-  .dependsOn(coreNative, desktopNative, snakeCoreNative)
-
-lazy val menuCommonSettings = Seq(
-  version        := "1.0",
-  scalaVersion   := scalaVer,
-  scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
-)
-
-lazy val menuCore = (crossProject(JSPlatform, JVMPlatform, NativePlatform).crossType(CrossType.Pure) in file("./examples/menu/core"))
-  .settings(menuCommonSettings: _*)
-  .settings(noPublishSettings: _*)
-  .settings(name := "menu-core")
-  .jvmSettings(
-    exportJars := true
-  )
-  .nativeSettings(scalaVersion := scalaVer)
-  .jvmConfigure(_.dependsOn(coreJVM))
-  .jsConfigure(_.dependsOn(coreJS))
-  .nativeConfigure(_.dependsOn(coreNative))
-
-lazy val menuCoreJVM = menuCore.jvm
-lazy val menuCoreJS = menuCore.js
-lazy val menuCoreNative = menuCore.native
-
-lazy val menuDesktopAWT = (project in file("./examples/menu/desktop-awt"))
-  .settings(menuCommonSettings: _*)
-  .settings(noPublishSettings: _*)
-  .settings(
-    name := "menu-desktop-awt",
-    fork in run := true
-  )
-  .dependsOn(coreJVM, desktopAWT, menuCoreJVM)
-
-lazy val menuHtml5 = (project in file("./examples/menu/html5"))
-  .enablePlugins(ScalaJSPlugin)
-  .settings(menuCommonSettings: _*)
-  .settings(noPublishSettings: _*)
-  .settings(
-    name := "menu-html5",
-    scalaJSUseMainModuleInitializer := true
-  )
-  .dependsOn(coreJS, html5, menuCoreJS)
 
 lazy val platformerCommonSettings = Seq(
   version        := "1.0",
