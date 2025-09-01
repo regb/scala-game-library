@@ -1,31 +1,29 @@
-bazel_dep(name = "rules_scala", version = "7.0.0")
-bazel_dep(name = "rules_jvm_external", version = "6.7")
+bazel_dep(name = "rules_scala", version = "7.1.1")
+bazel_dep(name = "rules_jvm_external", version = "6.8")
 
-# Selects the Scala version and other configuration parameters.
-#
-# 2.12 is the default version. Use other versions by passing them explicitly, as
-# illustrated below.
-#
-# See the documentation of `_settings_attrs` in `scala/extensions/config.bzl`
-# for other available parameters.
-#
-# You may define your own custom toolchain using Maven artifact dependencies
-# configured by your `WORKSPACE` file, imported using an external loader like
-# https://github.com/bazelbuild/rules_jvm_external. See docs/scala_toolchain.md.
+# Register a prebuild protoc toolchain to avoid always re-compiling protoc.
+# require the flag --incompatible_enable_proto_toolchain_resolution
+scala_protoc = use_extension(
+    "@rules_scala//scala/extensions:protoc.bzl",
+    "scala_protoc",
+    dev_dependency = True,
+)
+use_repo(scala_protoc, "rules_scala_protoc_toolchains")
+register_toolchains(
+    "@rules_scala_protoc_toolchains//...:all",
+    dev_dependency = True,
+)
+
 scala_config = use_extension(
     "@rules_scala//scala/extensions:config.bzl",
     "scala_config",
 )
 scala_config.settings(scala_version = "2.13.16")
 
-# See the `scala/extensions/deps.bzl` docstring for a high level description of
-# the tag classes exported by this module extension.
 scala_deps = use_extension(
     "@rules_scala//scala/extensions:deps.bzl",
     "scala_deps",
 )
-
-
 # Defines a default toolchain repo for the configured Scala version that loads
 # Maven deps like the Scala compiler and standard libs. Enable and configure
 # other builtin toolchains by instantiating their corresponding tag classes.
