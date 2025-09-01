@@ -1,23 +1,6 @@
-import sbtcrossproject.{crossProject, CrossType}
+// organization := "com.regblanc.sgl",
+// scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 
-val scalaVer = "2.13.4"
-val scalatestVer = "3.1.1"
-
-lazy val commonSettings = Seq(
-  version      := "0.0.1",
-  organization := "com.regblanc.sgl",
-  scalaVersion := scalaVer,
-  scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
-)
-
-// Android cannot run on Java8 so we stick with 2.11 and Java7. We
-// need to build core separately for the right version.
-val commonAndroidSettings = Seq(
-    scalaVersion  := "2.11.12",
-    scalacOptions += "-target:jvm-1.7",
-    javacOptions ++= Seq("-source", "1.7", "-target", "1.7"),
-    exportJars    := true
-)
 
 lazy val core = (crossProject(JSPlatform, JVMPlatform, NativePlatform).crossType(CrossType.Pure) in file("./core"))
   .settings(commonSettings: _*)

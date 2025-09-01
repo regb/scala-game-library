@@ -13,16 +13,16 @@ scala_library(
 
 
 
-#scala_library(
-#    name="sgl-core-testlib",
-#    srcs=["src/test/scala/sgl/util/LoaderAbstractSuite.scala"],
-#    testonly = True,
-#    deps = [
-#        ":sgl-core",
-#        "@maven//:org_scalatest_scalatest_2_13",
-#    ],
-#    visibility=["//visibility:public"],
-#)
+scala_library(
+    name="sgl-core-testlib",
+    srcs=["src/test/scala/sgl/util/LoaderAbstractSuite.scala"],
+    testonly = True,
+    deps = [
+        ":sgl-core",
+        "@maven//:org_scalatest_scalatest_2_13",
+    ],
+    visibility=["//visibility:public"],
+)
 
 scala_test(
     name="sgl-core-tests",
