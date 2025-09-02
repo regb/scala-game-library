@@ -9,6 +9,8 @@ scala_library(
     name="sgl-core",
     srcs=glob(["src/main/scala/**/*.scala"]),
     visibility=["//visibility:public"],
+    plugins = [ "@maven//:org_scala_js_scalajs_compiler_2_13_16"],
+    deps = [ "@maven//:org_scala_js_scalajs_library_2_13" ],
 )
 
 scala_library(

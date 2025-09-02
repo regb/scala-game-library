@@ -45,6 +45,12 @@ maven.install(
         "com.googlecode.soundlibs:vorbisspi:1.0.3-2",
         "net.liftweb:lift-json_2.13:3.4.3", 
         "org.scalatest:scalatest_2.13:3.2.19",
+        "org.scala-js:scalajs-compiler_2.13.16:1.19.0",
+        "org.scala-js:scalajs-library_2.13:1.19.0",
+        "org.scala-js:scalajs-linker_2.13:1.19.0",
+        "org.scala-js:scalajs-linker-interface_2.13:1.19.0",
+        "org.scala-js:scalajs-ir_2.13:1.19.0",
+        "org.scala-js:scalajs-dom_sjs1_2.13:2.8.1",
     ],
     repositories = [
         "https://repo1.maven.org/maven2",
@@ -52,3 +58,5 @@ maven.install(
     lock_file = "//third_party:maven_install.json",
 )
 use_repo(maven, "maven")
+
+#register_toolchains("//:my_toolchain")

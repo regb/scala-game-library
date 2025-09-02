@@ -13,6 +13,11 @@ import scala.scalajs.js.annotation.JSExport
 object Main extends Html5App with core.AbstractApp 
   with Html5VerboseConsoleLoggingProvider {
 
+  def main(): Unit = {
+    println("Hello World")
+    println(this.TargetFps)
+  }
+
   override val GameCanvasID: String = "my_canvas"
 
   //We should not force the fps on Html5 and just let
