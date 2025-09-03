@@ -1,0 +1,28 @@
+load(
+    "@rules_scala//scala:scala.bzl",
+    "scala_library", "scala_binary",
+)
+load("@rules_go//go:def.bzl", "go_binary")
+
+go_binary(
+    name = "server",
+    srcs = ["server.go"],
+    data = [
+        "//examples/snake:index",
+        "//examples/snake:html_files",
+    ],
+)
+
+
+scala_binary(
+    name = "linker",
+    srcs = ["ScalaJsLinker.scala"],
+    deps = [
+        "@maven//:org_scala_js_scalajs_ir_2_13",
+        "@maven//:org_scala_js_scalajs_linker_2_13",
+        "@maven//:org_scala_js_scalajs_linker_interface_2_13",
+        "@maven//:org_scala_js_scalajs_logging_2_13",
+    ],
+    main_class = "ScalaJsLinker",
+    visibility = ["//visibility:public"]
+)

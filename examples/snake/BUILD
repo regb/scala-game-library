@@ -1,4 +1,5 @@
 load("@rules_scala//scala:scala.bzl", "scala_library", "scala_binary")
+load("//bazel:scalajs.bzl", "scalajs_link")
 
 scala_library(
     name = "core",
@@ -28,7 +29,7 @@ scala_library(
     srcs = glob(["html5/src/main/scala/**/*.scala"]),
     main_class = "com.regblanc.sgl.snake.html5.Main",
     deps = [
-        "//examples/snake:core",
+        ":core",
         "//core:sgl-core",
         "//html5:sgl-html5",
         "@maven//:org_scala_js_scalajs_library_2_13",
@@ -37,20 +38,18 @@ scala_library(
     plugins = [ "@maven//:org_scala_js_scalajs_compiler_2_13_16"],
 )
 
-genrule(
+scalajs_link(
     name = "index",
-    tools = ["//:linker"],
-    srcs = [
+    scala_libs = [
         ":html5",
-        ":core",
-        "//html5:sgl-html5",
-        "//core:sgl-core",
-        "@maven//:org_scala_js_scalajs_library_2_13",
-        "@maven//:org_scala_js_scalajs_javalib",
-        "@maven//:org_scala_js_scalajs_scalalib_2_13",
-        "@maven//:org_scala_js_scalajs_dom_sjs1_2_13",
     ],
-    cmd = "./$(location //:linker) \"$(location :html5):$(location :core):$(location //html5:sgl-html5):$(location //core:sgl-core):$(location @maven//:org_scala_js_scalajs_dom_sjs1_2_13):$(location @maven//:org_scala_js_scalajs_library_2_13):$(location @maven//:org_scala_js_scalajs_javalib):$(location @maven//:org_scala_js_scalajs_scalalib_2_13)\" com.regblanc.sgl.snake.html5.Main main $@",
-        
-    outs = ["index.js"],
+    linker = "//bazel/scalajs:linker",
+    output_name = "index.js",
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "html_files",
+    srcs = ["html5/index.html"],
+    visibility = ["//visibility:public"],
 )

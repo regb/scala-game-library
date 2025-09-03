@@ -23,13 +23,16 @@ trait Html5App extends GameApp
     * a regular getElementById). The canvas will be used as the main
     * rendering area.
     */
-  val GameCanvasID: String
+  //val GameCanvasID: String
 
   var htmlCanvas: html.Canvas = null
 
-  def main(args: Array[String]): Unit = {
-    run(js.Dynamic.global.document.getElementById(GameCanvasID).asInstanceOf[html.Canvas])
-  }
+  // ScalaJS Linker is configured to look for the main() without argument entrypoint.
+  // I currently disabled calling the main automatically, so we instead need to explicitly call the run function.
+  //def main(): Unit = {
+  //  //println("Hello World")
+  //  //run(js.Dynamic.global.document.getElementById(GameCanvasID).asInstanceOf[html.Canvas])
+  //}
 
 
   /* 

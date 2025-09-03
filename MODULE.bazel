@@ -1,5 +1,6 @@
 bazel_dep(name = "rules_scala", version = "7.1.1")
 bazel_dep(name = "rules_jvm_external", version = "6.8")
+bazel_dep(name = "rules_go", version = "0.50.1")
 
 # Register a prebuild protoc toolchain to avoid always re-compiling protoc.
 # require the flag --incompatible_enable_proto_toolchain_resolution
