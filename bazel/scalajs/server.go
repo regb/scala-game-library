@@ -5,37 +5,30 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 )
 
 func main() {
+	if len(os.Args) < 2 {
+		log.Fatal("Usage: server <directory-to-serve>")
+	}
+
+	serveDir := os.Args[1]
+
 	port := "8080"
 	if p := os.Getenv("PORT"); p != "" {
 		port = p
 	}
 
-	// Get the current working directory (runfiles directory when run with bazel)
-	wd, err := os.Getwd()
-	if err != nil {
-		log.Fatal(err)
+	if _, err := os.Stat(serveDir); os.IsNotExist(err) {
+		log.Fatalf("Directory does not exist: %s", serveDir)
 	}
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/" || r.URL.Path == "/index.html" {
-			http.ServeFile(w, r, filepath.Join(wd, "examples/snake/html5/index.html"))
-			return
-		}
+	fileServer := http.FileServer(http.Dir(serveDir))
 
-		if r.URL.Path == "/index.js" {
-			http.ServeFile(w, r, filepath.Join(wd, "examples/snake/index.js"))
-			return
-		}
-
-		http.NotFound(w, r)
-	})
+	http.Handle("/", fileServer)
 
 	fmt.Printf("Server starting on port %s\n", port)
-	fmt.Printf("Serving from directory: %s\n", wd)
-	fmt.Printf("Visit http://localhost:%s to play the Snake game\n", port)
+	fmt.Printf("Serving from directory: %s\n", serveDir)
+	fmt.Printf("Visit http://localhost:%s\n", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }

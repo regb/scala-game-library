@@ -3,14 +3,19 @@ load(
     "scala_library", "scala_binary",
 )
 load("@rules_go//go:def.bzl", "go_binary")
+load(":defs.bzl", "scalajs_html_template")
+
+scalajs_html_template(
+    name = "snake_html",
+    scalajs_target = "//examples/snake:html5",
+    main_class = "SnakeGame",
+    output_name = "index.html",
+)
 
 go_binary(
     name = "server",
     srcs = ["server.go"],
-    data = [
-        "//examples/snake:html5",
-        "//examples/snake:html_files",
-    ],
+    visibility = ["//visibility:public"],
 )
 
 
@@ -26,3 +31,7 @@ scala_binary(
     main_class = "ScalaJsLinker",
     visibility = ["//visibility:public"]
 )
+
+exports_files([
+    "default.html.template",
+], visibility = ["//visibility:public"])

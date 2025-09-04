@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Scala.js Application</title>
+</head>
+<body>
+  <canvas id="my_canvas"></canvas>
+
+  <script type="module">
+      import { {{MAIN_CLASS}} } from "./{{JS_PATH}}";
+      {{MAIN_CLASS}}.run(document.getElementById("my_canvas"));
+  </script>
+
+</body>
+</html>

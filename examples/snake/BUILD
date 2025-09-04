@@ -1,6 +1,7 @@
 load("@rules_scala//scala:scala.bzl", "scala_binary")
 load("//bazel:cross.bzl", "scala_library")
 load("//bazel:scalajs.bzl", "scalajs_module")
+load("//bazel/scalajs:defs.bzl", "run_server")
 
 scala_library(
     name = "core",
@@ -36,8 +37,8 @@ scalajs_module(
     visibility = ["//visibility:public"],
 )
 
-filegroup(
-    name = "html_files",
-    srcs = ["html5/index.html"],
-    visibility = ["//visibility:public"],
+run_server(
+    name = "serve_snake",
+    scalajs_module = ":html5",
+    main_class = "SnakeGame",
 )
