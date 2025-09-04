@@ -1,23 +1,97 @@
+load(":cross.bzl", "scala_library")
+load("@rules_scala//scala:scala.bzl", _scala_library_rule = "scala_library")
+
+def _scalajs_transition_impl(settings, attr):
+    return {"//command_line_option:platforms": ["//bazel/platforms:scala_js"]}
+
+_scalajs_transition = transition(
+    implementation = _scalajs_transition_impl,
+    inputs = [],
+    outputs = ["//command_line_option:platforms"]
+)
+
+def _scalajs_library_impl(ctx):
+    """Implementation that forwards to the underlying scala_library with ScalaJS platform."""
+    
+    underlying_lib = ctx.attr.underlying_lib
+    
+    providers = []
+    if DefaultInfo in underlying_lib:
+        providers.append(underlying_lib[DefaultInfo])
+    if JavaInfo in underlying_lib:
+        providers.append(underlying_lib[JavaInfo])
+    
+    return providers
+
+_scalajs_library_rule = rule(
+    implementation = _scalajs_library_impl,
+    attrs = {
+        "underlying_lib": attr.label(
+            mandatory = True,
+            providers = [JavaInfo],
+        ),
+    },
+    cfg = _scalajs_transition,
+    provides = [DefaultInfo, JavaInfo],
+    doc = "ScalaJS library with incoming transition",
+)
+
+def scalajs_library(name, deps=[], visibility=None, **kwargs):
+    """A Scala library that automatically forces ScalaJS platform for itself and dependencies."""
+    
+    underlying_lib_name = name + "_impl"
+    scala_library_attrs = dict(kwargs)
+    scala_library(
+        name = underlying_lib_name,
+        deps = deps,
+        visibility = ["//visibility:private"],
+        **scala_library_attrs
+    )
+    
+    # Create the wrapper rule with incoming transition
+    # This will transition the underlying_lib AND all its dependencies to ScalaJS platform
+    wrapper_attrs = {}
+    if visibility:
+        wrapper_attrs["visibility"] = visibility
+    
+    for attr in ["testonly", "tags"]:
+        if attr in kwargs:
+            wrapper_attrs[attr] = kwargs[attr]
+    
+    _scalajs_library_rule(
+        name = name,
+        underlying_lib = ":" + underlying_lib_name,
+        **wrapper_attrs
+    )
+
+def scalajs_module(name, srcs, deps, output_name, **params):
+    libname = name + "_lib"
+    scala_library(
+        name = libname,
+        srcs = srcs,
+        deps = deps,
+    )
+
+    scalajs_link(
+        name = name,
+        scala_libs = [":" + libname],
+        linker = "//bazel/scalajs:linker",
+        output_name = output_name,
+        **params,
+    )
+
 def _scalajs_link_impl(ctx):
     """Implementation of the scalajs_link rule."""
     
-    # Get all scala library targets
-    scala_libs = ctx.attr.scala_libs
-    
-    # Collect all transitive dependencies from all libraries
     transitive_jars = []
-    
-    for scala_lib in scala_libs:
-        # Add the library jar
+    for scala_lib in ctx.attr.scala_libs:
         if hasattr(scala_lib, "files"):
             transitive_jars.extend(scala_lib.files.to_list())
         
-        # Collect transitive runtime dependencies
         if JavaInfo in scala_lib:
             java_info = scala_lib[JavaInfo]
             transitive_jars.extend(java_info.transitive_runtime_jars.to_list())
     
-    # Remove duplicates while preserving order
     seen = {}
     unique_jars = []
     for jar in transitive_jars:
@@ -25,18 +99,14 @@ def _scalajs_link_impl(ctx):
             seen[jar.path] = True
             unique_jars.append(jar)
     
-    # Build the classpath string for the linker
     classpath_parts = [jar.path for jar in unique_jars]
     classpath = ":".join(classpath_parts)
     
-    # Create the output file
     output = ctx.actions.declare_file(ctx.attr.output_name)
     
-    # Build the command
     args = ctx.actions.args()
     args.add(classpath)
     
-    # Add main_class and main_method if main_class is provided
     if ctx.attr.main_class:
         main_method = ctx.attr.main_method if ctx.attr.main_method else "main"
         args.add(ctx.attr.main_class)
@@ -44,7 +114,6 @@ def _scalajs_link_impl(ctx):
     
     args.add(output.path)
     
-    # Run the linker
     ctx.actions.run(
         inputs = unique_jars,
         outputs = [output],
@@ -62,6 +131,7 @@ scalajs_link = rule(
         "scala_libs": attr.label_list(
             mandatory = True,
             providers = [JavaInfo],
+            cfg = _scalajs_transition,
             doc = "The scala library targets to link",
         ),
         "linker": attr.label(

@@ -8,7 +8,7 @@ go_binary(
     name = "server",
     srcs = ["server.go"],
     data = [
-        "//examples/snake:index",
+        "//examples/snake:html5",
         "//examples/snake:html_files",
     ],
 )
