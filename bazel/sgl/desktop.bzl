@@ -60,6 +60,7 @@ def sgl_desktop_awt_app(
         srcs = [":" + name + "_Main"],
         deps = deps + [
           "//core:sgl-core",
+          "//jvm-shared:jvm-shared",
           "//desktop-awt:sgl-desktop-awt",
         ],
         main_class = package + ".desktop." + main_class
