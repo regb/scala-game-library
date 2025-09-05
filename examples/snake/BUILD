@@ -2,6 +2,7 @@ load("@rules_scala//scala:scala.bzl", "scala_binary")
 load("//bazel:cross.bzl", "scala_library")
 load("//bazel:scalajs.bzl", "scalajs_module")
 load("//bazel/scalajs:defs.bzl", "run_server")
+load("//bazel/sgl:html5.bzl", "html5_main")
 
 scala_library(
     name = "core",
@@ -26,7 +27,7 @@ scala_binary(
 
 scalajs_module(
     name = "html5",
-    srcs = glob(["html5/src/main/scala/**/*.scala"]),
+    srcs = [":Html5Main"],
     deps = [
         ":core",
         "//core:sgl-core",
@@ -35,6 +36,13 @@ scalajs_module(
     ],
     output_name = "index.js",
     visibility = ["//visibility:public"],
+)
+
+html5_main(
+    name = "Html5Main",
+    package = "com.regblanc.sgl.snake",
+    main_class = "SnakeGame",
+    core_abstract_class = "com.regblanc.sgl.snake.core.AbstractApp",
 )
 
 run_server(
