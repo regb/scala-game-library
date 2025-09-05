@@ -18,7 +18,7 @@ scala_library(
 )
 
 scala_test(
-    name="sgl-destkop-awt-tests",
+    name="sgl-desktop-awt-tests",
     srcs=glob(["src/test/scala/**/*.scala"]),
     deps = [
         ":sgl-desktop-awt",

@@ -1,8 +1,7 @@
-load("//bazel:scalajs.bzl", "scalajs_module")
-load("//bazel/scalajs:defs.bzl", "run_server")
+load("@rules_scala//scala:scala.bzl", "scala_binary")
 
-def _html5_main_template_impl(ctx):
-    """Implementation for scalajs_html_template rule."""
+def _desktop_awt_main_impl(ctx):
+    """Implementation for desktop_awt_main rule."""
     
     substitutions = {
         "{{PACKAGE}}": ctx.attr.package,
@@ -19,11 +18,11 @@ def _html5_main_template_impl(ctx):
     
     return [DefaultInfo(files = depset([output]))]
 
-html5_main = rule(
-    implementation = _html5_main_template_impl,
+desktop_awt_main = rule(
+    implementation = _desktop_awt_main_impl,
     attrs = {
         "_template": attr.label(
-            default = ":Html5Main.scala.template",
+            default = ":DesktopAWTMain.scala.template",
             allow_single_file = True,
         ),
         "package": attr.string(
@@ -32,44 +31,36 @@ html5_main = rule(
         ),
         "main_class": attr.string(
             mandatory = True,
-            doc = "The name for the main class (will be exported as a global javascript object)",
+            doc = "The name for the main class",
         ),
         "core_abstract_class": attr.string(
             mandatory = True,
             doc = "The fully qualified path to the core shared code",
         ),
     },
-    doc = "Generate a Main entrypoint for the HTML5 backend of SGL",
+    doc = "Generate a Main entrypoint for the Desktop AWT backend of SGL",
 )
 
-def sgl_html5_app(
+def sgl_desktop_awt_app(
   name,
   deps,
   package,
   main_class,
   core_abstract_class,
-  output_name = "index.js",
 ):
-    html5_main(
+    desktop_awt_main(
         name = name + "_Main",
         package = package,
         main_class = main_class,
         core_abstract_class = core_abstract_class,
     )
     
-    scalajs_module(
-        name = name + "_indexjs",
+    scala_binary(
+        name = name,
         srcs = [":" + name + "_Main"],
         deps = deps + [
           "//core:sgl-core",
-          "//html5:sgl-html5",
-          "@maven//:org_scala_js_scalajs_dom_sjs1_2_13",
+          "//desktop-awt:sgl-desktop-awt",
         ],
-        output_name = output_name,
-    )
-    
-    run_server(
-        name = name + "_serve",
-        scalajs_module = ":" + name + "_indexjs",
-        main_class = main_class,
+        main_class = package + ".desktop." + main_class
     )

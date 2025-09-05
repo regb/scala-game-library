@@ -14,16 +14,15 @@ we do not provide a configuration for Android export.
 You can try out the HTML5 version in your browser:
 [https://regb.github.io/scala-game-library/snake/](https://regb.github.io/scala-game-library/snake/)
 
-The [build definitions](../../build.sbt) are in the SGL root project
-definitions. If you have scala-native configured in your system, you should be
-able to run the native executable (from the root directory of SGL) with:
+To run the JVM implementation:
 
-    sbt snakeDesktopNative/run
+    bazel run :desktop-awt
 
-The JVM-based desktop should work out of the box:
+To run the ScalaNative build:
 
-    sbt snakeDesktop/run
+    # Currently broken
+    bazel run :desktop-native
 
-You can build a local web version (one .js file):
+To run an HTTP server serving the ScalaJS build:
 
-    sbt snakeHtml5/fastOptJS
+    bazel run :html5

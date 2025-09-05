@@ -1,0 +1,14 @@
+package {{PACKAGE}}.desktop
+
+import sgl.{GameLoopStatisticsComponent}
+import sgl.awt._
+import sgl.awt.util._
+
+object {{MAIN_CLASS}} extends AWTApp with {{CORE_ABSTRACT_CLASS}}
+  with VerboseStdErrLoggingProvider {
+
+  override val TargetFps = Some(60)
+
+  override val frameDimension = (TotalWidth, TotalHeight)
+
+}

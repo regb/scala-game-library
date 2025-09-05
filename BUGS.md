@@ -1,6 +1,6 @@
 # Known Issues
 
-## Destkop AWT decoding of images
+## Desktop AWT decoding of images
 
 imageio.read seems to misbehave on a 1-bit grayscale with alpha format: a fully
 transparent image encoded with 1 bit per value, where all the bits are
