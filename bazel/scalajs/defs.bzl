@@ -87,6 +87,17 @@ cat > $@ << 'EOF'
 #!/bin/bash
 
 TEMP_DIR=$$(mktemp -d)
+
+cleanup() {{
+    echo "Cleaning up temporary directory: $$TEMP_DIR"
+    if [[ -n $$SERVER_PID ]]; then
+        kill $$SERVER_PID 2>/dev/null
+        wait $$SERVER_PID 2>/dev/null
+    fi
+    rm -rf "$$TEMP_DIR"
+}}
+trap cleanup EXIT INT TERM
+
 cp $(location :{}) "$$TEMP_DIR/index.html"
 JS_FILE=$(location {})
 JS_TARGET_PATH=$$(echo "$$JS_FILE" | sed 's|.*bazel-out/[^/]*/bin/||')
@@ -94,7 +105,10 @@ JS_DIR="$$TEMP_DIR/$$(dirname "$$JS_TARGET_PATH")"
 mkdir -p "$$JS_DIR"
 cp "$$JS_FILE" "$$TEMP_DIR/$$JS_TARGET_PATH"
 
-exec $(location //bazel/scalajs:server) "$$TEMP_DIR"
+$(location //bazel/scalajs:server) "$$TEMP_DIR" &
+SERVER_PID=$$!
+
+wait $$SERVER_PID
 EOF
 chmod +x $@
         """.format(html_target_name, scalajs_module),
