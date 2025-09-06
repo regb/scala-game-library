@@ -5,7 +5,8 @@ load("//bazel/sgl:defs.bzl", "sgl_core_library", "sgl_desktop_awt_app", "sgl_htm
 sgl_core_library(
     name = "core",
     srcs = ["App.scala", "MainScreen.scala"],
-    assets_path = "assets"
+    resources = glob(["assets/**"]),
+    resource_strip_prefix = "examples/hello/assets",
 )
 
 sgl_desktop_awt_app(

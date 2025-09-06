@@ -69,3 +69,7 @@ maven.install(
 use_repo(maven, "maven")
 
 #register_toolchains("//:my_toolchain")
+
+# Tiled tool extension
+tiled = use_extension("//bazel/tiled:extensions.bzl", "tiled_extension")
+use_repo(tiled, "tiled_tool")

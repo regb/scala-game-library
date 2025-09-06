@@ -85,7 +85,7 @@ def run_server(name, scalajs_module, main_class, static_files = [], static_strip
     ]
     if static_files:
         srcs.extend(static_files)
-    
+
     # Generate static file copy commands
     static_copy_commands = ""
     if static_files:
@@ -149,6 +149,6 @@ wait $$SERVER_PID
 EOF
 chmod +x $@
         """.format(html_target_name, scalajs_module, static_copy_commands),
-        tools = ["//bazel/scalajs:server"],
+        tools = [Label("//bazel/scalajs:server")],
         executable = True,
     )
