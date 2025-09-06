@@ -1,4 +1,4 @@
-package com.regblanc.sgl.test
+package com.regblanc.sgl.hello
 package core
 
 import sgl._

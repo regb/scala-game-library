@@ -8,6 +8,9 @@ def _html5_main_template_impl(ctx):
         "{{PACKAGE}}": ctx.attr.package,
         "{{MAIN_CLASS}}": ctx.attr.main_class,
         "{{CORE_ABSTRACT_CLASS}}": ctx.attr.core_abstract_class,
+        "{{CANVAS_WIDTH}}": str(ctx.attr.canvas_width),
+        "{{CANVAS_HEIGHT}}": str(ctx.attr.canvas_height),
+        "{{ASSETS_SERVING_ROOT}}": str(ctx.attr.assets_serving_root),
     }
     
     output = ctx.actions.declare_file(ctx.attr.name + ".scala")
@@ -38,6 +41,21 @@ html5_main = rule(
             mandatory = True,
             doc = "The fully qualified path to the core shared code",
         ),
+        "assets_serving_root": attr.string(
+            mandatory = False,
+            doc = "The resource root used to serve static assets (the game will fetch them with this prefix)",
+            default = 'static',
+        ),
+        "canvas_width": attr.int(
+            mandatory = False,
+            doc = "The width of the canvas that will be provided on the HTML page, in pixels.",
+            default = 800,
+        ),
+        "canvas_height": attr.int(
+            mandatory = False,
+            doc = "The height of the canvas that will be provided on the HTML page, in pixels.",
+            default = 600,
+        ),
     },
     doc = "Generate a Main entrypoint for the HTML5 backend of SGL",
 )
@@ -48,13 +66,21 @@ def sgl_html5_app(
   package,
   main_class,
   core_abstract_class,
+  assets = [],
+  assets_strip_prefix = '',
+  static_folder = 'static',
   output_name = "index.js",
+  canvas_width = 800,
+  canvas_height = 600,
 ):
     html5_main(
         name = name + "_Main",
         package = package,
         main_class = main_class,
         core_abstract_class = core_abstract_class,
+        assets_serving_root = static_folder,
+        canvas_width = canvas_width,
+        canvas_height = canvas_height,
     )
     
     scalajs_module(
@@ -72,4 +98,7 @@ def sgl_html5_app(
         name = name + "_serve",
         scalajs_module = ":" + name + "_indexjs",
         main_class = main_class,
+        static_files = assets,
+        static_strip_prefix = assets_strip_prefix,
+        static_folder = static_folder,
     )

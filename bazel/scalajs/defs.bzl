@@ -48,13 +48,16 @@ scalajs_html_template = rule(
     doc = "Generates an HTML file by substituting the ScalaJS output path and other values into a template",
 )
 
-def run_server(name, scalajs_module, main_class, template = None, **kwargs):
+def run_server(name, scalajs_module, main_class, static_files = [], static_strip_prefix = '', static_folder = 'static', template = None, **kwargs):
     """Creates a server target that serves a ScalaJS application with generated HTML.
     
     Args:
         name: The name of the server target
         scalajs_module: The scalajs_module target to serve
         main_class: The main class name for the ScalaJS application
+        static_files: List of files to be served statically.
+        static_strip_prefix: A prefix that will be stripped from the list of static files.
+        static_folder: A folder that will be created to place the static assets and serve them from.
         template: Optional custom HTML template (uses default if not provided)
         **kwargs: Additional arguments passed to the server rule
     """
@@ -75,13 +78,47 @@ def run_server(name, scalajs_module, main_class, template = None, **kwargs):
         **html_attrs
     )
     
+    # Prepare srcs list with JavaScript module, HTML, and static files
+    srcs = [
+        scalajs_module,
+        ":" + html_target_name,
+    ]
+    if static_files:
+        srcs.extend(static_files)
+    
+    # Generate static file copy commands
+    static_copy_commands = ""
+    if static_files:
+        for static_file in static_files:
+            static_copy_commands += """
+# Copy static file: {}
+STATIC_FILE=$(location {})
+""".format(static_file, static_file)
+            
+            if static_strip_prefix:
+                # Look for the prefix in the path and strip everything before it (including the prefix itself)
+                prefix_escaped = static_strip_prefix.rstrip('/').replace('/', '\\/')
+                static_copy_commands += """if echo "$$STATIC_FILE" | grep -q "{}"; then
+    STATIC_TARGET_PATH=$$(echo "$$STATIC_FILE" | sed 's|.*{}/||')
+else
+    echo "Error: static_strip_prefix '{}' not found in file path: $$STATIC_FILE"
+    exit 1
+fi
+""".format(prefix_escaped, prefix_escaped, static_strip_prefix)
+            else:
+                # If no prefix specified, use the filename only
+                static_copy_commands += """STATIC_TARGET_PATH=$$(basename "$$STATIC_FILE")
+"""
+            
+            static_copy_commands += """STATIC_DIR="$$TEMP_DIR/{}/$$(dirname "$$STATIC_TARGET_PATH")"
+mkdir -p "$$STATIC_DIR"
+cp "$$STATIC_FILE" "$$TEMP_DIR/{}/$$STATIC_TARGET_PATH"
+""".format(static_folder, static_folder)
+    
     native.genrule(
         name = name,
         outs = [name + "_runner.sh"],
-        srcs = [
-            scalajs_module,
-            ":" + html_target_name,
-        ],
+        srcs = srcs,
         cmd = """
 cat > $@ << 'EOF'
 #!/bin/bash
@@ -104,14 +141,14 @@ JS_TARGET_PATH=$$(echo "$$JS_FILE" | sed 's|.*bazel-out/[^/]*/bin/||')
 JS_DIR="$$TEMP_DIR/$$(dirname "$$JS_TARGET_PATH")"
 mkdir -p "$$JS_DIR"
 cp "$$JS_FILE" "$$TEMP_DIR/$$JS_TARGET_PATH"
-
+{}
 $(location //bazel/scalajs:server) "$$TEMP_DIR" &
 SERVER_PID=$$!
 
 wait $$SERVER_PID
 EOF
 chmod +x $@
-        """.format(html_target_name, scalajs_module),
+        """.format(html_target_name, scalajs_module, static_copy_commands),
         tools = ["//bazel/scalajs:server"],
         executable = True,
     )

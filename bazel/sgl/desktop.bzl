@@ -7,6 +7,8 @@ def _desktop_awt_main_impl(ctx):
         "{{PACKAGE}}": ctx.attr.package,
         "{{MAIN_CLASS}}": ctx.attr.main_class,
         "{{CORE_ABSTRACT_CLASS}}": ctx.attr.core_abstract_class,
+        "{{FRAME_WIDTH}}": str(ctx.attr.frame_width),
+        "{{FRAME_HEIGHT}}": str(ctx.attr.frame_height),
     }
     
     output = ctx.actions.declare_file(ctx.attr.name + ".scala")
@@ -37,6 +39,14 @@ desktop_awt_main = rule(
             mandatory = True,
             doc = "The fully qualified path to the core shared code",
         ),
+        "frame_width": attr.int(
+            mandatory = False,
+            doc = "The width of the frame that will be created on the system, in pixels.",
+        ),
+        "frame_height": attr.int(
+            mandatory = False,
+            doc = "The height of the frame that will be created on the system, in pixels.",
+        ),
     },
     doc = "Generate a Main entrypoint for the Desktop AWT backend of SGL",
 )
@@ -47,12 +57,16 @@ def sgl_desktop_awt_app(
   package,
   main_class,
   core_abstract_class,
+  frame_width = 800,
+  frame_height = 800,
 ):
     desktop_awt_main(
         name = name + "_Main",
         package = package,
         main_class = main_class,
         core_abstract_class = core_abstract_class,
+        frame_width = frame_width,
+        frame_height = frame_height,
     )
     
     scala_binary(

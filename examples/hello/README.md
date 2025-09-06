@@ -1,6 +1,7 @@
-Test
-==========
+# Hello SGL
 
-This is the simplest possible "game", which is cross-platform and
-can be used as a starting point to test and play around with the
-library.
+This is a kind of hello world for SGL, a very minimal game that uses as simply
+as possible a lot of the core modules of SGL, and can be built on most
+platforms.
+
+This is mostly use for internal testing of SGL development.

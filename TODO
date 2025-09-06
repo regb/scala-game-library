@@ -93,3 +93,17 @@ be that it happens behind the scene, and we could either use it or not, and no
 game code need to change (so essentially the loadImage with an individual image
 would magically go into the atlas and extract the part of the atlas that we need,
 the system should then lazily load the atlas behind the scene and share it.
+
+## Bundle assets at build time
+
+It should be possible to bundle assets at build time, e.g. for map file data in txt or json,
+it would be nice to be able to use code generation to parse the asset during the build and
+generate the output (the Scala data structure) in the build, and then to have the Loader return
+the code instantiation without having to actually read a file. This would be quite nice in HTML
+where we avoid a round trip to the server.
+
+Ideally this is transparent to the user, they use the same API with a loader, and its a
+build configuration to choose whether to embed it or to have it dynamically loaded.
+
+Probably this ties together with a better story for loading dynamic assets instead of assets
+from the jar on the JVM.

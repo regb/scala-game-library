@@ -3,7 +3,7 @@ package sgl
 import util._
 import scala.collection.mutable.HashMap
 
- /* This is one of the few platform abstraction that doesn't 
+ /* This is one of the few platform abstraction that doesn't use
   * the Cake pattern, the reason for this is because it doesn't need to access
   * other abstract type of the system, and since it doesn't need access to the
   * rest of the cake dependencies, it's more flexible if it's provided in the
@@ -33,7 +33,7 @@ import scala.collection.mutable.HashMap
   * an event listner, canvas.draw in a loop update), and we can add runtime
   * code to catch error early, especially on development platform like the JVM
   * where this might not be an actual requirement. But having this reported as
-  * an error at runtime will help. Other possibility is to explore liniting.
+  * an error at runtime will help. Other possibility is to explore linting.
   *
   * Another important limitation of using Event objects instead of callbacks,
   * is that this leads to a lot of memory allocation that needs to be garbage
@@ -99,7 +99,7 @@ import scala.collection.mutable.HashMap
   *
   * Sometimes, some platform might issue repeated events for the same thing (a
   * key down event might be repeated every few seconds if the key is held).
-  * This is not something that SGL exposes, as this is misleadin.
+  * This is not something that SGL exposes, as this is misleading.
   *
   * Each platform that implement SGL must collect and adapat the input events to
   * the configured Input.inputProcessor. Besides adapting them to the core abstraction,
@@ -109,6 +109,8 @@ import scala.collection.mutable.HashMap
 object Input {
 
   // By default, there's no input processor from the game, but we still run the StateInputProcessor.
+  // TODO: maybe we can add an option to disable the stateinputprocessor, that could help save
+  // resources if we know we don't rely on reading the current input state.
   private[sgl] var inputProcessor: InputProcessor = new StateInputProcessor{}
 
   /** Sets the main application InputProcessor.

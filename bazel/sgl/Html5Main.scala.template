@@ -16,7 +16,8 @@ object {{MAIN_CLASS}} extends Html5App with {{CORE_ABSTRACT_CLASS}}
   override val TargetFps: Option[Int] = None
 
   override val theme = new FixedWindowTheme {
-    override val frameSize = (TotalWidth, TotalHeight)
+    override val frameSize = ({{CANVAS_WIDTH}}, {{CANVAS_HEIGHT}})
   }
 
+  override val ResourcesRoot = PartsResourcePath(Vector("{{ASSETS_SERVING_ROOT}}"))
 }

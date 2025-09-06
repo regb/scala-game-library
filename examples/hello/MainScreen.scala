@@ -1,4 +1,4 @@
-package com.regblanc.sgl.test
+package com.regblanc.sgl.hello
 package core
 
 import sgl._
@@ -10,17 +10,18 @@ trait MainScreenComponent extends ViewportComponent {
   this: GraphicsProvider with SystemProvider with WindowProvider with AudioProvider
   with GameStateComponent with LoggingProvider with SchedulerProvider =>
 
-  import Graphics.{Bitmap, Canvas, Color, BitmapRegion, Animation, RichCanvas}
+  import Graphics.{Bitmap, Canvas, Color, BitmapRegion, Animation}
   import Audio.{Music, Sound}
   import Window.dp2px
 
   private implicit val LogTag = Logger.Tag("main-screen")
 
+  var music: Option[Music] = None
+
   object LoadingScreen extends GameScreen {
     override def name: String = "Loading Screen"
 
     var characterBitmap: Option[Bitmap] = None
-    var music: Option[Music] = None
     var beep: Sound = _
     var beepInfinite: Sound = _
 
@@ -129,6 +130,9 @@ trait MainScreenComponent extends ViewportComponent {
               playingLoop = beepInfinite.play()
           }
         }
+        if(key == Input.Keys.M) {
+          music.foreach(_.stop())
+        }
         true
       }
 
@@ -163,12 +167,13 @@ trait MainScreenComponent extends ViewportComponent {
         canvas.drawRect(0, 0, Width, Height, Graphics.defaultPaint.withColor(Color.rgb(204, 242, 204)))
         canvas.drawCircle(autoX, autoY, dp2px(50).toFloat, Graphics.defaultPaint.withColor(Color.Black))
 
-	val frame = characterAnimation.currentFrame(totalTime)
+	    val frame = characterAnimation.currentFrame(totalTime)
         canvas.drawBitmap(frame, x, y, 1f, 0.5f)
-	// Version with the BitmapTransformed.
-	//canvas.translate(x, y)
-	//frame.render(canvas)
-	//canvas.translate(-x, -y)
+
+	    // Version with the BitmapTransformed.
+	    //canvas.translate(x, y)
+	    //frame.render(canvas)
+	    //canvas.translate(-x, -y)
 
         var rectWidth: Float = dp2px(50f)
         canvas.translate(dp2px(200f), dp2px(10f))
