@@ -61,9 +61,9 @@ def sgl_html5_app(
         name = name + "_indexjs",
         srcs = [":" + name + "_Main"],
         deps = deps + [
-          "//core:sgl-core",
-          "//html5:sgl-html5",
-          "@maven//:org_scala_js_scalajs_dom_sjs1_2_13",
+          Label("//core:sgl-core"),
+          Label("//html5:sgl-html5"),
+          Label("@maven//:org_scala_js_scalajs_dom_sjs1_2_13"),
         ],
         output_name = output_name,
     )
