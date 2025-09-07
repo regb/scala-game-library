@@ -31,6 +31,7 @@ import util._
   * and that they can be used pretty much anywhere (including in trait initialization) in the
   * game-specific code.
   */
-trait GameApp extends GraphicsProvider with AudioProvider
+trait GameApp extends GraphicsProvider with AudioProvider with ViewportComponent
                  with WindowProvider with SystemProvider with LoggingProvider 
                  with GameLoopComponent with GameStateComponent with LifecycleListenerProvider
+

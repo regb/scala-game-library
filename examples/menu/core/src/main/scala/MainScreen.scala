@@ -7,12 +7,10 @@ import scene._
 import scene.ui._
 import util._
 
-trait ScreensComponent {
-  this: GraphicsProvider with SystemProvider with WindowProvider 
-  with GameStateComponent with LoggingProvider
-  with ViewportComponent with SceneComponent with PopupsComponent =>
+trait ScreensComponent extends SceneComponent {
+  this: GameApp =>
 
-  private implicit val LogTag = Logger.Tag("main-screen")
+  private implicit val LogTag: ScreensComponent.this.Logger.Tag = Logger.Tag("main-screen")
 
   class LevelsScreen extends GameScreen {
 

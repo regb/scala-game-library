@@ -1,22 +1,26 @@
-load("@rules_scala//scala:scala.bzl", "scala_library", "scala_binary")
+load("//bazel/sgl:defs.bzl", "sgl_core_library", "sgl_desktop_awt_app", "sgl_html5_app")
 
-scala_library(
-    name = "menu-core",
+sgl_core_library(
+    name = "core",
     srcs = glob(["core/src/main/scala/**/*.scala"]),
-    deps = [
-        "//core:sgl-core",
-    ],
-    visibility = ["//visibility:public"],
 )
 
-scala_binary(
-    name = "menu-desktop-awt",
-    srcs = glob(["desktop-awt/src/main/scala/**/*.scala"]),
-    main_class = "com.regblanc.sgl.menu.desktop.Main",
-    deps = [
-        ":menu-core",
-        "//core:sgl-core",
-        "//jvm-shared:jvm-shared",
-        "//desktop-awt:sgl-desktop-awt",
-    ],
+sgl_desktop_awt_app(
+    name = "desktop-awt",
+    package = "com.regblanc.sgl.menu",
+    main_class = "Main",
+    core_abstract_class = "com.regblanc.sgl.menu.core.AbstractApp",
+    deps = [":core"],
+    frame_width = 400,
+    frame_height = 600,
+)
+
+sgl_html5_app(
+    name = "html5",
+    package = "com.regblanc.sgl.menu",
+    main_class = "MenuGame",
+    deps = [":core"],
+    core_abstract_class = "com.regblanc.sgl.menu.core.AbstractApp",
+    canvas_width = 400,
+    canvas_height = 600,
 )

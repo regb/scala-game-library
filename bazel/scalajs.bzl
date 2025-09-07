@@ -1,4 +1,4 @@
-load(":cross.bzl", "scala_library")
+#load(":cross.bzl", "scala_library")
 load("@rules_scala//scala:scala.bzl", _scala_library_rule = "scala_library")
 
 def _scalajs_transition_impl(settings, attr):
@@ -41,9 +41,12 @@ def scalajs_library(name, deps=[], visibility=None, **kwargs):
     
     underlying_lib_name = name + "_impl"
     scala_library_attrs = dict(kwargs)
-    scala_library(
+    _scala_library_rule(
         name = underlying_lib_name,
-        deps = deps,
+        deps = deps+[Label("@maven//:org_scala_js_scalajs_library_2_13")],
+        plugins = [Label("@maven//:org_scala_js_scalajs_compiler_2_13_16")],
+        #target_compatible_with = [Label("//bazel/platforms:scala_js")],
+        target_compatible_with = [Label("//bazel/platforms:compiler_js")],
         visibility = ["//visibility:private"],
         **scala_library_attrs
     )
@@ -66,7 +69,7 @@ def scalajs_library(name, deps=[], visibility=None, **kwargs):
 
 def scalajs_module(name, srcs, deps, output_name, **params):
     libname = name + "_lib"
-    scala_library(
+    scalajs_library(
         name = libname,
         srcs = srcs,
         deps = deps,

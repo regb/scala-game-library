@@ -66,6 +66,7 @@ def sgl_desktop_awt_app(
           Label("//core:sgl-core"),
           Label("//jvm-shared:jvm-shared"),
           Label("//desktop-awt:sgl-desktop-awt"),
+          Label("//modules:sgl-scene2d"),
     ]
     if use_extension_tiled:
         full_deps.append(Label("//extensions:sgl-tiled"))

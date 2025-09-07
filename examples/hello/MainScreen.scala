@@ -3,7 +3,6 @@ package core
 
 import sgl._
 import geometry._
-import scene._
 import util._
 
 trait MainScreenComponent extends ViewportComponent {
@@ -14,7 +13,7 @@ trait MainScreenComponent extends ViewportComponent {
   import Audio.{Music, Sound}
   import Window.dp2px
 
-  private implicit val LogTag = Logger.Tag("main-screen")
+  private implicit val LogTag: MainScreenComponent.this.Logger.Tag = Logger.Tag("main-screen")
 
   var music: Option[Music] = None
 

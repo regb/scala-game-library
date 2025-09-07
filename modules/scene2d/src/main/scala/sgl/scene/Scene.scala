@@ -7,7 +7,7 @@ package scene
   * all of the scene features, instead of importing
   * each individually.
   */
-trait SceneComponent extends SceneGraphComponent with ui.ScrollPaneComponent {
+trait SceneComponent extends SceneGraphComponent with ui.ScrollPaneComponent with ui.PopupsComponent {
   this: GraphicsProvider with WindowProvider with SystemProvider with ViewportComponent =>
 
 }

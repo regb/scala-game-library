@@ -22,7 +22,8 @@ platform(
         ":compiler_jvm",
         "@platforms//cpu:x86_64",
         "@platforms//os:linux",
-    ]
+    ],
+    visibility = ["//visibility:public"],
 )
 platform(
     name="scala_js",
@@ -30,7 +31,8 @@ platform(
        ":compiler_js",
         "@platforms//cpu:x86_64",
         "@platforms//os:linux",
-    ]
+    ],
+    visibility = ["//visibility:public"],
 )
 platform(
     name="scala_native_x86",
@@ -38,5 +40,6 @@ platform(
         ":compiler_native",
         "@platforms//cpu:x86_64",
         "@platforms//os:linux",
-    ]
+    ],
+    visibility = ["//visibility:public"],
 )
