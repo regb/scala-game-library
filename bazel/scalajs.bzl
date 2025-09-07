@@ -75,7 +75,7 @@ def scalajs_module(name, srcs, deps, output_name, **params):
     scalajs_link(
         name = name,
         scala_libs = [":" + libname],
-        linker = "//bazel/scalajs:linker",
+        linker = Label("//bazel/scalajs:linker"),
         output_name = output_name,
         **params,
     )

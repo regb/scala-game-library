@@ -1,17 +1,23 @@
 package {{PACKAGE}}.html5
 
 import sgl._
-import sgl.scene._
 import sgl.html5._
-import sgl.html5.themes._
-import sgl.util._
 import sgl.html5.util._
+import sgl.html5.themes._
+import sgl.scene._
+import sgl.util._
+import sgl.util.metrics._
 
 import scala.scalajs.js.annotation.JSExportTopLevel
 
 @JSExportTopLevel("{{MAIN_CLASS}}")
 object {{MAIN_CLASS}} extends Html5App with {{CORE_ABSTRACT_CLASS}}
-  with Html5VerboseConsoleLoggingProvider {
+  with LocalStorageSaveComponent
+  with Html5DefaultConsoleLoggingProvider
+  with Html5JsonProvider
+  with GameLoopStatisticsComponent
+  with DefaultInstrumentationProvider
+{
 
   override val TargetFps: Option[Int] = None
 

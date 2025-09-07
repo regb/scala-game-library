@@ -25,7 +25,7 @@ scalajs_html_template = rule(
     implementation = _scalajs_html_template_impl,
     attrs = {
         "template": attr.label(
-            default = "//bazel/scalajs:default.html.template",
+            default = Label("//bazel/scalajs:default.html.template"),
             allow_single_file = True,
             doc = "The HTML template file with placeholders (defaults to built-in template)",
         ),
@@ -86,34 +86,31 @@ def run_server(name, scalajs_module, main_class, static_files = [], static_strip
     if static_files:
         srcs.extend(static_files)
 
-    # Generate static file copy commands
-    static_copy_commands = ""
+    # Build static files list for environment variable
+    static_files_env = ""
     if static_files:
-        for static_file in static_files:
-            static_copy_commands += """
-# Copy static file: {}
-STATIC_FILE=$(location {})
-""".format(static_file, static_file)
-            
-            if static_strip_prefix:
-                # Look for the prefix in the path and strip everything before it (including the prefix itself)
-                prefix_escaped = static_strip_prefix.rstrip('/').replace('/', '\\/')
-                static_copy_commands += """if echo "$$STATIC_FILE" | grep -q "{}"; then
-    STATIC_TARGET_PATH=$$(echo "$$STATIC_FILE" | sed 's|.*{}/||')
-else
-    echo "Error: static_strip_prefix '{}' not found in file path: $$STATIC_FILE"
-    exit 1
-fi
-""".format(prefix_escaped, prefix_escaped, static_strip_prefix)
-            else:
-                # If no prefix specified, use the filename only
-                static_copy_commands += """STATIC_TARGET_PATH=$$(basename "$$STATIC_FILE")
-"""
-            
-            static_copy_commands += """STATIC_DIR="$$TEMP_DIR/{}/$$(dirname "$$STATIC_TARGET_PATH")"
-mkdir -p "$$STATIC_DIR"
-cp "$$STATIC_FILE" "$$TEMP_DIR/{}/$$STATIC_TARGET_PATH"
-""".format(static_folder, static_folder)
+        static_files_locations = ["$(location {})".format(f) for f in static_files]
+        static_files_env = ";".join(static_files_locations)
+    
+    # Build environment variable assignments
+    env_vars = [
+        "HTML_FILE=$(location :{})".format(html_target_name),
+        "JS_FILE=$(location {})".format(scalajs_module),
+    ]
+    
+    if static_files_env:
+        env_vars.append("STATIC_FILES='{}'".format(static_files_env))
+        
+    if static_strip_prefix:
+        env_vars.append("STATIC_STRIP_PREFIX='{}'".format(static_strip_prefix))
+        
+    if static_folder != 'static':
+        env_vars.append("STATIC_FOLDER='{}'".format(static_folder))
+    
+    env_assignments = " ".join(env_vars)
+
+    server_target = Label("//bazel/scalajs:server")
+    print(server_target)
     
     native.genrule(
         name = name,
@@ -122,33 +119,10 @@ cp "$$STATIC_FILE" "$$TEMP_DIR/{}/$$STATIC_TARGET_PATH"
         cmd = """
 cat > $@ << 'EOF'
 #!/bin/bash
-
-TEMP_DIR=$$(mktemp -d)
-
-cleanup() {{
-    echo "Cleaning up temporary directory: $$TEMP_DIR"
-    if [[ -n $$SERVER_PID ]]; then
-        kill $$SERVER_PID 2>/dev/null
-        wait $$SERVER_PID 2>/dev/null
-    fi
-    rm -rf "$$TEMP_DIR"
-}}
-trap cleanup EXIT INT TERM
-
-cp $(location :{}) "$$TEMP_DIR/index.html"
-JS_FILE=$(location {})
-JS_TARGET_PATH=$$(echo "$$JS_FILE" | sed 's|.*bazel-out/[^/]*/bin/||')
-JS_DIR="$$TEMP_DIR/$$(dirname "$$JS_TARGET_PATH")"
-mkdir -p "$$JS_DIR"
-cp "$$JS_FILE" "$$TEMP_DIR/$$JS_TARGET_PATH"
-{}
-$(location //bazel/scalajs:server) "$$TEMP_DIR" &
-SERVER_PID=$$!
-
-wait $$SERVER_PID
+{} $(location {})
 EOF
 chmod +x $@
-        """.format(html_target_name, scalajs_module, static_copy_commands),
-        tools = [Label("//bazel/scalajs:server")],
+        """.format(env_assignments, server_target),
+        tools = [server_target],
         executable = True,
     )
