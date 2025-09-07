@@ -33,7 +33,7 @@ trait SingleThreadSchedulerProvider extends SchedulerProvider {
 
   import scala.collection.mutable.Queue
 
-  private implicit val Tag = Logger.Tag("single-thread-scheduler")
+  private implicit val Tag: SingleThreadSchedulerProvider.this.Logger.Tag = Logger.Tag("single-thread-scheduler")
 
   // For obvious reasons, this Scheduler is not thread-safe. It should
   // always be called from the game loop thread and never from another

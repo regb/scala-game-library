@@ -59,7 +59,17 @@ def sgl_desktop_awt_app(
   core_abstract_class,
   frame_width = 800,
   frame_height = 800,
+  use_extension_tiled = False,
 ):
+
+    full_deps = deps + [
+          Label("//core:sgl-core"),
+          Label("//jvm-shared:jvm-shared"),
+          Label("//desktop-awt:sgl-desktop-awt"),
+    ]
+    if use_extension_tiled:
+        full_deps.append(Label("//extensions:sgl-tiled"))
+
     desktop_awt_main(
         name = name + "_Main",
         package = package,
@@ -72,10 +82,6 @@ def sgl_desktop_awt_app(
     scala_binary(
         name = name,
         srcs = [":" + name + "_Main"],
-        deps = deps + [
-          Label("//core:sgl-core"),
-          Label("//jvm-shared:jvm-shared"),
-          Label("//desktop-awt:sgl-desktop-awt"),
-        ],
+        deps = full_deps,
         main_class = package + ".desktop." + main_class
     )

@@ -15,7 +15,7 @@ trait LoggedAnalyticsProvider extends AnalyticsProvider {
 
   class LoggedAnalytics extends AbstractAnalytics {
 
-    implicit val tag = Logger.Tag("analytics")
+    implicit val tag: LoggedAnalyticsProvider.this.Logger.Tag = Logger.Tag("analytics")
 
     override def logCustomEvent(name: String, params: EventParams): Unit = {
       logger.info(s"${name}: ${params}")

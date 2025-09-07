@@ -12,7 +12,7 @@ trait GameStateComponent {
       * Override this log tag to use a more precise tag of
       * your own.
       */
-    implicit val logTag = Logger.Tag("game-screen")
+    implicit val logTag: GameStateComponent.this.Logger.Tag = Logger.Tag("game-screen")
 
     /** A title that summarizes the screen
       *

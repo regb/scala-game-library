@@ -4,12 +4,13 @@ import sgl._
 import sgl.awt._
 import sgl.awt.util._
 
-import tiled._
 import sgl.util.metrics._
 
 object {{MAIN_CLASS}} extends AWTApp with {{CORE_ABSTRACT_CLASS}}
-  with TiledMapRendererComponent with VerboseStdErrLoggingProvider with LiftJsonProvider
-  with GameLoopStatisticsComponent with DefaultInstrumentationProvider {
+  with VerboseStdErrLoggingProvider
+  with LiftJsonProvider
+  with GameLoopStatisticsComponent
+  with DefaultInstrumentationProvider {
 
   override val TargetFps = Some(60)
 

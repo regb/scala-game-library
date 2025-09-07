@@ -72,7 +72,17 @@ def sgl_html5_app(
   output_name = "index.js",
   canvas_width = 800,
   canvas_height = 600,
+  use_extension_tiled = False,
 ):
+
+    full_deps = deps + [
+          Label("//core:sgl-core"),
+          Label("//html5:sgl-html5"),
+          Label("@maven//:org_scala_js_scalajs_dom_sjs1_2_13"),
+    ]
+    if use_extension_tiled:
+        full_deps.append(Label("//extensions:sgl-tiled"))
+
     html5_main(
         name = name + "_Main",
         package = package,
@@ -86,11 +96,7 @@ def sgl_html5_app(
     scalajs_module(
         name = name + "_indexjs",
         srcs = [":" + name + "_Main"],
-        deps = deps + [
-          Label("//core:sgl-core"),
-          Label("//html5:sgl-html5"),
-          Label("@maven//:org_scala_js_scalajs_dom_sjs1_2_13"),
-        ],
+        deps = full_deps,
         output_name = output_name,
     )
     

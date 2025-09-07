@@ -55,7 +55,7 @@ trait InstrumentationProvider {
 trait DefaultInstrumentationProvider extends InstrumentationProvider {
   this: GraphicsProvider with LoggingProvider with SystemProvider =>
 
-  private implicit val LogTag = Logger.Tag("default-instrumentation-provider")
+  private implicit val LogTag: DefaultInstrumentationProvider.this.Logger.Tag = Logger.Tag("default-instrumentation-provider")
 
   object DefaultMetrics extends AbstractMetrics {
 
