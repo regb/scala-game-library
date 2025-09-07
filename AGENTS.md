@@ -12,9 +12,16 @@ It also supports Android through the JVM integration, and iOS with a web view.
 ## Build System
 This project uses **Bazel** as the build system.
 
+## Technologies
+* Scala 2.13
+* scalatest 3.2
+* Bazel
+
 ## Commands
 - Build all: `bazel build //...`
 - Run tests: `bazel test //...` 
+
+Make sure to ALWAYS run build and test whenever you make some changes.
 
 ## Code Style
 - **Package structure**: Use reverse domain notation (`com.regblanc.sgl.hello.core`)

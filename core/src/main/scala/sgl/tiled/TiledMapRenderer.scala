@@ -25,6 +25,13 @@ trait TiledMapRendererComponent {
       *
       * This loads the TiledMap by loading all the tilesets bitmaps.
       *
+      * You need to provide the screen density in which you designed the tiled map.
+      * this is important because SGL supports multi-dpi images and will load and potentially
+      * scale the image that corresponds to the actual screen density, and this might not be
+      * the same that was used in the tiledmap editor. A simple approach is to design in
+      * MDPI density, and pass ScreenDensity.Mdpi to the load method, which will then
+      * adjust its behavior depending on what actual density is used for the images.
+      *
       * Finding the proper path for the images can be slightly tricky, as it
       * depends on how you opened and configured the Tiled editor, and on
       * the relative path between your tiled map format and the tileset. The
@@ -37,18 +44,19 @@ trait TiledMapRendererComponent {
       * of the part that starts with "drawable". You're free to provide your
       * custom implementation if that doesn't fit your situation.
       */
-     def load(tiledMap: TiledMap): Loader[TiledMapRenderer] = {
-      val tilesetsBitmaps: Vector[Loader[Graphics.Bitmap]] = tiledMap.tilesets.map(ts =>
-        Graphics.loadImage(tiledMapPathTransform(ts.image))
-      )
-      val imageLayersBitmaps: Vector[Loader[Graphics.Bitmap]] = tiledMap.imageLayers.map(il =>
+     def load(tiledMapResolved: TiledMapResolvedDensity): Loader[TiledMapRenderer] = {
+      val tiledMap = tiledMapResolved.tiledMap
+      val tilesetsBitmaps: Vector[Loader[Graphics.Bitmap]] = tiledMap.tilesets.map(ts => {
+          Graphics.loadImage(tiledMapPathTransform(ts.image))
+      })
+      val imageLayersBitmaps: Vector[Loader[Graphics.Bitmap]] = tiledMap.imageLayers.map(il => {
         Graphics.loadImage(tiledMapPathTransform(il.image))
-      )
+      })
 
       Loader.combine(tilesetsBitmaps ++ imageLayersBitmaps).map(imgs => {
         val tilesetsBitmaps: Map[Tileset, Graphics.Bitmap] = tiledMap.tilesets.zip(imgs.take(tiledMap.tilesets.size)).toMap
         val imageLayersBitmaps: Map[ImageLayer, Graphics.Bitmap] = tiledMap.imageLayers.zip(imgs.takeRight(tiledMap.imageLayers.size)).toMap
-        new TiledMapRenderer(tiledMap, tilesetsBitmaps, imageLayersBitmaps)
+        new TiledMapRenderer(tiledMapResolved, tilesetsBitmaps, imageLayersBitmaps)
       })
     }
   }
@@ -78,9 +86,11 @@ trait TiledMapRendererComponent {
     * objects), and will also render the image layers.
     **/
   class TiledMapRenderer(
-    val tiledMap: TiledMap,
+    val tiledMapResolved: TiledMapResolvedDensity,
     tilesetsBitmaps: Map[Tileset, Graphics.Bitmap],
     imageLayersBitmaps: Map[ImageLayer, Graphics.Bitmap]) {
+
+    val tiledMap = tiledMapResolved.tiledMap
 
     // The drawing area within the tiledMap.
     private var x = 0
@@ -90,6 +100,14 @@ trait TiledMapRendererComponent {
 
     private val backgroundColor: Option[Graphics.Color] = tiledMap.backgroundColor.map(c =>  Graphics.Color.rgba(c.r, c.g, c.b, c.a))
     private val backgroundColorPaint: Option[Graphics.Paint] = backgroundColor.map(c => Graphics.defaultPaint.withColor(c))
+
+    // This is the factor by which all images have been scaled by SGL during loading, to map them
+    // to the actual screen density. This should be used when drawing from the image using the
+    // tiled data pixels
+    // TODO: We probably want to define a transform operation during loading that will resolve all the pixel coordinates
+    // and map them to the scaled version. Because with the current implementation we have a lot of inline calculation which
+    // can get pretty messy.
+    //private val dpiImageScalingFactor = Window.logicalPpi / referenceScreenDensity.dpi
 
     /** Move the top-left camera into the tiled map. */
     def moveCamera(x: Int, y: Int): Unit = {
@@ -112,6 +130,7 @@ trait TiledMapRendererComponent {
       * tiles.
       */
     def render(canvas: Graphics.Canvas, totalTime: Long): Unit = {
+
       if(backgroundColorPaint.nonEmpty)
         canvas.drawRect(x.toFloat, y.toFloat, width.toFloat, height.toFloat, backgroundColorPaint.get)
 
@@ -200,6 +219,7 @@ trait TiledMapRendererComponent {
               val ts = tiledMap.getTilesetForTileId(index)
               val dx = tileLayer.offsetX.toFloat + tile.x - x
               val dy = tileLayer.offsetY.toFloat + tile.y - y
+
               val t = ts.tiles(ts.getTileByGlobalId(index).tileId(totalTime))
               // Now when drawing we must adjust the y position in the canvas and in the image,
               // because the tiled map format allows for larger tiles in the tileset, and when

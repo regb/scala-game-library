@@ -662,3 +662,5 @@ abstract class LayersContainer(val layers: Vector[Layer]) {
   def getGroupLayer(name: String): Option[GroupLayer] = groupLayersMap.get(name)
   def groupLayer(name: String): GroupLayer = groupLayersMap(name)
 }
+
+

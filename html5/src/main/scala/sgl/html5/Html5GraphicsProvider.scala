@@ -77,7 +77,11 @@ trait Html5GraphicsProvider extends GraphicsProvider {
       val canvas = dom.document.createElement("canvas").asInstanceOf[html.Canvas]
       canvas.width = this.width
       canvas.height = this.height
-      canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height)
+      private val ctx = canvas.getContext("2d")
+      ctx.imageSmoothingEnabled = false;
+      val eps = 0.01
+      ctx.drawImage(image, eps, eps, image.width-2*eps, image.height-2*eps, 0, 0, canvas.width, canvas.height)
+      //ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
 
       override def height: Int = (image.height*scaling).toInt
       override def width: Int = (image.width*scaling).toInt
@@ -222,6 +226,7 @@ trait Html5GraphicsProvider extends GraphicsProvider {
       var height: Float = canvas.height.toFloat
       
       val context = canvas.getContext("2d").asInstanceOf[Ctx2D]
+      context.imageSmoothingEnabled = false;
 
       //note that the scala.js compiler is able to inline the body, so
       //you don't pay any performance cost for using the nice auto wrapping
@@ -266,8 +271,11 @@ trait Html5GraphicsProvider extends GraphicsProvider {
       }
 
       override def drawBitmap(bitmap: Bitmap, dx: Float, dy: Float, dw: Float, dh: Float, sx: Int, sy: Int, sw: Int, sh: Int, alpha: Float): Unit = {
+        // TODO: not sure if that's the best option, but there are seams sometimes depending on the scaling, and using this
+        // tiny epsilon offset seems to help to not accidentally draw from a neighbor pixel in the source image.
+        val eps = 0.01
         context.globalAlpha = alpha
-        context.drawImage(bitmap.canvas, sx, sy, sw, sh, dx, dy, dw, dh)
+        context.drawImage(bitmap.canvas, sx+eps, sy+eps, sw-2*eps, sh-2*eps, dx, dy, dw, dh)
         context.globalAlpha = 1f
       }
 

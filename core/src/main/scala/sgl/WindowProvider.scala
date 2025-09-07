@@ -196,3 +196,26 @@ trait WindowProvider {
   //      object available all the time.
 
 }
+
+sealed trait ScreenDensity {
+  def name: String
+  def dpi: Int
+}
+
+object ScreenDensity {
+  case object Ldpi  extends ScreenDensity { val name = "ldpi";  val dpi = 120 }
+  case object Mdpi  extends ScreenDensity { val name = "mdpi";  val dpi = 160 }
+  case object Hdpi  extends ScreenDensity { val name = "hdpi";  val dpi = 240 }
+  case object Xhdpi extends ScreenDensity { val name = "xhdpi"; val dpi = 320 }
+  case object Xxhdpi extends ScreenDensity { val name = "xxhdpi"; val dpi = 480 }
+  case object Xxxhdpi extends ScreenDensity { val name = "xxxhdpi"; val dpi = 640 }
+
+  val values: Seq[ScreenDensity] =
+    Seq(Ldpi, Mdpi, Hdpi, Xhdpi, Xxhdpi, Xxxhdpi)
+
+  private val byName: Map[String, ScreenDensity] =
+    values.map(d => d.name -> d).toMap
+
+  def fromName(name: String): Option[ScreenDensity] =
+    byName.get(name.toLowerCase)
+}
