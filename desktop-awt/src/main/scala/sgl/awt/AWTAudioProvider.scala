@@ -42,7 +42,7 @@ trait AWTAudioProvider extends AudioProvider {
 
   import JavaSoundHelpers._
   
-  private implicit val LogTag = Logger.Tag("sgl-awt-audio")
+  private implicit val LogTag: AWTAudioProvier.this.Logger.Tag = Logger.Tag("sgl-awt-audio")
 
   object AWTAudio extends Audio {
 

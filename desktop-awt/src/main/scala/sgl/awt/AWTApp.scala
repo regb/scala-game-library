@@ -123,7 +123,7 @@ trait AWTApp extends GameApp
      * game loop.
      */
 
-    private implicit val Tag = Logger.Tag("game-loop")
+    private implicit val Tag: AWTApp.this.Logger.Tag = Logger.Tag("game-loop")
 
     private val targetFramePeriod: Option[Long] = TargetFps map framePeriod
 

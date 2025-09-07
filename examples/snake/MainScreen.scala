@@ -20,7 +20,7 @@ trait MainScreenComponent {
   val TotalWidth = NbCols*squareSize
   val TotalHeight = NbRows*squareSize
 
-  private implicit val LogTag = Logger.Tag("main-screen")
+  private implicit val LogTag: MainScreenComponent.this.Logger.Tag = Logger.Tag("main-screen")
 
   class MainScreen extends FixedTimestepGameScreen(1000/12) {
 

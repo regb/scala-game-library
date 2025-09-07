@@ -17,7 +17,12 @@ def sgl_core_library(
     #    full_assets_path = native.package_name() + "/" + assets_path.strip("/")
     #    resource_strip_prefix = full_assets_path
 
-    full_deps = deps + [Label("//core:sgl-core")]
+    full_deps = deps + [
+        Label("//core:sgl-core"),
+        # For now these modules are always included, but we might make them optional eventually.
+        Label("//modules:sgl-scene2d"),
+        Label("//modules:sgl-particles"),
+    ]
     if use_extension_tiled:
         full_deps.append(Label("//extensions:sgl-tiled"))
 

@@ -1,4 +1,5 @@
 package sgl
+package particles
 
 trait ParticleSystemComponent {
   this: GraphicsProvider =>
