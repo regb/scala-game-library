@@ -4,14 +4,19 @@ import sgl._
 import sgl.awt._
 import sgl.awt.util._
 
-import sgl.util.metrics._
+import sgl.analytics.LoggedAnalyticsProvider
+import sgl.ads.NoAdsProvider
+import sgl.util.metrics.DefaultInstrumentationProvider
 
 object {{MAIN_CLASS}} extends AWTApp with {{CORE_ABSTRACT_CLASS}}
   with VerboseStdErrLoggingProvider
   with LiftJsonProvider
   with GameLoopStatisticsComponent
-  with DefaultInstrumentationProvider {
-
+  with DefaultInstrumentationProvider
+  with NoAdsProvider
+  with LoggedAnalyticsProvider
+  with {{SAVE_COMPONENT}}
+{
   override val TargetFps = Some(60)
 
   override val frameDimension = ({{FRAME_WIDTH}}, {{FRAME_HEIGHT}})
@@ -19,4 +24,6 @@ object {{MAIN_CLASS}} extends AWTApp with {{CORE_ABSTRACT_CLASS}}
   override val DynamicResourcesEnabled = true
 
   override val ScreenForcePPI = Some(160)
+
+  {{SAVE_COMPONENT_INIT}}
 }

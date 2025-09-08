@@ -10,6 +10,16 @@ def _desktop_awt_main_impl(ctx):
         "{{FRAME_WIDTH}}": str(ctx.attr.frame_width),
         "{{FRAME_HEIGHT}}": str(ctx.attr.frame_height),
     }
+
+    if ctx.attr.file_save:
+        substitutions["{{SAVE_COMPONENT}}"] = "SaveComponent"
+        substitutions["{{SAVE_COMPONENT_INIT}}"] = """
+  type Save = FileSave
+  override val Save: Save = new FileSave("{}")
+  """.format(ctx.attr.file_save)
+    else:
+        substitutions["{{SAVE_COMPONENT}}"] = "MemorySaveComponent"
+        substitutions["{{SAVE_COMPONENT_INIT}}"] = ""
     
     output = ctx.actions.declare_file(ctx.attr.name + ".scala")
     ctx.actions.expand_template(
@@ -39,6 +49,11 @@ desktop_awt_main = rule(
             mandatory = True,
             doc = "The fully qualified path to the core shared code",
         ),
+        "file_save": attr.string(
+            mandatory = False,
+            doc = "A filename to use for saving the game progress. Will be written to by the game. If empty, the game will save in memory.",
+            default = "",
+        ),
         "frame_width": attr.int(
             mandatory = False,
             doc = "The width of the frame that will be created on the system, in pixels.",
@@ -57,6 +72,7 @@ def sgl_desktop_awt_app(
   package,
   main_class,
   core_abstract_class,
+  file_save = "",
   frame_width = 800,
   frame_height = 800,
   use_extension_tiled = False,
@@ -76,6 +92,7 @@ def sgl_desktop_awt_app(
         package = package,
         main_class = main_class,
         core_abstract_class = core_abstract_class,
+        file_save = file_save,
         frame_width = frame_width,
         frame_height = frame_height,
     )
