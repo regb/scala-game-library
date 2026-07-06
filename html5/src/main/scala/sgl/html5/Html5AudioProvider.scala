@@ -7,7 +7,7 @@ import dom.{HTMLAudioElement, HTMLSourceElement}
 import sgl.util._
 
 trait Html5AudioProvider extends AudioProvider {
-  this: Html5SystemProvider with Html5InputProvider =>
+  this: Html5SystemProvider with Html5InputProvider with Html5App with LoggingProvider =>
 
   // TODO: Use the Web Audio API and rely on the current implementation as a fallback
   //       when the API is not available.
@@ -26,22 +26,22 @@ trait Html5AudioProvider extends AudioProvider {
 
     class SoundTagInstance(val loader: Loader[HTMLAudioElement], var inUse: Boolean, var loop: Int)
 
-    private class SoundTagPool(pathes: scala.collection.Seq[ResourcePath], initialTag: HTMLAudioElement) {
+    class SoundTagPool(pathes: scala.collection.Seq[ResourcePath], initialTag: HTMLAudioElement) {
       private var audioTags: Vector[SoundTagInstance] = Vector(
         new SoundTagInstance(Loader.successful(initialTag), false, 0)
       )
 
       def getReadyTag(): SoundTagInstance = {
-        for(i <- 0 until audioTags.length) {
-          if(!audioTags(i).inUse) {
-            audioTags(i).inUse = true
-            return audioTags(i)
-          }
+        audioTags.find(!_.inUse) match {
+          case Some(tag) =>
+            tag.inUse = true
+            tag
+          case None =>
+            // None are free, we need to instantiate a new one.
+            val tag = new SoundTagInstance(loadAudioTag(pathes), true, 0)
+            audioTags = audioTags :+ tag
+            tag
         }
-        // None are free, we need to instantiate a new one.
-        val t = new SoundTagInstance(loadAudioTag(pathes), true, 0)
-        audioTags = audioTags :+ t
-        t
       }
 
       def returnTag(soundTag: SoundTagInstance): Unit = {
@@ -49,7 +49,7 @@ trait Html5AudioProvider extends AudioProvider {
       }
     }
 
-    class Html5Sound(pathes: scala.collection.Seq[ResourcePath], pool: SoundTagPool, loop: Int = 0, rate: Float = 1f) extends AbstractSound {
+    class Html5Sound(pool: SoundTagPool, loop: Int = 0, rate: Float = 1f) extends AbstractSound {
 
       type PlayedSound = SoundTagInstance
 
@@ -78,7 +78,7 @@ trait Html5AudioProvider extends AudioProvider {
         Some(tag)
       }
       override def withConfig(loop: Int, rate: Float): Sound = {
-        new Sound(pathes, pool, loop, rate)
+        new Sound(pool, loop, rate)
       }
       override def dispose(): Unit = {
         // TODO: remove tag and stop all running sounds loops.
@@ -104,7 +104,7 @@ trait Html5AudioProvider extends AudioProvider {
     type Sound = Html5Sound
 
     override def loadSound(path: ResourcePath, extras: ResourcePath*): Loader[Sound] = {
-      loadAudioTag(path +: extras).map(tag => new Html5Sound(path +: extras, new SoundTagPool(path +: extras, tag)))
+      loadAudioTag(path +: extras).map(tag => new Html5Sound(new SoundTagPool(path +: extras, tag)))
     }
 
     /** Music implementation for HTML5.

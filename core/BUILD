@@ -18,7 +18,7 @@ scala_library(
     testonly = True,
     deps = [
         ":sgl-core",
-        "@maven//:org_scalatest_scalatest_2_13",
+        "@maven//:org_scalatest_scalatest_3",
         "@rules_scala//testing/toolchain:scalatest_classpath",
     ],
     visibility=["//visibility:public"],
@@ -30,7 +30,7 @@ scala_test(
     scalacopts=SGL_SCALACOPTS,
     deps = [
         ":sgl-core",
-        "@maven//:org_scalatest_scalatest_2_13",
+        "@maven//:org_scalatest_scalatest_3",
     ],
     visibility=["//visibility:public"],
 )

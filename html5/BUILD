@@ -5,7 +5,7 @@ scalajs_library(
     srcs=glob(["src/main/**/*.scala"]),
     deps=[
         "//core:sgl-core",
-        "@maven//:org_scala_js_scalajs_dom_sjs1_2_13",
+        "@maven//:org_scala_js_scalajs_dom_sjs1_3",
     ],
 
     visibility=["//visibility:public"],

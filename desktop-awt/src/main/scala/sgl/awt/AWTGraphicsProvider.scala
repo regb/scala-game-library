@@ -9,7 +9,7 @@ import java.awt.geom.{Rectangle2D, Ellipse2D, Line2D, AffineTransform}
 import javax.imageio.ImageIO
 
 trait AWTGraphicsProvider extends GraphicsProvider {
-  this: AWTWindowProvider with AWTSystemProvider =>
+  this: AWTWindowProvider with AWTSystemProvider with GameStateComponent with LoggingProvider =>
 
   val AWTGraphicsEnvironment = GraphicsEnvironment.getLocalGraphicsEnvironment
   val AWTGraphicsConfig = AWTGraphicsEnvironment.getDefaultScreenDevice.getDefaultConfiguration

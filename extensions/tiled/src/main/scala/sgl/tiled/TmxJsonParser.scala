@@ -37,10 +37,10 @@ trait TmxJsonParserComponent {
   
       val json = jsonParse(rawJson)
   
-      val AsInt(width) = json \ "width"
-      val AsInt(height) = json \ "height"
-      val AsInt(tileWidth) = json \ "tilewidth"
-      val AsInt(tileHeight) = json \ "tileheight"
+      val AsInt(width) = (json \ "width": @unchecked)
+      val AsInt(height) = (json \ "height": @unchecked)
+      val AsInt(tileWidth) = (json \ "tilewidth": @unchecked)
+      val AsInt(tileHeight) = (json \ "tileheight": @unchecked)
 
       val orientation: Orientation = (json \ "orientation") match {
         case JString("orthogonal") => Orthogonal
@@ -76,29 +76,29 @@ trait TmxJsonParserComponent {
         Stagger(axis, isEven, hexSideLength)
       }
   
-      val AsInt(nextObjectId) = json \ "nextobjectid"
+      val AsInt(nextObjectId) = (json \ "nextobjectid": @unchecked)
 
       def parseProperty(property: JValue): Property = {
-        val JString(name) = property \ "name"
-        val JString(tpe) = property \ "type"
+        val JString(name) = (property \ "name": @unchecked)
+        val JString(tpe) = (property \ "type": @unchecked)
         val jValue = property \ "value"
         tpe match {
           case "string" =>
-            val JString(value) = jValue
+            val JString(value) = (jValue: @unchecked)
             StringProperty(name, value)
           case "int" =>
-            val AsInt(value) = jValue
+            val AsInt(value) = (jValue: @unchecked)
             IntProperty(name, value)
           case "float" =>
             FloatProperty(name, jsonToFloat(jValue).get)
           case "bool" =>
-            val JBoolean(b) = jValue
+            val JBoolean(b) = (jValue: @unchecked)
             BoolProperty(name, b)
           case "color" =>
-            val JString(hexa) = jValue
+            val JString(hexa) = (jValue: @unchecked)
             ColorProperty(name, TiledMapColor(hexa))
           case "file" =>
-            val JString(value) = jValue
+            val JString(value) = (jValue: @unchecked)
             FileProperty(name, value)
         }
       }
@@ -112,8 +112,8 @@ trait TmxJsonParserComponent {
       }
   
       def parseLayer(layer: JValue, acceptMissingId: Boolean): Layer = {
-        val JString(name) = layer \ "name"
-        val JString(tpe) = layer \ "type"
+        val JString(name) = (layer \ "name": @unchecked)
+        val JString(tpe) = (layer \ "type": @unchecked)
 
         val layerId = (layer \ "id") match {
           case AsInt(x) => x
@@ -141,8 +141,8 @@ trait TmxJsonParserComponent {
           case "tilelayer" => {
             //width and height are present (only in tilelayer),
             //but should apparently always be the same as top level
-            val AsInt(layerWidth) = layer \ "width"
-            val AsInt(layerHeight) = layer \ "height"
+            val AsInt(layerWidth) = (layer \ "width": @unchecked)
+            val AsInt(layerHeight) = (layer \ "height": @unchecked)
             assert(layerWidth == width)
             assert(layerHeight == height)
   
@@ -151,7 +151,7 @@ trait TmxJsonParserComponent {
             // represented row by row, from left to right, from top to bottom. That
             // is, the first N elements are the topmost row of tiles, the next N
             // elements are the second row of tiles, and so on.
-            val JArray(data) = layer \ "data"
+            val JArray(data) = (layer \ "data": @unchecked)
             var rawTiles: List[Int] = data.collect{ case AsInt(i) => i.toInt }
   
             // We represent the tiles as an array of rows, from top to bottom.
@@ -200,9 +200,9 @@ trait TmxJsonParserComponent {
             }
 
             def parseObj(obj: JValue): TiledMapObject = {
-              val JString(name) = obj \ "name"
-              val AsInt(id) = obj \ "id"
-              val JString(tpe) = obj \ "type"
+              val JString(name) = (obj \ "name": @unchecked)
+              val AsInt(id) = (obj \ "id": @unchecked)
+              val JString(tpe) = (obj \ "type": @unchecked)
 
               val x = jsonToFloat(obj \ "x").get
               val y = jsonToFloat(obj \ "y").get
@@ -217,19 +217,19 @@ trait TmxJsonParserComponent {
                 val rotation = jsonToFloat(obj \ "rotation").get
                 TiledMapEllipse(name, id, tpe, x, y, width, height, rotation, properties)
               } else if(obj \ "polygon" != JNothing) {
-                val JArray(points) = obj \ "polygon"
+                val JArray(points) = (obj \ "polygon": @unchecked)
                 val ps = (points map parsePoint).toVector
                 val rotation = jsonToFloat(obj \ "rotation").get
                 TiledMapPolygon(name, id, tpe, x, y, ps, rotation, properties)
               } else if(obj \ "polyline" != JNothing) {
-                val JArray(points) = obj \ "polyline"
+                val JArray(points) = (obj \ "polyline": @unchecked)
                 val ps = (points map parsePoint).toVector
                 val rotation = jsonToFloat(obj \ "rotation").get
                 TiledMapPolyline(name, id, tpe, x, y, ps, rotation, properties)
               } else if(obj \ "gid" != JNothing) {
                 // This is a tile object. For tile object, (x,y) is the bottom left coordinates of the tile
                 // (wherever it would end up after the rotation and scaling).
-                val AsInt(gid) = obj \ "gid"
+                val AsInt(gid) = (obj \ "gid": @unchecked)
                 val width = jsonToFloat(obj \ "width").get
                 val height = jsonToFloat(obj \ "height").get
                 val rotation = jsonToFloat(obj \ "rotation").get
@@ -243,18 +243,18 @@ trait TmxJsonParserComponent {
 
             }
   
-            val JArray(objects) = layer \ "objects"
+            val JArray(objects) = (layer \ "objects": @unchecked)
             val parsedObjs = objects map parseObj
   
             ObjectLayer(name, layerId, parsedObjs.toVector, drawOrder, visible, opacity, offsetX.toInt, offsetY.toInt, properties)
           }
           case "group" => {
-            val JArray(subLayers) = layer \ "layers"
+            val JArray(subLayers) = (layer \ "layers": @unchecked)
             val parsedSubLayers = subLayers.map(l => parseLayer(l, false))
             GroupLayer(name, layerId, parsedSubLayers.toVector, visible, opacity, offsetX.toInt, offsetY.toInt, properties)
           }
           case "imagelayer" => {
-            val JString(image) = layer \ "image"
+            val JString(image) = (layer \ "image": @unchecked)
             ImageLayer(name, layerId, image, visible, opacity, offsetX.toInt, offsetY.toInt, properties)
           }
           case tpe => throw new Exception("layer type not supported: " + tpe)
@@ -263,7 +263,7 @@ trait TmxJsonParserComponent {
       }
   
       def parseTileset(tileset: JValue): Tileset = {
-        val AsInt(firstGlobalId) = tileset \ "firstgid"
+        val AsInt(firstGlobalId) = (tileset \ "firstgid": @unchecked)
 
         // We do not support external tilesets, they can be embeded easily by
         // the Editor or some build tools, and they add too much trouble
@@ -274,21 +274,21 @@ trait TmxJsonParserComponent {
           case _ => ()
         }
 
-        val JString(name) = tileset \ "name"
-        val JString(image) = tileset \ "image"
+        val JString(name) = (tileset \ "name": @unchecked)
+        val JString(image) = (tileset \ "image": @unchecked)
   
         //those are optional in the format, and not really needed for games
-        //val AsInt(width) = tileset \ "imagewidth"
-        //val AsInt(height) = tileset \ "imageheight"
+        //val AsInt(width) = (tileset \ "imagewidth": @unchecked)
+        //val AsInt(height) = (tileset \ "imageheight": @unchecked)
   
-        val AsInt(tileWidth) = tileset \ "tilewidth"
-        val AsInt(tileHeight) = tileset \ "tileheight"
+        val AsInt(tileWidth) = (tileset \ "tilewidth": @unchecked)
+        val AsInt(tileHeight) = (tileset \ "tileheight": @unchecked)
   
-        val AsInt(nbColumns) = tileset \ "columns"
-        val AsInt(tileCount) = tileset \ "tilecount"
+        val AsInt(nbColumns) = (tileset \ "columns": @unchecked)
+        val AsInt(tileCount) = (tileset \ "tilecount": @unchecked)
   
-        val AsInt(margin) = tileset \ "margin"
-        val AsInt(spacing) = tileset \ "spacing"
+        val AsInt(margin) = (tileset \ "margin": @unchecked)
+        val AsInt(spacing) = (tileset \ "spacing": @unchecked)
 
         def computeTileCoordinates(id: Int): (Int, Int) = {
           val row = id / nbColumns
@@ -297,14 +297,14 @@ trait TmxJsonParserComponent {
         }
 
         def parseFrame(frame: JValue): Tileset.TileFrame = {
-          val AsInt(duration) = frame \ "duration"
-          val AsInt(tileId) = frame \ "tileid"
+          val AsInt(duration) = (frame \ "duration": @unchecked)
+          val AsInt(tileId) = (frame \ "tileid": @unchecked)
           Tileset.TileFrame(duration, tileId)
         }
 
         def parseTile(tile: JValue): Tileset.Tile = {
           // tile \ "id" is the local id of the tile, not the gid.
-          val AsInt(id) = tile \ "id"
+          val AsInt(id) = (tile \ "id": @unchecked)
           val (x, y) = computeTileCoordinates(id)
           // tile \ "height" and tile \ "width" should match tileHeight and tileWidth.
           val tpe = (tile \ "type") match {
@@ -350,8 +350,8 @@ trait TmxJsonParserComponent {
                 tiles=tiles.toVector)
       }
   
-      val JArray(layers) = json \ "layers"
-      val JArray(tilesets) = json \ "tilesets"
+      val JArray(layers) = (json \ "layers": @unchecked)
+      val JArray(tilesets) = (json \ "tilesets": @unchecked)
   
       val color = (json \ "backgroundcolor") match {
         case JString(hexa) => Some(TiledMapColor(hexa))

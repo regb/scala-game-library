@@ -11,7 +11,7 @@ import util.LoggingProvider
   * one does not wish (or can't) to send analytics data.
   */
 trait LoggedAnalyticsProvider extends AnalyticsProvider {
-  this: GameStateComponent with LoggingProvider =>
+  this: GameStateComponent with GraphicsProvider with SystemProvider with LoggingProvider =>
 
   class LoggedAnalytics extends AbstractAnalytics {
 

@@ -79,7 +79,7 @@ def sgl_html5_app(
           Label("//core:sgl-core"),
           Label("//html5:sgl-html5"),
           Label("//modules:sgl-scene2d"),
-          Label("@maven//:org_scala_js_scalajs_dom_sjs1_2_13"),
+          Label("@maven//:org_scala_js_scalajs_dom_sjs1_3"),
     ]
     if use_extension_tiled:
         full_deps.append(Label("//extensions:sgl-tiled"))

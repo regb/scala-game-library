@@ -9,7 +9,7 @@ import dom.html
 import dom.HTMLImageElement
 
 trait Html5GraphicsProvider extends GraphicsProvider {
-  this: Html5WindowProvider with Html5SystemProvider =>
+  this: Html5WindowProvider with Html5SystemProvider with Html5App =>
 
   object Html5Graphics extends Graphics {
 

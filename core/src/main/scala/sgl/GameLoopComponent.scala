@@ -15,7 +15,7 @@ import util._
   * the game loop itself.
   */
 trait GameLoopComponent {
-  self: GameStateComponent with GraphicsProvider =>
+  self: GameStateComponent with GraphicsProvider with SystemProvider with LoggingProvider =>
 
   /** Defines the target FPS of the game
     *

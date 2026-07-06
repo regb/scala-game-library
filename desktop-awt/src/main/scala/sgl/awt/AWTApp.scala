@@ -157,8 +157,10 @@ trait AWTApp extends GameApp
           // as the first call gets the real dt, then the next call will have
           // a dt of about 0, and it should not simulate anything new in the physics,
           // and instead just re-render.
-          do {
-            do {
+          var contentsLost = true
+          while(contentsLost) {
+            var contentsRestored = true
+            while(contentsRestored) {
               val g = strategy.getDrawGraphics().asInstanceOf[Graphics2D]
 
               if(EnableAntiAliasingHint)
@@ -188,10 +190,12 @@ trait AWTApp extends GameApp
               gameLoopStep(dt, canvas)
 
               g.dispose()
-            } while(strategy.contentsRestored())
+              contentsRestored = strategy.contentsRestored()
+            }
 
             strategy.show()
-          } while(strategy != null && strategy.contentsLost())
+            contentsLost = strategy != null && strategy.contentsLost()
+          }
 
           val frameEndTime: Long = java.lang.System.nanoTime
           val frameElapsedTime: Long = frameEndTime - frameBeginTime

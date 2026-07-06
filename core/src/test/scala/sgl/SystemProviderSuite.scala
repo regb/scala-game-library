@@ -11,7 +11,7 @@ class SystemProviderSuite extends AnyFunSuite {
         instrumentedUri = uri
       }
     }
-    override val System: InstrumentedTestSystem = new InstrumentedTestSystem
+    override val System: System = new InstrumentedTestSystem
   }
 
   test("openGooglePlayApp defaults to the correct URL without parameters") {

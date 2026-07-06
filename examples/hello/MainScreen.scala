@@ -163,13 +163,13 @@ trait MainScreenComponent extends ViewportComponent {
         canvas.drawRect(0, 0, Width, Height, Graphics.defaultPaint.withColor(Color.rgb(204, 242, 204)))
         canvas.drawCircle(autoX, autoY, dp2px(50).toFloat, Graphics.defaultPaint.withColor(Color.Black))
 
-	    val frame = characterAnimation.currentFrame(totalTime)
+        val frame = characterAnimation.currentFrame(totalTime)
         canvas.drawBitmap(frame, x, y, 1f, 0.5f)
 
-	    // Version with the BitmapTransformed.
-	    //canvas.translate(x, y)
-	    //frame.render(canvas)
-	    //canvas.translate(-x, -y)
+        // Version with the BitmapTransformed.
+        //canvas.translate(x, y)
+        //frame.render(canvas)
+        //canvas.translate(-x, -y)
 
         val rectWidth: Float = dp2px(50f)
         canvas.translate(dp2px(200f), dp2px(10f))

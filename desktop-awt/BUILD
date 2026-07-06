@@ -28,7 +28,7 @@ scala_test(
         "//core:sgl-core",
         "//core:sgl-core-testlib",
         "//jvm-shared:jvm-shared",
-        "@maven//:org_scalatest_scalatest_2_13",
+        "@maven//:org_scalatest_scalatest_3",
     ],
     visibility=["//visibility:public"],
 )

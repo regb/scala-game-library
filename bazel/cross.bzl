@@ -15,8 +15,12 @@ def scala_library(deps = [],
         Label("//conditions:default"): deps,
     })
     cross_plugins = select({
-        Label("//bazel/platforms:compiler_js"): plugins+[Label("@maven//:org_scala_js_scalajs_compiler_2_13_18")],
+        Label("//bazel/platforms:compiler_js"): plugins,
         Label("//conditions:default"): plugins,
+    })
+    cross_scalacopts = select({
+        Label("//bazel/platforms:compiler_js"): ["-scalajs"],
+        Label("//conditions:default"): [],
     })
     cross_target_compatible_with = select({
         Label("//bazel/platforms:compiler_native"): [Label("@platforms//:incompatible")],
@@ -25,7 +29,7 @@ def scala_library(deps = [],
     _scala_library(
         deps = cross_deps,
         plugins = cross_plugins,
-        scalacopts = SGL_SCALACOPTS + scalacopts,
+        scalacopts = SGL_SCALACOPTS + cross_scalacopts + scalacopts,
         target_compatible_with = cross_target_compatible_with,
         **kwords,
     )

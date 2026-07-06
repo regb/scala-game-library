@@ -7,8 +7,10 @@ import java.awt.Dimension
 import java.awt.Toolkit
 import java.awt
 
+import sgl.util.LoggingProvider
+
 trait AWTWindowProvider extends WindowProvider {
-  this: GameStateComponent =>
+  this: GameStateComponent with GraphicsProvider with SystemProvider with LoggingProvider =>
 
   /** The title of the frame */
   val frameTitle: String = "Default App"
@@ -33,7 +35,7 @@ trait AWTWindowProvider extends WindowProvider {
     // TODO: borderless, but no exit button.
     // this.setUndecorated(true)
 
-    val (w, h) = frameDimension
+    val (w, h) = AWTWindowProvider.this.frameDimension
     this.getContentPane().setPreferredSize(new Dimension(w, h))
     this.pack()
 
@@ -82,5 +84,5 @@ trait AWTWindowProvider extends WindowProvider {
 
   /** Override this if you want to force an arbitrary PPI. Typically it's useful for testing how your game will adapt
    *  to multiple screen densities, instead of testing on multiple platforms. */
-  val ScreenForcePPI: Option[Float] = None
+  val ScreenForcePPI: scala.Option[Float] = None
 }

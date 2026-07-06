@@ -83,13 +83,14 @@ trait MainScreenComponent {
 
     def newApple(): Point = {
       var pos = Point(0, 0)
-      do {
+      while {
         pos = Point(rand.nextInt(NbCols).toFloat, rand.nextInt(NbRows).toFloat)
-      } while (snake.exists(_ == pos))
+        snake.exists(_ == pos)
+      } do ()
       pos
     }
 
-    def drawSquare(canvas: Canvas, point: Point, paint: Paint) = {
+    def drawSquare(canvas: Canvas, point: Point, paint: Paint): Unit = {
       canvas.drawRect(point.x * squareSize, point.y * squareSize.toFloat, squareSize.toFloat, squareSize.toFloat, paint)
     }
 

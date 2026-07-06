@@ -3,7 +3,7 @@ package util
 package metrics
 
 trait InstrumentationProvider {
-  this: GraphicsProvider =>
+  this: GraphicsProvider with SystemProvider =>
 
   trait AbstractMetrics {
 
@@ -142,7 +142,7 @@ trait DefaultInstrumentationProvider extends InstrumentationProvider {
   * methods thus don't display anything.
   */
 trait NoInstrumentationProvider extends InstrumentationProvider {
-  this: GraphicsProvider =>
+  this: GraphicsProvider with SystemProvider =>
 
   object NoMetrics extends AbstractMetrics {
 

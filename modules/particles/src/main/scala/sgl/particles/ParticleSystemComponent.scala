@@ -2,7 +2,7 @@ package sgl
 package particles
 
 trait ParticleSystemComponent {
-  this: GraphicsProvider =>
+  this: GraphicsProvider with SystemProvider =>
 
   case class ParticleSystemConfig(
     // Duration during which the particle system will spawn particles.

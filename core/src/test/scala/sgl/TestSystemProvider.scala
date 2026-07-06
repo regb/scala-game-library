@@ -32,6 +32,6 @@ trait TestSystemNoResourcePathProvider extends SystemProvider {
     def openWebpage(uri: java.net.URI): Unit = ???
 
   }
-  override val System: TestSystem = new TestSystem
+  override val System: System = new TestSystem
 
 }

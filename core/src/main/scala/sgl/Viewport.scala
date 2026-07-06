@@ -1,7 +1,7 @@
 package sgl
 
 trait ViewportComponent {
-  this: GraphicsProvider =>
+  this: GraphicsProvider with SystemProvider =>
 
   import Viewport._
 

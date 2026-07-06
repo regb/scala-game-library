@@ -17,7 +17,7 @@ package sgl
   * simpler for code/file maintenance.
   */
 private[sgl] trait GraphicsHelpersComponent {
-  this: GraphicsProvider =>
+  this: GraphicsProvider with SystemProvider =>
 
   trait GraphicsExtension {
     this: Graphics =>

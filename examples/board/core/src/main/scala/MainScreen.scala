@@ -46,11 +46,11 @@ trait ScreensComponent {
       viewport.withViewport(canvas) {
         for(i <- 0 until 100) {
           for(j <- 0 until 100) {
-	        val color = if((i+j) % 2 == 0) Graphics.Color.White else Graphics.Color.Black
-	        canvas.drawRect(j.toFloat, i.toFloat, 1f, 1f, Graphics.defaultPaint.withColor(color))
-	      }
-	    }
-	    canvas.drawCircle(p._1 + 0.5f, p._2 + 0.5f, 0.5f, Graphics.defaultPaint.withColor(Graphics.Color.Green))
+            val color = if((i+j) % 2 == 0) Graphics.Color.White else Graphics.Color.Black
+            canvas.drawRect(j.toFloat, i.toFloat, 1f, 1f, Graphics.defaultPaint.withColor(color))
+          }
+        }
+        canvas.drawCircle(p._1 + 0.5f, p._2 + 0.5f, 0.5f, Graphics.defaultPaint.withColor(Graphics.Color.Green))
       }
     }
 

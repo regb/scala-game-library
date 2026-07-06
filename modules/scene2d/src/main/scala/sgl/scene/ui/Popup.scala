@@ -3,7 +3,7 @@ package scene
 package ui
 
 trait PopupsComponent extends ButtonsComponent {
-  this: GraphicsProvider with WindowProvider with SceneComponent =>
+  this: GraphicsProvider with WindowProvider with SystemProvider with ViewportComponent with SceneComponent =>
 
   import Graphics._
 

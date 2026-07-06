@@ -380,7 +380,7 @@ trait AWTAudioProvider extends AudioProvider {
     * and adds some custom basic signal processing for controlling the
     * sound.
     */
-  private object JavaSoundHelpers {
+  object JavaSoundHelpers {
     import javax.sound.sampled.{AudioFormat, FloatControl, DataLine}
   
     // Try to get a clip that can play the AudioFormat. Returns
