@@ -6,7 +6,7 @@ class Camera {
   var x: Int = 0
   var y: Int = 0
 
-  def coordinates: Point = Point(x, y)
+  def coordinates: Point = Point(x.toFloat, y.toFloat)
 
   def cameraToWorld(p: Point): Point = Point(p.x + x, p.y + y)
   def worldToCamera(p: Point): Point = Point(p.x - x, p.y - y)

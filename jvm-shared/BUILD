@@ -4,10 +4,12 @@ load(
     "scala_library",
     "scala_test",
 )
+load("//bazel:scala_opts.bzl", "SGL_SCALACOPTS")
 
 scala_library(
     name="jvm-shared",
     srcs=glob(["src/main/**/*.scala"]),
+    scalacopts=SGL_SCALACOPTS,
     deps=[
         "//core:sgl-core",
     ],
@@ -17,6 +19,7 @@ scala_library(
 scala_test(
     name="jvm-shared-tests",
     srcs=glob(["src/test/scala/**/*.scala"]),
+    scalacopts=SGL_SCALACOPTS,
     deps = [
         ":jvm-shared",
         "//core:sgl-core",

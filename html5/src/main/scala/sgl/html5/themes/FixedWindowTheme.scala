@@ -23,7 +23,7 @@ trait FixedWindowTheme extends Theme {
     dom.document.body.style.padding = "0"
 
     // prevent highlight on click on canvas.
-    dom.document.onselectstart = (e: dom.Event) => false
+    dom.document.onselectstart = (_: dom.Event) => false
 
     canvas.style.margin = "0"
     canvas.style.padding = "0"
@@ -57,14 +57,14 @@ trait FixedWindowTheme extends Theme {
       canvas.style.left = "0"
     else {
       val left: Int = (windowWidth - canvas.width)/2
-      canvas.style.left = left + "px"
+      canvas.style.left = s"${left}px"
     }
 
     if(windowHeight < frameSize._2)
       canvas.style.top = "0"
     else {
       val top: Int = (windowHeight - canvas.height)/2
-      canvas.style.top = top + "px"
+      canvas.style.top = s"${top}px"
     }
   }
 }

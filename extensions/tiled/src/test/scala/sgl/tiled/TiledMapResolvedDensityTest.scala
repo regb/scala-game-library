@@ -5,7 +5,7 @@ import sgl._
 
 class TiledMapResolvedDensityTest extends AnyFunSuite {
 
-  private def createTestTileset(tileWidth: Int = 32, tileHeight: Int = 32): Tileset = {
+  private def createTestTileset(tileWidth: Int, tileHeight: Int): Tileset = {
     Tileset(
       firstGlobalId = 1,
       name = "test-tileset",

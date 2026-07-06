@@ -3,6 +3,7 @@ load(
     "scala_library", "scala_binary",
 )
 load("@rules_go//go:def.bzl", "go_binary")
+load("//bazel:scala_opts.bzl", "SGL_SCALACOPTS")
 
 go_binary(
     name = "server",
@@ -14,6 +15,7 @@ go_binary(
 scala_binary(
     name = "linker",
     srcs = ["ScalaJsLinker.scala"],
+    scalacopts = SGL_SCALACOPTS,
     deps = [
         "@maven//:org_scala_js_scalajs_ir_2_13",
         "@maven//:org_scala_js_scalajs_linker_2_13",

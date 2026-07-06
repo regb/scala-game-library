@@ -24,8 +24,8 @@ trait TestGraphicsProvider extends GraphicsProvider {
       override def size: Int = ???
       override def withSize(size: Int): Font = ???
       override def withStyle(style: Font.Style): Font = ???
-      override def isBold(): Boolean = ???
-      override def isItalic(): Boolean = ???
+      override def isBold: Boolean = ???
+      override def isItalic: Boolean = ???
     }
     type Font = TestFont
     class TestFontCompanion extends FontCompanion {
@@ -37,14 +37,14 @@ trait TestGraphicsProvider extends GraphicsProvider {
       val SansSerif: Font = new TestFont
       val Serif: Font = new TestFont
     }
-    val Font = new TestFontCompanion
+    override val Font: TestFontCompanion = new TestFontCompanion
 
     type Color = Int
     class TestColorCompanion extends ColorCompanion {
       def rgb(r: Int, g: Int, b: Int): Color = ???
       def rgba(r: Int, g: Int, b: Int, a: Int): Color = ???
     }
-    val Color = new TestColorCompanion
+    override val Color: TestColorCompanion = new TestColorCompanion
 
     class TestPaint extends AbstractPaint {
       def font: Font = ???
@@ -86,6 +86,6 @@ trait TestGraphicsProvider extends GraphicsProvider {
     }
     type Canvas = TestCanvas
   }
-  override val Graphics = new TestGraphics
+  override val Graphics: TestGraphics = new TestGraphics
 
 }

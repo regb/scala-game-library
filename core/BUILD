@@ -4,6 +4,7 @@ load(
     "scala_binary",
     "scala_test",
 )
+load("//bazel:scala_opts.bzl", "SGL_SCALACOPTS")
 
 scala_library(
     name="sgl-core",
@@ -26,6 +27,7 @@ scala_library(
 scala_test(
     name="sgl-core-tests",
     srcs=glob(["src/test/scala/**/*.scala"]),
+    scalacopts=SGL_SCALACOPTS,
     deps = [
         ":sgl-core",
         "@maven//:org_scalatest_scalatest_2_13",

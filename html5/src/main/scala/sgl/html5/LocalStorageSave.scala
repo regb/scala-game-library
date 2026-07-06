@@ -64,5 +64,5 @@ object LocalStorageSave extends AbstractSave {
 
 trait LocalStorageSaveComponent extends SaveComponent {
   type Save = LocalStorageSave.type
-  override val Save = LocalStorageSave
+  override val Save: Save = LocalStorageSave
 }

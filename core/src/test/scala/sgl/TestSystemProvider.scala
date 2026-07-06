@@ -2,8 +2,6 @@ package sgl
 
 import sgl.util._
 
-import scala.util._
-
 trait TestSystemProvider extends TestSystemNoResourcePathProvider {
 
   class TestResourcePath extends AbstractResourcePath {
@@ -34,6 +32,6 @@ trait TestSystemNoResourcePathProvider extends SystemProvider {
     def openWebpage(uri: java.net.URI): Unit = ???
 
   }
-  val System = new TestSystem
+  override val System: TestSystem = new TestSystem
 
 }

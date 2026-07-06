@@ -31,12 +31,12 @@ trait Html5SystemProvider extends SystemProvider with PartsResourcePathProvider 
       val p = new DefaultLoader[Array[String]]()
       val rawFile = new dom.XMLHttpRequest()
       rawFile.open("GET", path.path, true)
-      rawFile.onreadystatechange = (event: dom.Event) => {
+      rawFile.onreadystatechange = (_: dom.Event) => {
         if(rawFile.readyState == 4) {
           if(rawFile.status == 200 || rawFile.status == 0) {
-            p.success(rawFile.responseText.split("\n").toArray)
+            val _ = p.success(rawFile.responseText.split("\n").toArray)
           } else {
-            p.failure(new RuntimeException("file: " + path + " failed to load"))
+            val _ = p.failure(new RuntimeException("file: " + path + " failed to load"))
           }
         }
       }
@@ -49,16 +49,16 @@ trait Html5SystemProvider extends SystemProvider with PartsResourcePathProvider 
       val fileReq = new dom.XMLHttpRequest()
       fileReq.open("GET", path.path, true)
       fileReq.responseType = "arraybuffer"
-      fileReq.onreadystatechange = (event: dom.Event) => {
+      fileReq.onreadystatechange = (_: dom.Event) => {
         if(fileReq.readyState == 4) {
           if(fileReq.status == 200 || fileReq.status == 0) {
             val responseBuffer: ArrayBuffer = fileReq.response.asInstanceOf[ArrayBuffer]
             val bb: java.nio.ByteBuffer = TypedArrayBuffer.wrap(responseBuffer)
             val array: Array[Byte] = new Array(bb.remaining)
             bb.get(array)
-            p.success(array)
+            val _ = p.success(array)
           } else {
-            p.failure(new RuntimeException("file: " + path + " failed to load"))
+            val _ = p.failure(new RuntimeException("file: " + path + " failed to load"))
           }
         }
       }
@@ -67,11 +67,11 @@ trait Html5SystemProvider extends SystemProvider with PartsResourcePathProvider 
     }
 
     override def openWebpage(uri: URI): Unit = {
-      dom.window.open(uri.toString)
+      val _ = dom.window.open(uri.toString)
     }
 
   }
-  val System = Html5System
+  override val System: System = Html5System
 
   /** The root for all resources in an HTML5 game (Default to static/).
     *
@@ -94,7 +94,7 @@ trait Html5SystemProvider extends SystemProvider with PartsResourcePathProvider 
     * for resources. This can be useful depending on your setup and how you
     * plan to deploy the web game.
     */
-  override val ResourcesRoot = PartsResourcePath(Vector("static"))
-  final override val MultiDPIResourcesRoot = PartsResourcePath(Vector())
+  override val ResourcesRoot: ResourcePath = PartsResourcePath(Vector("static"))
+  final override val MultiDPIResourcesRoot: ResourcePath = PartsResourcePath(Vector())
 
 }

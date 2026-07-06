@@ -2,9 +2,6 @@ package sgl
 
 import sgl.util._
 
-import scala.util._
-
-import scala.language.implicitConversions
 
 /** Provides the platform-specific System object
   *
@@ -186,7 +183,7 @@ trait SystemProvider {
       */
     def / (filename: String): ResourcePath
 
-    def / (filenames: Seq[String]): Seq[ResourcePath] = filenames.map(f => this / f)
+    def / (filenames: scala.collection.Seq[String]): scala.collection.Seq[ResourcePath] = filenames.map(f => this / f)
 
     /** Returns the file extension. */
     def extension: Option[String]
@@ -293,12 +290,12 @@ trait PartsResourcePathProvider {
     def path: String = parts.mkString("/")
 
     override def / (filename: String): ResourcePath = {
-      val subparts = filename.split("/")
+      val subparts = filename.split("/").toIndexedSeq
       joinWithSubparts(subparts)
     }
 
     // Join this with a path broken into subparts at "/".
-    private def joinWithSubparts(subparts: Seq[String]): ResourcePath = if(subparts.isEmpty) this else {
+    private def joinWithSubparts(subparts: scala.collection.Seq[String]): ResourcePath = if(subparts.isEmpty) this else {
       val r = subparts.head match {
         case "." => this
         case ".." => PartsResourcePath(if(parts.isEmpty) parts else parts.init)

@@ -6,19 +6,12 @@ import sgl.util._
 import scala.scalajs.js
 import org.scalajs.dom
 import dom.html
-import dom.raw.HTMLImageElement
+import dom.HTMLImageElement
 
 trait Html5GraphicsProvider extends GraphicsProvider {
   this: Html5WindowProvider with Html5SystemProvider =>
 
   object Html5Graphics extends Graphics {
-
-    private def imageExists(path: ResourcePath): Boolean = {
-      var http = new dom.XMLHttpRequest()
-      http.open("HEAD", path.path, false)
-      http.send()
-      http.status != 404
-    }
 
     private def dpiToRatio(dpi: String): Double = dpi match {
       case "mdpi" => 1d
@@ -26,15 +19,15 @@ trait Html5GraphicsProvider extends GraphicsProvider {
       case "xhdpi" => 2d
     }
 
-    private def bestDPIs(pixelRatio: Double): Seq[String] = {
-      if(pixelRatio == 1d) Seq("mdpi", "hdpi", "xhdpi")
-      else if(pixelRatio == 1.5d) Seq("hdpi", "mdpi", "xhdpi")
-      else if(pixelRatio == 2d) Seq("xhdpi", "hdpi", "mdpi")
-      else if(pixelRatio == 0.5d) Seq("mdpi", "hdpi", "xhdpi")
+    private def bestDPIs(pixelRatio: Double): List[String] = {
+      if(pixelRatio == 1d) List("mdpi", "hdpi", "xhdpi")
+      else if(pixelRatio == 1.5d) List("hdpi", "mdpi", "xhdpi")
+      else if(pixelRatio == 2d) List("xhdpi", "hdpi", "mdpi")
+      else if(pixelRatio == 0.5d) List("mdpi", "hdpi", "xhdpi")
       else {
-        if(pixelRatio < 1.5d) Seq("mdpi", "hdpi", "xhdpi")
-        else if(pixelRatio < 2d) Seq("hdpi", "xhdpi", "mdpi")
-        else Seq("xhdpi", "hdpi", "mdpi")
+        if(pixelRatio < 1.5d) List("mdpi", "hdpi", "xhdpi")
+        else if(pixelRatio < 2d) List("hdpi", "xhdpi", "mdpi")
+        else List("xhdpi", "hdpi", "mdpi")
       }
     }
 
@@ -44,11 +37,11 @@ trait Html5GraphicsProvider extends GraphicsProvider {
     private def tryLoadImageDpi(path: ResourcePath, dpi: String): Loader[Bitmap] = {
       val p = new DefaultLoader[Bitmap]()
       val img = dom.document.createElement("img").asInstanceOf[HTMLImageElement]
-      img.addEventListener("load", (e: dom.Event) => {
-        p.success(Html5Bitmap(img, dom.window.devicePixelRatio/dpiToRatio(dpi)))
+      img.addEventListener("load", (_: dom.Event) => {
+        val _ = p.success(Html5Bitmap(img, dom.window.devicePixelRatio/dpiToRatio(dpi)))
       })
-      img.addEventListener("error", (e: dom.Event) => {
-        p.failure(new RuntimeException(s"image <${path.path}> failed to load"))
+      img.addEventListener("error", (_: dom.Event) => {
+        val _ = p.failure(new RuntimeException(s"image <${path.path}> failed to load"))
       })
       img.src = path.path
       p.loader
@@ -161,12 +154,12 @@ trait Html5GraphicsProvider extends GraphicsProvider {
         //       complete?).
         def tryCompleteLoader(): Unit = {
           if(js.Dynamic.global.document.fonts.check(s"1em $fontName").asInstanceOf[Boolean]) {
-            loader.success(Html5Font(fontName, Normal, 10))
+            val _ = loader.success(Html5Font(fontName, Normal, 10))
           } else {
-            dom.window.setTimeout(() => tryCompleteLoader(), 30)
+            val _ = dom.window.setTimeout(() => tryCompleteLoader(), 30)
           }
         }
-        dom.window.setTimeout(() => tryCompleteLoader(), 30)
+        val _ = dom.window.setTimeout(() => tryCompleteLoader(), 30)
         loader
       }
 
@@ -183,7 +176,7 @@ trait Html5GraphicsProvider extends GraphicsProvider {
       override lazy val SansSerif: Font = Html5Font("sans-serif", Normal, 10)
       override lazy val Serif: Font = Html5Font("serif", Normal, 10)
     }
-    override val Font = Html5FontCompanion
+    override val Font: Html5FontCompanion.type = Html5FontCompanion
 
     type Color = String
     object Html5ColorCompanion extends ColorCompanion {
@@ -193,7 +186,7 @@ trait Html5GraphicsProvider extends GraphicsProvider {
         s"rgba($r,$g,$b,$alpha)"
       }
     }
-    override val Color = Html5ColorCompanion
+    override val Color: Html5ColorCompanion.type = Html5ColorCompanion
 
     case class Html5Paint(font: Font, color: Color, alignment: Alignments.Alignment) extends AbstractPaint {
       val alignmentRaw = alignment match {
@@ -342,7 +335,7 @@ trait Html5GraphicsProvider extends GraphicsProvider {
        * much space as available, ready to be drawn
        */
       val rows: List[String] = {
-        var res = new scala.collection.mutable.ListBuffer[String]()
+        val res = new scala.collection.mutable.ListBuffer[String]()
 
         val lines = text.split("\n")
         for(line <- lines) {
@@ -383,6 +376,6 @@ trait Html5GraphicsProvider extends GraphicsProvider {
     }
   }
 
-  override val Graphics = Html5Graphics
+  override val Graphics: Html5Graphics.type = Html5Graphics
 
 }

@@ -43,7 +43,7 @@ trait LiftJsonProvider extends JsonProvider {
     class LiftRichJsonAst(v: liftJson.JValue) extends RichJsonAst {
       override def \ (field: String): JValue = v \ field
     }
-    override implicit def richJsonAst(ast: JValue) = new LiftRichJsonAst(ast)
+    override implicit def richJsonAst(ast: JValue): RichJsonAst = new LiftRichJsonAst(ast)
 
     type JNothing = liftJson.JNothing.type
     override val JNothing = liftJson.JNothing
@@ -57,7 +57,7 @@ trait LiftJsonProvider extends JsonProvider {
       }
     }
     type JString = liftJson.JString
-    override val JString = LiftJStringCompanion
+    override val JString: JStringCompanion = LiftJStringCompanion
 
     object LiftJNumberCompanion extends JNumberCompanion {
       override def unapply(v: JValue): Option[Double] = v match {
@@ -67,7 +67,7 @@ trait LiftJsonProvider extends JsonProvider {
       }
     }
     type JNumber = liftJson.JDouble
-    override val JNumber = LiftJNumberCompanion
+    override val JNumber: JNumberCompanion = LiftJNumberCompanion
 
     object LiftJBooleanCompanion extends JBooleanCompanion {
       override def unapply(v: JValue): Option[Boolean] = v match {
@@ -76,7 +76,7 @@ trait LiftJsonProvider extends JsonProvider {
       }
     }
     type JBoolean = liftJson.JBool
-    override val JBoolean = LiftJBooleanCompanion
+    override val JBoolean: JBooleanCompanion = LiftJBooleanCompanion
 
     object LiftJObjectCompanion extends JObjectCompanion {
       override def unapply(v: JValue): Option[List[JField]] = v match {
@@ -85,7 +85,7 @@ trait LiftJsonProvider extends JsonProvider {
       }
     }
     type JObject = liftJson.JObject
-    override val JObject = LiftJObjectCompanion
+    override val JObject: JObjectCompanion = LiftJObjectCompanion
 
     object LiftJArrayCompanion extends JArrayCompanion {
       override def unapply(v: JValue): Option[List[JValue]] = v match {
@@ -94,9 +94,9 @@ trait LiftJsonProvider extends JsonProvider {
       }
     }
     type JArray = liftJson.JArray
-    override val JArray = LiftJArrayCompanion
+    override val JArray: JArrayCompanion = LiftJArrayCompanion
   }
 
-  override val Json = LiftJson
+  override val Json: Json = LiftJson
 
 }

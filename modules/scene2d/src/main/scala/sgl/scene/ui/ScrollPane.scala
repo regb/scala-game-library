@@ -2,8 +2,6 @@ package sgl
 package scene
 package ui
 
-import scala.collection.mutable.HashSet
-
 trait ScrollPaneComponent {
   this: SceneGraphComponent with ViewportComponent
   with GraphicsProvider with SystemProvider with WindowProvider =>
@@ -142,7 +140,7 @@ trait ScrollPaneComponent {
 
       val wx = x + cameraX
       val wy = y + cameraY
-      delayedDownNode = root.hit(wx, wy).map(n => (n, (wx, wy, 0l)))
+      delayedDownNode = root.hit(wx, wy).map(n => (n, (wx, wy, 0L)))
     }
 
     override def notifyMoved(x: Float, y: Float): Unit = {

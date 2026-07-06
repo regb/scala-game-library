@@ -118,7 +118,7 @@ trait ParticleSystemComponent {
         n
       } else particlesToSpawn
 
-      for(i <- 1 to totalParticlesToSpawn) {
+      for(_ <- 1 to totalParticlesToSpawn) {
         val particle = if(particlePool.isEmpty) {
           new Particle
         } else {
@@ -148,7 +148,7 @@ trait ParticleSystemComponent {
     }
 
     def render(canvas: Graphics.Canvas): Unit = {
-      canvas.translate(x, y)
+      canvas.translate(x.toFloat, y.toFloat)
       config.renderingSortMode match {
         case None | Some(ParticleSystemConfig.OldestFirst) =>
           particles.foreach(p => p.render(canvas))
@@ -156,7 +156,7 @@ trait ParticleSystemComponent {
           for(i <- particles.size-1 to 0 by -1)
             particles(i).render(canvas)
       }
-      canvas.translate(-x, -y)
+      canvas.translate(-x.toFloat, -y.toFloat)
     }
 
   }
@@ -221,7 +221,7 @@ trait ParticleSystemComponent {
 
     def render(canvas: Graphics.Canvas): Unit = {
       if(!isDead) {
-        canvas.drawCircle(x.toInt, y.toInt, radius, Graphics.defaultPaint.withColor(colorInterpolation(age)))
+        canvas.drawCircle(x.toFloat, y.toFloat, radius.toFloat, Graphics.defaultPaint.withColor(colorInterpolation(age)))
         //canvas.drawCircle(x.toInt, y.toInt, radius, defaultPaint.withColor(Color.rgba(255, ((1 - age/maxAge.toDouble)*255).toInt, 0, ((1- (age/maxAge.toDouble))*255).toInt)))
         //canvas.drawRect(position.x.toInt, position.y.toInt, 1, 1, defaultPaint.withColor(Color.Red))
       }

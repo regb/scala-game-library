@@ -25,7 +25,7 @@ trait Html5JsonProvider extends JsonProvider {
     class Html5RichJsonAst(v: JValue) extends RichJsonAst {
       override def \ (field: String): JValue = v.asInstanceOf[js.Dynamic].selectDynamic(field)
     }
-    override implicit def richJsonAst(ast: JValue) = new Html5RichJsonAst(ast)
+    override implicit def richJsonAst(ast: JValue): RichJsonAst = new Html5RichJsonAst(ast)
 
     type JNothing = Unit
     override val JNothing = ()
@@ -39,7 +39,7 @@ trait Html5JsonProvider extends JsonProvider {
       }
     }
     type JString = String
-    override val JString = Html5JStringCompanion
+    override val JString: JStringCompanion = Html5JStringCompanion
 
     object Html5JNumberCompanion extends JNumberCompanion {
       override def unapply(v: JValue): Option[Double] = v match {
@@ -49,7 +49,7 @@ trait Html5JsonProvider extends JsonProvider {
       }
     }
     type JNumber = Double
-    override val JNumber = Html5JNumberCompanion
+    override val JNumber: JNumberCompanion = Html5JNumberCompanion
 
     object Html5JBooleanCompanion extends JBooleanCompanion {
       override def unapply(v: JValue): Option[Boolean] = v match {
@@ -58,7 +58,7 @@ trait Html5JsonProvider extends JsonProvider {
       }
     }
     type JBoolean = Boolean
-    override val JBoolean = Html5JBooleanCompanion
+    override val JBoolean: JBooleanCompanion = Html5JBooleanCompanion
 
     object Html5JObjectCompanion extends JObjectCompanion {
       override def unapply(v: JValue): Option[List[JField]] = {
@@ -69,7 +69,7 @@ trait Html5JsonProvider extends JsonProvider {
       }
     }
     type JObject = js.Dictionary[Any]
-    override val JObject = Html5JObjectCompanion
+    override val JObject: JObjectCompanion = Html5JObjectCompanion
 
     object Html5JArrayCompanion extends JArrayCompanion {
       override def unapply(v: JValue): Option[List[JValue]] = v match {
@@ -78,9 +78,9 @@ trait Html5JsonProvider extends JsonProvider {
       }
     }
     type JArray = js.Array[Any]
-    override val JArray = Html5JArrayCompanion
+    override val JArray: JArrayCompanion = Html5JArrayCompanion
   }
 
-  override val Json = Html5Json
+  override val Json: Json = Html5Json
 
 }

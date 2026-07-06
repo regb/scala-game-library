@@ -1,9 +1,9 @@
 package com.regblanc.sgl.hello
 package core
 
-import sgl._
-import sgl.proxy._
-import sgl.util._
+import _root_.sgl._
+import _root_.sgl.proxy._
+import _root_.sgl.util._
 
 trait AbstractApp extends GameApp with MainScreenComponent {
   this: SchedulerProvider =>

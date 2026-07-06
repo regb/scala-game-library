@@ -2,9 +2,11 @@ load(
     "@rules_scala//scala:scala.bzl",
     _scala_library = "scala_library", "scala_binary",
 )
+load("//bazel:scala_opts.bzl", "SGL_SCALACOPTS")
 
 def scala_library(deps = [],
                   plugins = [],
+                  scalacopts = [],
                   target_compatible_with = [],
                   **kwords):
 
@@ -23,6 +25,7 @@ def scala_library(deps = [],
     _scala_library(
         deps = cross_deps,
         plugins = cross_plugins,
+        scalacopts = SGL_SCALACOPTS + scalacopts,
         target_compatible_with = cross_target_compatible_with,
         **kwords,
     )

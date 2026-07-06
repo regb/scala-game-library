@@ -1,0 +1,35 @@
+"""Shared Scala compiler options."""
+
+# Keep these options warning-only. They are intended to surface migration and
+# hygiene issues without making normal development builds fail.
+SGL_SCALACOPTS = [
+    "-deprecation",
+    "-feature",
+    "-unchecked",
+    "-Xsource:3",
+    "-Wconf:cat=scala3-migration:w",
+    "-Xmigration",
+    "-Xlint:adapted-args",
+    "-Xlint:nullary-unit",
+    "-Xlint:inaccessible",
+    "-Xlint:infer-any",
+    "-Xlint:missing-interpolator",
+    "-Xlint:doc-detached",
+    "-Xlint:private-shadow",
+    "-Xlint:type-parameter-shadow",
+    "-Xlint:poly-implicit-overload",
+    "-Xlint:option-implicit",
+    "-Xlint:delayedinit-select",
+    "-Xlint:byname-implicit",
+    "-Xlint:package-object-classes",
+    "-Xlint:stars-align",
+    "-Xlint:constant",
+    "-Wunused:imports",
+    "-Wunused:privates",
+    "-Wunused:locals",
+    "-Wunused:explicits",
+    "-Wunused:implicits",
+    "-Wunused:patvars",
+    "-Wunused:nowarn",
+    "-Wvalue-discard",
+]

@@ -210,7 +210,7 @@ object ScreenDensity {
   case object Xxhdpi extends ScreenDensity { val name = "xxhdpi"; val dpi = 480 }
   case object Xxxhdpi extends ScreenDensity { val name = "xxxhdpi"; val dpi = 640 }
 
-  val values: Seq[ScreenDensity] =
+  val values: scala.collection.Seq[ScreenDensity] =
     Seq(Ldpi, Mdpi, Hdpi, Xhdpi, Xxhdpi, Xxxhdpi)
 
   private val byName: Map[String, ScreenDensity] =

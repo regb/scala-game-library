@@ -17,13 +17,13 @@ object {{MAIN_CLASS}} extends AWTApp with {{CORE_ABSTRACT_CLASS}}
   with LoggedAnalyticsProvider
   with {{SAVE_COMPONENT}}
 {
-  override val TargetFps = Some(60)
+  override val TargetFps: Option[Int] = Some(60)
 
   override val frameDimension = ({{FRAME_WIDTH}}, {{FRAME_HEIGHT}})
 
   override val DynamicResourcesEnabled = true
 
-  override val ScreenForcePPI = Some(160)
+  override val ScreenForcePPI: Option[Float] = Some(160f)
 
   {{SAVE_COMPONENT_INIT}}
 }

@@ -167,6 +167,7 @@ trait TiledMapRendererComponent {
 
     // the opacity parameter is to be applied in addition to the actual opacity of the layer.
     def render(canvas: Graphics.Canvas, imageLayer: ImageLayer, totalTime: Long, opacity: Float): Unit = {
+      val _ = totalTime
       canvas.drawBitmap(imageLayersBitmaps(imageLayer), imageLayer.offsetX.toFloat, imageLayer.offsetY.toFloat, imageLayer.opacity*opacity)
     }
 

@@ -1,9 +1,8 @@
 package com.regblanc.sgl.hello
 package core
 
-import sgl._
-import geometry._
-import util._
+import _root_.sgl._
+import _root_.sgl.util._
 
 trait MainScreenComponent extends ViewportComponent {
   this: GraphicsProvider with SystemProvider with WindowProvider with AudioProvider
@@ -12,8 +11,6 @@ trait MainScreenComponent extends ViewportComponent {
   import Graphics.{Bitmap, Canvas, Color, BitmapRegion, Animation}
   import Audio.{Music, Sound}
   import Window.dp2px
-
-  private implicit val LogTag: MainScreenComponent.this.Logger.Tag = Logger.Tag("main-screen")
 
   var music: Option[Music] = None
 
@@ -61,8 +58,8 @@ trait MainScreenComponent extends ViewportComponent {
 
   class MainScreen extends GameScreen {
 
-    for(i <- 0 to 10) {
-      Scheduler.schedule(new HelloChunkedTask(i))
+    for(_ <- 0 to 10) {
+      Scheduler.schedule(new HelloChunkedTask)
     }
 
     override def name: String = "TestScreen"
@@ -174,7 +171,7 @@ trait MainScreenComponent extends ViewportComponent {
 	    //frame.render(canvas)
 	    //canvas.translate(-x, -y)
 
-        var rectWidth: Float = dp2px(50f)
+        val rectWidth: Float = dp2px(50f)
         canvas.translate(dp2px(200f), dp2px(10f))
         canvas.drawRect(0, 0, rectWidth, rectWidth, Graphics.defaultPaint.withColor(Color.Red))
         canvas.translate(rectWidth + dp2px(10f), 0)
@@ -192,7 +189,7 @@ trait MainScreenComponent extends ViewportComponent {
 
   }
 
-  class HelloChunkedTask(i: Int) extends ChunkedTask {
+  class HelloChunkedTask extends ChunkedTask {
 
     override val name = "hello-chunked-task"
 

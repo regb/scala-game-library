@@ -1,6 +1,5 @@
 package sgl
 
-import util._
 import scala.collection.mutable.HashMap
 
  /* This is one of the few platform abstraction that doesn't use

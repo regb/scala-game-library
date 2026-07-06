@@ -1,4 +1,5 @@
 load("@rules_scala//scala:scala.bzl", "scala_binary")
+load("//bazel:scala_opts.bzl", "SGL_SCALACOPTS")
 
 def _desktop_awt_main_impl(ctx):
     """Implementation for desktop_awt_main rule."""
@@ -101,5 +102,6 @@ def sgl_desktop_awt_app(
         name = name,
         srcs = [":" + name + "_Main"],
         deps = full_deps,
+        scalacopts = SGL_SCALACOPTS,
         main_class = package + ".desktop." + main_class
     )

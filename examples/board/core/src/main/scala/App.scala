@@ -1,10 +1,7 @@
 package com.regblanc.sgl.board
 package core
 
-import sgl._
-import sgl.util._
-import sgl.scene._
-import sgl.scene.ui._
+import _root_.sgl._
 
 trait AbstractApp extends ScreensComponent {
   this: GameApp with ViewportComponent =>

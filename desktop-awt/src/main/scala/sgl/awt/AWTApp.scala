@@ -4,7 +4,7 @@ package awt
 import sgl.util._
 
 import java.awt.image.BufferedImage
-import java.awt.{GraphicsEnvironment, GraphicsConfiguration, Graphics2D, Transparency, RenderingHints, Rectangle}
+import java.awt.{Graphics2D, RenderingHints, Rectangle}
 import java.awt
 
 trait AWTApp extends GameApp 
@@ -89,19 +89,16 @@ trait AWTApp extends GameApp
   }
 
   private var gameLoop: GameLoop = null
-  private var runningThread: Thread = null
 
   private def resumeThread(): Unit = {
     gameLoop = new GameLoop
     val t = new Thread(gameLoop)
-    runningThread = t
     Scheduler.resume()
     t.start()
   }
-  private def pauseThread(): Unit = {
+  protected def pauseThread(): Unit = {
     Scheduler.pause()
     gameLoop.running = false
-    runningThread = null
   }
 
   private class GameLoop extends Runnable {

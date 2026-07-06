@@ -10,7 +10,7 @@ class FloatGauge(_name: String) extends Metrics(_name) {
   def += (x: Float): Unit = add(x)
 
   def set(x: Int): Unit = {
-    v = x
+    v = x.toFloat
   }
 
   def get: Float = v

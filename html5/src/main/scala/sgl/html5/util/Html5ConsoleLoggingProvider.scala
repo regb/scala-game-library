@@ -40,19 +40,19 @@ trait Html5DefaultConsoleLoggingProvider extends Html5ConsoleLoggingProvider {
   case object DefaultConsoleLogger extends ConsoleLogger {
     override val logLevel: Logger.LogLevel = Logger.Warning
   }
-  override val logger = DefaultConsoleLogger
+  override val logger: Logger = DefaultConsoleLogger
 }
 
 trait Html5InfoConsoleLoggingProvider extends Html5ConsoleLoggingProvider {
   case object InfoConsoleLogger extends ConsoleLogger {
     override val logLevel: Logger.LogLevel = Logger.Info
   }
-  override val logger = InfoConsoleLogger
+  override val logger: Logger = InfoConsoleLogger
 }
 
 trait Html5VerboseConsoleLoggingProvider extends Html5ConsoleLoggingProvider {
   case object VerboseConsoleLogger extends ConsoleLogger {
     override val logLevel: Logger.LogLevel = Logger.Debug
   }
-  override val logger = VerboseConsoleLogger
+  override val logger: Logger = VerboseConsoleLogger
 }

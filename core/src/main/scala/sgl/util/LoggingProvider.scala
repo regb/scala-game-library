@@ -144,7 +144,7 @@ trait NoLoggingProvider extends LoggingProvider {
 
     override def log(level: LogLevel, tag: Tag, msg: String): Unit = ()
 
-    override val logLevel = NoLogging
+    override val logLevel: LogLevel = NoLogging
 
     override def error(msg: => String)(implicit tag: Tag) = {}
     override def warning(msg: => String)(implicit tag: Tag) = {}
@@ -153,6 +153,6 @@ trait NoLoggingProvider extends LoggingProvider {
     override def trace(msg: => String)(implicit tag: Tag) = {}
   }
 
-  override val logger = SilentLogger
+  override val logger: Logger = SilentLogger
 }
 

@@ -77,5 +77,5 @@ trait SingleThreadSchedulerProvider extends SchedulerProvider {
     }
 
   }
-  override val Scheduler = new SingleThreadScheduler
+  override val Scheduler: SingleThreadScheduler = new SingleThreadScheduler
 }

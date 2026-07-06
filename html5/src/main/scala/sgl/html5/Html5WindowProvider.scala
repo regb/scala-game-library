@@ -69,6 +69,6 @@ trait Html5WindowProvider extends WindowProvider {
 
   }
   type Window = Html5Window
-  override val Window = new Html5Window
+  override val Window: Window = new Html5Window
 
 }

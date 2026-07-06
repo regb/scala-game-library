@@ -2,9 +2,8 @@ package sgl
 package awt
 
 import sgl.util._
-import awt.util._
 
-import java.awt.{RenderingHints, FontMetrics, Image, Graphics, Graphics2D, Color, AlphaComposite, GraphicsEnvironment, GraphicsConfiguration, Transparency}
+import java.awt.{RenderingHints, FontMetrics, Graphics2D, AlphaComposite, GraphicsEnvironment, Transparency}
 import java.awt.image.BufferedImage
 import java.awt.geom.{Rectangle2D, Ellipse2D, Line2D, AffineTransform}
 import javax.imageio.ImageIO
@@ -119,14 +118,14 @@ trait AWTGraphicsProvider extends GraphicsProvider {
       override val Serif: Font = AWTFont(new java.awt.Font(SERIF, PLAIN, 14))
 
     }
-    override val Font = AWTFontCompanion
+    override val Font: AWTFontCompanion.type = AWTFontCompanion
 
     type Color = java.awt.Color
     object AWTColorCompanion extends ColorCompanion {
       override def rgb(r: Int, g: Int, b: Int): Color = new java.awt.Color(r, g, b)
       override def rgba(r: Int, g: Int, b: Int, a: Int): Color = new java.awt.Color(r, g, b, a)
     }
-    override val Color = AWTColorCompanion
+    override val Color: AWTColorCompanion.type = AWTColorCompanion
 
     case class AWTPaint(font: Font, color: Color, alignment: Alignments.Alignment) extends AbstractPaint {
       def withFont(f: Font) = copy(font = f)
@@ -145,10 +144,10 @@ trait AWTGraphicsProvider extends GraphicsProvider {
       // A temporary rectangle used for calling the Graphics2D APIs. We
       // try to help the garbage collector by only instantiating once and
       // reusing it in all calls.
-      private var rect = new Rectangle2D.Float(0, 0, 0, 0)
-      private var ellipse = new Ellipse2D.Float(0, 0, 0, 0)
-      private var line = new Line2D.Float(0, 0, 0, 0)
-      private var affineTransform = new AffineTransform
+      private val rect = new Rectangle2D.Float(0, 0, 0, 0)
+      private val ellipse = new Ellipse2D.Float(0, 0, 0, 0)
+      private val line = new Line2D.Float(0, 0, 0, 0)
+      private val affineTransform = new AffineTransform
 
       override def withSave[A](body: => A): A = {
         // Save current state.
@@ -251,21 +250,21 @@ trait AWTGraphicsProvider extends GraphicsProvider {
         graphics.setFont(paint.font.f)
         paint.alignment match {
           case Alignments.Center =>
-            drawCenteredString(str, x, y, paint)
+            drawCenteredString(str, x, y)
           case Alignments.Right =>
-            drawRightAlignedString(str, x, y, paint)
+            drawRightAlignedString(str, x, y)
           case Alignments.Left =>
             graphics.drawString(str, x, y)
         }
       }
 
-      private def drawCenteredString(str: String, x: Float, y: Float, paint: Paint): Unit = {
+      private def drawCenteredString(str: String, x: Float, y: Float): Unit = {
         val metrics = graphics.getFontMetrics
         val realX = x - metrics.stringWidth(str)/2
         //val y = ((rect.height - metrics.getHeight()) / 2) - metrics.getAscent();
         graphics.drawString(str, realX, y)
       }
-      private def drawRightAlignedString(str: String, x: Float, y: Float, paint: Paint): Unit = {
+      private def drawRightAlignedString(str: String, x: Float, y: Float): Unit = {
         val metrics = graphics.getFontMetrics
         val realX = x - metrics.stringWidth(str)
         graphics.drawString(str, realX, y)
@@ -295,7 +294,7 @@ trait AWTGraphicsProvider extends GraphicsProvider {
        * much space as available, ready to be drawn
        */
       val rows: List[String] = {
-        var res = new scala.collection.mutable.ListBuffer[String]()
+        val res = new scala.collection.mutable.ListBuffer[String]()
 
         val lines = text.split("\n")
         for(line <- lines) {
@@ -354,6 +353,6 @@ trait AWTGraphicsProvider extends GraphicsProvider {
     }
 
   }
-  override val Graphics = AWTGraphics
+  override val Graphics: AWTGraphics.type = AWTGraphics
 
 }

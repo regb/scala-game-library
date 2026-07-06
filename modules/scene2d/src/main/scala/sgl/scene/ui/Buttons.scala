@@ -37,7 +37,7 @@ trait ButtonsComponent {
   }
 
   class BitmapButton(_x: Float, _y: Float, regularBitmap: BitmapRegion, pressedBitmap: BitmapRegion)
-    extends Button(_x, _y, regularBitmap.width, regularBitmap.height) {
+    extends Button(_x, _y, regularBitmap.width.toFloat, regularBitmap.height.toFloat) {
 
     override def renderPressed(canvas: Canvas): Unit =
       canvas.drawBitmap(pressedBitmap, x, y)

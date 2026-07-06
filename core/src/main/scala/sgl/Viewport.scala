@@ -77,8 +77,8 @@ trait ViewportComponent {
     // Top-left position of the camera clip.
     private var _cameraX: Float = 0
     private var _cameraY: Float = 0
-    private var _cameraWidth: Float = screenWidth
-    private var _cameraHeight: Float = screenHeight
+    private var _cameraWidth: Float = screenWidth.toFloat
+    private var _cameraHeight: Float = screenHeight.toFloat
 
     def cameraX: Float = _cameraX
     def cameraY: Float = _cameraY
@@ -231,7 +231,7 @@ trait ViewportComponent {
       canvas.withSave{
         // TODO: screenX and screenY would allow to handle viewport as sub-part of the screen
         //       (like split-screen)
-        canvas.clipRect(0, 0, screenWidth, screenHeight)
+        canvas.clipRect(0, 0, screenWidth.toFloat, screenHeight.toFloat)
 
         if(scalingStrategy == Fit)
           canvas.clipRect(offsetX, offsetY, wRatio*_cameraWidth, hRatio*_cameraHeight)

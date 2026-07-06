@@ -1,10 +1,8 @@
 package sgl
 package html5
 
-import scala.scalajs.js
 import org.scalajs.dom
-import dom.html
-import dom.raw.{HTMLSourceElement, HTMLAudioElement}
+import dom.{HTMLAudioElement, HTMLSourceElement}
 
 import sgl.util._
 
@@ -28,7 +26,7 @@ trait Html5AudioProvider extends AudioProvider {
 
     class SoundTagInstance(val loader: Loader[HTMLAudioElement], var inUse: Boolean, var loop: Int)
 
-    private class SoundTagPool(pathes: Seq[ResourcePath], initialTag: HTMLAudioElement) {
+    private class SoundTagPool(pathes: scala.collection.Seq[ResourcePath], initialTag: HTMLAudioElement) {
       private var audioTags: Vector[SoundTagInstance] = Vector(
         new SoundTagInstance(Loader.successful(initialTag), false, 0)
       )
@@ -51,7 +49,7 @@ trait Html5AudioProvider extends AudioProvider {
       }
     }
 
-    class Html5Sound(pathes: Seq[ResourcePath], pool: SoundTagPool, loop: Int = 0, rate: Float = 1f) extends AbstractSound {
+    class Html5Sound(pathes: scala.collection.Seq[ResourcePath], pool: SoundTagPool, loop: Int = 0, rate: Float = 1f) extends AbstractSound {
 
       type PlayedSound = SoundTagInstance
 
@@ -59,10 +57,10 @@ trait Html5AudioProvider extends AudioProvider {
         val tag = pool.getReadyTag()
         tag.loop = loop
         tag.loader.foreach(a => {
-          a.onended = (e: dom.raw.Event) => {
+          a.onended = (_: dom.Event) => {
             if(tag.loop > 0) {
               tag.loop -= 1
-              a.play()
+              val _ = a.play()
             } else if(tag.loop == 0) {
               a.onended = null
               pool.returnTag(tag)
@@ -75,7 +73,7 @@ trait Html5AudioProvider extends AudioProvider {
             a.loop = true
           a.playbackRate = rate
 
-          a.play()
+          val _ = a.play()
         })
         Some(tag)
       }
@@ -97,7 +95,7 @@ trait Html5AudioProvider extends AudioProvider {
         id.loader.foreach(a => a.pause())
       }
       override def resume(id: PlayedSound): Unit = {
-        id.loader.foreach(a => a.play())
+        id.loader.foreach(a => { val _ = a.play(); () })
       }
       override def endLoop(id: PlayedSound): Unit = {
         id.loop = 0
@@ -124,9 +122,10 @@ trait Html5AudioProvider extends AudioProvider {
 
       override def play(): Unit = {
         if(GuardAutoPlay)
-          onInitialUserInteraction(() => audio.play())
-        else
-          audio.play()
+          onInitialUserInteraction(() => { val _ = audio.play(); () })
+        else {
+          val _ = audio.play()
+        }
       }
       override def pause(): Unit = {
         audio.pause()
@@ -142,7 +141,7 @@ trait Html5AudioProvider extends AudioProvider {
       }
       override def dispose(): Unit = {
         audio.pause()
-        dom.document.body.removeChild(audio)
+        val _ = dom.document.body.removeChild(audio)
       }
     }
     type Music = Html5Music
@@ -151,7 +150,7 @@ trait Html5AudioProvider extends AudioProvider {
       loadAudioTag(path +: extras).map(new Html5Music(_))
     }
 
-    private def loadAudioTag(pathes: Seq[ResourcePath]): Loader[HTMLAudioElement] = {
+    private def loadAudioTag(pathes: scala.collection.Seq[ResourcePath]): Loader[HTMLAudioElement] = {
       val p = new DefaultLoader[HTMLAudioElement]()
       val audio = dom.document.createElement("audio").asInstanceOf[HTMLAudioElement]
 
@@ -159,7 +158,7 @@ trait Html5AudioProvider extends AudioProvider {
       def onError(): Unit = {
         errorCount += 1
         if(errorCount == pathes.size) {
-          p.failure(new RuntimeException(s"music <${pathes}> failed to load"))
+          val _ = p.failure(new RuntimeException(s"music <${pathes}> failed to load"))
         }
       }
 
@@ -176,8 +175,8 @@ trait Html5AudioProvider extends AudioProvider {
           case _ => ""
         }
         source.`type` = tpe
-        source.addEventListener("error", (e: dom.raw.Event) => onError())
-        audio.appendChild(source)
+        source.addEventListener("error", (_: dom.Event) => onError())
+        val _ = audio.appendChild(source)
       })
 
       // TODO: we should set a timer and automatically fail the loader after a while, because
@@ -191,16 +190,16 @@ trait Html5AudioProvider extends AudioProvider {
       //       reliable audio, so it's not nice to have an API that returns errors all the time.
       //       I think fall back on a silent behavior might be the best, maybe with otpional errors
       //       that can be queried?
-      audio.addEventListener("canplaythrough", (e: dom.raw.Event) => {
+      audio.addEventListener("canplaythrough", (_: dom.Event) => {
         // Apparently the event can fire several times, so we trySuccess instead.
-        p.trySuccess(audio)
+        val _ = p.trySuccess(audio)
       })
       // Let's explicitly load() the audio, it seems to be needed on iOS, as the device
       // does not start loading the audio files otherwise. All other platforms seem to
       // load automatically and trigger the canplaythrough event eventually.
       audio.load()
 
-      dom.document.body.appendChild(audio)
+      val _ = dom.document.body.appendChild(audio)
 
       p.loader
     }

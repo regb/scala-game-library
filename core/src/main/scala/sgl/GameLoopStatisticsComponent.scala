@@ -15,7 +15,7 @@ trait GameLoopStatisticsComponent extends GameLoopComponent {
 
   val statistics: GameLoopStatistics = new GameLoopStatistics
 
-  override val gameLoopListener = new StatisticsGameLoopListener
+  override val gameLoopListener: GameLoopListener = new StatisticsGameLoopListener
 
   class StatisticsGameLoopListener extends GameLoopListener {
 

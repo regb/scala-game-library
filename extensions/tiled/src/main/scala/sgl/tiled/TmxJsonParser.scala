@@ -111,7 +111,7 @@ trait TmxJsonParserComponent {
         Point(jsonToFloat(point \ "x").get, jsonToFloat(point \ "y").get)
       }
   
-      def parseLayer(layer: JValue, acceptMissingId: Boolean = false): Layer = {
+      def parseLayer(layer: JValue, acceptMissingId: Boolean): Layer = {
         val JString(name) = layer \ "name"
         val JString(tpe) = layer \ "type"
 
@@ -367,25 +367,13 @@ trait TmxJsonParserComponent {
                stagger=stagger)
     }
   
-    // TODO: we probably want to provide .as[T] (.as[Double] for example)
-    // in the api to return this Option instead of having to use
-    // extractors.
-    private def jsonToDouble(json: JValue): Option[Double] = json match {
-      case JNumber(v) => Some(v)
-      //case AsInt(v) => Some(v.toDouble) //assuming that for coordinates this cannot overflow
-      case _ => None
-    }
+    // TODO: we probably want to provide .as[T] in the api to return this
+    // Option instead of having to use extractors.
     private def jsonToFloat(json: JValue): Option[Float] = json match {
       case JNumber(v) => Some(v.toFloat)
       case _ => None
     }
 
-    private def parseInt(obj: JValue, attr: String): Int = (obj \ attr) match {
-      case AsInt(v) => v
-      // TODO: Maybe we can make a typed exception with obj,attr, and got? throw that instead
-      //       (and still use the same exception message).
-      case x => throw new RuntimeException(s"Expected Int for attribute <$attr> in obj <$obj>, got: $x")
-    }
   }
 
 }

@@ -1,9 +1,8 @@
 package com.regblanc.sgl.snake
 package core
 
-import sgl._
-import sgl.proxy._
-import sgl.util._
+import _root_.sgl._
+import _root_.sgl.proxy._
 
 trait AbstractApp extends MainScreenComponent {
   this: GameApp =>

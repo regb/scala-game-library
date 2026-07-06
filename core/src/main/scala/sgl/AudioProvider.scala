@@ -205,9 +205,9 @@ trait AudioProvider {
       * TODO: make the filetype as a typed argument.
       */
     def loadSound(path: ResourcePath, extras: ResourcePath*): Loader[Sound]
-    def loadSound(pathes: Seq[ResourcePath]): Loader[Sound] = {
+    def loadSound(pathes: scala.collection.Seq[ResourcePath]): Loader[Sound] = {
       require(pathes.size >= 1)
-      loadSound(pathes.head, pathes.tail:_*)
+      loadSound(pathes.head, pathes.tail.toSeq:_*)
     }
   
     /*
@@ -307,9 +307,9 @@ trait AudioProvider {
       * TODO: make the filetype as a typed argument.
       */
     def loadMusic(path: ResourcePath, extras: ResourcePath*): Loader[Music]
-    def loadMusic(pathes: Seq[ResourcePath]): Loader[Music] = {
+    def loadMusic(pathes: scala.collection.Seq[ResourcePath]): Loader[Music] = {
       require(pathes.size >= 1)
-      loadMusic(pathes.head, pathes.tail:_*)
+      loadMusic(pathes.head, pathes.tail.toSeq:_*)
     }
 
   }
@@ -364,5 +364,5 @@ trait FakeAudioProvider extends AudioProvider {
 
     override def loadMusic(path: ResourcePath, extras: ResourcePath*): Loader[Music] = Loader.successful(new Music)
   }
-  override val Audio = FakeAudio
+  override val Audio: Audio = FakeAudio
 }

@@ -1,16 +1,11 @@
 package com.regblanc.sgl.menu
 package core
 
-import sgl._
-import geometry._
-import scene._
-import scene.ui._
-import util._
+import _root_.sgl._
+import _root_.sgl.scene._
 
 trait ScreensComponent extends SceneComponent {
   this: GameApp =>
-
-  private implicit val LogTag: ScreensComponent.this.Logger.Tag = Logger.Tag("main-screen")
 
   class LevelsScreen extends GameScreen {
 

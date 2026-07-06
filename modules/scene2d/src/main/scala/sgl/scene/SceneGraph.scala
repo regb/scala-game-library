@@ -6,7 +6,6 @@ import scala.collection.mutable.HashMap
 trait SceneGraphComponent {
   this: GraphicsProvider with SystemProvider with ViewportComponent =>
 
-  import Input._
 
   /** The main container element to organize a scene.
     *

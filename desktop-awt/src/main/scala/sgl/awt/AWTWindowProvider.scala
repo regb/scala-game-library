@@ -3,9 +3,6 @@ package awt
 
 import javax.swing.JFrame
 import javax.swing.WindowConstants.EXIT_ON_CLOSE
-import javax.swing.JPanel
-
-import java.awt.event._
 import java.awt.Dimension
 import java.awt.Toolkit
 import java.awt
@@ -81,7 +78,7 @@ trait AWTWindowProvider extends WindowProvider {
     override def logicalPpi: Float = ScreenForcePPI.getOrElse(Toolkit.getDefaultToolkit().getScreenResolution().toFloat)
   }
   type Window = AWTWindow
-  override val Window = new AWTWindow
+  override val Window: Window = new AWTWindow
 
   /** Override this if you want to force an arbitrary PPI. Typically it's useful for testing how your game will adapt
    *  to multiple screen densities, instead of testing on multiple platforms. */

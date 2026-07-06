@@ -78,7 +78,7 @@ trait DefaultTheme extends Theme {
     dom.document.body.style.overflow = "hidden"
 
     // Prevent highlight on click on canvas.
-    dom.document.onselectstart = (e: dom.Event) => false
+    dom.document.onselectstart = (_: dom.Event) => false
 
     canvas.style.margin = "0"
     canvas.style.padding = "0"
@@ -137,10 +137,10 @@ trait DefaultTheme extends Theme {
     if(left == 0)
       canvas.style.left = "0"
     else
-      canvas.style.left = left + "px"
+      canvas.style.left = s"${left}px"
     if(top == 0)
       canvas.style.top = "0"
     else
-      canvas.style.top = top + "px"
+      canvas.style.top = s"${top}px"
   }
 }

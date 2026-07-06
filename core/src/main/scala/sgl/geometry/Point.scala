@@ -33,5 +33,5 @@ case class Point(var x: Float, var y: Float) {
 
 object Point {
   implicit def tupleToPoint(p: (Float, Float)): Point = new Point(p._1, p._2)
-  implicit def intTupleToPoint(p: (Int, Int)): Point = new Point(p._1, p._2)
+  implicit def intTupleToPoint(p: (Int, Int)): Point = new Point(p._1.toFloat, p._2.toFloat)
 }

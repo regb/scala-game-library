@@ -3,7 +3,7 @@ package awt
 
 import sgl.util._
 
-import java.io.{File, ByteArrayOutputStream}
+import java.io.ByteArrayOutputStream
 import java.nio.ByteOrder
 
 import javax.sound.sampled.{AudioSystem, AudioInputStream, Clip, LineListener, LineEvent, UnsupportedAudioFileException}
@@ -190,7 +190,7 @@ trait AWTAudioProvider extends AudioProvider {
                 // the pause function before calling stop.
                 if(!clipPool.isPaused(clipIndex)) {
                   clipPool.close(clipIndex)
-                  activeClips.remove(clipIndex)
+                  val _ = activeClips.remove(clipIndex)
                 }
               }
               // We don't care about other events.
@@ -370,7 +370,7 @@ trait AWTAudioProvider extends AudioProvider {
       //  and not just load clips independently of a mixer.
     }
   }
-  override val Audio = AWTAudio
+  override val Audio: AWTAudio.type = AWTAudio
 
   /** Provides function helpers to work with Java Sound API.
     *
@@ -381,7 +381,7 @@ trait AWTAudioProvider extends AudioProvider {
     * sound.
     */
   private object JavaSoundHelpers {
-    import javax.sound.sampled.{AudioFormat, FloatControl, DataLine, LineEvent}
+    import javax.sound.sampled.{AudioFormat, FloatControl, DataLine}
   
     // Try to get a clip that can play the AudioFormat. Returns
     // None if there is clip in the AudioSystem, Some(clip) otherwise.

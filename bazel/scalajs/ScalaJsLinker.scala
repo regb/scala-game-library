@@ -1,4 +1,3 @@
-import java.io.File
 import java.nio.file.Paths
 
 import org.scalajs.linker.interface.{ModuleInitializer, ModuleKind, StandardConfig}
@@ -15,7 +14,7 @@ object ScalaJsLinker extends App {
   val cache = StandardImpl.irFileCache().newCache
 
   val result = PathIRContainer
-    .fromClasspath(inputJars)
+    .fromClasspath(inputJars.toIndexedSeq)
     .map(_._1)
     .flatMap(cache.cached _)
     .flatMap { sjsirFiles =>

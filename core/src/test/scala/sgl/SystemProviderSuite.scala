@@ -11,7 +11,7 @@ class SystemProviderSuite extends AnyFunSuite {
         instrumentedUri = uri
       }
     }
-    override val System = new InstrumentedTestSystem
+    override val System: InstrumentedTestSystem = new InstrumentedTestSystem
   }
 
   test("openGooglePlayApp defaults to the correct URL without parameters") {
@@ -31,8 +31,8 @@ class SystemProviderSuite extends AnyFunSuite {
 
 
   object PartsResourcePathSystemProvider extends TestSystemNoResourcePathProvider with PartsResourcePathProvider {
-    override val ResourcesRoot = PartsResourcePath(Vector("root"))
-    override val MultiDPIResourcesRoot = PartsResourcePath(Vector("root"))
+    override val ResourcesRoot: ResourcePath = PartsResourcePath(Vector("root"))
+    override val MultiDPIResourcesRoot: ResourcePath = PartsResourcePath(Vector("root"))
   }
 
   test("PartsResourcePath creates the correct path") {

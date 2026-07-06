@@ -295,7 +295,7 @@ object TweeningEquations {
     * -A*t)*math.cos(t*P*(2*math.Pi)) with A (default 10) and P (default 2)
     * that can be played with to get stronger amplitude and more cycles.
     */
-  private def easeOutElasticNormalized(a: Float = 10, p: Float = 2)(t: Float): Float =
+  private def easeOutElasticNormalized(a: Float, p: Float)(t: Float): Float =
     (1 - math.pow(2, -a*t)*math.cos(t*p*(2*math.Pi))).toFloat
   def easeOutElastic(a: Float = 10, p: Float = 2): TweeningFunction = easeGeneric(easeOutElasticNormalized(a, p))
 

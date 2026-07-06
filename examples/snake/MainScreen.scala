@@ -1,10 +1,9 @@
 package com.regblanc.sgl.snake
 package core
 
-import sgl._
-import geometry._
-import scene._
-import util._
+import _root_.sgl._
+import _root_.sgl.util._
+import _root_.sgl.geometry._
 
 trait MainScreenComponent {
   self: GraphicsProvider with GameStateComponent with WindowProvider
@@ -19,8 +18,6 @@ trait MainScreenComponent {
 
   val TotalWidth = NbCols*squareSize
   val TotalHeight = NbRows*squareSize
-
-  private implicit val LogTag: MainScreenComponent.this.Logger.Tag = Logger.Tag("main-screen")
 
   class MainScreen extends FixedTimestepGameScreen(1000/12) {
 

@@ -115,7 +115,7 @@ trait NoAdsProvider extends AdsProvider {
       false
     }
   }
-  override val Ads = NoAds
+  override val Ads: Ads = NoAds
 
 }
 

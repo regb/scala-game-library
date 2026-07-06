@@ -112,7 +112,7 @@ trait AnalyticsProvider {
     * to have a history of data to compare against before performing the
     * switch. Or just while testing new analytics solutions.
     */
-  class MultipleAnalytics(analytics: Seq[Analytics]) extends AbstractAnalytics {
+  class MultipleAnalytics(analytics: scala.collection.Seq[Analytics]) extends AbstractAnalytics {
     override def logCustomEvent(name: String, params: EventParams): Unit = {
       analytics.foreach(_.logCustomEvent(name, params))
     }

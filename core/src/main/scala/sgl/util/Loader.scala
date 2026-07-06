@@ -91,7 +91,9 @@ trait Loader[+A] {
     */
   def andThen[U](pf: PartialFunction[Try[A], U]): Loader[A] = {
     transform { result =>
-      pf.applyOrElse(result, (r: Try[A]) => ())
+      if(pf.isDefinedAt(result)) {
+        val _ = pf(result)
+      }
       result
     }
   }
@@ -170,15 +172,15 @@ object Loader {
     * of the loader fails, the combined loader will fail with the first
     * failure (and ignore the following ones, which will get dropped).
     */
-  def combine[A](loaders: Seq[Loader[A]]): Loader[Seq[A]] = {
-    val p = new DefaultLoader[Seq[A]]
+  def combine[A](loaders: scala.collection.Seq[Loader[A]]): Loader[scala.collection.Seq[A]] = {
+    val p = new DefaultLoader[scala.collection.Seq[A]]
 
     object lock
     val totalToLoad = loaders.size
     var totalLoaded = 0
 
     loaders.foreach(loader => loader.onLoad((res: Try[A]) => lock.synchronized { res match {
-      case Success(v) =>
+      case Success(_) =>
         totalLoaded += 1
         if(totalLoaded == totalToLoad)
           p.success(loaders.map(l => l.value.get.get))
@@ -223,7 +225,7 @@ class DefaultLoader[A] extends Loader[A] with LoaderPromise[A] {
   private object lock
 
   private var v: Option[Try[A]] = None
-  private val callbacks: ListBuffer[Try[A] => Any] = new ListBuffer
+  private val callbacks: ListBuffer[Try[A] => Unit] = new ListBuffer
 
   override def loader: Loader[A] = this
 
@@ -246,9 +248,9 @@ class DefaultLoader[A] extends Loader[A] with LoaderPromise[A] {
   override def onLoad[U](f: (Try[A]) => U): Unit = lock.synchronized {
     v match {
       case None =>
-        callbacks.append(f)
+        val _ = callbacks.append((result: Try[A]) => { val _ = f(result); () })
       case Some(result) =>
-        f(result)
+        val _ = f(result)
     }
   }
 
@@ -260,7 +262,7 @@ class DefaultLoader[A] extends Loader[A] with LoaderPromise[A] {
       } catch {
         case (t: Throwable) => Failure(t)
       }
-      p.complete(r)
+      val _ = p.complete(r)
     })
     p.loader
   }
@@ -273,7 +275,7 @@ class DefaultLoader[A] extends Loader[A] with LoaderPromise[A] {
   override def transformWith[B](f: (Try[A]) => Loader[B]): Loader[B] = {
     val p = new DefaultLoader[B]()
     this.onLoad(result => {
-      f(result).onLoad(r => p.complete(r))
+      f(result).onLoad(r => { val _ = p.complete(r); () })
     })
     p.loader
   }

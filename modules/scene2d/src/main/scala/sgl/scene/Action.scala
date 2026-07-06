@@ -34,7 +34,7 @@ class SequenceAction(private var as: List[Action]) extends Action {
 class ParallelAction(private var as: List[Action]) extends Action {
   override def update(dt: Long): Unit = {
     as.foreach(a => a.update(dt))
-    as.filterNot(_.isCompleted)
+    as = as.filterNot(_.isCompleted)
   }
   override def isCompleted: Boolean = as.isEmpty
 }

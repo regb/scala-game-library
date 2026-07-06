@@ -13,5 +13,5 @@ trait ProxyWindowProvider extends WindowProvider {
     override def logicalPpi: Float = PlatformProxy.windowProxy.logicalPpi
   }
   type Window = ProxyWindow
-  override val Window = new ProxyWindow
+  override val Window: Window = new ProxyWindow
 }

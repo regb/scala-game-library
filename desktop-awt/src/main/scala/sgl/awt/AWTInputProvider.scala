@@ -165,7 +165,7 @@ trait AWTInputProvider {
     })
 
     gameCanvas.addKeyListener(new KeyListener() {
-      private var currentlyPressed = new HashSet[Int]
+      private val currentlyPressed = new HashSet[Int]
 
       override def keyPressed(e: KeyEvent): Unit = {
         // keyPressed event will actually automatically repeat the key event

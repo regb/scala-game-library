@@ -51,14 +51,14 @@ trait ProxyGraphicsProvider extends GraphicsProvider {
         case Normal => FontProxy.Normal
       }
     }
-    override val Font = ProxyFontCompanion
+    override val Font: ProxyFontCompanion.type = ProxyFontCompanion
 
     type Color = ColorProxy
     object ProxyColorCompanion extends ColorCompanion {
       override def rgb(r: Int, g: Int, b: Int): Color = PlatformProxy.graphicsProxy.colorCompanionProxy.rgb(r, g, b)
       override def rgba(r: Int, g: Int, b: Int, a: Int): Color = PlatformProxy.graphicsProxy.colorCompanionProxy.rgba(r, g, b, a)
     }
-    override val Color = ProxyColorCompanion
+    override val Color: ProxyColorCompanion.type = ProxyColorCompanion
 
     case class ProxyPaint(paint: PaintProxy) extends AbstractPaint {
       override val font = ProxyFont(paint.font)
@@ -109,6 +109,6 @@ trait ProxyGraphicsProvider extends GraphicsProvider {
     type Canvas = ProxyCanvas
 
   }
-  override val Graphics = ProxyGraphics
+  override val Graphics: ProxyGraphics.type = ProxyGraphics
 
 }

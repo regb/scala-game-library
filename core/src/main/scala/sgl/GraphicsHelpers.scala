@@ -69,7 +69,7 @@ private[sgl] trait GraphicsHelpersComponent {
               this.drawBitmap(region.bitmap, x+i*region.width, y+nbFullRows*region.height, region.x, region.y, region.width, missingHeight)
           }
           if(missingWidth > 0 && missingHeight > 0) {
-            this.drawBitmap(region.bitmap, nbFullCols*region.width, nbFullRows*region.height, region.x, region.y, missingWidth, missingHeight)
+            this.drawBitmap(region.bitmap, x + (nbFullCols*region.width).toFloat, y + (nbFullRows*region.height).toFloat, region.x, region.y, missingWidth, missingHeight)
           }
         }
       }

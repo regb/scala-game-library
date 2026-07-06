@@ -7,7 +7,7 @@ import scala.collection.mutable.Queue
 trait ThreadPoolSchedulerProvider extends SchedulerProvider {
   this: LoggingProvider =>
 
-  private implicit val Tag = Logger.Tag("threadpool-scheduler")
+  private implicit val Tag: Logger.Tag = Logger.Tag("threadpool-scheduler")
 
   class ThreadPoolScheduler extends Scheduler {
     private val pool = Executors.newFixedThreadPool(4)
@@ -22,7 +22,7 @@ trait ThreadPoolSchedulerProvider extends SchedulerProvider {
 
     override def schedule(task: ChunkedTask): Unit = {
       taskQueueLock.synchronized {
-        tasks.enqueue(task)
+        val _ = tasks.enqueue(task)
       }
     }
 
@@ -36,10 +36,10 @@ trait ThreadPoolSchedulerProvider extends SchedulerProvider {
       r2 = new ChunksRunner
       r3 = new ChunksRunner
       r4 = new ChunksRunner
-      pool.submit(r1)
-      pool.submit(r2)
-      pool.submit(r3)
-      pool.submit(r4)
+      val _ = pool.submit(r1)
+      val _ = pool.submit(r2)
+      val _ = pool.submit(r3)
+      val _ = pool.submit(r4)
     }
 
     /** Pause the execution of all scheduled task.
@@ -97,9 +97,9 @@ trait ThreadPoolSchedulerProvider extends SchedulerProvider {
             case Some(task) => {
               logger.debug("Executing some ChunkedTask from the task queue.")
               try {
-                task.doRun(5l)
+                task.doRun(5L)
                 if(task.status != ChunkedTask.Completed)
-                  taskQueueLock.synchronized { tasks.enqueue(task) }
+                  taskQueueLock.synchronized { val _ = tasks.enqueue(task) }
               } catch {
                 case (e: Throwable) => {
                   logger.error(s"Unexpected error while executing task ${task.name}: ${e.getMessage}")
@@ -115,6 +115,6 @@ trait ThreadPoolSchedulerProvider extends SchedulerProvider {
       }
     }
   }
-  override val Scheduler = new ThreadPoolScheduler
+  override val Scheduler: ThreadPoolScheduler = new ThreadPoolScheduler
 
 }

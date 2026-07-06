@@ -1,6 +1,7 @@
 #load(":cross.bzl", "scala_library")
 load("@rules_java//java/common:java_info.bzl", "JavaInfo")
 load("@rules_scala//scala:scala.bzl", _scala_library_rule = "scala_library")
+load("//bazel:scala_opts.bzl", "SGL_SCALACOPTS")
 
 def _scalajs_transition_impl(settings, attr):
     return {"//command_line_option:platforms": ["//bazel/platforms:scala_js"]}
@@ -37,7 +38,7 @@ _scalajs_library_rule = rule(
     doc = "ScalaJS library with incoming transition",
 )
 
-def scalajs_library(name, deps=[], visibility=None, **kwargs):
+def scalajs_library(name, deps=[], visibility=None, scalacopts=[], **kwargs):
     """A Scala library that automatically forces ScalaJS platform for itself and dependencies."""
     
     underlying_lib_name = name + "_impl"
@@ -46,6 +47,7 @@ def scalajs_library(name, deps=[], visibility=None, **kwargs):
         name = underlying_lib_name,
         deps = deps+[Label("@maven//:org_scala_js_scalajs_library_2_13")],
         plugins = [Label("@maven//:org_scala_js_scalajs_compiler_2_13_18")],
+        scalacopts = SGL_SCALACOPTS + scalacopts,
         #target_compatible_with = [Label("//bazel/platforms:scala_js")],
         target_compatible_with = [Label("//bazel/platforms:compiler_js")],
         visibility = ["//visibility:private"],

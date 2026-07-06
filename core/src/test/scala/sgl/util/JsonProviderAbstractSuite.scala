@@ -39,7 +39,7 @@ trait JsonProviderAbstractSuite extends AnyFunSuite with JsonProvider {
 
   test("AsInt should not extract an int from a true double") {
     parse("12.34") match {
-      case AsInt(n) => fail()
+      case AsInt(_) => fail()
       case _ => assert(true)
     }
   }

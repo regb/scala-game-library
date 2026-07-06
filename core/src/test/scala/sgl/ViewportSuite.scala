@@ -79,6 +79,7 @@ class ViewportSuite extends AnyFunSuite {
       val (x6, y6) = viewport.worldToScreen(60, 130)
       assert(x6 === 20)
       assert(y6 === 60)
+      ()
     }
 
     // None of the setCamera will require any black bar (offsets), so we

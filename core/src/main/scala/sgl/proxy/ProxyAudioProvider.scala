@@ -45,5 +45,5 @@ trait ProxyAudioProvider extends AudioProvider {
     }
   }
 
-  override val Audio = ProxyAudio
+  override val Audio: Audio = ProxyAudio
 } 

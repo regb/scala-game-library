@@ -2,7 +2,6 @@ package sgl
 package html5
 
 import sgl.util._
-import util._
 import themes._
 
 import scala.scalajs.js
@@ -60,7 +59,7 @@ trait Html5App extends GameApp
 
     theme.init(canvas)
     prepareCanvas(canvas)
-    dom.window.onresize = (event: dom.Event) => {
+    dom.window.onresize = (_: dom.Event) => {
       theme.onResize(canvas)
       // After a resize, the theme might reset the CSS width/height, so we
       // need to prepare the canvas again.
@@ -83,21 +82,21 @@ trait Html5App extends GameApp
     def runScheduler(): Unit = {
       if(Scheduler.run(5L)) {
         // No more tasks, so we can set the next timeout a bit later.
-        dom.window.setTimeout(() => runScheduler(), 20L)
+        val _ = dom.window.setTimeout(() => runScheduler(), 20L)
       } else {
         // More work to do, schedule as soon as possible.
-        dom.window.setTimeout(() => runScheduler(), 0)
+        val _ = dom.window.setTimeout(() => runScheduler(), 0)
       }
     }
-    dom.window.setTimeout(() => runScheduler(), 50L)
+    val _ = dom.window.setTimeout(() => runScheduler(), 50L)
 
     lifecycleListener.startup()
     lifecycleListener.resume()
   }
 
-  private implicit val Tag = Logger.Tag("game-loop")
+  private implicit val Tag: Logger.Tag = Logger.Tag("game-loop")
 
-  override val MaxLoopStepDelta = Some(1000)
+  override val MaxLoopStepDelta: Option[Long] = Some(1000L)
 
   def startGameLoop(): Unit = {
 
@@ -126,15 +125,16 @@ trait Html5App extends GameApp
       val dt: Double = now - lastTime.getOrElse(now)
       lastTime = Some(now)
       gameLoopStep(dt.toLong, canvas)
-      if(requestAnimationFrameSupported)
-        dom.window.requestAnimationFrame(t => frameCode(t))
+      if(requestAnimationFrameSupported) {
+        val _ = dom.window.requestAnimationFrame(t => frameCode(t))
+      }
     }
 
     if(requestAnimationFrameSupported) {
-      dom.window.requestAnimationFrame(t => frameCode(t))
+      val _ = dom.window.requestAnimationFrame(t => frameCode(t))
     } else {
       logger.warning("window.requestAnimationFrame not supported, fallback to setInterval for the game loop")
-      dom.window.setInterval(() => frameCode(js.Date.now()), targetFramePeriod.map(_.toDouble).getOrElse(1000d/30d))
+      val _ = dom.window.setInterval(() => frameCode(js.Date.now()), targetFramePeriod.map(_.toDouble).getOrElse(1000d/30d))
     }
 
   }

@@ -59,7 +59,7 @@ trait DefaultInstrumentationProvider extends InstrumentationProvider {
 
   object DefaultMetrics extends AbstractMetrics {
 
-    private var startTime: Long = 0l
+    private var startTime: Long = 0L
     private var isWarmedUp: Boolean = false
 
     override def init(): Unit = {
@@ -68,14 +68,14 @@ trait DefaultInstrumentationProvider extends InstrumentationProvider {
     override def update(): Unit = {
       if(!isWarmedUp) {
         val now = System.nanoTime
-        if(now - startTime >= WarmupDuration*1000l*1000l*1000l) {
+        if(now - startTime >= WarmupDuration*1000L*1000L*1000L) {
           allMetrics.foreach(_.reset())
           isWarmedUp = true
           startTime = now
         }
       } else if(ResetPeriod.nonEmpty) {
         val now = System.nanoTime
-        if(now - startTime >= ResetPeriod.get*1000l*1000l*1000l) {
+        if(now - startTime >= ResetPeriod.get*1000L*1000L*1000L) {
           allMetrics.foreach(_.reset())
           startTime = now
         }
@@ -122,7 +122,7 @@ trait DefaultInstrumentationProvider extends InstrumentationProvider {
 
         var y = -offset
         allMetrics.foreach(m => {
-          canvas.drawString(m.renderString, 10, y, paint)
+          canvas.drawString(m.renderString, 10f, y.toFloat, paint)
           y += paint.font.size
         })
       }
@@ -131,7 +131,7 @@ trait DefaultInstrumentationProvider extends InstrumentationProvider {
 
   }
   type Metrics = DefaultMetrics.type
-  override val Metrics = DefaultMetrics
+  override val Metrics: Metrics = DefaultMetrics
 
 }
 
@@ -156,5 +156,5 @@ trait NoInstrumentationProvider extends InstrumentationProvider {
     override def renderMetrics(canvas: Graphics.Canvas, paint: Graphics.Paint): Unit = {}
   }
   type Metrics = NoMetrics.type
-  override val Metrics = NoMetrics
+  override val Metrics: Metrics = NoMetrics
 }

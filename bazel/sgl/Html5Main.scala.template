@@ -4,7 +4,6 @@ import sgl._
 import sgl.html5._
 import sgl.html5.util._
 import sgl.html5.themes._
-import sgl.util._
 import sgl.util.metrics._
 
 import scala.scalajs.js.annotation.JSExportTopLevel
@@ -20,9 +19,9 @@ object {{MAIN_CLASS}} extends Html5App with {{CORE_ABSTRACT_CLASS}}
 
   override val TargetFps: Option[Int] = None
 
-  override val theme = new FixedWindowTheme {
-    override val frameSize = ({{CANVAS_WIDTH}}, {{CANVAS_HEIGHT}})
+  override val theme: Theme = new FixedWindowTheme {
+    override val frameSize: (Int, Int) = ({{CANVAS_WIDTH}}, {{CANVAS_HEIGHT}})
   }
 
-  override val ResourcesRoot = PartsResourcePath(Vector("{{ASSETS_SERVING_ROOT}}"))
+  override val ResourcesRoot: ResourcePath = PartsResourcePath(Vector("{{ASSETS_SERVING_ROOT}}"))
 }

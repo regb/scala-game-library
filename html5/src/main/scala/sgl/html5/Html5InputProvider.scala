@@ -1,7 +1,7 @@
 package sgl
 package html5
 
-import sgl.util._
+import sgl.util.LoggingProvider
 
 import org.scalajs.dom
 import dom.html
@@ -48,7 +48,7 @@ trait Html5InputProvider {
   // pressed keys?). This is because some browsers have a policy to not autoplay music, and
   // we need to wait for an actual user action before being able to play.
   private var hasUserInteracted = false
-  private var actionsOnUserInteraction = new scala.collection.mutable.ListBuffer[() => Unit]
+  private val actionsOnUserInteraction = new scala.collection.mutable.ListBuffer[() => Unit]
   // The function registered here will be called either immediately if the user already
   // interacted with the page, or on the initial interaction.
   def onInitialUserInteraction(f: () => Unit): Unit = {
@@ -114,7 +114,7 @@ trait Html5InputProvider {
 
     this.htmlCanvas.addEventListener("touchstart", (e: dom.Event) => {
       triggerUserInteraction()
-      val touchEvent = e.asInstanceOf[dom.raw.TouchEvent]
+      val touchEvent = e.asInstanceOf[dom.TouchEvent]
       touchEvent.preventDefault()
       touchEvent.stopPropagation()
       val touches = touchEvent.changedTouches
@@ -130,7 +130,7 @@ trait Html5InputProvider {
     })
     this.htmlCanvas.addEventListener("touchend", (e: dom.Event) => {
       triggerUserInteraction()
-      val touchEvent = e.asInstanceOf[dom.raw.TouchEvent]
+      val touchEvent = e.asInstanceOf[dom.TouchEvent]
       touchEvent.preventDefault()
       touchEvent.stopPropagation()
       val touches = touchEvent.changedTouches
@@ -145,7 +145,7 @@ trait Html5InputProvider {
       }
     })
     this.htmlCanvas.addEventListener("touchmove", (e: dom.Event) => {
-      val touchEvent = e.asInstanceOf[dom.raw.TouchEvent]
+      val touchEvent = e.asInstanceOf[dom.TouchEvent]
       touchEvent.preventDefault()
       touchEvent.stopPropagation()
       val touches = touchEvent.changedTouches

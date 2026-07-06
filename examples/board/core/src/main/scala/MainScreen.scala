@@ -1,17 +1,12 @@
 package com.regblanc.sgl.board
 package core
 
-import sgl._
-import geometry._
-import scene._
-import scene.ui._
-import util._
+import _root_.sgl._
+import _root_.sgl.util._
 
 trait ScreensComponent {
   this: GraphicsProvider with SystemProvider with WindowProvider 
   with GameStateComponent with LoggingProvider with ViewportComponent =>
-
-  private implicit val LogTag = Logger.Tag("main-screen")
 
   class BoardScreen extends GameScreen with InputProcessor {
 
@@ -47,7 +42,7 @@ trait ScreensComponent {
     override def update(dt: Long): Unit = { }
 
     override def render(canvas: Graphics.Canvas): Unit = {
-      canvas.drawRect(0, 0, Window.width, Window.height, Graphics.defaultPaint.withColor(Graphics.Color.Blue))
+      canvas.drawRect(0, 0, Window.width.toFloat, Window.height.toFloat, Graphics.defaultPaint.withColor(Graphics.Color.Blue))
       viewport.withViewport(canvas) {
         for(i <- 0 until 100) {
           for(j <- 0 until 100) {

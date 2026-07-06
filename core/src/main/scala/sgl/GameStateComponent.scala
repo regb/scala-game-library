@@ -192,7 +192,7 @@ trait GameStateComponent {
     * example is to use the preload feature on the LoadingScreen to preload the
     * asset necessary for rendering the splash screen.
     */
-  abstract class LoadingScreen[A](val loaders: Seq[Loader[A]]) extends GameScreen {
+  abstract class LoadingScreen[A](val loaders: scala.collection.Seq[Loader[A]]) extends GameScreen {
     // TODO: How about using a Map[String, Loader] instead of the list? This
     // probably would match better with the clients use case of loading a bunch
     // of resources and then using them, because a Seq is difficult to extract
@@ -214,7 +214,7 @@ trait GameStateComponent {
       */
     protected val minDuration: Long = 0
 
-    private var loadingErrors: HashSet[Loader[A]] = new HashSet()
+    private val loadingErrors: HashSet[Loader[A]] = new HashSet()
 
     /** Indicate whether a loading error happened
       *
@@ -229,13 +229,13 @@ trait GameStateComponent {
       * more and more loaders are being processed and
       * completed/failed.
       */
-    protected def failed: Seq[Loader[A]] = loadingErrors.toList
+    protected def failed: scala.collection.Seq[Loader[A]] = loadingErrors.toList
 
-    private var _remaining: HashSet[Loader[A]] = new HashSet()
+    private val _remaining: HashSet[Loader[A]] = new HashSet()
     _remaining ++= loaders
 
-    protected def remaining: Seq[Loader[A]] = _remaining.toList
-    protected def loadedSuccessfully: Seq[Loader[A]] = loaders.diff(_remaining.toList).diff(failed)
+    protected def remaining: scala.collection.Seq[Loader[A]] = _remaining.toList
+    protected def loadedSuccessfully: scala.collection.Seq[Loader[A]] = loaders.diff(_remaining.toList).diff(failed)
 
     /** Compute the percentage of loaded loaders.
       *

@@ -2,7 +2,7 @@ package sgl.util
 
 import org.scalatest.funsuite.AnyFunSuite
 
-import scala.util.{Success, Failure}
+import scala.util.Failure
 
 class DefaultLoaderSuite extends AnyFunSuite {
   
@@ -50,7 +50,7 @@ class DefaultLoaderSuite extends AnyFunSuite {
     val l = Loader.combine(Seq(l1, l2, l3))
 
     assert(l.isLoaded)
-    assert(l.value.get.isInstanceOf[Failure[Seq[Int]]])
+    assert(l.value.get.isFailure)
   }
 
   test("combine with multiple failed loaders returns a loaded loader with a failure") {
@@ -61,7 +61,7 @@ class DefaultLoaderSuite extends AnyFunSuite {
     val l = Loader.combine(Seq(l1, l2, l3))
 
     assert(l.isLoaded)
-    assert(l.value.get.isInstanceOf[Failure[Seq[Int]]])
+    assert(l.value.get.isFailure)
   }
 
 }

@@ -67,7 +67,7 @@ trait LoaderAbstractSuite extends AnyFunSuite {
 
     var called = false
     val l2 = l.transformWith{
-      case f@Failure(_) => {
+      case Failure(_) => {
         assert(false)
         ???
       }

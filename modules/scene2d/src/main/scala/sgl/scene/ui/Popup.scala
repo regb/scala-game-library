@@ -122,7 +122,7 @@ trait PopupsComponent extends ButtonsComponent {
         outlinePaint = defaultPaint.withColor(outlineColor)
       if(buttons == Nil) {
         buttons = options.zipWithIndex.map{ case ((txt, action), i) => {
-          new TextButton(x + leftMargin + buttonWidth*i + buttonMargin*i, y + buttonsY, buttonWidth, fontSize + Window.dp2px(16), txt, buttonRegularTheme, buttonPressedTheme) {
+          new TextButton(x + leftMargin + buttonWidth*i + buttonMargin*i, y + buttonsY, buttonWidth, fontSize + Window.dp2px(16).toFloat, txt, buttonRegularTheme, buttonPressedTheme) {
             override def notifyClick(x: Float, y: Float): Unit = {
               action()
             }
