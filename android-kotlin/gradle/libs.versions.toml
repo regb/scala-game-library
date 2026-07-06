@@ -1,9 +1,9 @@
 [versions]
-agp = "8.10.1"
-firebaseBom = "33.14.0"
-kotlin = "2.1.0"
-coreKtx = "1.16.0"
-lifecycleRuntimeKtx = "2.9.0"
+agp = "8.13.0"
+firebaseBom = "33.16.0"
+kotlin = "2.1.21"
+coreKtx = "1.17.0"
+lifecycleRuntimeKtx = "2.9.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -14,6 +14,7 @@ firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
 jetbrains-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 
