@@ -5,23 +5,12 @@ module(
     #compatibility_level = 0
 )
 
-bazel_dep(name = "rules_scala", version = "7.1.1")
-bazel_dep(name = "rules_jvm_external", version = "6.8")
-bazel_dep(name = "rules_go", version = "0.50.1")
-bazel_dep(name = "platforms", version = "1.0.0")
-
-# Register a prebuild protoc toolchain to avoid always re-compiling protoc.
-# require the flag --incompatible_enable_proto_toolchain_resolution
-scala_protoc = use_extension(
-    "@rules_scala//scala/extensions:protoc.bzl",
-    "scala_protoc",
-    dev_dependency = True,
-)
-use_repo(scala_protoc, "rules_scala_protoc_toolchains")
-register_toolchains(
-    "@rules_scala_protoc_toolchains//...:all",
-    dev_dependency = True,
-)
+bazel_dep(name = "rules_scala", version = "7.2.6")
+bazel_dep(name = "rules_jvm_external", version = "7.0")
+bazel_dep(name = "rules_go", version = "0.61.1")
+bazel_dep(name = "rules_java", version = "9.6.1")
+bazel_dep(name = "platforms", version = "1.1.0")
+bazel_dep(name = "protobuf", version = "33.4")
 
 scala_config = use_extension(
     "@rules_scala//scala/extensions:config.bzl",
@@ -33,6 +22,7 @@ scala_deps = use_extension(
     "@rules_scala//scala/extensions:deps.bzl",
     "scala_deps",
 )
+scala_deps.settings(validate_scala_version = False)
 # Defines a default toolchain repo for the configured Scala version that loads
 # Maven deps like the Scala compiler and standard libs. Enable and configure
 # other builtin toolchains by instantiating their corresponding tag classes.
@@ -50,6 +40,7 @@ scala_deps.scalatest()
 
 maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
 maven.install(
+    known_contributing_modules = ["protobuf"],
     artifacts = [
         "com.googlecode.soundlibs:vorbisspi:1.0.3-2",
         "net.liftweb:lift-json_2.13:3.4.3", 

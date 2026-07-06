@@ -1,4 +1,5 @@
 #load(":cross.bzl", "scala_library")
+load("@rules_java//java/common:java_info.bzl", "JavaInfo")
 load("@rules_scala//scala:scala.bzl", _scala_library_rule = "scala_library")
 
 def _scalajs_transition_impl(settings, attr):

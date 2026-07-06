@@ -1,7 +1,14 @@
 # Scala Game Library (SGL) - Agent Guide
+
 This is the sources of the Scala Game Library (SGL), a cross-platform library for game development in Scala.
-It leverages Scala mutli-compiler and multi-platform support, in particular the standard JVM backend, the ScalaJS backend, and the Scala Native backend.
-It also supports Android through the JVM integration, and iOS with a web view.
+
+## Platforms
+SGL leverages Scala mutli-compiler and multi-platform support:
+* JVM for desktop development
+* ScalaJS for web
+* ScalaNative for native targets
+* Android through their JVM
+* iOS with web view
 
 ## Code Organization
 - `core/`: Cross-platform game logic and abstract interfaces

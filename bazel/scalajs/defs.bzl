@@ -110,7 +110,6 @@ def run_server(name, scalajs_module, main_class, static_files = [], static_strip
     env_assignments = " ".join(env_vars)
 
     server_target = Label("//bazel/scalajs:server")
-    print(server_target)
     
     native.genrule(
         name = name,
