@@ -3,6 +3,29 @@ plugins {
     alias(libs.plugins.jetbrains.kotlin.android)
 }
 
+val sglBazelRepo = rootProject.file("..")
+
+val buildSglBazelJars by tasks.registering(Exec::class) {
+    workingDir = sglBazelRepo
+    commandLine(
+        "bazel",
+        "build",
+        "//core:sgl-core",
+        "//jvm-shared:jvm-shared",
+        "//modules:sgl-scene2d",
+        "//modules:sgl-particles",
+    )
+    // Always invoke Bazel; Bazel itself handles incrementality/caching.
+    outputs.upToDateWhen { false }
+}
+
+val sglBazelJars = files(
+    sglBazelRepo.resolve("bazel-bin/core/sgl-core.jar"),
+    sglBazelRepo.resolve("bazel-bin/modules/sgl-scene2d.jar"),
+    sglBazelRepo.resolve("bazel-bin/modules/sgl-particles.jar"),
+    sglBazelRepo.resolve("bazel-bin/jvm-shared/jvm-shared.jar"),
+).builtBy(buildSglBazelJars)
+
 android {
     namespace = "sgl.android"
     compileSdk = 37
@@ -39,11 +62,8 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
 
-    // Local JAR files for SGL classes used by the Android toolkit.
-    api(files("libs/sgl-core.jar"))
-    api(files("libs/sgl-scene2d.jar"))
-    api(files("libs/sgl-particles.jar"))
-    api(files("libs/jvm-shared.jar"))
+    // SGL jars built by Bazel from this checkout.
+    api(sglBazelJars)
 
     // Scala libraries from Maven, required by the precompiled SGL jars.
     api("org.scala-lang:scala-library:2.13.18")
