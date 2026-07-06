@@ -16,13 +16,12 @@ scala_config = use_extension(
     "@rules_scala//scala/extensions:config.bzl",
     "scala_config",
 )
-scala_config.settings(scala_version = "2.13.16")
+scala_config.settings(scala_version = "2.13.18")
 
 scala_deps = use_extension(
     "@rules_scala//scala/extensions:deps.bzl",
     "scala_deps",
 )
-scala_deps.settings(validate_scala_version = False)
 # Defines a default toolchain repo for the configured Scala version that loads
 # Maven deps like the Scala compiler and standard libs. Enable and configure
 # other builtin toolchains by instantiating their corresponding tag classes.
@@ -45,11 +44,11 @@ maven.install(
         "com.googlecode.soundlibs:vorbisspi:1.0.3-2",
         "net.liftweb:lift-json_2.13:3.4.3", 
         "org.scalatest:scalatest_2.13:3.2.19",
-        "org.scala-js:scalajs-compiler_2.13.16:1.19.0",
-        "org.scala-js:scalajs-library_2.13:1.19.0",
-        "org.scala-js:scalajs-linker_2.13:1.19.0",
-        "org.scala-js:scalajs-linker-interface_2.13:1.19.0",
-        "org.scala-js:scalajs-ir_2.13:1.19.0",
+        "org.scala-js:scalajs-compiler_2.13.18:1.20.1",
+        "org.scala-js:scalajs-library_2.13:1.20.1",
+        "org.scala-js:scalajs-linker_2.13:1.20.1",
+        "org.scala-js:scalajs-linker-interface_2.13:1.20.1",
+        "org.scala-js:scalajs-ir_2.13:1.20.1",
         "org.scala-js:scalajs-dom_sjs1_2.13:2.8.1",
     ],
     repositories = [

@@ -45,7 +45,7 @@ def scalajs_library(name, deps=[], visibility=None, **kwargs):
     _scala_library_rule(
         name = underlying_lib_name,
         deps = deps+[Label("@maven//:org_scala_js_scalajs_library_2_13")],
-        plugins = [Label("@maven//:org_scala_js_scalajs_compiler_2_13_16")],
+        plugins = [Label("@maven//:org_scala_js_scalajs_compiler_2_13_18")],
         #target_compatible_with = [Label("//bazel/platforms:scala_js")],
         target_compatible_with = [Label("//bazel/platforms:compiler_js")],
         visibility = ["//visibility:private"],

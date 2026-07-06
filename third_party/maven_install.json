@@ -8,12 +8,12 @@
     "com.google.j2objc:j2objc-annotations": 2003271689,
     "com.googlecode.soundlibs:vorbisspi": 574883964,
     "net.liftweb:lift-json_2.13": -469677169,
-    "org.scala-js:scalajs-compiler_2.13.16": -368016028,
+    "org.scala-js:scalajs-compiler_2.13.18": 343879293,
     "org.scala-js:scalajs-dom_sjs1_2.13": -445609726,
-    "org.scala-js:scalajs-ir_2.13": -636217519,
-    "org.scala-js:scalajs-library_2.13": -570946831,
-    "org.scala-js:scalajs-linker-interface_2.13": 1692560871,
-    "org.scala-js:scalajs-linker_2.13": -671217901,
+    "org.scala-js:scalajs-ir_2.13": 973071080,
+    "org.scala-js:scalajs-library_2.13": 1038341768,
+    "org.scala-js:scalajs-linker-interface_2.13": -993117826,
+    "org.scala-js:scalajs-linker_2.13": 938070698,
     "org.scalatest:scalatest_2.13": -690489366,
     "repositories": -1949687017
   },
@@ -30,41 +30,41 @@
     "com.googlecode.soundlibs:tritonus-share": 488951315,
     "com.googlecode.soundlibs:vorbisspi": -161746114,
     "com.thoughtworks.paranamer:paranamer": 216030769,
-    "io.github.java-diff-utils:java-diff-utils": -2129961455,
-    "net.liftweb:lift-json_2.13": 337737350,
+    "io.github.java-diff-utils:java-diff-utils": -1180802694,
+    "net.liftweb:lift-json_2.13": 1072969944,
     "org.checkerframework:checker-qual": -1533199059,
-    "org.jline:jline:jar:jdk8": 461866030,
-    "org.scala-js:scalajs-compiler_2.13.16": 183747060,
-    "org.scala-js:scalajs-dom_sjs1_2.13": 1711323799,
-    "org.scala-js:scalajs-ir_2.13": 54106022,
-    "org.scala-js:scalajs-javalib": 1411478265,
-    "org.scala-js:scalajs-library_2.13": -1812490121,
-    "org.scala-js:scalajs-linker-interface_2.13": -1850720788,
-    "org.scala-js:scalajs-linker_2.13": 664995085,
-    "org.scala-js:scalajs-logging_2.13": -955652139,
-    "org.scala-js:scalajs-scalalib_2.13": -1722784842,
-    "org.scala-lang.modules:scala-parallel-collections_2.13": -1021487738,
-    "org.scala-lang.modules:scala-xml_2.13": -1651240356,
-    "org.scala-lang:scala-compiler": -936475372,
-    "org.scala-lang:scala-library": -1079389784,
-    "org.scala-lang:scala-reflect": 1954333033,
-    "org.scala-lang:scalap": 659199891,
-    "org.scalactic:scalactic_2.13": 565446663,
+    "org.jline:jline:jar:jdk8": 243539796,
+    "org.scala-js:scalajs-compiler_2.13.18": 2122343529,
+    "org.scala-js:scalajs-dom_sjs1_2.13": -916057854,
+    "org.scala-js:scalajs-ir_2.13": -1064650638,
+    "org.scala-js:scalajs-javalib": 168946255,
+    "org.scala-js:scalajs-library_2.13": -1886092411,
+    "org.scala-js:scalajs-linker-interface_2.13": -60850015,
+    "org.scala-js:scalajs-linker_2.13": -80313944,
+    "org.scala-js:scalajs-logging_2.13": -543885119,
+    "org.scala-js:scalajs-scalalib_2.13": -270861255,
+    "org.scala-lang.modules:scala-parallel-collections_2.13": -546008848,
+    "org.scala-lang.modules:scala-xml_2.13": -2090344102,
+    "org.scala-lang:scala-compiler": -337822946,
+    "org.scala-lang:scala-library": -997461185,
+    "org.scala-lang:scala-reflect": 1817805303,
+    "org.scala-lang:scalap": -798157227,
+    "org.scalactic:scalactic_2.13": -1575081033,
     "org.scalatest:scalatest-compatible": 283850265,
-    "org.scalatest:scalatest-core_2.13": -720942667,
-    "org.scalatest:scalatest-diagrams_2.13": 1929666025,
-    "org.scalatest:scalatest-featurespec_2.13": -550677740,
-    "org.scalatest:scalatest-flatspec_2.13": 606123681,
-    "org.scalatest:scalatest-freespec_2.13": -1704676872,
-    "org.scalatest:scalatest-funspec_2.13": 1469016012,
-    "org.scalatest:scalatest-funsuite_2.13": 540328786,
-    "org.scalatest:scalatest-matchers-core_2.13": -1453194408,
-    "org.scalatest:scalatest-mustmatchers_2.13": 1932367744,
-    "org.scalatest:scalatest-propspec_2.13": -834947045,
-    "org.scalatest:scalatest-refspec_2.13": 315191079,
-    "org.scalatest:scalatest-shouldmatchers_2.13": -658473370,
-    "org.scalatest:scalatest-wordspec_2.13": 70569358,
-    "org.scalatest:scalatest_2.13": 1519265196
+    "org.scalatest:scalatest-core_2.13": -1441008046,
+    "org.scalatest:scalatest-diagrams_2.13": 821737204,
+    "org.scalatest:scalatest-featurespec_2.13": -1658606561,
+    "org.scalatest:scalatest-flatspec_2.13": -501805140,
+    "org.scalatest:scalatest-freespec_2.13": 1482361603,
+    "org.scalatest:scalatest-funspec_2.13": 361087191,
+    "org.scalatest:scalatest-funsuite_2.13": -567600035,
+    "org.scalatest:scalatest-matchers-core_2.13": 1733844067,
+    "org.scalatest:scalatest-mustmatchers_2.13": 152271725,
+    "org.scalatest:scalatest-propspec_2.13": -1942875866,
+    "org.scalatest:scalatest-refspec_2.13": -792737742,
+    "org.scalatest:scalatest-shouldmatchers_2.13": -203496493,
+    "org.scalatest:scalatest-wordspec_2.13": -1037359463,
+    "org.scalatest:scalatest_2.13": -1371644185
   },
   "conflict_resolution": {
     "com.google.errorprone:error_prone_annotations:2.5.1": "com.google.errorprone:error_prone_annotations:2.18.0"
@@ -144,9 +144,9 @@
     },
     "io.github.java-diff-utils:java-diff-utils": {
       "shasums": {
-        "jar": "964c69e3a23a892db2778ae6806aa1d42f81230032bd8e4982dc8620582ee6b7"
+        "jar": "620403030d676a4a27f780a3acec7438dee1b1651a1c804fa6bb11bb07399a6f"
       },
-      "version": "4.15"
+      "version": "4.16"
     },
     "net.liftweb:lift-json_2.13": {
       "shasums": {
@@ -162,15 +162,15 @@
     },
     "org.jline:jline": {
       "shasums": {
-        "jdk8": "9d165aff3d714a455de2e711dc90df09fdb0a0969a1cd4d52aa72a44cb545db0"
+        "jdk8": "ed2680487642df95379f220c09c0f77e25095713387e2bc00c2d6581bb79c804"
       },
-      "version": "3.27.1"
+      "version": "3.29.0"
     },
-    "org.scala-js:scalajs-compiler_2.13.16": {
+    "org.scala-js:scalajs-compiler_2.13.18": {
       "shasums": {
-        "jar": "2fbbaa83731469bc08a35087820a86a0b323380c45821ccd66494804b992e6d5"
+        "jar": "7da15101993b8f52bb65897e12f93944be43624c8836ca95acb2c5ffd8ebec68"
       },
-      "version": "1.19.0"
+      "version": "1.20.1"
     },
     "org.scala-js:scalajs-dom_sjs1_2.13": {
       "shasums": {
@@ -180,33 +180,33 @@
     },
     "org.scala-js:scalajs-ir_2.13": {
       "shasums": {
-        "jar": "a9219f973e1b975e313f2ee360bb527528c2f72b92c1d25e047ed6e7e1aa8e86"
+        "jar": "4f3fa9506d514328c954d8da5751bf365fde9f6faeb84b5ae7c9d338b2862aed"
       },
-      "version": "1.19.0"
+      "version": "1.20.1"
     },
     "org.scala-js:scalajs-javalib": {
       "shasums": {
-        "jar": "3d5f478d6c830c1f4b6939b9a31553bb463a6bcff7084a997be987330bb6cdbb"
+        "jar": "62aaafa4c6fab71fdb889f0799b852d6509c3abd4a6e4f2e0424768784dc34a4"
       },
-      "version": "1.19.0"
+      "version": "1.20.1"
     },
     "org.scala-js:scalajs-library_2.13": {
       "shasums": {
-        "jar": "a17c6d84dd64e9f38c0707338e21ed6e97d3a5431bb61b35ecab5ee4375c3cbd"
+        "jar": "52cd460d47308c6b4a94b775b97fefd3dece2b94b42266eceb955f7a7018469b"
       },
-      "version": "1.19.0"
+      "version": "1.20.1"
     },
     "org.scala-js:scalajs-linker-interface_2.13": {
       "shasums": {
-        "jar": "db4f8cb8c4f25785c7956cd2418e636bf42aac1964a0592aa247ca34baf2ce5a"
+        "jar": "8085ac6856dd86790c84660505d98f7aebc175d27d689bd1b68c78c26aee7158"
       },
-      "version": "1.19.0"
+      "version": "1.20.1"
     },
     "org.scala-js:scalajs-linker_2.13": {
       "shasums": {
-        "jar": "3f7947e7c0911a2d76851807cb754f13b316cabaa0e577dac70627805cc0a8ef"
+        "jar": "b15b31c4fc4e1f44d6005e5130c369c50c0b0dbee3dd84042ae4d1ba9dab9a24"
       },
-      "version": "1.19.0"
+      "version": "1.20.1"
     },
     "org.scala-js:scalajs-logging_2.13": {
       "shasums": {
@@ -216,9 +216,9 @@
     },
     "org.scala-js:scalajs-scalalib_2.13": {
       "shasums": {
-        "jar": "0d4083c16576940d52231f9659df0d723de50542b4c72144d95853b0c00d2792"
+        "jar": "8c74d76159c6ae6256a633a19d4d7b62201047324c6be352300b55c21ce5bd9a"
       },
-      "version": "2.13.16+1.19.0"
+      "version": "2.13.16+1.20.1"
     },
     "org.scala-lang.modules:scala-parallel-collections_2.13": {
       "shasums": {
@@ -234,21 +234,21 @@
     },
     "org.scala-lang:scala-compiler": {
       "shasums": {
-        "jar": "f59982714591e321ba9c087af2c8666e2f5fb92b11a0cef72c2c5e9b342152d3"
+        "jar": "2f15891fcae7aad30a3892194fb2abb6224cf7ce5d2bd90fba7f1c48682fca21"
       },
-      "version": "2.13.16"
+      "version": "2.13.18"
     },
     "org.scala-lang:scala-library": {
       "shasums": {
-        "jar": "1ebb2b6f9e4eb4022497c19b1e1e825019c08514f962aaac197145f88ed730f1"
+        "jar": "4e85d96ff7bc7dc627985523c3541b9917aaa08e956391380c42db21a2c4e5a0"
       },
-      "version": "2.13.16"
+      "version": "2.13.18"
     },
     "org.scala-lang:scala-reflect": {
       "shasums": {
-        "jar": "fb49ccd9cac7464486ab993cda20a3c1569d8ef26f052e897577ad2a4970fb1d"
+        "jar": "6935ff1982b2ac93d695f15aa66921be2f602921277afe002f018fd8c7d6e29b"
       },
-      "version": "2.13.16"
+      "version": "2.13.18"
     },
     "org.scala-lang:scalap": {
       "shasums": {
@@ -372,7 +372,7 @@
       "org.scala-lang:scala-library",
       "org.scala-lang:scalap"
     ],
-    "org.scala-js:scalajs-compiler_2.13.16": [
+    "org.scala-js:scalajs-compiler_2.13.18": [
       "org.scala-lang:scala-compiler",
       "org.scala-lang:scala-library",
       "org.scala-lang:scala-reflect"
@@ -724,6 +724,7 @@
       "com.github.difflib.algorithm.myers",
       "com.github.difflib.patch",
       "com.github.difflib.text",
+      "com.github.difflib.text.deltamerge",
       "com.github.difflib.unifieddiff"
     ],
     "net.liftweb:lift-json_2.13": [
@@ -801,7 +802,7 @@
       "org.jline.utils",
       "org.jline.widget"
     ],
-    "org.scala-js:scalajs-compiler_2.13.16": [
+    "org.scala-js:scalajs-compiler_2.13.18": [
       "org.scalajs.ir",
       "org.scalajs.nscplugin",
       "org.scalajs.nscplugin.util"
@@ -835,6 +836,7 @@
     ],
     "org.scala-js:scalajs-library_2.13": [
       "scala.scalajs",
+      "scala.scalajs.annotation",
       "scala.scalajs.concurrent",
       "scala.scalajs.js",
       "scala.scalajs.js.annotation",
@@ -894,6 +896,7 @@
       "com.github.difflib.algorithm.myers",
       "com.github.difflib.patch",
       "com.github.difflib.text",
+      "com.github.difflib.text.deltamerge",
       "com.github.difflib.unifieddiff",
       "scala.reflect.macros.compiler",
       "scala.reflect.macros.contexts",
@@ -1086,7 +1089,7 @@
       "net.liftweb:lift-json_2.13",
       "org.checkerframework:checker-qual",
       "org.jline:jline:jar:jdk8",
-      "org.scala-js:scalajs-compiler_2.13.16",
+      "org.scala-js:scalajs-compiler_2.13.18",
       "org.scala-js:scalajs-dom_sjs1_2.13",
       "org.scala-js:scalajs-ir_2.13",
       "org.scala-js:scalajs-javalib",
