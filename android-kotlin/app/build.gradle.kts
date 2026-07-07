@@ -3,7 +3,11 @@ plugins {
     alias(libs.plugins.jetbrains.kotlin.android)
 }
 
-val sglBazelRepo = rootProject.file("..")
+val sglBazelRepo = file(
+    providers.gradleProperty("sglBazelRepo")
+        .orElse(providers.environmentVariable("SGL_BAZEL_REPO"))
+        .getOrElse(rootProject.file("..").path)
+)
 
 val buildSglBazelJars by tasks.registering(Exec::class) {
     workingDir = sglBazelRepo

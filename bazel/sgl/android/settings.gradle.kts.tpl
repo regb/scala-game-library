@@ -2,8 +2,8 @@ pluginManagement {
     repositories {
         google {
             content {
-                includeGroupByRegex("com\\.android.*")
-                includeGroupByRegex("com\\.google.*")
+                includeGroupByRegex("com[.]android.*")
+                includeGroupByRegex("com[.]google.*")
                 includeGroupByRegex("androidx.*")
             }
         }
@@ -13,14 +13,18 @@ pluginManagement {
 }
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    versionCatalogs {
+        create("libs") {
+            from(files("@WORKSPACE@/android-kotlin/gradle/libs.versions.toml"))
+        }
+    }
     repositories {
-        mavenLocal()
         google()
         mavenCentral()
     }
 }
 
-rootProject.name = "Snake Android"
+rootProject.name = "@LABEL@ Android"
 include(":app")
 include(":sgl-android")
-project(":sgl-android").projectDir = file("../android-kotlin/app")
+project(":sgl-android").projectDir = file("@WORKSPACE@/android-kotlin/app")

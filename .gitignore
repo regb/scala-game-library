@@ -12,4 +12,5 @@ project/metals.sbt
 .bsp
 
 /bazel-*
+/.bazel-android/
 /games
