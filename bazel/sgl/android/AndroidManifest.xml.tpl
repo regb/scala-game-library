@@ -3,7 +3,7 @@
     <application
         android:allowBackup="false"
         android:label="@LABEL@"
-        android:supportsRtl="true">
+@APPLICATION_ICON@        android:supportsRtl="true">
         <activity
             android:name=".MainActivity"
             android:configChanges="keyboardHidden|orientation|screenSize"

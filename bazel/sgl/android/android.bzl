@@ -1,13 +1,13 @@
-def _core_label_and_jar(ctx):
-    core = ctx.attr.core
-    if core.startswith(":"):
-        core_name = core[1:]
-        core_label = "//%s:%s" % (ctx.label.package, core_name)
+def _label_and_jar(package_name, label):
+    if label.startswith(":"):
+        name = label[1:]
+        full_label = "//%s:%s" % (package_name, name) if package_name else "//:%s" % name
     else:
-        core_name = core.split(":")[-1]
-        core_label = core
-    core_jar = "bazel-bin/%s/%s.jar" % (ctx.label.package, core_name)
-    return core_label, core_jar
+        name = label.split(":")[-1]
+        full_label = label
+
+    jar = "bazel-bin/%s/%s.jar" % (package_name, name) if package_name else "bazel-bin/%s.jar" % name
+    return full_label, jar
 
 
 def _expand(ctx, template, output, substitutions):
@@ -20,15 +20,35 @@ def _expand(ctx, template, output, substitutions):
 
 def _android_runner_impl(ctx):
     package_path = ctx.attr.package.replace(".", "/")
-    core_label, core_jar = _core_label_and_jar(ctx)
+    game_labels = []
+    game_jars = []
+    for label in [ctx.attr.core] + ctx.attr.extra_jars:
+        full_label, jar = _label_and_jar(ctx.label.package, label)
+        game_labels.append(full_label)
+        game_jars.append(jar)
+
     project_template_dir = ctx.label.name + "_project"
-    project_dir = ".bazel-android/%s/%s" % (ctx.label.package, ctx.label.name)
+    package_fragment = ctx.label.package if ctx.label.package else "root"
+    project_dir = ".bazel-android/%s/%s" % (package_fragment, ctx.attr.project_name)
     launch_cmd = "adb shell am start -n %s/.MainActivity" % ctx.attr.package if ctx.attr.launch else "true"
+    wiring_expression = ctx.attr.wiring_expression or "%s.core.Wiring.wire(platformProxy)" % ctx.attr.package
+
+    jar_dependencies = "\n".join([
+        "    implementation(files(\"@WORKSPACE@/%s\"))" % jar
+        for jar in game_jars
+    ])
+
+    application_icon = "        android:icon=\"%s\"\n" % ctx.attr.launcher_icon if ctx.attr.launcher_icon else ""
 
     substitutions = {
         "@PACKAGE@": ctx.attr.package,
         "@LABEL@": ctx.attr.label,
-        "@CORE_JAR@": core_jar,
+        "@APPLICATION_ICON@": application_icon,
+        "@JAR_DEPENDENCIES@": jar_dependencies,
+        "@WIRING_EXPRESSION@": wiring_expression,
+        "@SGL_ANDROID_ROOT@": ctx.attr.sgl_android_root,
+        "@VERSION_CODE@": str(ctx.attr.version_code),
+        "@VERSION_NAME@": ctx.attr.version_name,
     }
 
     project_files = []
@@ -52,8 +72,13 @@ def _android_runner_impl(ctx):
         substitutions = {
             "@PROJECT_DIR@": project_dir,
             "@PROJECT_TEMPLATE_DIR@": project_template_dir,
-            "@CORE_LABEL@": core_label,
+            "@GAME_LABELS@": " ".join(game_labels),
+            "@SGL_ANDROID_ROOT@": ctx.attr.sgl_android_root,
+            "@ASSETS_DIR@": ctx.attr.assets_dir,
+            "@ANDROID_RESOURCES_DIR@": ctx.attr.android_resources_dir,
+            "@GOOGLE_SERVICES_JSON@": ctx.attr.google_services_json,
             "@GRADLE_TASK@": ctx.attr.gradle_task,
+            "@GRADLE_ENV@": ctx.attr.gradle_env,
             "@LAUNCH_CMD@": launch_cmd,
         },
         is_executable = True,
@@ -75,7 +100,18 @@ _android_runner = rule(
         "package": attr.string(mandatory = True),
         "label": attr.string(mandatory = True),
         "core": attr.string(default = ":core"),
+        "extra_jars": attr.string_list(default = []),
+        "wiring_expression": attr.string(default = ""),
+        "sgl_android_root": attr.string(default = "/home/regb/vcs/games/scala-game-library-android"),
+        "version_code": attr.int(default = 1),
+        "version_name": attr.string(default = "1.0"),
+        "assets_dir": attr.string(default = ""),
+        "android_resources_dir": attr.string(default = ""),
+        "google_services_json": attr.string(default = ""),
+        "launcher_icon": attr.string(default = ""),
+        "project_name": attr.string(mandatory = True),
         "gradle_task": attr.string(mandatory = True),
+        "gradle_env": attr.string(default = ""),
         "launch": attr.bool(default = False),
         "_settings_template": attr.label(default = "//bazel/sgl/android:settings.gradle.kts.tpl", allow_single_file = True),
         "_root_build_template": attr.label(default = "//bazel/sgl/android:root-build.gradle.kts.tpl", allow_single_file = True),
@@ -89,31 +125,45 @@ _android_runner = rule(
 )
 
 
-def sgl_android_app(name, package, label, core = ":core"):
-    _android_runner(
-        name = name + "-debug",
-        package = package,
-        label = label,
-        core = core,
-        gradle_task = ":app:assembleDebug",
-        launch = False,
-        tags = ["manual", "local", "no-sandbox"],
-    )
-    _android_runner(
-        name = name + "-install",
-        package = package,
-        label = label,
-        core = core,
-        gradle_task = ":app:installDebug",
-        launch = False,
-        tags = ["manual", "local", "no-sandbox"],
-    )
-    _android_runner(
-        name = name + "-run",
-        package = package,
-        label = label,
-        core = core,
-        gradle_task = ":app:installDebug",
-        launch = True,
-        tags = ["manual", "local", "no-sandbox"],
-    )
+def sgl_android_app(
+        name,
+        package,
+        label,
+        core = ":core",
+        extra_jars = [],
+        wiring_expression = "",
+        sgl_android_root = "/home/regb/vcs/games/scala-game-library-android",
+        version_code = 1,
+        version_name = "1.0",
+        assets_dir = "",
+        android_resources_dir = "",
+        google_services_json = "",
+        launcher_icon = ""):
+    for suffix, task, launch, gradle_env in [
+        ("debug", ":app:assembleDebug", False, ""),
+        ("release", ":app:assembleRelease", False, ""),
+        ("bundle", ":app:bundleRelease", False, ""),
+        ("publish-internal", ":app:publishReleaseBundle", False, "export ANDROID_PLAY_TRACK=internal\nexport ANDROID_PLAY_RELEASE_STATUS=COMPLETED"),
+        ("install", ":app:installDebug", False, ""),
+        ("run", ":app:installDebug", True, ""),
+    ]:
+        _android_runner(
+            name = name + "-" + suffix,
+            package = package,
+            label = label,
+            core = core,
+            extra_jars = extra_jars,
+            wiring_expression = wiring_expression,
+            sgl_android_root = sgl_android_root,
+            version_code = version_code,
+            version_name = version_name,
+            assets_dir = assets_dir,
+            android_resources_dir = android_resources_dir,
+            google_services_json = google_services_json,
+            launcher_icon = launcher_icon,
+            project_name = name,
+            gradle_task = task,
+            gradle_env = gradle_env,
+            launch = launch,
+            tags = ["manual", "local", "no-sandbox"],
+        )

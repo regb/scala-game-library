@@ -15,7 +15,7 @@ dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     versionCatalogs {
         create("libs") {
-            from(files("@WORKSPACE@/android-kotlin/gradle/libs.versions.toml"))
+            from(files("@SGL_ANDROID_ROOT@/android-kotlin/gradle/libs.versions.toml"))
         }
     }
     repositories {
@@ -27,4 +27,4 @@ dependencyResolutionManagement {
 rootProject.name = "@LABEL@ Android"
 include(":app")
 include(":sgl-android")
-project(":sgl-android").projectDir = file("@WORKSPACE@/android-kotlin/app")
+project(":sgl-android").projectDir = file("@SGL_ANDROID_ROOT@/android-kotlin/app")
