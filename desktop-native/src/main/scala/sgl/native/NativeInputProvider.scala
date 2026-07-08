@@ -1,7 +1,8 @@
 package sgl
 package native
 
-import sgl.util._
+import _root_.sgl._
+import _root_.sgl.util._
 
 import scalanative.unsafe._
 import scalanative.unsigned._
@@ -12,7 +13,7 @@ import sdl2.Extras._
 trait NativeInputProvider {
   this: NativeWindowProvider with NativeGraphicsProvider with LoggingProvider =>
 
-  private implicit val LogTag = Logger.Tag("sgl.native.input")
+  private implicit val LogTag: NativeInputProvider.this.Logger.Tag = Logger.Tag("sgl.native.input")
 
   def registerInputListeners(): Unit = { }
 

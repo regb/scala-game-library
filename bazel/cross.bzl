@@ -12,10 +12,20 @@ def scala_library(deps = [],
 
     cross_deps = select({
         Label("//bazel/platforms:compiler_js"): deps+[Label("@maven//:org_scala_js_scalajs_library_2_13")],
+        Label("//bazel/platforms:compiler_native"): deps + [
+            Label("@maven//:org_scala_native_scalalib_native0_5_3"),
+            Label("@maven//:org_scala_native_scala3lib_native0_5_3"),
+            Label("@maven//:org_scala_native_nativelib_native0_5_3"),
+            Label("@maven//:org_scala_native_clib_native0_5_3"),
+            Label("@maven//:org_scala_native_posixlib_native0_5_3"),
+            Label("@maven//:org_scala_native_javalib_native0_5_3"),
+            Label("@maven//:org_scala_native_auxlib_native0_5_3"),
+        ],
         Label("//conditions:default"): deps,
     })
     cross_plugins = select({
         Label("//bazel/platforms:compiler_js"): plugins,
+        Label("//bazel/platforms:compiler_native"): plugins + [Label("@maven//:org_scala_native_nscplugin_3_3_8")],
         Label("//conditions:default"): plugins,
     })
     cross_scalacopts = select({
@@ -23,7 +33,6 @@ def scala_library(deps = [],
         Label("//conditions:default"): [],
     })
     cross_target_compatible_with = select({
-        Label("//bazel/platforms:compiler_native"): [Label("@platforms//:incompatible")],
         Label("//conditions:default"): [],
     })
     _scala_library(

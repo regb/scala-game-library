@@ -30,8 +30,7 @@ trait MainScreenComponent extends ViewportComponent {
         characterBitmapLoader = Graphics.loadImage(MultiDPIResourcesRoot / "character.png")
       }
       if(musicLoader == null) {
-        //musicLoader = Audio.loadMusic(ResourcesRoot / "audio" / "music.wav")
-        musicLoader = Audio.loadMusic(ResourcesRoot / "audio" / "music.ogg")
+        musicLoader = Audio.loadMusic(ResourcesRoot / "audio" / "music.wav")
       }
       if(beepLoader == null) {
         beepLoader = Audio.loadSound(ResourcesRoot / "audio" / "beep.wav")

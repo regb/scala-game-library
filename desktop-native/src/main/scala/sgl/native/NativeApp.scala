@@ -1,7 +1,8 @@
 package sgl
 package native
 
-import sgl.util._
+import _root_.sgl._
+import _root_.sgl.util._
 
 import scalanative.unsafe._
 import scalanative.unsigned._
@@ -23,7 +24,7 @@ trait NativeApp extends GameApp
 
   this: LoggingProvider =>
 
-  private implicit val LogTag = Logger.Tag("native.main")
+  private implicit val LogTag: NativeApp.this.Logger.Tag = Logger.Tag("native.main")
 
   /** Initial position of the window
     *
@@ -33,7 +34,7 @@ trait NativeApp extends GameApp
   val WindowInitialPosition: Option[(Int, Int)] = None
 
   def main(args: Array[String]): Unit = {
-    if(SDL_Init(SDL_INIT_VIDEO) != 0) {
+    if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0) {
       logger.error("Failed to init SDL: " + fromCString(SDL_GetError()))
       sys.exit()
     }
@@ -96,7 +97,7 @@ trait NativeApp extends GameApp
     var running = true
     var lastTime: Long = nanoTime
     val canvas: Graphics.Canvas = new Graphics.NativeCanvas
-    val event = stackalloc[SDL_Event]
+    val event = stackalloc[SDL_Event]()
 
     while(running) {
       val beginTime: Long = nanoTime

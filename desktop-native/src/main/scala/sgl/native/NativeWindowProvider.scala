@@ -1,6 +1,7 @@
 package sgl
 package native
 
+import _root_.sgl._
 import scalanative.unsafe._
 
 import sdl2.SDL._
@@ -20,9 +21,9 @@ trait NativeWindowProvider extends WindowProvider {
     private var _yppi: Float = 0f
     private var _ppi: Float = 0f
     private def computePPIs(): Unit = {
-      val ddpi: Ptr[CFloat] = stackalloc[CFloat]
-      val hdpi: Ptr[CFloat] = stackalloc[CFloat]
-      val vdpi: Ptr[CFloat] = stackalloc[CFloat]
+      val ddpi: Ptr[CFloat] = stackalloc[CFloat]()
+      val hdpi: Ptr[CFloat] = stackalloc[CFloat]()
+      val vdpi: Ptr[CFloat] = stackalloc[CFloat]()
       SDL_GetDisplayDPI(0, ddpi, hdpi, vdpi)
       _xppi = !hdpi
       _yppi = !vdpi
@@ -45,7 +46,7 @@ trait NativeWindowProvider extends WindowProvider {
     }
   }
   type Window = NativeWindow
-  override val Window = new NativeWindow
+  override val Window: NativeWindow = new NativeWindow
 
   ///** The name of the window */
   //val windowTitle: String

@@ -2,7 +2,8 @@ package sgl
 package native
 package util
 
-import sgl.util._
+import _root_.sgl._
+import _root_.sgl.util._
 
 /*
  * These are default loggers that make sense in the JVM/Desktop
