@@ -14,6 +14,16 @@
     "org.scala-js:scalajs-library_2.13": 1038341768,
     "org.scala-js:scalajs-linker-interface_2.13": -993117826,
     "org.scala-js:scalajs-linker_2.13": 938070698,
+    "org.scala-native:auxlib_native0.5_3": 300925034,
+    "org.scala-native:clib_native0.5_3": 126606827,
+    "org.scala-native:javalib_native0.5_3": 2082392534,
+    "org.scala-native:nativelib_native0.5_3": 1672855233,
+    "org.scala-native:nscplugin_3.3.8": 1469209970,
+    "org.scala-native:posixlib_native0.5_3": -1823217077,
+    "org.scala-native:scala3lib_native0.5_3": 87052756,
+    "org.scala-native:scalalib_native0.5_3": 7760785,
+    "org.scala-native:tools_3": 325753549,
+    "org.scala-native:util_3": -1430840342,
     "org.scalatest:scalatest_3": -820137959,
     "repositories": -1949687017
   },
@@ -33,6 +43,10 @@
     "io.github.java-diff-utils:java-diff-utils": -1180802694,
     "net.liftweb:lift-json_2.13": 110214672,
     "org.checkerframework:checker-qual": -1533199059,
+    "org.jline:jline-native": 725915188,
+    "org.jline:jline-reader": 1984547662,
+    "org.jline:jline-terminal": 1498079606,
+    "org.jline:jline-terminal-jni": -624687773,
     "org.jline:jline:jar:jdk8": 243539796,
     "org.scala-js:scalajs-compiler_2.13.18": 2122343529,
     "org.scala-js:scalajs-dom_sjs1_3": -1167599997,
@@ -43,31 +57,50 @@
     "org.scala-js:scalajs-linker_2.13": -80313944,
     "org.scala-js:scalajs-logging_2.13": -543885119,
     "org.scala-js:scalajs-scalalib_2.13": -270861255,
+    "org.scala-lang.modules:scala-asm": -1242346001,
     "org.scala-lang.modules:scala-parallel-collections_2.13": -546008848,
     "org.scala-lang.modules:scala-xml_2.13": 30791000,
-    "org.scala-lang.modules:scala-xml_3": -1133421206,
+    "org.scala-lang.modules:scala-xml_3": -1498163372,
     "org.scala-lang:scala-compiler": -337822946,
     "org.scala-lang:scala-library": -997461185,
     "org.scala-lang:scala-reflect": 1817805303,
-    "org.scala-lang:scala3-library_3": 1219902685,
+    "org.scala-lang:scala3-compiler_3": -33326462,
+    "org.scala-lang:scala3-interfaces": 1462060387,
+    "org.scala-lang:scala3-library_3": -426775874,
     "org.scala-lang:scala3-library_sjs1_3": -1621009842,
     "org.scala-lang:scalap": -798157227,
-    "org.scalactic:scalactic_3": 108610340,
+    "org.scala-lang:tasty-core_3": 1979487032,
+    "org.scala-native:auxlib_native0.5_3": -682861053,
+    "org.scala-native:clib_native0.5_3": 1067570653,
+    "org.scala-native:javalib_native0.5_3": 1058059835,
+    "org.scala-native:nativelib_native0.5_3": 1759696409,
+    "org.scala-native:nir_3": 1845882394,
+    "org.scala-native:nscplugin_3.3.8": -892946618,
+    "org.scala-native:posixlib_native0.5_3": -339632719,
+    "org.scala-native:scala3lib_native0.5_3": 1046829179,
+    "org.scala-native:scalalib_native0.5_2.13": 824102441,
+    "org.scala-native:scalalib_native0.5_3": 1476928135,
+    "org.scala-native:tools_3": -419830939,
+    "org.scala-native:util_3": -1695289409,
+    "org.scala-native:windowslib_native0.5_3": 279645289,
+    "org.scala-sbt:compiler-interface": 329550920,
+    "org.scala-sbt:util-interface": 1774471935,
+    "org.scalactic:scalactic_3": -256131826,
     "org.scalatest:scalatest-compatible": 283850265,
-    "org.scalatest:scalatest-core_3": 1030616803,
-    "org.scalatest:scalatest-diagrams_3": -598794053,
-    "org.scalatest:scalatest-featurespec_3": -1882079024,
-    "org.scalatest:scalatest-flatspec_3": -1625688553,
-    "org.scalatest:scalatest-freespec_3": 135912354,
-    "org.scalatest:scalatest-funspec_3": -1115192641,
-    "org.scalatest:scalatest-funsuite_3": 2116583900,
-    "org.scalatest:scalatest-matchers-core_3": 20626691,
-    "org.scalatest:scalatest-mustmatchers_3": 86691681,
-    "org.scalatest:scalatest-propspec_3": -1996695340,
-    "org.scalatest:scalatest-refspec_3": -1305638102,
-    "org.scalatest:scalatest-shouldmatchers_3": 1604032294,
-    "org.scalatest:scalatest-wordspec_3": 2033102508,
-    "org.scalatest:scalatest_3": 1377263470
+    "org.scalatest:scalatest-core_3": 23167920,
+    "org.scalatest:scalatest-diagrams_3": 646370671,
+    "org.scalatest:scalatest-featurespec_3": -588482876,
+    "org.scalatest:scalatest-flatspec_3": -981511733,
+    "org.scalatest:scalatest-freespec_3": -1212080618,
+    "org.scalatest:scalatest-funspec_3": -1883772813,
+    "org.scalatest:scalatest-funsuite_3": -673707312,
+    "org.scalatest:scalatest-matchers-core_3": 12379063,
+    "org.scalatest:scalatest-mustmatchers_3": -435721858,
+    "org.scalatest:scalatest-propspec_3": 122011592,
+    "org.scalatest:scalatest-refspec_3": 1821052830,
+    "org.scalatest:scalatest-shouldmatchers_3": 1081618755,
+    "org.scalatest:scalatest-wordspec_3": -115135584,
+    "org.scalatest:scalatest_3": 1649457780
   },
   "conflict_resolution": {
     "com.google.errorprone:error_prone_annotations:2.5.1": "com.google.errorprone:error_prone_annotations:2.18.0"
@@ -169,6 +202,30 @@
       },
       "version": "3.29.0"
     },
+    "org.jline:jline-native": {
+      "shasums": {
+        "jar": "19cfcc9d3c78a1c6cfe4c6c9599f16a657e4bf8da43940fc4b875373236dc258"
+      },
+      "version": "3.29.0"
+    },
+    "org.jline:jline-reader": {
+      "shasums": {
+        "jar": "a4cb0a5fde9289f2f1b614e04f94b202f6ff5c9c96476425837b1184c92ef81d"
+      },
+      "version": "3.29.0"
+    },
+    "org.jline:jline-terminal": {
+      "shasums": {
+        "jar": "fd68a98b32b1132035c62102e5df0b0fdc358e7c87a9f876ce7071450b4d10da"
+      },
+      "version": "3.29.0"
+    },
+    "org.jline:jline-terminal-jni": {
+      "shasums": {
+        "jar": "13fef8bcc0e4788c8e192dc76c33758683c6bfdbaef6f67b41445eb8986773ad"
+      },
+      "version": "3.29.0"
+    },
     "org.scala-js:scalajs-compiler_2.13.18": {
       "shasums": {
         "jar": "7da15101993b8f52bb65897e12f93944be43624c8836ca95acb2c5ffd8ebec68"
@@ -223,6 +280,12 @@
       },
       "version": "2.13.16+1.20.1"
     },
+    "org.scala-lang.modules:scala-asm": {
+      "shasums": {
+        "jar": "75ac366e8ecb691e06a7e85041eed0f67919a646e5262fa0901225698c104375"
+      },
+      "version": "9.9.0-scala-1"
+    },
     "org.scala-lang.modules:scala-parallel-collections_2.13": {
       "shasums": {
         "jar": "d15f22f1308b98e9ac52a3d1ac8d582d548d6d852b1116cbdf5a50f431246ed1"
@@ -259,11 +322,23 @@
       },
       "version": "2.13.18"
     },
+    "org.scala-lang:scala3-compiler_3": {
+      "shasums": {
+        "jar": "89de0156398ce8547656bb2324ff2fbcfd7a85d7da065df4e01a85d949d081b8"
+      },
+      "version": "3.3.8"
+    },
+    "org.scala-lang:scala3-interfaces": {
+      "shasums": {
+        "jar": "a7734cf3b9ccb6ab2597b279421bb29471da7c6d7bacfc947600883de4eeb3eb"
+      },
+      "version": "3.3.8"
+    },
     "org.scala-lang:scala3-library_3": {
       "shasums": {
-        "jar": "1ac79970d94a1762ce6af4208820b4fa4c70093409decaad85c69d8b5f46e422"
+        "jar": "2c6eace9158df8ee4485a06128a479d968c1ebfc83ae9b1a394b58429f0d1492"
       },
-      "version": "3.1.3"
+      "version": "3.3.8"
     },
     "org.scala-lang:scala3-library_sjs1_3": {
       "shasums": {
@@ -276,6 +351,102 @@
         "jar": "5bd0d564dc36108d4ea139a2fea7078f26dbedc0f04d2e569f384148fe37d26e"
       },
       "version": "2.13.2"
+    },
+    "org.scala-lang:tasty-core_3": {
+      "shasums": {
+        "jar": "e3a0ba5b0eed0ec5e0b5c29234abce911577d5571366ab75f11c52924874a945"
+      },
+      "version": "3.3.8"
+    },
+    "org.scala-native:auxlib_native0.5_3": {
+      "shasums": {
+        "jar": "f3bd2ead9788b9c90b2758e2e1f4988168b0b65674a7a1affc485ab4661a1c29"
+      },
+      "version": "0.5.12"
+    },
+    "org.scala-native:clib_native0.5_3": {
+      "shasums": {
+        "jar": "c1d1ae542473bfdfacd1f27c41db2f6eae7ce665a0a61500e61d3b0e307fdad0"
+      },
+      "version": "0.5.12"
+    },
+    "org.scala-native:javalib_native0.5_3": {
+      "shasums": {
+        "jar": "1a643e587e7e4da38a6ce989a7541df2bf5a6d290372e50765e0c78d21695af4"
+      },
+      "version": "0.5.12"
+    },
+    "org.scala-native:nativelib_native0.5_3": {
+      "shasums": {
+        "jar": "b05fe9855ca50ac60854de6700f518e031df76c85021727505dab660d8757886"
+      },
+      "version": "0.5.12"
+    },
+    "org.scala-native:nir_3": {
+      "shasums": {
+        "jar": "0495e3dd179697748bc2c0de9d339bdd3b5f0328579863ad9c5c8b1bd1b214b7"
+      },
+      "version": "0.5.12"
+    },
+    "org.scala-native:nscplugin_3.3.8": {
+      "shasums": {
+        "jar": "352196818b06e335e3548b8d57277e7b4360849b87c9afff955bc6a24fa3d011"
+      },
+      "version": "0.5.12"
+    },
+    "org.scala-native:posixlib_native0.5_3": {
+      "shasums": {
+        "jar": "25d292daace63da5b468d82bf0f830ca381800b69c364d18f714f18f95cd5dde"
+      },
+      "version": "0.5.12"
+    },
+    "org.scala-native:scala3lib_native0.5_3": {
+      "shasums": {
+        "jar": "462335706de6d3ff03d73f1519d1e00f122634432537a3e729cdc828d2f6318e"
+      },
+      "version": "3.3.8+0.5.12"
+    },
+    "org.scala-native:scalalib_native0.5_2.13": {
+      "shasums": {
+        "jar": "a01b6470557070e90130185db736a178e310e6054bd844a2893134a43abcce57"
+      },
+      "version": "2.13.18+0.5.12"
+    },
+    "org.scala-native:scalalib_native0.5_3": {
+      "shasums": {
+        "jar": "f6e779c247a5d2ab5b155869f8d92df70b5fd5bbab0f17857bd5a245982f35e5"
+      },
+      "version": "3.3.8+0.5.12"
+    },
+    "org.scala-native:tools_3": {
+      "shasums": {
+        "jar": "3c0fc9d691ba46f9775c23ec044598a27d0f89df3fcaa2f25fecec38b84f53c3"
+      },
+      "version": "0.5.12"
+    },
+    "org.scala-native:util_3": {
+      "shasums": {
+        "jar": "5bb27f5db7c9135cd820b7c9eb5af1a828e4dcf5711e3b2c710984bca9a1ea61"
+      },
+      "version": "0.5.12"
+    },
+    "org.scala-native:windowslib_native0.5_3": {
+      "shasums": {
+        "jar": "88a5664596bfb750c57946cae4c9adac30f3e696d3c57667fa57c2fdd06badac"
+      },
+      "version": "0.5.12"
+    },
+    "org.scala-sbt:compiler-interface": {
+      "shasums": {
+        "jar": "2bacc5761e03920a228e5c9d20b33d9c51d43aaf2f52e8f839ece630966eb880"
+      },
+      "version": "1.10.7"
+    },
+    "org.scala-sbt:util-interface": {
+      "shasums": {
+        "jar": "1d6b91efa42b70fc064caed6d62962374e13b27737f885a87c84c667b30be625"
+      },
+      "version": "1.10.7"
     },
     "org.scalactic:scalactic_3": {
       "shasums": {
@@ -393,6 +564,16 @@
       "org.scala-lang:scala-library",
       "org.scala-lang:scalap"
     ],
+    "org.jline:jline-reader": [
+      "org.jline:jline-terminal"
+    ],
+    "org.jline:jline-terminal": [
+      "org.jline:jline-native"
+    ],
+    "org.jline:jline-terminal-jni": [
+      "org.jline:jline-native",
+      "org.jline:jline-terminal"
+    ],
     "org.scala-js:scalajs-compiler_2.13.18": [
       "org.scala-lang:scala-compiler",
       "org.scala-lang:scala-library",
@@ -447,6 +628,16 @@
     "org.scala-lang:scala-reflect": [
       "org.scala-lang:scala-library"
     ],
+    "org.scala-lang:scala3-compiler_3": [
+      "org.jline:jline-reader",
+      "org.jline:jline-terminal",
+      "org.jline:jline-terminal-jni",
+      "org.scala-lang.modules:scala-asm",
+      "org.scala-lang:scala3-interfaces",
+      "org.scala-lang:scala3-library_3",
+      "org.scala-lang:tasty-core_3",
+      "org.scala-sbt:compiler-interface"
+    ],
     "org.scala-lang:scala3-library_3": [
       "org.scala-lang:scala-library"
     ],
@@ -456,6 +647,68 @@
     ],
     "org.scala-lang:scalap": [
       "org.scala-lang:scala-compiler"
+    ],
+    "org.scala-lang:tasty-core_3": [
+      "org.scala-lang:scala3-library_3"
+    ],
+    "org.scala-native:auxlib_native0.5_3": [
+      "org.scala-lang:scala3-library_3",
+      "org.scala-native:clib_native0.5_3",
+      "org.scala-native:nativelib_native0.5_3"
+    ],
+    "org.scala-native:clib_native0.5_3": [
+      "org.scala-lang:scala3-library_3",
+      "org.scala-native:nativelib_native0.5_3"
+    ],
+    "org.scala-native:javalib_native0.5_3": [
+      "org.scala-lang:scala3-library_3",
+      "org.scala-native:clib_native0.5_3",
+      "org.scala-native:posixlib_native0.5_3",
+      "org.scala-native:windowslib_native0.5_3"
+    ],
+    "org.scala-native:nativelib_native0.5_3": [
+      "org.scala-lang:scala3-library_3"
+    ],
+    "org.scala-native:nir_3": [
+      "org.scala-lang:scala3-library_3",
+      "org.scala-native:util_3"
+    ],
+    "org.scala-native:nscplugin_3.3.8": [
+      "org.scala-lang:scala3-compiler_3",
+      "org.scala-lang:scala3-library_3"
+    ],
+    "org.scala-native:posixlib_native0.5_3": [
+      "org.scala-lang:scala3-library_3",
+      "org.scala-native:clib_native0.5_3",
+      "org.scala-native:nativelib_native0.5_3"
+    ],
+    "org.scala-native:scala3lib_native0.5_3": [
+      "org.scala-lang:scala3-library_3",
+      "org.scala-native:auxlib_native0.5_3",
+      "org.scala-native:scalalib_native0.5_2.13"
+    ],
+    "org.scala-native:scalalib_native0.5_2.13": [
+      "org.scala-lang:scala-library"
+    ],
+    "org.scala-native:scalalib_native0.5_3": [
+      "org.scala-lang:scala3-library_3",
+      "org.scala-native:auxlib_native0.5_3"
+    ],
+    "org.scala-native:tools_3": [
+      "org.scala-lang:scala3-library_3",
+      "org.scala-native:nir_3",
+      "org.scala-native:util_3"
+    ],
+    "org.scala-native:util_3": [
+      "org.scala-lang:scala3-library_3"
+    ],
+    "org.scala-native:windowslib_native0.5_3": [
+      "org.scala-lang:scala3-library_3",
+      "org.scala-native:clib_native0.5_3",
+      "org.scala-native:nativelib_native0.5_3"
+    ],
+    "org.scala-sbt:compiler-interface": [
+      "org.scala-sbt:util-interface"
     ],
     "org.scalactic:scalactic_3": [
       "org.scala-lang:scala3-library_3"
@@ -778,6 +1031,31 @@
       "org.checkerframework.dataflow.qual",
       "org.checkerframework.framework.qual"
     ],
+    "org.jline:jline-native": [
+      "org.jline.nativ"
+    ],
+    "org.jline:jline-reader": [
+      "org.jline.keymap",
+      "org.jline.reader",
+      "org.jline.reader.impl",
+      "org.jline.reader.impl.completer",
+      "org.jline.reader.impl.history"
+    ],
+    "org.jline:jline-terminal": [
+      "org.jline.terminal",
+      "org.jline.terminal.impl",
+      "org.jline.terminal.impl.exec",
+      "org.jline.terminal.spi",
+      "org.jline.utils"
+    ],
+    "org.jline:jline-terminal-jni": [
+      "org.jline.terminal.impl.jni",
+      "org.jline.terminal.impl.jni.freebsd",
+      "org.jline.terminal.impl.jni.linux",
+      "org.jline.terminal.impl.jni.osx",
+      "org.jline.terminal.impl.jni.solaris",
+      "org.jline.terminal.impl.jni.win"
+    ],
     "org.jline:jline:jar:jdk8": [
       "org.jline.builtins",
       "org.jline.builtins.ssh",
@@ -886,6 +1164,14 @@
     ],
     "org.scala-js:scalajs-logging_2.13": [
       "org.scalajs.logging"
+    ],
+    "org.scala-lang.modules:scala-asm": [
+      "scala.tools.asm",
+      "scala.tools.asm.commons",
+      "scala.tools.asm.signature",
+      "scala.tools.asm.tree",
+      "scala.tools.asm.tree.analysis",
+      "scala.tools.asm.util"
     ],
     "org.scala-lang.modules:scala-parallel-collections_2.13": [
       "scala.collection",
@@ -1033,10 +1319,62 @@
       "scala.reflect.macros.whitebox",
       "scala.reflect.runtime"
     ],
+    "org.scala-lang:scala3-compiler_3": [
+      "dotty.tools",
+      "dotty.tools.backend",
+      "dotty.tools.backend.jvm",
+      "dotty.tools.backend.sjs",
+      "dotty.tools.dotc",
+      "dotty.tools.dotc.ast",
+      "dotty.tools.dotc.cc",
+      "dotty.tools.dotc.classpath",
+      "dotty.tools.dotc.config",
+      "dotty.tools.dotc.core",
+      "dotty.tools.dotc.core.classfile",
+      "dotty.tools.dotc.core.tasty",
+      "dotty.tools.dotc.core.unpickleScala2",
+      "dotty.tools.dotc.coverage",
+      "dotty.tools.dotc.decompiler",
+      "dotty.tools.dotc.fromtasty",
+      "dotty.tools.dotc.inlines",
+      "dotty.tools.dotc.interactive",
+      "dotty.tools.dotc.parsing",
+      "dotty.tools.dotc.parsing.xml",
+      "dotty.tools.dotc.plugins",
+      "dotty.tools.dotc.printing",
+      "dotty.tools.dotc.profile",
+      "dotty.tools.dotc.quoted",
+      "dotty.tools.dotc.quoted.reflect",
+      "dotty.tools.dotc.reporting",
+      "dotty.tools.dotc.rewrites",
+      "dotty.tools.dotc.sbt",
+      "dotty.tools.dotc.sbt.interfaces",
+      "dotty.tools.dotc.semanticdb",
+      "dotty.tools.dotc.semanticdb.internal",
+      "dotty.tools.dotc.staging",
+      "dotty.tools.dotc.transform",
+      "dotty.tools.dotc.transform.init",
+      "dotty.tools.dotc.transform.localopt",
+      "dotty.tools.dotc.transform.patmat",
+      "dotty.tools.dotc.transform.sjs",
+      "dotty.tools.dotc.typer",
+      "dotty.tools.dotc.util",
+      "dotty.tools.io",
+      "dotty.tools.repl",
+      "dotty.tools.runner",
+      "dotty.tools.scripting",
+      "dotty.tools.sjs.ir",
+      "scala.quoted.runtime.impl",
+      "scala.quoted.runtime.impl.printers"
+    ],
+    "org.scala-lang:scala3-interfaces": [
+      "dotty.tools.dotc.interfaces"
+    ],
     "org.scala-lang:scala3-library_3": [
       "scala",
       "scala.annotation",
       "scala.annotation.internal",
+      "scala.annotation.unchecked",
       "scala.compiletime.ops",
       "scala.compiletime.testing",
       "scala.deriving",
@@ -1044,6 +1382,7 @@
       "scala.quoted.runtime",
       "scala.reflect",
       "scala.runtime",
+      "scala.runtime.coverage",
       "scala.runtime.function",
       "scala.runtime.stdLibPatches",
       "scala.util",
@@ -1070,6 +1409,79 @@
       "scala.tools.scalap",
       "scala.tools.scalap.scalax.rules",
       "scala.tools.scalap.scalax.rules.scalasig"
+    ],
+    "org.scala-lang:tasty-core_3": [
+      "dotty.tools.tasty",
+      "dotty.tools.tasty.util"
+    ],
+    "org.scala-native:clib_native0.5_3": [
+      "scala.scalanative.libc"
+    ],
+    "org.scala-native:nativelib_native0.5_3": [
+      "java.lang.process",
+      "scala.scalanative.annotation",
+      "scala.scalanative.concurrent",
+      "scala.scalanative.memory",
+      "scala.scalanative.meta",
+      "scala.scalanative.reflect",
+      "scala.scalanative.reflect.annotation",
+      "scala.scalanative.regex",
+      "scala.scalanative.runtime",
+      "scala.scalanative.runtime.dwarf",
+      "scala.scalanative.runtime.monitor",
+      "scala.scalanative.runtime.resource",
+      "scala.scalanative.unsafe",
+      "scala.scalanative.unsigned"
+    ],
+    "org.scala-native:nir_3": [
+      "scala.scalanative.nir",
+      "scala.scalanative.nir.serialization"
+    ],
+    "org.scala-native:nscplugin_3.3.8": [
+      "scala.scalanative.io",
+      "scala.scalanative.nir",
+      "scala.scalanative.nir.serialization",
+      "scala.scalanative.nscplugin",
+      "scala.scalanative.util"
+    ],
+    "org.scala-native:posixlib_native0.5_3": [
+      "scala.scalanative.bsd",
+      "scala.scalanative.linux",
+      "scala.scalanative.posix",
+      "scala.scalanative.posix.arpa",
+      "scala.scalanative.posix.net",
+      "scala.scalanative.posix.netinet",
+      "scala.scalanative.posix.sys"
+    ],
+    "org.scala-native:tools_3": [
+      "scala.scalanative",
+      "scala.scalanative.build",
+      "scala.scalanative.checker",
+      "scala.scalanative.codegen",
+      "scala.scalanative.codegen.llvm",
+      "scala.scalanative.codegen.llvm.compat.os",
+      "scala.scalanative.interflow",
+      "scala.scalanative.linker"
+    ],
+    "org.scala-native:util_3": [
+      "scala.scalanative.io",
+      "scala.scalanative.util"
+    ],
+    "org.scala-native:windowslib_native0.5_3": [
+      "scala.scalanative.windows",
+      "scala.scalanative.windows.accctrl",
+      "scala.scalanative.windows.crt",
+      "scala.scalanative.windows.util",
+      "scala.scalanative.windows.winnt"
+    ],
+    "org.scala-sbt:compiler-interface": [
+      "xsbti",
+      "xsbti.api",
+      "xsbti.compile",
+      "xsbti.compile.analysis"
+    ],
+    "org.scala-sbt:util-interface": [
+      "xsbti"
     ],
     "org.scalactic:scalactic_3": [
       "org.scalactic",
@@ -1149,6 +1561,10 @@
       "io.github.java-diff-utils:java-diff-utils",
       "net.liftweb:lift-json_2.13",
       "org.checkerframework:checker-qual",
+      "org.jline:jline-native",
+      "org.jline:jline-reader",
+      "org.jline:jline-terminal",
+      "org.jline:jline-terminal-jni",
       "org.jline:jline:jar:jdk8",
       "org.scala-js:scalajs-compiler_2.13.18",
       "org.scala-js:scalajs-dom_sjs1_3",
@@ -1159,15 +1575,34 @@
       "org.scala-js:scalajs-linker_2.13",
       "org.scala-js:scalajs-logging_2.13",
       "org.scala-js:scalajs-scalalib_2.13",
+      "org.scala-lang.modules:scala-asm",
       "org.scala-lang.modules:scala-parallel-collections_2.13",
       "org.scala-lang.modules:scala-xml_2.13",
       "org.scala-lang.modules:scala-xml_3",
       "org.scala-lang:scala-compiler",
       "org.scala-lang:scala-library",
       "org.scala-lang:scala-reflect",
+      "org.scala-lang:scala3-compiler_3",
+      "org.scala-lang:scala3-interfaces",
       "org.scala-lang:scala3-library_3",
       "org.scala-lang:scala3-library_sjs1_3",
       "org.scala-lang:scalap",
+      "org.scala-lang:tasty-core_3",
+      "org.scala-native:auxlib_native0.5_3",
+      "org.scala-native:clib_native0.5_3",
+      "org.scala-native:javalib_native0.5_3",
+      "org.scala-native:nativelib_native0.5_3",
+      "org.scala-native:nir_3",
+      "org.scala-native:nscplugin_3.3.8",
+      "org.scala-native:posixlib_native0.5_3",
+      "org.scala-native:scala3lib_native0.5_3",
+      "org.scala-native:scalalib_native0.5_2.13",
+      "org.scala-native:scalalib_native0.5_3",
+      "org.scala-native:tools_3",
+      "org.scala-native:util_3",
+      "org.scala-native:windowslib_native0.5_3",
+      "org.scala-sbt:compiler-interface",
+      "org.scala-sbt:util-interface",
       "org.scalactic:scalactic_3",
       "org.scalatest:scalatest-compatible",
       "org.scalatest:scalatest-core_3",
@@ -1195,6 +1630,24 @@
         "javazoom.spi.vorbis.sampled.convert.VorbisFormatConversionProvider"
       ]
     },
+    "org.jline:jline-terminal": {
+      "org/": [],
+      "org/jline/": [],
+      "org/jline/terminal/": [],
+      "org/jline/terminal/provider/": [],
+      "org/jline/terminal/provider/exec": [
+        "class=org.jline.terminal.impl.exec.ExecTerminalProvider"
+      ]
+    },
+    "org.jline:jline-terminal-jni": {
+      "org/": [],
+      "org/jline/": [],
+      "org/jline/terminal/": [],
+      "org/jline/terminal/provider/": [],
+      "org/jline/terminal/provider/jni": [
+        "class=org.jline.terminal.impl.jni.JniTerminalProvider"
+      ]
+    },
     "org.jline:jline:jar:jdk8": {
       "org/": [],
       "org/jline/": [],
@@ -1219,6 +1672,11 @@
     "org.scala-lang:scala-compiler": {
       "javax.script.ScriptEngineFactory": [
         "scala.tools.nsc.interpreter.shell.Scripted$Factory"
+      ]
+    },
+    "org.scala-lang:scala3-compiler_3": {
+      "javax.script.ScriptEngineFactory": [
+        "dotty.tools.repl.ScriptEngine$Factory"
       ]
     }
   },

@@ -1,7 +1,8 @@
 package sgl
 package native
 
-import sgl.util._
+import _root_.sgl._
+import _root_.sgl.util._
 
 import scalanative.unsafe._
 import scalanative.unsigned._
@@ -18,36 +19,34 @@ trait NativeGraphicsProvider extends GraphicsProvider {
   object NativeGraphics extends Graphics {
 
     override def loadImage(path: ResourcePath): Loader[Bitmap] = {
-      Zone { implicit z =>
-        val surface = IMG_Load(toCString(path.path))
-        if(surface == null) {
-          Loader.failed(new Exception("Error while loading image %s: %s".format(path.path, fromCString(SDL_GetError()))))
+      val surface: Ptr[SDL_Surface] = Zone.acquire { implicit z => IMG_Load(toCString(path.path)) }
+      if(surface == null) {
+        Loader.failed(new Exception("Error while loading image %s: %s".format(path.path, fromCString(SDL_GetError()))))
+      } else {
+        val width = surface.w
+        val height = surface.h
+
+        val test: UByte = (SDL_MapRGB(surface.format, 0xAA.toUByte, 0xBB.toUByte, 0XCC.toUByte) & 0xFF.toUInt).toUByte
+        //val sourceFormat = if(surface.format.BitsPerPixel == 8.toUByte) GL_COLOR_INDEX else GL_BGR
+        val sourceFormat = if(surface.format.BytesPerPixel == 4.toUByte) {
+          if(test == 0xAA.toUByte) GL_RGBA else GL_BGRA
         } else {
-          val width = surface.w
-          val height = surface.h
-
-          val test: UByte = (SDL_MapRGB(surface.format, 0xAA.toUByte, 0xBB.toUByte, 0XCC.toUByte) & 0xFF.toUInt).toUByte
-          //val sourceFormat = if(surface.format.BitsPerPixel == 8.toUByte) GL_COLOR_INDEX else GL_BGR
-          val sourceFormat = if(surface.format.BytesPerPixel == 4.toUByte) {
-            if(test == 0xAA.toUByte) GL_RGBA else GL_BGRA
-          } else {
-            if(test == 0xAA.toUByte) GL_RGB else GL_BGR
-          }
-
-          val textureId: Ptr[GLuint] = stackalloc[GLuint]
-          glGenTextures(1.toUInt, textureId)
-          glBindTexture(GL_TEXTURE_2D, !textureId)
-
-          glTexImage2D(GL_TEXTURE_2D, 0, surface.format.BytesPerPixel.toInt, 
-                       surface.w.toUInt, surface.h.toUInt, 0, sourceFormat,
-                       GL_UNSIGNED_BYTE, surface.pixels)
-
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-          SDL_FreeSurface(surface)
-          val texture = OpenGLTextureBitmap(!textureId, width, height)
-          Loader.successful(texture)
+          if(test == 0xAA.toUByte) GL_RGB else GL_BGR
         }
+
+        val textureId: Ptr[GLuint] = stackalloc[GLuint]()
+        glGenTextures(1.toUInt, textureId)
+        glBindTexture(GL_TEXTURE_2D, !textureId)
+
+        glTexImage2D(GL_TEXTURE_2D, 0, surface.format.BytesPerPixel.toInt, 
+                     surface.w.toUInt, surface.h.toUInt, 0, sourceFormat,
+                     GL_UNSIGNED_BYTE, surface.pixels)
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+        SDL_FreeSurface(surface)
+        val texture: Bitmap = OpenGLTextureBitmap(!textureId, width, height)
+        Loader.successful[Bitmap](texture)
       }
     }
 
@@ -58,30 +57,28 @@ trait NativeGraphicsProvider extends GraphicsProvider {
 
     type Bitmap = OpenGLTextureBitmap
   
-    case class NativeFont() extends AbstractFont {
-      override def withSize(s: Int): Font = ???
-      override def withStyle(s: Font.Style): Font = ???
-
-      override def size: Int = ???
+    case class NativeFont(family: String, style: Font.Style, size: Int) extends AbstractFont {
+      override def withSize(s: Int): Font = copy(size = s)
+      override def withStyle(s: Font.Style): Font = copy(style = s)
   
-      override def isBold: Boolean = ???
-      override def isItalic: Boolean = ???
+      override def isBold: Boolean = style == NativeFontCompanion.Bold || style == NativeFontCompanion.BoldItalic
+      override def isItalic: Boolean = style == NativeFontCompanion.Italic || style == NativeFontCompanion.BoldItalic
     }
     type Font = NativeFont
   
     object NativeFontCompanion extends FontCompanion {
-      override def create(family: String, style: Style, size: Int): Font = ???
+      override def create(family: String, style: Style, size: Int): Font = NativeFont(family, style, size)
 
-      override def load(path: ResourcePath): Loader[Font] = ???
+      override def load(path: ResourcePath): Loader[Font] = Loader.successful(Default)
   
-      override val Default: Font = NativeFont()
-      override val DefaultBold: Font = NativeFont()
-      override val Monospace: Font = NativeFont()
-      override val SansSerif: Font = NativeFont()
-      override val Serif: Font = NativeFont()
+      override val Default: Font = NativeFont("default", Normal, 12)
+      override val DefaultBold: Font = NativeFont("default", Bold, 12)
+      override val Monospace: Font = NativeFont("monospace", Normal, 12)
+      override val SansSerif: Font = NativeFont("sans-serif", Normal, 12)
+      override val Serif: Font = NativeFont("serif", Normal, 12)
   
     }
-    override val Font = NativeFontCompanion
+    override val Font: NativeFontCompanion.type = NativeFontCompanion
   
     //TODO: this should be shared among backends that need simple tuples for colors
     //      and should have a better name
@@ -92,7 +89,7 @@ trait NativeGraphicsProvider extends GraphicsProvider {
       override def rgb(r: Int, g: Int, b: Int): Color = ColorTuple(r, g, b, 0)
       override def rgba(r: Int, g: Int, b: Int, a: Int): Color = ColorTuple(r, g, b, a)
     }
-    override val Color = NativeColorCompanion
+    override val Color: NativeColorCompanion.type = NativeColorCompanion
   
     //TODO: Paint seems like it shouldn't be defined in a backend?
     case class NativePaint(font: Font, color: Color, alignment: Alignments.Alignment) extends AbstractPaint {
@@ -232,15 +229,15 @@ trait NativeGraphicsProvider extends GraphicsProvider {
       }
   
       override def drawString(str: String, x: Float, y: Float, paint: Paint): Unit = {
-        ???
+        // Text rendering is not implemented yet in the minimal native backend.
       }
   
       override def drawText(text: TextLayout, x: Float, y: Float): Unit = {
-        ???
+        // Text rendering is not implemented yet in the minimal native backend.
       }
   
       override def renderText(text: String, width: Int, paint: Paint): TextLayout = {
-        ???
+        NativeTextLayout(text, width, paint)
       }
   
       private def setRenderColor(color: Color): Unit = {
@@ -256,16 +253,16 @@ trait NativeGraphicsProvider extends GraphicsProvider {
     type TextLayout = NativeTextLayout
     case class NativeTextLayout(text: String, width: Int, paint: Paint) extends AbstractTextLayout {
   
-      val rows: List[String] = ???
+      val rows: List[String] = List(text)
   
-      override val height: Int = ???
+      override val height: Int = paint.font.size
   
-      def draw(renderer: Ptr[SDL_Renderer], x: Int, y: Int): Unit = ???
+      def draw(renderer: Ptr[SDL_Renderer], x: Int, y: Int): Unit = ()
       
   
     }
 
   }
-  val Graphics = NativeGraphics
+  override val Graphics: NativeGraphics.type = NativeGraphics
 
 }

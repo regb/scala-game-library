@@ -1,7 +1,8 @@
 package sgl
 package native
 
-import sgl.util._
+import _root_.sgl._
+import _root_.sgl.util._
 
 import java.net.URI
 import java.awt.Desktop
