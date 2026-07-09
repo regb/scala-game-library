@@ -12,10 +12,31 @@ scala_library(
 )
 
 scala_library(
+    name="sgl-ecs",
+    srcs=glob(["ecs/src/main/scala/**/*.scala"]),
+    deps = [
+        "//core:sgl-core",
+    ],
+    visibility=["//visibility:public"],
+)
+
+scala_library(
     name="sgl-gameobject",
     srcs=glob(["gameobject/src/main/scala/**/*.scala"]),
     deps = [
         "//core:sgl-core",
+    ],
+    visibility=["//visibility:public"],
+)
+
+scala_test(
+    name="sgl-ecs-tests",
+    srcs=glob(["ecs/src/test/scala/**/*.scala"]),
+    scalacopts=SGL_SCALACOPTS,
+    deps = [
+        ":sgl-ecs",
+        "//core:sgl-core",
+        "@maven//:org_scalatest_scalatest_3",
     ],
     visibility=["//visibility:public"],
 )

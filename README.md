@@ -6,9 +6,9 @@ Scala Game Library (SGL) is a library for developing cross-platform video games
 in Scala. It provides a high-level API for building games, and can export games
 to the Desktop, Android, iOS, and the web.
 
-SGL is modular and provides both a minimal, lightweight abstraction over
-platforms and a component-based GameObject engine. The engine is optional, and
-SGL can also be used as a cross-platform toolkit.
+SGL is modular and provides a minimal, lightweight abstraction over platforms,
+along with ECS and component-based GameObject engines. The engines are optional,
+and SGL can also be used as a cross-platform toolkit.
 
 ## Objectives
 
