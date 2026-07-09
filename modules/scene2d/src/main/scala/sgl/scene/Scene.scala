@@ -8,6 +8,6 @@ package scene
   * each individually.
   */
 trait SceneComponent extends SceneGraphComponent with ui.ScrollPaneComponent with ui.PopupsComponent {
-  this: GraphicsProvider with WindowProvider with SystemProvider with ViewportComponent =>
+  this: CanvasProvider with WindowProvider with SystemProvider with ViewportComponent =>
 
 }

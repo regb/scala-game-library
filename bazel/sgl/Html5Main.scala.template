@@ -1,30 +1,26 @@
 package {{PACKAGE}}.html5
 
-import sgl._
-import sgl.html5._
-import sgl.html5.util._
-import sgl.html5.themes._
-import sgl.util.metrics._
-import sgl.analytics._
-import sgl.ads._
-
-import scala.scalajs.js.annotation.JSExportTopLevel
-
-@JSExportTopLevel("{{MAIN_CLASS}}")
-object {{MAIN_CLASS}} extends Html5App with {{CORE_ABSTRACT_CLASS}}
+@_root_.scala.scalajs.js.annotation.JSExportTopLevel("{{MAIN_CLASS}}")
+object {{MAIN_CLASS}} extends _root_.sgl.html5.Html5CanvasApp {{SCREEN2D_MIXIN}} with {{CORE_ABSTRACT_CLASS}}{{EXTRA_MIXINS}}
   with {{SAVE_COMPONENT}}
-  with Html5DefaultConsoleLoggingProvider
-  with Html5JsonProvider
-  with NoAdsProvider
-  with NoAnalyticsProvider
-  with GameLoopStatisticsComponent
-  with DefaultInstrumentationProvider
-{
+  with _root_.sgl.html5.util.Html5DefaultConsoleLoggingProvider
+  with _root_.sgl.html5.util.Html5JsonProvider
+  with _root_.sgl.ads.NoAdsProvider
+  with _root_.sgl.analytics.NoAnalyticsProvider
+  {{GAME_LOOP_STATISTICS_MIXIN}}
+  with _root_.sgl.util.metrics.DefaultInstrumentationProvider {
 
   override val TargetFps: Option[Int] = None
 
-  override val theme: Theme = {{THEME_EXPRESSION}}
+  override protected val Html5KeyboardCapture: _root_.sgl.html5.Html5KeyboardCaptureMode = {{KEYBOARD_CAPTURE}}
+  override protected val Html5KeyboardPreventDefault: Boolean = {{KEYBOARD_PREVENT_DEFAULT}}
+  override protected val Html5MousePreventDefault: Boolean = {{MOUSE_PREVENT_DEFAULT}}
+  override protected val Html5WheelPreventDefault: Boolean = {{WHEEL_PREVENT_DEFAULT}}
+  override protected val Html5TouchPreventDefault: Boolean = {{TOUCH_PREVENT_DEFAULT}}
+  override protected val Html5TouchStopPropagation: Boolean = {{TOUCH_STOP_PROPAGATION}}
 
-  override val ResourcesRoot: ResourcePath = PartsResourcePath(Vector("{{ASSETS_SERVING_ROOT}}"))
+  override val theme: _root_.sgl.html5.themes.Theme = {{THEME_EXPRESSION}}
+
+  override protected val Html5AssetsServingRoot: String = "{{ASSETS_SERVING_ROOT}}"
 {{ASSET_PACK_MANIFEST_OVERRIDE}}
 }

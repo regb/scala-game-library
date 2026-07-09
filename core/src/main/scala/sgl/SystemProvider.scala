@@ -1,5 +1,6 @@
 package sgl
 
+import sgl.assets.{RawImageAsset, TextAsset}
 import sgl.util._
 
 
@@ -107,14 +108,14 @@ trait SystemProvider {
      *
      * A missing file will be visible by a completed Loader with failure.
      */
-    def loadText(path: ResourcePath): Loader[Array[String]]
+    def loadText(asset: TextAsset): Loader[Array[String]]
 
     /*
      * Loads the binary data from the file in the resources bundle, identified by the path.
      *
      * A missing file will be visible by a completed Loader with failure.
      */
-    def loadBinary(path: ResourcePath): Loader[Array[Byte]]
+    def loadBinary(asset: RawImageAsset): Loader[Array[Byte]]
 
     /** Opens a webpage.
       *

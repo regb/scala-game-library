@@ -5,6 +5,7 @@ scala_library(
     name="sgl-scene2d",
     srcs=glob(["scene2d/src/main/scala/**/*.scala"]),
     deps = [
+        "//engines:sgl-screen2d",
         "//core:sgl-core",
     ],
     visibility=["//visibility:public"],

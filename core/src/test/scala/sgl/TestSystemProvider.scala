@@ -25,9 +25,9 @@ trait TestSystemNoResourcePathProvider extends SystemProvider {
     def currentTimeMillis: Long = ???
     def nanoTime: Long = ???
 
-    def loadText(path: ResourcePath): Loader[Array[String]] = ???
+    def loadText(asset: sgl.assets.TextAsset): Loader[Array[String]] = ???
 
-    def loadBinary(path: ResourcePath): Loader[Array[Byte]] = ???
+    def loadBinary(asset: sgl.assets.RawImageAsset): Loader[Array[Byte]] = ???
 
     def openWebpage(uri: java.net.URI): Unit = ???
 

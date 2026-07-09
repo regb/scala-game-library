@@ -9,7 +9,7 @@ import scala.util.{Failure, Success}
 import sgl.util._
 
 trait Html5AudioProvider extends AudioProvider {
-  this: Html5SystemProvider with Html5InputProvider with Html5App with LoggingProvider =>
+  this: Html5SystemProvider with Html5InputProvider with Html5CanvasApp with LoggingProvider =>
 
   // TODO: Use the Web Audio API and rely on the current implementation as a fallback
   //       when the API is not available.
@@ -28,7 +28,7 @@ trait Html5AudioProvider extends AudioProvider {
 
     class SoundTagInstance(val loader: Loader[HTMLAudioElement], var inUse: Boolean, var loop: Int)
 
-    class SoundTagPool(pathes: scala.collection.Seq[ResourcePath], initialTag: HTMLAudioElement) {
+    class SoundTagPool(resourceNames: scala.collection.Seq[String], initialTag: HTMLAudioElement) {
       private var audioTags: Vector[SoundTagInstance] = Vector(
         new SoundTagInstance(Loader.successful(initialTag), false, 0)
       )
@@ -40,7 +40,7 @@ trait Html5AudioProvider extends AudioProvider {
             tag
           case None =>
             // None are free, we need to instantiate a new one.
-            val tag = new SoundTagInstance(loadAudioTag(pathes), true, 0)
+            val tag = new SoundTagInstance(loadAudioTag(resourceNames), true, 0)
             audioTags = audioTags :+ tag
             tag
         }
@@ -105,8 +105,9 @@ trait Html5AudioProvider extends AudioProvider {
     }
     type Sound = Html5Sound
 
-    override def loadSound(path: ResourcePath, extras: ResourcePath*): Loader[Sound] = {
-      loadAudioTag(path +: extras).map(tag => new Html5Sound(new SoundTagPool(path +: extras, tag)))
+    override def loadSound(asset: sgl.assets.AudioAsset, extras: sgl.assets.AudioAsset*): Loader[Sound] = {
+      val resourceNames = (asset +: extras).map(_.resourceName)
+      loadAudioTag(resourceNames).map(tag => new Html5Sound(new SoundTagPool(resourceNames, tag)))
     }
 
     /** Music implementation for HTML5.
@@ -148,11 +149,11 @@ trait Html5AudioProvider extends AudioProvider {
     }
     type Music = Html5Music
 
-    override def loadMusic(path: ResourcePath, extras: ResourcePath*): Loader[Music] = {
-      loadAudioTag(path +: extras).map(new Html5Music(_))
+    override def loadMusic(asset: sgl.assets.AudioAsset, extras: sgl.assets.AudioAsset*): Loader[Music] = {
+      loadAudioTag((asset +: extras).map(_.resourceName)).map(new Html5Music(_))
     }
 
-    private def audioMimeType(path: ResourcePath): String = path.extension match {
+    private def audioMimeType(resourceName: String): String = html5ResourceExtension(resourceName) match {
       case Some("ogg") => "audio/ogg"
       case Some("oga") => "audio/ogg"
       case Some("mp3") => "audio/mpeg"
@@ -162,21 +163,21 @@ trait Html5AudioProvider extends AudioProvider {
       case _ => ""
     }
 
-    private def loadAudioTag(pathes: scala.collection.Seq[ResourcePath]): Loader[HTMLAudioElement] = {
+    private def loadAudioTag(resourceNames: scala.collection.Seq[String]): Loader[HTMLAudioElement] = {
       val p = new DefaultLoader[HTMLAudioElement]()
       val audio = dom.document.createElement("audio").asInstanceOf[HTMLAudioElement]
 
       var errorCount = 0
       def onError(): Unit = {
         errorCount += 1
-        if(errorCount == pathes.size) {
-          val _ = p.failure(new RuntimeException(s"music <${pathes}> failed to load"))
+        if(errorCount == resourceNames.size) {
+          val _ = p.failure(new RuntimeException(s"music <${resourceNames.map(html5AssetUrl)}> failed to load"))
         }
       }
 
-      pathes.foreach(path => {
-        val tpe = audioMimeType(path)
-        html5ResourceObjectUrl(path, tpe).onLoad {
+      resourceNames.foreach(resourceName => {
+        val tpe = audioMimeType(resourceName)
+        html5ResourceObjectUrl(resourceName, tpe).onLoad {
           case Success(url) =>
             val source = dom.document.createElement("source").asInstanceOf[HTMLSourceElement]
             source.src = url

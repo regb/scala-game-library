@@ -1,0 +1,23 @@
+---
+title: Examples
+description: Browse runnable examples.
+---
+
+Useful examples:
+
+- `//examples/hello-canvas:desktop-awt` — core Canvas, typed drawables/audio.
+- `//examples/hello-canvas:html5` — the same core Canvas app on HTML5.
+- `//examples/hello-scalagl:desktop-lwjgl` — core OpenGL with typed raw images/audio.
+- `//examples/hello-scalagl:html5` — WebGL build of the OpenGL example.
+- `//examples/snake:desktop-awt` — classic screen-style Canvas game.
+- `//engines/screen2d/examples/platformer:desktop-awt` — screen2d plus imported Tiled map assets.
+- `//engines/screen2d/examples/platformer:desktop-native` — native Canvas build of the Tiled platformer.
+- `//engines/ecs/examples/solar-system:desktop-lwjgl` — ECS/OpenGL renderer.
+- `//engines/gameobject/examples/solar-system:desktop-lwjgl` — GameObject/OpenGL renderer.
+- `//engines/gameobject/examples/asteroids:desktop-lwjgl` — GameObject 2D on OpenGL.
+
+Build all current examples and engines with:
+
+```bash
+bazel build //examples/... //engines/...
+```

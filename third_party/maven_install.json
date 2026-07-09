@@ -8,6 +8,11 @@
     "com.google.j2objc:j2objc-annotations": 2003271689,
     "com.googlecode.soundlibs:vorbisspi": 574883964,
     "net.liftweb:lift-json_2.13": -469677169,
+    "org.lwjgl:lwjgl": -813081844,
+    "org.lwjgl:lwjgl-glfw": -2120265111,
+    "org.lwjgl:lwjgl-openal": 1903089171,
+    "org.lwjgl:lwjgl-opengl": 88052523,
+    "org.lwjgl:lwjgl-stb": 935048266,
     "org.scala-js:scalajs-compiler_2.13.18": 343879293,
     "org.scala-js:scalajs-dom_sjs1_3": -664329387,
     "org.scala-js:scalajs-ir_2.13": 973071080,
@@ -48,6 +53,16 @@
     "org.jline:jline-terminal": 1498079606,
     "org.jline:jline-terminal-jni": -624687773,
     "org.jline:jline:jar:jdk8": 243539796,
+    "org.lwjgl:lwjgl": -1534950829,
+    "org.lwjgl:lwjgl-glfw": -1184509358,
+    "org.lwjgl:lwjgl-glfw:jar:natives-linux": -1378686301,
+    "org.lwjgl:lwjgl-openal": 938644998,
+    "org.lwjgl:lwjgl-openal:jar:natives-linux": 844510791,
+    "org.lwjgl:lwjgl-opengl": -553291419,
+    "org.lwjgl:lwjgl-opengl:jar:natives-linux": -1036534717,
+    "org.lwjgl:lwjgl-stb": 885209416,
+    "org.lwjgl:lwjgl-stb:jar:natives-linux": -1714329231,
+    "org.lwjgl:lwjgl:jar:natives-linux": 1399996406,
     "org.scala-js:scalajs-compiler_2.13.18": 2122343529,
     "org.scala-js:scalajs-dom_sjs1_3": -1167599997,
     "org.scala-js:scalajs-ir_2.13": -1064650638,
@@ -225,6 +240,41 @@
         "jar": "13fef8bcc0e4788c8e192dc76c33758683c6bfdbaef6f67b41445eb8986773ad"
       },
       "version": "3.29.0"
+    },
+    "org.lwjgl:lwjgl": {
+      "shasums": {
+        "jar": "b00e2781b74cc829db9d39fb68746b25bb7b94ce61d46293457dbccddabd999c",
+        "natives-linux": "2f0e65d6985d602c0e5e5aab6576db113a9a378a36f8144ec93b77a4fde5876c"
+      },
+      "version": "3.3.6"
+    },
+    "org.lwjgl:lwjgl-glfw": {
+      "shasums": {
+        "jar": "b29c938ecc4997ce256a831aeca2033dab9829b5c21e72ebeb64aecd9e08450c",
+        "natives-linux": "a1b60014597bc0e45bf39089f4d838c3aa87fd668f6fe4e7326aa314d2ec87c0"
+      },
+      "version": "3.3.6"
+    },
+    "org.lwjgl:lwjgl-openal": {
+      "shasums": {
+        "jar": "5d8669ee52325080f500cf0060785a13135a10c602286cefc8ba285805fa8468",
+        "natives-linux": "d30c407c1182f507c70ad12e21bac98189c767bf5c7a592dbfaa4f11d139545c"
+      },
+      "version": "3.3.6"
+    },
+    "org.lwjgl:lwjgl-opengl": {
+      "shasums": {
+        "jar": "bb0430e0a5fd7b7b5770ae517960b2ea9887bb08d04f3a0cb1aae145332e1310",
+        "natives-linux": "8c0b5c081a7872a3cdb02b6448921da5ae5c23ab49656f299edc7a09b7e99b74"
+      },
+      "version": "3.3.6"
+    },
+    "org.lwjgl:lwjgl-stb": {
+      "shasums": {
+        "jar": "ae658e15933e691b2ddba940a6e24b41a38ad6f02fd458e5e3b3ea91e222a6ab",
+        "natives-linux": "6a57b3b14d55194e6a326228fd7d24d1ee0c9b2b969f2cad7b3d503844961dd2"
+      },
+      "version": "3.3.6"
     },
     "org.scala-js:scalajs-compiler_2.13.18": {
       "shasums": {
@@ -573,6 +623,30 @@
     "org.jline:jline-terminal-jni": [
       "org.jline:jline-native",
       "org.jline:jline-terminal"
+    ],
+    "org.lwjgl:lwjgl-glfw": [
+      "org.lwjgl:lwjgl"
+    ],
+    "org.lwjgl:lwjgl-glfw:jar:natives-linux": [
+      "org.lwjgl:lwjgl"
+    ],
+    "org.lwjgl:lwjgl-openal": [
+      "org.lwjgl:lwjgl"
+    ],
+    "org.lwjgl:lwjgl-openal:jar:natives-linux": [
+      "org.lwjgl:lwjgl"
+    ],
+    "org.lwjgl:lwjgl-opengl": [
+      "org.lwjgl:lwjgl"
+    ],
+    "org.lwjgl:lwjgl-opengl:jar:natives-linux": [
+      "org.lwjgl:lwjgl"
+    ],
+    "org.lwjgl:lwjgl-stb": [
+      "org.lwjgl:lwjgl"
+    ],
+    "org.lwjgl:lwjgl-stb:jar:natives-linux": [
+      "org.lwjgl:lwjgl"
     ],
     "org.scala-js:scalajs-compiler_2.13.18": [
       "org.scala-lang:scala-compiler",
@@ -1096,6 +1170,30 @@
       "org.jline.utils",
       "org.jline.widget"
     ],
+    "org.lwjgl:lwjgl": [
+      "org.lwjgl",
+      "org.lwjgl.system",
+      "org.lwjgl.system.freebsd",
+      "org.lwjgl.system.jni",
+      "org.lwjgl.system.libc",
+      "org.lwjgl.system.libffi",
+      "org.lwjgl.system.linux",
+      "org.lwjgl.system.linux.liburing",
+      "org.lwjgl.system.macosx",
+      "org.lwjgl.system.windows"
+    ],
+    "org.lwjgl:lwjgl-glfw": [
+      "org.lwjgl.glfw"
+    ],
+    "org.lwjgl:lwjgl-openal": [
+      "org.lwjgl.openal"
+    ],
+    "org.lwjgl:lwjgl-opengl": [
+      "org.lwjgl.opengl"
+    ],
+    "org.lwjgl:lwjgl-stb": [
+      "org.lwjgl.stb"
+    ],
     "org.scala-js:scalajs-compiler_2.13.18": [
       "org.scalajs.ir",
       "org.scalajs.nscplugin",
@@ -1566,6 +1664,16 @@
       "org.jline:jline-terminal",
       "org.jline:jline-terminal-jni",
       "org.jline:jline:jar:jdk8",
+      "org.lwjgl:lwjgl",
+      "org.lwjgl:lwjgl-glfw",
+      "org.lwjgl:lwjgl-glfw:jar:natives-linux",
+      "org.lwjgl:lwjgl-openal",
+      "org.lwjgl:lwjgl-openal:jar:natives-linux",
+      "org.lwjgl:lwjgl-opengl",
+      "org.lwjgl:lwjgl-opengl:jar:natives-linux",
+      "org.lwjgl:lwjgl-stb",
+      "org.lwjgl:lwjgl-stb:jar:natives-linux",
+      "org.lwjgl:lwjgl:jar:natives-linux",
       "org.scala-js:scalajs-compiler_2.13.18",
       "org.scala-js:scalajs-dom_sjs1_3",
       "org.scala-js:scalajs-ir_2.13",

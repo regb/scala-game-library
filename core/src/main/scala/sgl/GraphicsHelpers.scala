@@ -2,22 +2,22 @@ package sgl
 
 /** Provide helpers for common graphics operations.
   *
-  * This is designed as a separate module to the GraphicsProvider,
-  * as GraphicsProvider should be limited to the lowest level
+  * This is designed as a separate module to the CanvasProvider,
+  * as CanvasProvider should be limited to the lowest level
   * interface on top of the Graphics, while this is more a composition
   * of the primitives provided.
   *
   * In particular, there are no backend specialization for the operations
   * provided here, they are simply library that wraps on top of primitives
-  * provided by GraphicsProvider. All implementation are also concrete.
+  * provided by CanvasProvider. All implementation are also concrete.
   *
-  * This is directly extended by the GraphicsProvider trait, which makes
+  * This is directly extended by the CanvasProvider trait, which makes
   * it transparent to the client (automatically comes when the client depends
-  * on the GraphicsProvider). Having it as a separate trait makes it
+  * on the CanvasProvider). Having it as a separate trait makes it
   * simpler for code/file maintenance.
   */
 private[sgl] trait GraphicsHelpersComponent {
-  this: GraphicsProvider with SystemProvider =>
+  this: CanvasProvider with SystemProvider =>
 
   trait GraphicsExtension {
     this: Graphics =>
@@ -57,8 +57,8 @@ private[sgl] trait GraphicsHelpersComponent {
           // for indexing in the bitmap. The extra pixel will be clipped
           // anyway, so in theory we wouldn't even need to worry about the
           // precision.
-          val missingWidth = math.ceil(width - nbFullCols*region.width).toInt
-          val missingHeight = math.ceil(height - nbFullRows*region.height).toInt
+          val missingWidth = scala.math.ceil(width - nbFullCols*region.width).toInt
+          val missingHeight = scala.math.ceil(height - nbFullRows*region.height).toInt
 
           if(missingWidth > 0) {
             for(i <- 0 until nbFullRows)
@@ -383,9 +383,9 @@ private[sgl] trait GraphicsHelpersComponent {
         val frameNumber: Int = ((time/frameDuration) % Int.MaxValue).toInt
         playMode match {
           case Animation.Normal =>
-            math.min(frames.size - 1, frameNumber)
+            scala.math.min(frames.size - 1, frameNumber)
           case Animation.Reversed =>
-            math.max(frames.size - frameNumber - 1, 0)
+            scala.math.max(frames.size - frameNumber - 1, 0)
           case Animation.Loop =>
             frameNumber % frames.size
           case Animation.LoopReversed =>

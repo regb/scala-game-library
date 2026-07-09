@@ -73,7 +73,7 @@ scala_native_binary = rule(
     attrs = {
         "deps": attr.label_list(providers = [JavaInfo], cfg = _scala_native_transition),
         "main_class": attr.string(mandatory = True),
-        "linkopts": attr.string_list(default = ["-lSDL2", "-lSDL2_image", "-lGL"]),
+        "linkopts": attr.string_list(default = ["-lSDL2", "-lSDL2_image", "-lGL", "-lGLESv2"]),
         "data": attr.label_list(allow_files = True),
         "linker": attr.label(default = Label("//bazel/scalanative:linker"), executable = True, cfg = "exec"),
     },

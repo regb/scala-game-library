@@ -4,7 +4,7 @@ import org.scalatest.funsuite.AnyFunSuite
 
 class GraphicsHelperSuite extends AnyFunSuite {
 
-  val graphicsProvider = new TestGraphicsProvider with TestSystemProvider {}
+  val graphicsProvider = new TestCanvasProvider with TestSystemProvider {}
 
   test("BitmapRegion with single bitmap") {
     import graphicsProvider.Graphics._

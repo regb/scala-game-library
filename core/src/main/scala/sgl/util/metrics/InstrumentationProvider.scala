@@ -3,7 +3,7 @@ package util
 package metrics
 
 trait InstrumentationProvider {
-  this: GraphicsProvider with SystemProvider =>
+  this: CanvasProvider with SystemProvider =>
 
   trait AbstractMetrics {
 
@@ -53,7 +53,7 @@ trait InstrumentationProvider {
 }
 
 trait DefaultInstrumentationProvider extends InstrumentationProvider {
-  this: GraphicsProvider with LoggingProvider with SystemProvider =>
+  this: CanvasProvider with LoggingProvider with SystemProvider =>
 
   private implicit val LogTag: DefaultInstrumentationProvider.this.Logger.Tag = Logger.Tag("default-instrumentation-provider")
 
@@ -142,7 +142,7 @@ trait DefaultInstrumentationProvider extends InstrumentationProvider {
   * methods thus don't display anything.
   */
 trait NoInstrumentationProvider extends InstrumentationProvider {
-  this: GraphicsProvider with SystemProvider =>
+  this: CanvasProvider with SystemProvider =>
 
   object NoMetrics extends AbstractMetrics {
 

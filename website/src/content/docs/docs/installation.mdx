@@ -1,0 +1,31 @@
+---
+title: Installation
+description: Install SGL and run examples.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+SGL currently builds with Bazel.
+
+```bash
+git clone https://github.com/regb/scala-game-library.git
+cd scala-game-library
+bazel build //examples/... //engines/... //games/...
+bazel test //core/...
+```
+
+Run a desktop example:
+
+```bash
+bazel run //examples/hello-canvas:desktop-awt
+```
+
+Run an OpenGL example:
+
+```bash
+bazel run //examples/hello-scalagl:desktop-lwjgl
+```
+
+<Aside type="note">
+The Android Kotlin integration uses the proxy backend and is maintained separately from the main Bazel desktop/web/native example matrix.
+</Aside>

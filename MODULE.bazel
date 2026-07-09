@@ -60,11 +60,20 @@ maven.install(
         "org.scala-native:auxlib_native0.5_3:0.5.12",
         "org.scala-native:tools_3:0.5.12",
         "org.scala-native:util_3:0.5.12",
+        "org.lwjgl:lwjgl:3.3.6",
+        "org.lwjgl:lwjgl-glfw:3.3.6",
+        "org.lwjgl:lwjgl-opengl:3.3.6",
+        "org.lwjgl:lwjgl-openal:3.3.6",
+        "org.lwjgl:lwjgl-stb:3.3.6",
+        "org.lwjgl:lwjgl::natives-linux:3.3.6",
+        "org.lwjgl:lwjgl-glfw::natives-linux:3.3.6",
+        "org.lwjgl:lwjgl-opengl::natives-linux:3.3.6",
+        "org.lwjgl:lwjgl-openal::natives-linux:3.3.6",
+        "org.lwjgl:lwjgl-stb::natives-linux:3.3.6",
     ],
     repositories = [
         "https://repo1.maven.org/maven2",
     ],
-    lock_file = "//third_party:maven_install.json",
 )
 use_repo(maven, "maven")
 

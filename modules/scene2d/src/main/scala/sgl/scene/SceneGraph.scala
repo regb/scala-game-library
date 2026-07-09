@@ -4,7 +4,7 @@ package scene
 import scala.collection.mutable.HashMap
 
 trait SceneGraphComponent {
-  this: GraphicsProvider with SystemProvider with ViewportComponent =>
+  this: CanvasProvider with SystemProvider with ViewportComponent =>
 
 
   /** The main container element to organize a scene.

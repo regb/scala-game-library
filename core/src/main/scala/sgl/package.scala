@@ -9,7 +9,7 @@
   * traits are abstractions of platform specific concepts, here is
   * a list:
   *
-  *   - {{sgl.GraphicsProvider}}
+  *   - {{sgl.CanvasProvider}}
   *   - {{sgl.AudioProvider}}
   *   - {{sgl.SystemProvider}}
   *   - {{sgl.WindowProvider}}

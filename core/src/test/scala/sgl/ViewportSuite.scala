@@ -4,7 +4,7 @@ import org.scalatest.funsuite.AnyFunSuite
 
 class ViewportSuite extends AnyFunSuite {
 
-  object TestGameApp extends ViewportComponent with TestGraphicsProvider with TestSystemProvider
+  object TestGameApp extends ViewportComponent with TestCanvasProvider with TestSystemProvider
   import TestGameApp.Viewport
 
   test("Viewport initialization sets right dimensions and camera") {

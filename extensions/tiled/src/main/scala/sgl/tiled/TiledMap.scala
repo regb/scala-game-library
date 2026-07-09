@@ -8,7 +8,24 @@ package tiled
 //       It might make sense to extract these functionalities into a PhysicsTiledMap class or
 //       a subpackage, or something else? And leave this file as a pure dependency-less syntax
 //       representation of the tiled map data.
-import geometry.{Vec, Rect, Circle, Ellipse, Polygon}
+import sgl.math.{Vec2, Rect, Circle, Ellipse, Polygon}
+
+case class MissingLayer(container: String, layerType: String, name: String)
+    extends RuntimeException(s"Missing $layerType layer '$name' in $container")
+case class MissingObject(layer: String, name: String)
+    extends RuntimeException(s"Missing object '$name' in object layer '$layer'")
+case class UnexpectedObjectType(layer: String, name: String, expected: String, actual: TiledMapObject)
+    extends RuntimeException(s"Object '$name' in object layer '$layer' is not a $expected: ${actual.getClass.getSimpleName}")
+case class MissingProperty(owner: String, name: String)
+    extends RuntimeException(s"Missing property '$name' on $owner")
+
+sealed trait TiledShape
+object TiledShape {
+  final case class Rectangle(rect: Rect) extends TiledShape
+  final case class EllipseShape(ellipse: Ellipse) extends TiledShape
+  final case class CircleShape(circle: Circle) extends TiledShape
+  final case class PolygonShape(polygon: Polygon) extends TiledShape
+}
 
 /** A Scala representation of a TMX map.
   *
@@ -209,6 +226,23 @@ case class ObjectLayer(
   val objectsMap: Map[String, TiledMapObject] = objects.map(o => (o.name, o)).toMap
   def get(objectName: String): Option[TiledMapObject] = objectsMap.get(objectName)
   def apply(objectName: String): TiledMapObject = objectsMap(objectName)
+
+  def requireObject(objectName: String): TiledMapObject =
+    get(objectName).getOrElse(throw MissingObject(name, objectName))
+
+  def getRect(objectName: String): Option[TiledMapRect] = get(objectName).map {
+    case r: TiledMapRect => r
+    case other => throw UnexpectedObjectType(name, objectName, "rectangle", other)
+  }
+  def requireRect(objectName: String): TiledMapRect =
+    getRect(objectName).getOrElse(throw MissingObject(name, objectName))
+
+  def getTileObject(objectName: String): Option[TiledMapTileObject] = get(objectName).map {
+    case t: TiledMapTileObject => t
+    case other => throw UnexpectedObjectType(name, objectName, "tile object", other)
+  }
+  def requireTileObject(objectName: String): TiledMapTileObject =
+    getTileObject(objectName).getOrElse(throw MissingObject(name, objectName))
 }
 
 sealed trait TiledMapObject {
@@ -242,6 +276,23 @@ sealed trait TiledMapObject {
 
   /** Arbitrary properties for this object. */
   val properties: Vector[Property]
+
+  def bounds: Option[Rect] = this match {
+    case r: TiledMapRect => Some(r.rect)
+    case t: TiledMapTileObject => Some(t.rect)
+    case _ => None
+  }
+
+  def requireBounds: Rect =
+    bounds.getOrElse(throw UnexpectedObjectType("<unknown>", name, "bounded object", this))
+
+  def shape: Option[TiledShape] = this match {
+    case r: TiledMapRect => Some(TiledShape.Rectangle(r.rect))
+    case e: TiledMapEllipse => Some(TiledShape.EllipseShape(e.ellipse))
+    case p: TiledMapPolygon => Some(TiledShape.PolygonShape(p.polygon))
+    case t: TiledMapTileObject => Some(TiledShape.Rectangle(t.rect))
+    case _ => None
+  }
 }
 
 case class TiledMapPoint(name: String, id: Int, tpe: String, x: Float, y: Float, properties: Vector[Property]) extends TiledMapObject
@@ -300,7 +351,7 @@ case class TiledMapPolygon(
     * translate the local points coordinates to the coordinates defined
     * by the object (x,y) position.
     */
-  def polygon: Polygon = Polygon(points.map(p => Vec(p.x + x, p.y + y)))
+  def polygon: Polygon = Polygon(points.map(p => Vec2(p.x + x, p.y + y)))
 }
 
 case class TiledMapPolyline(
@@ -370,6 +421,7 @@ case class GroupLayer(
 
 case class ImageLayer(
   name: String, id: Int, image: String,
+  width: Int, height: Int,
   isVisible: Boolean, opacity: Float,
   offsetX: Int, offsetY: Int,
   properties: Vector[Property]) extends Layer
@@ -427,6 +479,8 @@ case class Tileset(
     */
   spacing: Int,
   image: String,
+  imageWidth: Int,
+  imageHeight: Int,
   tiles: Vector[Tileset.Tile]) {
 
   /** Find the tile identified by the global id in this tileset. */
@@ -638,8 +692,11 @@ abstract class LayersContainer(val layers: Vector[Layer]) {
     case (t: TileLayer) => t
   }
   private val tileLayersMap: Map[String, TileLayer] = tileLayers.map(t => (t.name, t)).toMap
+  protected def layerContainerName: String = getClass.getSimpleName
   def getTileLayer(name: String): Option[TileLayer] = tileLayersMap.get(name)
   def tileLayer(name: String): TileLayer = tileLayersMap(name)
+  def requireTileLayer(name: String): TileLayer =
+    getTileLayer(name).getOrElse(throw MissingLayer(layerContainerName, "tile", name))
 
   val objectLayers: Vector[ObjectLayer] = layers.collect {
     case (o: ObjectLayer) => o
@@ -647,6 +704,8 @@ abstract class LayersContainer(val layers: Vector[Layer]) {
   val objectLayersMap: Map[String, ObjectLayer] = objectLayers.map(o => (o.name, o)).toMap
   def getObjectLayer(name: String): Option[ObjectLayer] = objectLayersMap.get(name)
   def objectLayer(name: String): ObjectLayer = objectLayersMap(name)
+  def requireObjectLayer(name: String): ObjectLayer =
+    getObjectLayer(name).getOrElse(throw MissingLayer(layerContainerName, "object", name))
 
   val imageLayers: Vector[ImageLayer] = layers.collect {
     case (i: ImageLayer) => i
@@ -654,6 +713,8 @@ abstract class LayersContainer(val layers: Vector[Layer]) {
   val imageLayersMap: Map[String, ImageLayer] = imageLayers.map(i => (i.name, i)).toMap
   def getImageLayer(name: String): Option[ImageLayer] = imageLayersMap.get(name)
   def imageLayer(name: String): ImageLayer = imageLayersMap(name)
+  def requireImageLayer(name: String): ImageLayer =
+    getImageLayer(name).getOrElse(throw MissingLayer(layerContainerName, "image", name))
 
   val groupLayers: Vector[GroupLayer] = layers.collect {
     case (g: GroupLayer) => g
@@ -661,6 +722,12 @@ abstract class LayersContainer(val layers: Vector[Layer]) {
   val groupLayersMap: Map[String, GroupLayer] = groupLayers.map(g => (g.name, g)).toMap
   def getGroupLayer(name: String): Option[GroupLayer] = groupLayersMap.get(name)
   def groupLayer(name: String): GroupLayer = groupLayersMap(name)
+  def requireGroupLayer(name: String): GroupLayer =
+    getGroupLayer(name).getOrElse(throw MissingLayer(layerContainerName, "group", name))
+  def findGroupLayer(names: String*): Option[GroupLayer] =
+    names.iterator.flatMap(getGroupLayer).toSeq.headOption
+  def requireFirstGroupLayer(names: String*): GroupLayer =
+    findGroupLayer(names*).getOrElse(throw MissingLayer(layerContainerName, "group", names.mkString(" or ")))
 }
 
 

@@ -1,0 +1,19 @@
+---
+title: API Reference
+description: Where to find API source.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Formal Scaladoc publishing is planned. For now, source packages are the reference:
+
+- `core/src/main/scala/sgl` — lifecycle, providers, input, audio, typed assets, Canvas, OpenGL, math.
+- `engines/screen2d/src/main/scala/sgl` — screen2d app/screen architecture.
+- `engines/ecs/src/main/scala/sgl/engine` — ECS runtime and OpenGL renderer.
+- `engines/gameobject/src/main/scala/sgl/engine/gameobject` — GameObject runtime, schedule, spatial modules, renderers.
+- `extensions/tiled/src/main/scala/sgl/tiled` — engine-independent Tiled model/parser/resolution.
+- `extensions/tiled-gameobject/src/main/scala/sgl/tiled/gameobject` — GameObject helpers for imported Tiled maps.
+
+<Aside type="tip">
+Start with `Application`, `CanvasProvider`, `OpenGLProvider`, `AudioProvider`, `sgl.assets`, and the engine app traits.
+</Aside>

@@ -1,0 +1,75 @@
+package sgl.examples.screen2d.menu
+package core
+
+import _root_.sgl._
+import _root_.sgl.scene._
+
+trait ScreensComponent extends SceneComponent {
+  this: Screen2DGameApp =>
+
+  class LevelsScreen extends GameScreen {
+
+    override def name: String = "LevelsScreen"
+
+    val viewport = new Viewport(Window.width, Window.height)
+
+    val scene = new SceneGraph(Window.width, Window.height, viewport)
+
+    val levelsPane = new ScrollPane(0, 0, Window.width.toFloat, Window.height.toFloat, Window.width.toFloat, 3*Window.height.toFloat)
+    scene.addNode(levelsPane)
+
+    class LevelButton(i: Int, _x: Float, _y: Float) extends Button(_x, _y, 100, 30) {
+      override def notifyClick(x: Float, y: Float): Unit = {
+        println(s"button $i clicked at ($x, $y)")
+      }
+      override def renderPressed(canvas: Graphics.Canvas): Unit = {
+        val color = Graphics.defaultPaint.withColor(Graphics.Color.Red)
+        canvas.drawRect(x, y, width, height, color)
+      }
+      override def renderRegular(canvas: Graphics.Canvas): Unit = {
+        val color = Graphics.defaultPaint.withColor(Graphics.Color.Green)
+        canvas.drawRect(x, y, width, height, color)
+      }
+
+      override def notifyMoved(x: Float, y: Float): Unit = {
+        println("moved")
+      }
+    }
+    for(i <- 1 to 100) {
+      val button = new LevelButton(i, 20, (i*50).toFloat)
+      levelsPane.addNode(button)
+    }
+    val dialog =
+      new DialogPopup(
+        Window.width.toFloat, Window.height.toFloat,
+        new Dialog(Window.dp2px(400).toFloat,
+                   "Hey there, do you like the weather ok?",
+                   List(("Yes", () => { println("yes") }),
+                        ("Nope", () => { println("nope") }),
+                        ("Meh", () => { println("meh") })),
+                   Window.dp2px(36), Graphics.Color.White)
+      ) {
+        override val backgroundColor = Graphics.Color.rgba(0,0,0,150)
+      }
+    scene.addNode(dialog)
+
+    Input.setInputProcessor(new CombinedInputProcessor(scene, new InputProcessor {
+      override def keyDown(key: Input.Keys.Key): Boolean = {
+        if(key == Input.Keys.P)
+          dialog.show()
+        true
+      }
+    }))
+
+    override def update(dt: Long): Unit = {
+      scene.update(dt)
+    }
+
+    override def render(canvas: Graphics.Canvas): Unit = {
+      canvas.drawRect(0, 0, Window.width.toFloat, Window.height.toFloat, Graphics.defaultPaint.withColor(Graphics.Color.Black))
+      scene.render(canvas)
+    }
+
+  }
+
+}

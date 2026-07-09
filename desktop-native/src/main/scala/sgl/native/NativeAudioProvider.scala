@@ -67,14 +67,15 @@ trait NativeAudioProvider extends AudioProvider {
       override def endLoop(id: PlayedSound): Unit = SDL_ClearQueuedAudio(id)
     }
 
-    override def loadSound(path: ResourcePath, extras: ResourcePath*): Loader[Sound] = {
+    override def loadSound(asset: sgl.assets.AudioAsset, extras: sgl.assets.AudioAsset*): Loader[Sound] = {
+      val path = nativeAssetPath(asset.resourceName)
       Zone.acquire { implicit z =>
         val spec = alloc[SDL_AudioSpec](1)
         val buffer = alloc[Ptr[UByte]](1)
         val length = alloc[UInt](1)
-        val loaded = SDL_LoadWAV(toCString(path.path), spec, buffer, length)
+        val loaded = SDL_LoadWAV(toCString(path), spec, buffer, length)
         if(loaded == null) {
-          Loader.failed(new Exception("Error while loading sound %s: %s".format(path.path, fromCString(SDL_GetError()))))
+          Loader.failed(new Exception("Error while loading sound %s: %s".format(path, fromCString(SDL_GetError()))))
         } else {
           val stableSpec = stdlib.malloc(sizeof[SDL_AudioSpec]).asInstanceOf[Ptr[SDL_AudioSpec]]
           !stableSpec = !spec
@@ -110,8 +111,8 @@ trait NativeAudioProvider extends AudioProvider {
       }
     }
 
-    override def loadMusic(path: ResourcePath, extras: ResourcePath*): Loader[Music] = {
-      loadSound(path, extras*) match {
+    override def loadMusic(asset: sgl.assets.AudioAsset, extras: sgl.assets.AudioAsset*): Loader[Music] = {
+      loadSound(asset, extras*) match {
         case loader if loader.isLoaded && loader.value.exists(_.isSuccess) =>
           Loader.successful(new Music(loader.value.get.get))
         case loader if loader.isLoaded && loader.value.exists(_.isFailure) =>

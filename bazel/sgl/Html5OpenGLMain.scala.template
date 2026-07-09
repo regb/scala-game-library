@@ -1,0 +1,20 @@
+package {{PACKAGE}}.html5
+
+@_root_.scala.scalajs.js.annotation.JSExportTopLevel("{{EXPORT_NAME}}")
+object {{MAIN_CLASS}} extends _root_.sgl.html5.Html5OpenGLApp with {{CORE_ABSTRACT_CLASS}}{{EXTRA_MIXINS}}
+  with _root_.sgl.FakeAudioProvider
+  with _root_.sgl.html5.util.Html5DefaultConsoleLoggingProvider {
+
+  override val TargetFps: Option[Int] = {{TARGET_FPS}}
+
+  override protected val Html5KeyboardCapture: _root_.sgl.html5.Html5KeyboardCaptureMode = {{KEYBOARD_CAPTURE}}
+  override protected val Html5KeyboardPreventDefault: Boolean = {{KEYBOARD_PREVENT_DEFAULT}}
+  override protected val Html5MousePreventDefault: Boolean = {{MOUSE_PREVENT_DEFAULT}}
+  override protected val Html5WheelPreventDefault: Boolean = {{WHEEL_PREVENT_DEFAULT}}
+  override protected val Html5TouchPreventDefault: Boolean = {{TOUCH_PREVENT_DEFAULT}}
+  override protected val Html5TouchStopPropagation: Boolean = {{TOUCH_STOP_PROPAGATION}}
+
+  override val canvasDimension: (Int, Int) = ({{CANVAS_WIDTH}}, {{CANVAS_HEIGHT}})
+
+  override protected val Html5AssetsServingRoot: String = "{{ASSETS_SERVING_ROOT}}"
+}

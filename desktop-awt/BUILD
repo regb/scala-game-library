@@ -12,9 +12,9 @@ scala_library(
     scalacopts=SGL_SCALACOPTS,
     deps=[
         "//core:sgl-core",
+        "//engines:sgl-screen2d",
         "//jvm-shared:jvm-shared",
-        "@maven//:net_liftweb_lift_json_2_13",
-        "@maven//:com_googlecode_soundlibs_vorbisspi",
+        "//desktop-jvm-shared:desktop-jvm-shared",
     ],
     visibility=["//visibility:public"],
 )
@@ -27,7 +27,9 @@ scala_test(
         ":sgl-desktop-awt",
         "//core:sgl-core",
         "//core:sgl-core-testlib",
+        "//engines:sgl-screen2d",
         "//jvm-shared:jvm-shared",
+        "//desktop-jvm-shared:desktop-jvm-shared",
         "@maven//:org_scalatest_scalatest_3",
     ],
     visibility=["//visibility:public"],

@@ -1,0 +1,22 @@
+{
+  "name": "sgl-website",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.14.0",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro check && astro build",
+    "preview": "astro preview",
+    "check": "astro check"
+  },
+  "dependencies": {
+    "@astrojs/check": "latest",
+    "@astrojs/mdx": "latest",
+    "@astrojs/starlight": "latest",
+    "astro": "latest",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {}
+}

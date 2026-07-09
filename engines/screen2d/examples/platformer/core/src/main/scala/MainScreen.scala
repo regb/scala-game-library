@@ -1,0 +1,111 @@
+package sgl.examples.screen2d.platformer
+package core
+
+import sgl._
+import sgl.math._
+import util._
+import sgl.util.metrics.InstrumentationProvider
+import tiled._
+
+trait MainScreenComponent extends ViewportComponent with TiledMapRendererComponent {
+  this: CanvasProvider with SystemProvider with WindowProvider with AudioProvider
+  with GameStateComponent with InstrumentationProvider
+  with LoggingProvider with TmxJsonParserComponent with AssetsProvider =>
+
+  import Graphics.{Bitmap, BitmapRegion, Canvas, Color, Animation}
+
+  private val dt: Long = 5L
+
+  class MainScreen extends FixedTimestepGameScreen(dt) {
+
+    override def name: String = "platformer-screen"
+
+    private val playerPaint = Graphics.defaultPaint.withColor(Color.Blue)
+
+    val levelLoader: Loader[TiledMap] = System.loadText(Assets.text.level).map(lvl => TmxJsonParser.parse(lvl.iterator))
+    val tiledMapRendererLoader: Loader[TiledMapRenderer] = levelLoader.flatMap { lvl =>
+      TiledMapRenderer.load(new TiledMapResolvedDensity(lvl, ScreenDensity.Mdpi, Window.logicalPpi))
+    }
+    addPreloading(levelLoader)
+    addPreloading(tiledMapRendererLoader)
+
+    val playerLoader: Loader[Bitmap] = Graphics.loadImage(Assets.drawable.player)
+    addPreloading(playerLoader)
+
+    private var map: TiledMap = _
+    private var tiledMapRenderer: TiledMapRenderer = _
+    private val viewport = new Viewport(Window.width, Window.height)
+    private var playerRect = Rect(0, 0, 0, 0)
+    private var oldPlayerRect = Rect(0, 0, 0, 0)
+    private var playerAnimation: Animation[BitmapRegion] = _
+    private var goalEllipse = Ellipse(0, 0, 0, 0)
+    private var solidCollisionLayers: Vector[TileLayer] = _
+    override def onLoaded(): Unit = {
+      map = levelLoader.value.get.get
+      tiledMapRenderer = tiledMapRendererLoader.value.get.get
+      viewport.setCamera(0, 0, map.totalWidth.toFloat, map.totalHeight.toFloat)
+      viewport.scalingStrategy = Viewport.Fit
+      val objectLayer = map.objectLayer("GameObjects")
+      playerRect = objectLayer("player").asInstanceOf[TiledMapRect].rect
+      oldPlayerRect = playerRect.clone
+      playerAnimation = new Animation(200, BitmapRegion.split(playerLoader.value.get.get, 0, 0, 30, 60, 3, 1), Animation.Loop)
+      goalEllipse = objectLayer("goal").asInstanceOf[TiledMapEllipse].ellipse
+      solidCollisionLayers = map.tileLayers.filter(_.properties.find(_.name == "collision_type").flatMap(_.stringValue).exists(_ == "solid"))
+    }
+
+    private var totalTime: Long = 0
+    override def fixedUpdate(): Unit = {
+      totalTime += dt
+
+      if(Input.isKeyPressed(Input.Keys.Left)) {
+        playerRect.left = playerRect.left - 0.15f*dt
+      }
+      if(Input.isKeyPressed(Input.Keys.Right)) {
+        playerRect.left = playerRect.left + 0.15f*dt
+      }
+      val collidingX = solidCollisionLayers.exists(tl => {
+        tl.intersectingTiles(playerRect).exists(_.nonEmpty)
+      })
+      if(collidingX) {
+        playerRect.left = oldPlayerRect.left
+      } else {
+        oldPlayerRect.left = playerRect.left
+      }
+
+      if(Input.isKeyPressed(Input.Keys.Up)) {
+        playerRect.top = playerRect.top - 0.15f*dt
+      }
+      if(Input.isKeyPressed(Input.Keys.Down)) {
+        playerRect.top = playerRect.top + 0.15f*dt
+      }
+      val collidingY = solidCollisionLayers.exists(tl => {
+        tl.intersectingTiles(playerRect).exists(_.nonEmpty)
+      })
+      if(collidingY) {
+        playerRect.top = oldPlayerRect.top
+      } else {
+        oldPlayerRect.top = playerRect.top
+      }
+    }
+
+    private val BackgroundColor = Color.rgb(0, 255, 50)
+
+    private val metricsPaint = Graphics.defaultPaint.withColor(Color.White).withFont(Graphics.Font.Monospace.withSize(20))
+
+    override def render(canvas: Canvas): Unit = {
+      canvas.drawRect(0, 0, Window.width.toFloat, Window.height.toFloat, Graphics.defaultPaint.withColor(BackgroundColor))
+      viewport.withViewport(canvas){
+        tiledMapRenderer.render(canvas, totalTime)
+
+        canvas.drawBitmap(playerAnimation.currentFrame(totalTime), playerRect.left, playerRect.top)
+        canvas.drawOval(goalEllipse.x, goalEllipse.y, goalEllipse.width, goalEllipse.height, playerPaint)
+      }
+
+      canvas.translate(0, Window.height.toFloat)
+      Metrics.renderMetrics(canvas, metricsPaint)
+      canvas.translate(0, -Window.height.toFloat)
+    }
+
+  }
+
+}

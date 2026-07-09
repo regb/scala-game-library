@@ -255,7 +255,15 @@ trait TmxJsonParserComponent {
           }
           case "imagelayer" => {
             val JString(image) = (layer \ "image": @unchecked)
-            ImageLayer(name, layerId, image, visible, opacity, offsetX.toInt, offsetY.toInt, properties)
+            val imageWidth = (layer \ "imagewidth") match {
+              case AsInt(width) => width
+              case _ => 0
+            }
+            val imageHeight = (layer \ "imageheight") match {
+              case AsInt(height) => height
+              case _ => 0
+            }
+            ImageLayer(name, layerId, image, imageWidth, imageHeight, visible, opacity, offsetX.toInt, offsetY.toInt, properties)
           }
           case tpe => throw new Exception("layer type not supported: " + tpe)
         }
@@ -277,15 +285,20 @@ trait TmxJsonParserComponent {
         val JString(name) = (tileset \ "name": @unchecked)
         val JString(image) = (tileset \ "image": @unchecked)
   
-        //those are optional in the format, and not really needed for games
-        //val AsInt(width) = (tileset \ "imagewidth": @unchecked)
-        //val AsInt(height) = (tileset \ "imageheight": @unchecked)
-  
         val AsInt(tileWidth) = (tileset \ "tilewidth": @unchecked)
         val AsInt(tileHeight) = (tileset \ "tileheight": @unchecked)
   
         val AsInt(nbColumns) = (tileset \ "columns": @unchecked)
         val AsInt(tileCount) = (tileset \ "tilecount": @unchecked)
+
+        val imageWidth = (tileset \ "imagewidth") match {
+          case AsInt(width) => width
+          case _ => nbColumns * tileWidth
+        }
+        val imageHeight = (tileset \ "imageheight") match {
+          case AsInt(height) => height
+          case _ => ((tileCount + nbColumns - 1) / nbColumns) * tileHeight
+        }
   
         val AsInt(margin) = (tileset \ "margin": @unchecked)
         val AsInt(spacing) = (tileset \ "spacing": @unchecked)
@@ -347,6 +360,7 @@ trait TmxJsonParserComponent {
                 tileCount=tileCount.toInt, nbColumns=nbColumns.toInt,
                 tileWidth=tileWidth.toInt, tileHeight=tileHeight.toInt,
                 margin=margin.toInt, spacing=spacing.toInt,
+                imageWidth=imageWidth.toInt, imageHeight=imageHeight.toInt,
                 tiles=tiles.toVector)
       }
   

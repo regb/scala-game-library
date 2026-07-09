@@ -51,6 +51,9 @@ fi
 """, executable = True)
     
     repository_ctx.file("BUILD", """
+load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
+load("@bazel_tools//tools/bash/runfiles:runfiles.bzl", "sh_binary")
+
 filegroup(
     name = "tiled_extracted",
     srcs = glob(["squashfs-root/**/*"], allow_empty = False),

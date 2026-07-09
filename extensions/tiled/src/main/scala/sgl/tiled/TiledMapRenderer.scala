@@ -1,24 +1,20 @@
 package sgl
 package tiled
 
+import sgl.assets.{AssetRuntime, DrawableAsset}
 import sgl.util.{Loader, Math}
 
 trait TiledMapRendererComponent {
-  this: SystemProvider with GraphicsProvider with WindowProvider =>
+  this: SystemProvider with CanvasProvider with WindowProvider with AssetRuntime =>
 
-  /** The function used to map a raw path from the Tiled editor to an SGL ResourcePath.
+  /** Map an imported Tiled image URI to a typed SGL drawable asset.
     *
-    * The most likely is that the path will end with something like
-    * drawable-mdpi/tileset.png, so the default implementation splits the path
-    * at the '/' and keep everything on the right of the part that starts with
-    * "drawable". You're free to provide your custom implementation if that
-    * doesn't fit your situation.
+    * The default implementation expects maps imported through `sgl_tiled_import`,
+    * which rewrites image paths to `asset://drawable/<asset-id>`. Raw editor
+    * paths are intentionally not guessed here; override this method if you load
+    * non-imported Tiled files directly.
     */
-  def tiledMapPathTransform(path: String): ResourcePath = {
-    val parts = path.split("/")
-    val filename = parts.dropWhile(part => !part.startsWith("drawable")).tail
-    MultiDPIResourcesRoot / filename.mkString("/")
-  }
+  def tiledMapImageAsset(path: String): DrawableAsset = drawableAssetFromUri(path)
 
   object TiledMapRenderer {
     /** Prepare a TiledMapRenderer.
@@ -32,25 +28,17 @@ trait TiledMapRendererComponent {
       * MDPI density, and pass ScreenDensity.Mdpi to the load method, which will then
       * adjust its behavior depending on what actual density is used for the images.
       *
-      * Finding the proper path for the images can be slightly tricky, as it
-      * depends on how you opened and configured the Tiled editor, and on
-      * the relative path between your tiled map format and the tileset. The
-      * mapping from the tiledmap path to the SGL ResourcePath is controlled by
-      * [[tiledMapPathTransform]], which you can override if you need to.
-      *
-      * The most likely is that the end of the path will contain something
-      * like drawable-mdpi/tileset.png, so the default implementation that
-      * is provided split the path at the '/' and keep everything on the right
-      * of the part that starts with "drawable". You're free to provide your
-      * custom implementation if that doesn't fit your situation.
+      * Image paths are mapped to typed drawable assets by [[tiledMapImageAsset]].
+      * The default implementation expects `asset://drawable/...` URIs produced
+      * by `sgl_tiled_import`; override it if you intentionally load raw Tiled files.
       */
      def load(tiledMapResolved: TiledMapResolvedDensity): Loader[TiledMapRenderer] = {
       val tiledMap = tiledMapResolved.tiledMap
       val tilesetsBitmaps: Vector[Loader[Graphics.Bitmap]] = tiledMap.tilesets.map(ts => {
-          Graphics.loadImage(tiledMapPathTransform(ts.image))
+          Graphics.loadImage(tiledMapImageAsset(ts.image))
       })
       val imageLayersBitmaps: Vector[Loader[Graphics.Bitmap]] = tiledMap.imageLayers.map(il => {
-        Graphics.loadImage(tiledMapPathTransform(il.image))
+        Graphics.loadImage(tiledMapImageAsset(il.image))
       })
 
       Loader.combine(tilesetsBitmaps ++ imageLayersBitmaps).map(imgs => {

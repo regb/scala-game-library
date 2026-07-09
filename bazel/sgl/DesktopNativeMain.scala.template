@@ -1,16 +1,14 @@
 package {{PACKAGE}}.desktop
 
-import {{PACKAGE}}.core._
-
-import sgl.native._
-import sgl.native.util._
-
-object {{MAIN_CLASS}} extends NativeApp with {{CORE_ABSTRACT_CLASS}}
-  with VerboseStdErrLoggingProvider {
+object {{MAIN_CLASS}} extends {{BACKEND_APP}} {{SCREEN2D_MIXIN}} with {{CORE_ABSTRACT_CLASS}}
+  with _root_.sgl.native.util.VerboseStdErrLoggingProvider
+  {{TILED_MIXINS}}{{EXTRA_MIXINS}} {
 
   override val TargetFps: Option[Int] = {{TARGET_FPS}}
 
   override val frameDimension: (Int, Int) = ({{FRAME_WIDTH}}, {{FRAME_HEIGHT}})
+
+  {{SCREEN_FORCE_PPI}}
 
   {{RESOURCE_ROOTS}}
 }

@@ -1,5 +1,6 @@
 package sgl
 
+import sgl.assets.AudioAsset
 import sgl.util.Loader
 
 /** Provides platform-specific Audio module.
@@ -204,11 +205,7 @@ trait AudioProvider {
       * we will use the most reliable format.
       * TODO: make the filetype as a typed argument.
       */
-    def loadSound(path: ResourcePath, extras: ResourcePath*): Loader[Sound]
-    def loadSound(pathes: scala.collection.Seq[ResourcePath]): Loader[Sound] = {
-      require(pathes.size >= 1)
-      loadSound(pathes.head, pathes.tail.toSeq:_*)
-    }
+    def loadSound(asset: AudioAsset, extras: AudioAsset*): Loader[Sound]
   
     /*
      * Music has a similar interface to sound, but is meant to load
@@ -306,11 +303,7 @@ trait AudioProvider {
       * we will use the most reliable format.
       * TODO: make the filetype as a typed argument.
       */
-    def loadMusic(path: ResourcePath, extras: ResourcePath*): Loader[Music]
-    def loadMusic(pathes: scala.collection.Seq[ResourcePath]): Loader[Music] = {
-      require(pathes.size >= 1)
-      loadMusic(pathes.head, pathes.tail.toSeq:_*)
-    }
+    def loadMusic(asset: AudioAsset, extras: AudioAsset*): Loader[Music]
 
   }
   val Audio: Audio
@@ -351,7 +344,7 @@ trait FakeAudioProvider extends AudioProvider {
       override def endLoop(id: PlayedSound): Unit = {}
     }
 
-    override def loadSound(path: ResourcePath, extras: ResourcePath*): Loader[Sound] = Loader.successful(new Sound)
+    override def loadSound(asset: AudioAsset, extras: AudioAsset*): Loader[Sound] = Loader.successful(new Sound)
 
     class Music extends AbstractMusic {
       override def play(): Unit = {}
@@ -362,7 +355,7 @@ trait FakeAudioProvider extends AudioProvider {
       override def dispose(): Unit = {}
     }
 
-    override def loadMusic(path: ResourcePath, extras: ResourcePath*): Loader[Music] = Loader.successful(new Music)
+    override def loadMusic(asset: AudioAsset, extras: AudioAsset*): Loader[Music] = Loader.successful(new Music)
   }
   override val Audio: Audio = FakeAudio
 }

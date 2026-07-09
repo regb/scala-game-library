@@ -179,7 +179,7 @@ object TweeningEquations {
     * PI/2 goes up slightly faster first before flattening.
     */
   private def easeOutSineNormalized(t: Float): Float = {
-    math.sin(t*math.Pi/2).toFloat
+    scala.math.sin(t*scala.math.Pi/2).toFloat
   }
   def easeOutSine: TweeningFunction = easeGeneric(easeOutSineNormalized)
   /** Compute the normalized easeInSine.
@@ -190,7 +190,7 @@ object TweeningEquations {
     * area.
     */
   private def easeInSineNormalized(t: Float): Float = {
-    math.sin(t*math.Pi/2 + 1.5*math.Pi).toFloat + 1
+    scala.math.sin(t*scala.math.Pi/2 + 1.5*scala.math.Pi).toFloat + 1
   }
   def easeInSine: TweeningFunction = easeGeneric(easeInSineNormalized)
   //TODO: easeInOutSine and easeOutInSine
@@ -221,7 +221,7 @@ object TweeningEquations {
     *       might give a better true exponential shape.
     */
   private def easeInExpNormalized(b: Float = 2, a: Float = 10)(t: Float): Float = {
-    math.pow(b, a*(t-1)).toFloat
+    scala.math.pow(b, a*(t-1)).toFloat
   }
   def easeInExp: TweeningFunction = easeGeneric(easeInExpNormalized())
   /** Compute the normalized easeInExp.
@@ -235,7 +235,7 @@ object TweeningEquations {
     * get the 0 to 1 with the out shape.
     */
   private def easeOutExpNormalized(b: Float = 2, a: Float = 10)(t: Float): Float = {
-    1 - math.pow(b, -a*t).toFloat
+    1 - scala.math.pow(b, -a*t).toFloat
   }
   def easeOutExp: TweeningFunction = easeGeneric(easeOutExpNormalized())
   //TODO: easeInOutExp and easeOutInExp
@@ -279,7 +279,7 @@ object TweeningEquations {
     * to do 1 - A*cos to start at 0 and end at 1.
     *
     * The amplitude should be computed to start at 1 and go to 0 in an
-    * exponential way, which can be done by math.pow(2, -A*t). A can be set to
+    * exponential way, which can be done by scala.math.pow(2, -A*t). A can be set to
     * control how quickly we want to get to low amplitude, but 10 seems to be a
     * good default.  Note that A can be set anywhere larger than 0, but the
     * smallest values will mean that the amplitude will be very strong for a
@@ -291,12 +291,12 @@ object TweeningEquations {
     * slightly above 1 (with a theoretical max of 2 due to the cos, but with
     * realistic value it's more like 1.4) and then slightly below again.
     *
-    * Let's put everything together, the function is 1 - math.pow(2,
-    * -A*t)*math.cos(t*P*(2*math.Pi)) with A (default 10) and P (default 2)
+    * Let's put everything together, the function is 1 - scala.math.pow(2,
+    * -A*t)*scala.math.cos(t*P*(2*scala.math.Pi)) with A (default 10) and P (default 2)
     * that can be played with to get stronger amplitude and more cycles.
     */
   private def easeOutElasticNormalized(a: Float, p: Float)(t: Float): Float =
-    (1 - math.pow(2, -a*t)*math.cos(t*p*(2*math.Pi))).toFloat
+    (1 - scala.math.pow(2, -a*t)*scala.math.cos(t*p*(2*scala.math.Pi))).toFloat
   def easeOutElastic(a: Float = 10, p: Float = 2): TweeningFunction = easeGeneric(easeOutElasticNormalized(a, p))
 
 }

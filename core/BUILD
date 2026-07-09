@@ -30,6 +30,7 @@ scala_test(
     scalacopts=SGL_SCALACOPTS,
     deps = [
         ":sgl-core",
+        "//engines:sgl-screen2d",
         "@maven//:org_scalatest_scalatest_3",
     ],
     visibility=["//visibility:public"],

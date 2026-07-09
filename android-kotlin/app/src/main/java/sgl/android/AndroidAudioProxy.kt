@@ -8,7 +8,6 @@ import scala.Option
 import sgl.proxy.AudioProxy
 import sgl.proxy.MusicProxy
 import sgl.proxy.ProxyResourceNotFoundException
-import sgl.proxy.ResourcePathProxy
 import sgl.proxy.SoundProxy
 import sgl.util.DefaultLoader
 import sgl.util.Loader
@@ -95,18 +94,14 @@ class AndroidAudioProxy(private val context: Context) : AudioProxy {
         }
     }
     
-    override fun loadSound(path: ResourcePathProxy?, extras: MutableList<ResourcePathProxy>?): Loader<SoundProxy> {
-        if (path == null) {
-            return Loader.failed<SoundProxy>(IllegalArgumentException("ResourcePathProxy cannot be null for loadSound"))
-        }
+    override fun loadSound(resourceName: String?, extras: MutableList<String>?): Loader<SoundProxy> {
+        val path = resourceName ?: return Loader.failed<SoundProxy>(IllegalArgumentException("Resource name cannot be null for loadSound"))
         
         initSoundPool()
         
-        val chosenResource = chooseSupportedAudioResource(path, extras)
-            ?: return Loader.failed<SoundProxy>(IllegalArgumentException("Paths must be AndroidResourcePathProxy instances"))
+        val assetPath = chooseSupportedAudioResource(path, extras)
         
         return try {
-            val assetPath = chosenResource.generatePathString()
             val am = context.assets
             val afd = am.openFd(assetPath)
             val soundId = soundPool?.load(afd, 1)
@@ -120,22 +115,18 @@ class AndroidAudioProxy(private val context: Context) : AudioProxy {
                 if (status == 0) {
                     loader.success(AndroidSoundProxy(this, soundId, 0, 1f, null))
                 } else {
-                    loader.failure(RuntimeException("Sound $chosenResource failed to load with status: $status"))
+                    loader.failure(RuntimeException("Sound $assetPath failed to load with status: $status"))
                 }
             }
             loader.loader()
         } catch (e: IOException) {
-            Loader.failed<SoundProxy>(ProxyResourceNotFoundException(path))
+            Loader.failed<SoundProxy>(ProxyResourceNotFoundException(assetPath))
         }
     }
 
-    override fun loadMusic(path: ResourcePathProxy?, extras: MutableList<ResourcePathProxy>?): Loader<MusicProxy> {
-        if (path == null) {
-            return Loader.failed<MusicProxy>(IllegalArgumentException("ResourcePathProxy cannot be null for loadMusic"))
-        }
-        
+    override fun loadMusic(resourceName: String?, extras: MutableList<String>?): Loader<MusicProxy> {
+        val path = resourceName ?: return Loader.failed<MusicProxy>(IllegalArgumentException("Resource name cannot be null for loadMusic"))
         val chosenResource = chooseSupportedAudioResource(path, extras)
-            ?: return Loader.failed<MusicProxy>(IllegalArgumentException("Paths must be AndroidResourcePathProxy instances"))
         
         return try {
             val music = AndroidMusicProxy(context, chosenResource, this)
@@ -146,20 +137,19 @@ class AndroidAudioProxy(private val context: Context) : AudioProxy {
             }
             Loader.successful<MusicProxy>(music)
         } catch (e: IOException) {
-            Loader.failed<MusicProxy>(ProxyResourceNotFoundException(path))
+            Loader.failed<MusicProxy>(ProxyResourceNotFoundException(chosenResource))
         }
     }
 
     private fun chooseSupportedAudioResource(
-        path: ResourcePathProxy,
-        extras: MutableList<ResourcePathProxy>?,
-    ): AndroidResourcePathProxy? {
+        path: String,
+        extras: MutableList<String>?,
+    ): String {
         val candidates = listOf(path) + (extras ?: emptyList())
-        val androidCandidates = candidates.map { it as? AndroidResourcePathProxy ?: return null }
-        return androidCandidates.firstOrNull { candidate ->
-            val extension = if (candidate.extension().isEmpty()) "" else candidate.extension().get()
+        return candidates.firstOrNull { candidate ->
+            val extension = candidate.substringAfterLast('.', "")
             SUPPORTED_AUDIO_FORMATS.contains(extension)
-        } ?: androidCandidates.first()
+        } ?: candidates.first()
     }
     
     private inner class SoundPoolOnLoadCompleteListener : SoundPool.OnLoadCompleteListener {
@@ -262,7 +252,7 @@ class AndroidSoundProxy(
 
 class AndroidMusicProxy(
     private val context: Context,
-    private val path: AndroidResourcePathProxy,
+    private val path: String,
     private val audioProxy: AndroidAudioProxy
 ) : MusicProxy, MediaPlayer.OnPreparedListener, MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener {
 
@@ -458,9 +448,9 @@ class AndroidMusicProxy(
         }
     }
 
-    private fun initPlayer(path: AndroidResourcePathProxy): MediaPlayer {
+    private fun initPlayer(path: String): MediaPlayer {
         val mp = MediaPlayer()
-        val assetPath = path.generatePathString()
+        val assetPath = path
         val afd = context.assets.openFd(assetPath)
         mp.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
         afd.close()

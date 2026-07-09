@@ -25,7 +25,7 @@ object InputEvent {
 }
 
 trait AWTInputProvider {
-  this: AWTWindowProvider with GameStateComponent with GraphicsProvider with SystemProvider with LoggingProvider =>
+  this: AWTWindowProvider with CanvasProvider with SystemProvider with LoggingProvider =>
 
   private val pool = new Pool(() => new InputEvent, 15)
 

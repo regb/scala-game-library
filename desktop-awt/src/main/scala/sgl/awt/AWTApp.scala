@@ -1,18 +1,28 @@
 package sgl
 package awt
 
+import sgl.desktop.JavaSoundAudioProvider
 import sgl.util._
 
 import java.awt.image.BufferedImage
 import java.awt.{Graphics2D, RenderingHints, Rectangle}
 import java.awt
 
-trait AWTApp extends GameApp 
-                with AWTGraphicsProvider with AWTInputProvider with AWTAudioProvider
-                with AWTWindowProvider with AWTSystemProvider with ThreadPoolSchedulerProvider
-                with GameStateComponent {
+trait AWTApp extends AWTCanvasProvider with AWTInputProvider with JavaSoundAudioProvider
+                with AWTWindowProvider with ThreadPoolSchedulerProvider {
 
-  this: LoggingProvider =>
+  this: Application with LoggingProvider with DesktopSystemProvider =>
+
+  val TargetFps: Option[Int] = Some(30)
+  private def framePeriod(fps: Int): Long = (1000.0 / fps.toDouble).toLong
+
+  private var currentFrameCanvas: Option[Graphics.Canvas] = None
+
+  override def withFrameCanvas[A](f: Graphics.Canvas => A): A =
+    currentFrameCanvas match {
+      case Some(canvas) => f(canvas)
+      case None => throw new IllegalStateException("Canvas is only available during a frame")
+    }
 
   /*
    * We use a separate thread to run the game loop as, I believe, the AWT
@@ -65,8 +75,6 @@ trait AWTApp extends GameApp
       override def windowClosing(windowEvent: java.awt.event.WindowEvent): Unit = {
         pauseThread()
         Scheduler.shutdown()
-        lifecycleListener.pause()
-        lifecycleListener.shutdown()
       }
     })
     
@@ -82,10 +90,8 @@ trait AWTApp extends GameApp
     this.registerInputListeners()
     this.Audio.init()
 
-    gameState.newScreen(startingScreen)
+    create()
 
-    lifecycleListener.startup()
-    lifecycleListener.resume()
     // TODO: pause on minimize window ?
 
     println("xppi: " + Window.xppi)
@@ -198,7 +204,9 @@ trait AWTApp extends GameApp
               // shifting it back by the lost fraction.
               lastTime = newTime - (elapsed - dt*1000*1000)
 
-              gameLoopStep(dt, canvas)
+              currentFrameCanvas = Some(canvas)
+              try frame(dt.toDouble)
+              finally currentFrameCanvas = None
 
               g.dispose()
               contentsRestored = strategy.contentsRestored()

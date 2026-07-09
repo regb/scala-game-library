@@ -1,27 +1,19 @@
 package {{PACKAGE}}.desktop
 
-import sgl._
-import sgl.awt._
-import sgl.awt.util._
-
-import sgl.analytics.LoggedAnalyticsProvider
-import sgl.ads.NoAdsProvider
-import sgl.util.metrics.DefaultInstrumentationProvider
-
-object {{MAIN_CLASS}} extends AWTApp with {{CORE_ABSTRACT_CLASS}}
-  with VerboseStdErrLoggingProvider
-  with LiftJsonProvider
-  with GameLoopStatisticsComponent
-  with DefaultInstrumentationProvider
-  with NoAdsProvider
-  with LoggedAnalyticsProvider
+object {{MAIN_CLASS}} extends _root_.sgl.awt.AWTApp {{SCREEN2D_MIXIN}} with {{CORE_ABSTRACT_CLASS}}
+  with _root_.sgl.DesktopSystemProvider
+  with _root_.sgl.desktop.util.VerboseStdErrLoggingProvider
+  with _root_.sgl.desktop.util.LiftJsonProvider
+  {{GAME_LOOP_STATISTICS_MIXIN}}
+  with _root_.sgl.util.metrics.DefaultInstrumentationProvider
+  with _root_.sgl.ads.NoAdsProvider
+  with _root_.sgl.analytics.LoggedAnalyticsProvider
+  {{TILED_MIXINS}}{{EXTRA_MIXINS}}
   with {{SAVE_COMPONENT}}
 {
   override val TargetFps: Option[Int] = Some(60)
 
   override val frameDimension = ({{FRAME_WIDTH}}, {{FRAME_HEIGHT}})
-
-  override val DynamicResourcesEnabled = true
 
   override val ScreenForcePPI: Option[Float] = Some(160f)
 

@@ -6,64 +6,55 @@ import sgl.util.LoggingProvider
 import org.scalajs.dom
 import dom.html
 
+import scala.collection.mutable
+
+/** Controls where the HTML5 backend listens for keyboard events.
+  *
+  * The default keeps the historical standalone-game behavior: keyboard events
+  * are captured globally by the page/window. Embedded games can opt into
+  * CanvasFocused so surrounding UI, such as forms or chat inputs, owns the
+  * keyboard unless the game canvas is focused.
+  */
+sealed trait Html5KeyboardCaptureMode
+
+object Html5KeyboardCaptureMode {
+  case object Global extends Html5KeyboardCaptureMode
+  case object CanvasFocused extends Html5KeyboardCaptureMode
+}
 
 /* TODO: Explain that due to JS event loop, the input events are always handled outside
  * game loop update.
  * But it's important that game loop update also happen with regular the regular event loop.
  */
 trait Html5InputProvider {
-  this: Html5App with LoggingProvider =>
+  this: Html5SystemProvider with LoggingProvider =>
 
-  import Input._
+  def htmlCanvas: html.Canvas
 
-  private def mouseEventButton(e: dom.MouseEvent): MouseButtons.MouseButton = e.button match {
-    case 0 => MouseButtons.Left
-    case 1 => MouseButtons.Middle
-    case 2 => MouseButtons.Right
-    case _ =>  {
-      //TODO: log unexpected code
-      MouseButtons.Left
-    }
-  }
+  /** Controls where keyboard events are listened for. */
+  protected val Html5KeyboardCapture: Html5KeyboardCaptureMode = Html5KeyboardCaptureMode.Global
 
-  /* 
-   * The actual coordinates need to be translated to the canvas coordinates.
-   * First we need to offset them by the canvas top-left coordinates, then we
-   * need to adapt them to the actual canvas size.
-   * The canvas internal size can differ from its CSS size. The event contains
-   * CSS coordinates, so scale them to the actual canvas coordinate system.
-   */
-  private def getCursorPosition(canvas: html.Canvas, clientX: Int, clientY: Int): (Int, Int) = {
-    val rect = canvas.getBoundingClientRect()
-    val scaleX = canvas.width.toDouble / rect.width
-    val scaleY = canvas.height.toDouble / rect.height
-    val x = ((clientX - rect.left)*scaleX).toInt
-    val y = ((clientY - rect.top)*scaleY).toInt
-    (x, y)
-  }
-  private def getCursorPosition(canvas: html.Canvas, e: dom.MouseEvent): (Int, Int) = {
-    getCursorPosition(canvas, e.clientX.toInt, e.clientY.toInt)
-  }
+  /** Whether keyboard events captured by the game should prevent browser defaults. */
+  protected val Html5KeyboardPreventDefault: Boolean = true
+
+  /** Whether mouse events captured by the game should prevent browser defaults. */
+  protected val Html5MousePreventDefault: Boolean = true
+
+  /** Whether wheel events captured by the game should prevent browser defaults. */
+  protected val Html5WheelPreventDefault: Boolean = true
+
+  /** Whether touch events captured by the game should prevent browser defaults. */
+  protected val Html5TouchPreventDefault: Boolean = true
+
+  /** Whether touch events captured by the game should stop propagation. */
+  protected val Html5TouchStopPropagation: Boolean = true
 
   // We track if the user has interacted with the game in any significant way (touch, click,
   // pressed keys?). This is because some browsers have a policy to not autoplay music, and
   // we need to wait for an actual user action before being able to play.
-  private val MaxTouchPointers = 10
-  private val touchIdentifiers = new scala.collection.mutable.HashMap[Int, Int]
-
-  private def sglTouchPointer(touchIdentifier: Int): Int = {
-    touchIdentifiers.getOrElseUpdate(touchIdentifier, {
-      val usedPointers = touchIdentifiers.values.toSet
-      (0 until MaxTouchPointers).find(!usedPointers.contains(_)).getOrElse(0)
-    })
-  }
-
-  private def releaseSglTouchPointer(touchIdentifier: Int): Unit = {
-    touchIdentifiers.remove(touchIdentifier)
-  }
-
   private var hasUserInteracted = false
   private val actionsOnUserInteraction = new scala.collection.mutable.ListBuffer[() => Unit]
+
   // The function registered here will be called either immediately if the user already
   // interacted with the page, or on the initial interaction.
   def onInitialUserInteraction(f: () => Unit): Unit = {
@@ -71,6 +62,7 @@ trait Html5InputProvider {
       actionsOnUserInteraction.append(() => f())
     }
   }
+
   private def triggerUserInteraction(): Unit = {
     if(!hasUserInteracted) {
       hasUserInteracted = true
@@ -81,6 +73,60 @@ trait Html5InputProvider {
   }
 
   def registerInputListeners(): Unit = {
+    Html5DomInputAdapter.register(
+      canvas = this.htmlCanvas,
+      keyboardCapture = Html5KeyboardCapture,
+      onUserInteraction = () => triggerUserInteraction(),
+      keyboardPreventDefault = Html5KeyboardPreventDefault,
+      mousePreventDefault = Html5MousePreventDefault,
+      wheelPreventDefault = Html5WheelPreventDefault,
+      touchPreventDefault = Html5TouchPreventDefault,
+      touchStopPropagation = Html5TouchStopPropagation,
+    )
+  }
+}
+
+private[html5] object Html5DomInputAdapter {
+
+  def register(
+    canvas: html.Canvas,
+    keyboardCapture: Html5KeyboardCaptureMode,
+    onUserInteraction: () => Unit = () => (),
+    globalKeyboardTarget: dom.EventTarget = dom.document,
+    keyboardPreventDefault: Boolean = true,
+    mousePreventDefault: Boolean = true,
+    wheelPreventDefault: Boolean = true,
+    touchPreventDefault: Boolean = true,
+    touchStopPropagation: Boolean = true,
+    releaseMouseOnLeave: Boolean = false,
+    releaseMouseOnWindowMouseUp: Boolean = false,
+    onWindowBlur: () => Unit = () => (),
+    onWindowFocus: () => Unit = () => (),
+  ): Unit = {
+    val captureKeyboardOnCanvas = keyboardCapture == Html5KeyboardCaptureMode.CanvasFocused
+
+    var mouseIsDown = false
+    var activeMouseButton: Input.MouseButtons.MouseButton = Input.MouseButtons.Left
+    var lastMouseX = 0
+    var lastMouseY = 0
+
+    def releaseMouse(): Unit = {
+      if(mouseIsDown) {
+        mouseIsDown = false
+        Input.inputProcessor.mouseUp(lastMouseX, lastMouseY, activeMouseButton)
+      }
+    }
+
+    val pressedKeys = mutable.Set.empty[Input.Keys.Key]
+    def releaseKeyboard(): Unit = {
+      val keysToRelease = pressedKeys.toList
+      pressedKeys.clear()
+      keysToRelease.foreach(Input.inputProcessor.keyUp)
+    }
+
+    def consumeMouseEvent(e: dom.MouseEvent): Unit = {
+      if(mousePreventDefault) e.preventDefault()
+    }
 
     /*
      * Note that we don't listen to the click event and instead try to
@@ -93,106 +139,182 @@ trait Html5InputProvider {
      * require a bunch of refactoring as the aggregation of events happens in
      * the core module, and is thus platform agnostic.
      */
- 
-    this.htmlCanvas.addEventListener("mousedown", (e: dom.MouseEvent) => {
-      triggerUserInteraction()
-      val (x,y) = getCursorPosition(this.htmlCanvas, e)
-      Input.inputProcessor.mouseDown(x, y, mouseEventButton(e))
-    })
-    this.htmlCanvas.addEventListener("mouseup", (e: dom.MouseEvent) => {
-      triggerUserInteraction()
-      val (x,y) = getCursorPosition(this.htmlCanvas, e)
-      Input.inputProcessor.mouseUp(x, y, mouseEventButton(e))
-    })
-    this.htmlCanvas.addEventListener("mousemove", (e: dom.MouseEvent) => {
-      val (x,y) = getCursorPosition(this.htmlCanvas, e)
+    canvas.addEventListener("mousemove", { (e: dom.MouseEvent) =>
+      consumeMouseEvent(e)
+      val (x, y) = cursorPosition(canvas, e)
+      lastMouseX = x
+      lastMouseY = y
       Input.inputProcessor.mouseMoved(x, y)
     })
+    canvas.addEventListener("mousedown", { (e: dom.MouseEvent) =>
+      consumeMouseEvent(e)
+      onUserInteraction()
+      val (x, y) = cursorPosition(canvas, e)
+      lastMouseX = x
+      lastMouseY = y
+      activeMouseButton = mouseButton(e.button.toInt)
+      mouseIsDown = true
+      Input.inputProcessor.mouseDown(x, y, activeMouseButton)
+    })
+    canvas.addEventListener("mouseup", { (e: dom.MouseEvent) =>
+      consumeMouseEvent(e)
+      onUserInteraction()
+      val (x, y) = cursorPosition(canvas, e)
+      lastMouseX = x
+      lastMouseY = y
+      releaseMouse()
+    })
+    if(releaseMouseOnLeave) {
+      canvas.addEventListener("mouseleave", { (_: dom.MouseEvent) => releaseMouse() })
+    }
+    canvas.addEventListener("wheel", { (e: dom.WheelEvent) =>
+      if(wheelPreventDefault) e.preventDefault()
+      Input.inputProcessor.mouseScrolled(e.deltaY.toInt)
+    })
+    if(releaseMouseOnWindowMouseUp) {
+      dom.window.addEventListener("mouseup", { (_: dom.MouseEvent) => releaseMouse() })
+    }
+
+    val touchPointers = new mutable.HashMap[Int, Int]
+    def sglTouchPointer(touchIdentifier: Int): Int = {
+      touchPointers.getOrElseUpdate(touchIdentifier, {
+        val usedPointers = touchPointers.values.toSet
+        (0 until MaxTouchPointers).find(!usedPointers.contains(_)).getOrElse(0)
+      })
+    }
+    def releaseSglTouchPointer(touchIdentifier: Int): Unit = {
+      touchPointers.remove(touchIdentifier)
+    }
+
+    def consumeTouchEvent(touchEvent: dom.TouchEvent): Unit = {
+      if(touchPreventDefault) touchEvent.preventDefault()
+      if(touchStopPropagation) touchEvent.stopPropagation()
+    }
 
     /*
-     * for touch events, we use evt.preventDefault to
-     * try to avoid the trigger of emulated mouse events that
-     * mobile browsers tend to send, we want to capture only
-     * the touch event, and not a duplicated mouse event since
-     * we assume our game handles both correctly.
+     * For touch events, preventDefault is commonly used to avoid emulated mouse
+     * events that mobile browsers tend to send after touch input. We want to
+     * capture the touch event without also receiving a duplicated mouse event,
+     * since SGL assumes the game handles both correctly.
      *
-     * It seems that preventDefault in the touchstart event will
-     * also prevent the user from scrolling. This is fine, as long
-     * as we assume scrolling is handled entirely by the game input
-     * management. Since we only cancel a touchstart on the canvas
-     * itself, the user could still scroll or zoom the rest of the
-     * page if the canvas app is part of a bigger page, and otherwise
-     * we are supposed to handle precisely the touch behaviour, so
-     * either we scroll the canvas content itself, or make sure it always
-     * fits the whole viewport.
+     * preventDefault on touchstart also prevents browser scrolling. This is the
+     * desired default for standalone canvas games, but it is configurable because
+     * embedded games may want the rest of the page to keep normal scroll/zoom
+     * behavior. Since touch listeners are registered on the canvas itself, the
+     * impact is local to touches that start on the game canvas.
      */
-
-    this.htmlCanvas.addEventListener("touchstart", (e: dom.Event) => {
-      triggerUserInteraction()
+    canvas.addEventListener("touchstart", { (e: dom.Event) =>
+      onUserInteraction()
       val touchEvent = e.asInstanceOf[dom.TouchEvent]
-      touchEvent.preventDefault()
-      touchEvent.stopPropagation()
+      consumeTouchEvent(touchEvent)
       val touches = touchEvent.changedTouches
 
       var i = 0
       while(i < touches.length) {
         val touch = touches(i)
         i += 1
-        val (x,y) = getCursorPosition(this.htmlCanvas, touch.clientX.toInt, touch.clientY.toInt)
+        val (x, y) = cursorPosition(canvas, touch.clientX.toInt, touch.clientY.toInt)
         val id = sglTouchPointer(touch.identifier.toInt)
         Input.inputProcessor.touchDown(x, y, id)
       }
     })
-    this.htmlCanvas.addEventListener("touchend", (e: dom.Event) => {
-      triggerUserInteraction()
+    canvas.addEventListener("touchend", { (e: dom.Event) =>
+      onUserInteraction()
       val touchEvent = e.asInstanceOf[dom.TouchEvent]
-      touchEvent.preventDefault()
-      touchEvent.stopPropagation()
+      consumeTouchEvent(touchEvent)
       val touches = touchEvent.changedTouches
 
       var i = 0
       while(i < touches.length) {
         val touch = touches(i)
         i += 1
-        val (x,y) = getCursorPosition(this.htmlCanvas, touch.clientX.toInt, touch.clientY.toInt)
+        val (x, y) = cursorPosition(canvas, touch.clientX.toInt, touch.clientY.toInt)
         val touchIdentifier = touch.identifier.toInt
         val id = sglTouchPointer(touchIdentifier)
         Input.inputProcessor.touchUp(x, y, id)
         releaseSglTouchPointer(touchIdentifier)
       }
     })
-    this.htmlCanvas.addEventListener("touchmove", (e: dom.Event) => {
+    canvas.addEventListener("touchmove", { (e: dom.Event) =>
       val touchEvent = e.asInstanceOf[dom.TouchEvent]
-      touchEvent.preventDefault()
-      touchEvent.stopPropagation()
+      consumeTouchEvent(touchEvent)
       val touches = touchEvent.changedTouches
 
       var i = 0
       while(i < touches.length) {
         val touch = touches(i)
         i += 1
-        val (x,y) = getCursorPosition(this.htmlCanvas, touch.clientX.toInt, touch.clientY.toInt)
+        val (x, y) = cursorPosition(canvas, touch.clientX.toInt, touch.clientY.toInt)
         val id = sglTouchPointer(touch.identifier.toInt)
         Input.inputProcessor.touchMoved(x, y, id)
       }
     })
 
-    dom.document.addEventListener("keydown", (e: dom.KeyboardEvent) => {
-      triggerUserInteraction()
-      domEventToKey(e).foreach(key =>
-        Input.inputProcessor.keyDown(key)
-      )
+    val keyboardTarget: dom.EventTarget = if(captureKeyboardOnCanvas) canvas else globalKeyboardTarget
+
+    keyboardTarget.addEventListener("keydown", { (event: dom.Event) =>
+      val e = event.asInstanceOf[dom.KeyboardEvent]
+      key(e).foreach { k =>
+        if(keyboardPreventDefault) e.preventDefault()
+        onUserInteraction()
+        if(!pressedKeys(k)) {
+          pressedKeys += k
+          Input.inputProcessor.keyDown(k)
+        }
+      }
     })
-    dom.document.addEventListener("keyup", (e: dom.KeyboardEvent) => {
-      triggerUserInteraction()
-      domEventToKey(e).foreach(key =>
-        Input.inputProcessor.keyUp(key)
-      )
+    keyboardTarget.addEventListener("keyup", { (event: dom.Event) =>
+      val e = event.asInstanceOf[dom.KeyboardEvent]
+      key(e).foreach { k =>
+        if(keyboardPreventDefault) e.preventDefault()
+        onUserInteraction()
+        if(pressedKeys.remove(k)) {
+          Input.inputProcessor.keyUp(k)
+        }
+      }
     })
+
+    dom.window.addEventListener("blur", { (_: dom.Event) =>
+      releaseMouse()
+      releaseKeyboard()
+      onWindowBlur()
+    })
+    if(captureKeyboardOnCanvas) {
+      canvas.addEventListener("blur", { (_: dom.FocusEvent) => releaseKeyboard() })
+    }
+    dom.window.addEventListener("focus", { (_: dom.Event) => onWindowFocus() })
   }
 
-  //TODO: will need to make it more cross browser compatible
-  private def domEventToKey(e: dom.KeyboardEvent): Option[Keys.Key] = e.keyCode match {
+  private val MaxTouchPointers = 10
+
+  /*
+   * The actual coordinates need to be translated to canvas coordinates.
+   * First offset them by the canvas top-left coordinates, then adapt them to
+   * the canvas backing-store size. The event contains CSS coordinates, while the
+   * canvas internal size can differ from its CSS size, especially on high-DPI
+   * displays.
+   */
+  private def cursorPosition(canvas: html.Canvas, e: dom.MouseEvent): (Int, Int) =
+    cursorPosition(canvas, e.clientX.toInt, e.clientY.toInt)
+
+  private def cursorPosition(canvas: html.Canvas, clientX: Int, clientY: Int): (Int, Int) = {
+    val rect = canvas.getBoundingClientRect()
+    val scaleX = canvas.width.toDouble / rect.width
+    val scaleY = canvas.height.toDouble / rect.height
+    val x = ((clientX - rect.left) * scaleX).toInt
+    val y = ((clientY - rect.top) * scaleY).toInt
+    (x, y)
+  }
+
+  private def mouseButton(button: Int): Input.MouseButtons.MouseButton = button match {
+    case 1 => Input.MouseButtons.Middle
+    case 2 => Input.MouseButtons.Right
+    // TODO: log unexpected button codes.
+    case _ => Input.MouseButtons.Left
+  }
+
+  // TODO: will need to make it more cross-browser compatible.
+  private def key(e: dom.KeyboardEvent): Option[Input.Keys.Key] = e.keyCode match {
     case 32 => Some(Input.Keys.Space)
 
     case 37 => Some(Input.Keys.Left)
@@ -240,5 +362,4 @@ trait Html5InputProvider {
 
     case _ => None
   }
-
 }

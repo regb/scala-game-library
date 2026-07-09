@@ -1,0 +1,29 @@
+---
+title: Platforms
+description: Desktop, web, native, and mobile targets.
+---
+
+Supported backend families include:
+
+- Desktop JVM with AWT Canvas
+- Desktop JVM with LWJGL/OpenGL/OpenAL
+- HTML5 Canvas and WebGL via Scala.js
+- Desktop native via Scala Native and SDL2
+- Android through the proxy backend / Android Kotlin integration
+
+```bash
+bazel build //examples/hello-canvas:desktop-awt
+bazel build //examples/hello-scalagl:html5
+bazel build //engines/gameobject/examples/asteroids:desktop-native
+```
+
+## Asset roots
+
+Application code should use typed generated assets. Backend-specific roots are implementation details:
+
+- JVM desktop loads packaged classpath resources from the core target.
+- HTML5 serves copied assets below the generated `Html5AssetsServingRoot`.
+- Scala Native loads copied assets below `NativeAssetsRoot`.
+- Proxy backends, including Android Kotlin, receive plain string resource names from SGL and map them to platform-specific asset systems.
+
+Bazel app rules generate the backend-specific root overrides; game code should not depend on those root strings.

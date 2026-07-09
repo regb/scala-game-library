@@ -66,6 +66,8 @@ class TiledMapResolvedDensity(rawTiledMap: TiledMap, referenceScreenDensity: Scr
     
     case imageLayer: ImageLayer =>
       imageLayer.copy(
+        width = (imageLayer.width * scalingFactor).toInt,
+        height = (imageLayer.height * scalingFactor).toInt,
         offsetX = (imageLayer.offsetX * scalingFactor).toInt,
         offsetY = (imageLayer.offsetY * scalingFactor).toInt
       )
@@ -144,6 +146,8 @@ class TiledMapResolvedDensity(rawTiledMap: TiledMap, referenceScreenDensity: Scr
       tileWidth = (tileset.tileWidth * scalingFactor).toInt,
       margin = (tileset.margin * scalingFactor).toInt,
       spacing = (tileset.spacing * scalingFactor).toInt,
+      imageWidth = (tileset.imageWidth * scalingFactor).toInt,
+      imageHeight = (tileset.imageHeight * scalingFactor).toInt,
       tiles = scaleTilesetTiles(tileset.tiles)
     )
   }
