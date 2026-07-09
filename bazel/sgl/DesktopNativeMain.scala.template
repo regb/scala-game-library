@@ -1,0 +1,16 @@
+package {{PACKAGE}}.desktop
+
+import {{PACKAGE}}.core._
+
+import sgl.native._
+import sgl.native.util._
+
+object {{MAIN_CLASS}} extends NativeApp with {{CORE_ABSTRACT_CLASS}}
+  with VerboseStdErrLoggingProvider {
+
+  override val TargetFps: Option[Int] = {{TARGET_FPS}}
+
+  override val frameDimension: (Int, Int) = ({{FRAME_WIDTH}}, {{FRAME_HEIGHT}})
+
+  {{RESOURCE_ROOTS}}
+}
