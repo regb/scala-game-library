@@ -1,3 +1,17 @@
+load("//bazel/sgl:assets.bzl", "SglAssetsInfo")
+
+
+def _android_resource_name(name):
+    normalized = ""
+    lowercase = name.lower()
+    for index in range(len(lowercase)):
+        char = lowercase[index]
+        normalized += char if char in "abcdefghijklmnopqrstuvwxyz0123456789_" else "_"
+    if not normalized or normalized[0] not in "abcdefghijklmnopqrstuvwxyz":
+        normalized = "asset_" + normalized
+    return normalized
+
+
 def _label_and_jar(package_name, label):
     if label.startswith(":"):
         name = label[1:]
@@ -8,6 +22,21 @@ def _label_and_jar(package_name, label):
 
     jar = "bazel-bin/%s/%s.jar" % (package_name, name) if package_name else "bazel-bin/%s.jar" % name
     return full_label, jar
+
+
+def _system_bars_mode(value):
+    return {
+        "safe-area": "AndroidSystemBarsMode.SafeArea",
+        "edge-to-edge": "AndroidSystemBarsMode.EdgeToEdge",
+        "immersive": "AndroidSystemBarsMode.Immersive",
+    }[value]
+
+
+def _system_bars_behavior(value):
+    return {
+        "default": "AndroidSystemBarsBehavior.Default",
+        "transient-by-swipe": "AndroidSystemBarsBehavior.TransientBySwipe",
+    }[value]
 
 
 def _expand(ctx, template, output, substitutions):
@@ -22,9 +51,13 @@ def _android_runner_impl(ctx):
     package_path = ctx.attr.package.replace(".", "/")
     android_rule_dir_suffix = "/bazel/sgl/android"
     android_rule_dir = ctx.file._runner_template.dirname
-    if not android_rule_dir.endswith(android_rule_dir_suffix):
+    if android_rule_dir == android_rule_dir_suffix.lstrip("/"):
+        inferred_android_root = "."
+    elif android_rule_dir.endswith(android_rule_dir_suffix):
+        inferred_android_root = android_rule_dir[:-len(android_rule_dir_suffix)]
+    else:
         fail("Unexpected SGL Android rule path: %s" % android_rule_dir)
-    sgl_android_repo_root = ctx.attr.sgl_android_root or android_rule_dir[:-len(android_rule_dir_suffix)]
+    sgl_android_repo_root = ctx.attr.sgl_android_root or inferred_android_root
     project_sgl_android_root = "@SGL_ANDROID_ROOT@"
     game_labels = []
     game_jars = []
@@ -88,9 +121,53 @@ def _android_runner_impl(ctx):
         "@OPTIONAL_RES_VALUES@": ("\n".join(optional_res_values) + "\n") if optional_res_values else "",
         "@VERSION_CODE@": str(ctx.attr.version_code),
         "@VERSION_NAME@": ctx.attr.version_name,
+        "@ENABLE_BACK_BUTTON_EVENTS@": str(ctx.attr.enable_back_button_events).lower(),
+        "@KEEP_SCREEN_ON@": str(ctx.attr.keep_screen_on).lower(),
+        "@SYSTEM_BARS_MODE@": _system_bars_mode(ctx.attr.system_bars_mode),
+        "@SYSTEM_BARS_BEHAVIOR@": _system_bars_behavior(ctx.attr.system_bars_behavior),
+        "@NAVIGATION_BAR_CONTRAST_ENFORCED@": str(ctx.attr.navigation_bar_contrast_enforced).lower(),
     }
 
     project_files = []
+    typed_asset_lines = []
+    typed_asset_files = []
+    android_drawable_destinations = {}
+    for group in ctx.attr.assets:
+        info = group[SglAssetsInfo]
+        for file in info.drawables.to_list():
+            marker_index = file.path.rfind("/drawable-")
+            if marker_index < 0:
+                fail("Typed drawable output has no drawable density directory: %s" % file.path)
+            relative_path = file.path[marker_index + 1:]
+            density_directory = relative_path.split("/", 1)[0]
+            extension_index = file.basename.rfind(".")
+            extension = file.basename[extension_index:].lower() if extension_index >= 0 else ""
+            stem = file.basename[:extension_index] if extension_index >= 0 else file.basename
+            destination = "res/%s/%s%s" % (density_directory, _android_resource_name(stem), extension)
+            if destination in android_drawable_destinations:
+                fail("Typed drawables %s and %s both map to Android resource %s" % (android_drawable_destinations[destination], file.path, destination))
+            android_drawable_destinations[destination] = file.path
+            typed_asset_lines.append("%s\t%s" % (file.path, destination))
+            typed_asset_files.append(file)
+        for category, files in [
+            ("raw-image", info.raw_images.to_list()),
+            ("binary", info.binaries.to_list()),
+            ("text", info.texts.to_list()),
+            ("audio", info.audio.to_list()),
+            ("font", info.fonts.to_list()),
+        ]:
+            marker = "/%s/" % category
+            for file in files:
+                marker_index = file.path.rfind(marker)
+                if marker_index < 0:
+                    fail("Typed %s output has no category directory: %s" % (category, file.path))
+                typed_asset_lines.append("%s\tassets/%s" % (file.path, file.path[marker_index + 1:]))
+                typed_asset_files.append(file)
+
+    typed_assets_manifest = ctx.actions.declare_file("%s/typed-assets.tsv" % project_template_dir)
+    ctx.actions.write(typed_assets_manifest, "\n".join(typed_asset_lines))
+    project_files.append(typed_assets_manifest)
+
     outputs = [
         (ctx.file._settings_template, ctx.actions.declare_file("%s/settings.gradle.kts" % project_template_dir), substitutions),
         (ctx.file._root_build_template, ctx.actions.declare_file("%s/build.gradle.kts" % project_template_dir), substitutions),
@@ -126,8 +203,8 @@ def _android_runner_impl(ctx):
     return [
         DefaultInfo(
             executable = runner,
-            files = depset([runner] + project_files),
-            runfiles = ctx.runfiles(files = project_files),
+            files = depset([runner] + project_files + typed_asset_files),
+            runfiles = ctx.runfiles(files = project_files + typed_asset_files),
         ),
     ]
 
@@ -144,7 +221,13 @@ _android_runner = rule(
         "sgl_android_root": attr.string(default = ""),
         "version_code": attr.int(default = 1),
         "version_name": attr.string(default = "1.0"),
+        "enable_back_button_events": attr.bool(default = False),
+        "keep_screen_on": attr.bool(default = True),
+        "system_bars_mode": attr.string(default = "immersive", values = ["safe-area", "edge-to-edge", "immersive"]),
+        "system_bars_behavior": attr.string(default = "transient-by-swipe", values = ["default", "transient-by-swipe"]),
+        "navigation_bar_contrast_enforced": attr.bool(default = False),
         "assets_dir": attr.string(default = ""),
+        "assets": attr.label_list(providers = [SglAssetsInfo]),
         "android_resources_dir": attr.string(default = ""),
         "google_services_json": attr.string(default = ""),
         "admob_application_id": attr.string(default = ""),
@@ -179,7 +262,13 @@ def sgl_android_app(
         sgl_android_root = "",
         version_code = 1,
         version_name = "1.0",
+        enable_back_button_events = False,
+        keep_screen_on = True,
+        system_bars_mode = "immersive",
+        system_bars_behavior = "transient-by-swipe",
+        navigation_bar_contrast_enforced = False,
         assets_dir = "",
+        assets = [],
         android_resources_dir = "",
         google_services_json = "",
         admob_application_id = "",
@@ -206,7 +295,13 @@ def sgl_android_app(
             sgl_android_root = sgl_android_root,
             version_code = version_code,
             version_name = version_name,
+            enable_back_button_events = enable_back_button_events,
+            keep_screen_on = keep_screen_on,
+            system_bars_mode = system_bars_mode,
+            system_bars_behavior = system_bars_behavior,
+            navigation_bar_contrast_enforced = navigation_bar_contrast_enforced,
             assets_dir = assets_dir,
+            assets = assets,
             android_resources_dir = android_resources_dir,
             google_services_json = google_services_json,
             admob_application_id = admob_application_id,

@@ -137,8 +137,9 @@ trait CordovaMediaAudioProvider extends AudioProvider {
     }
     type Sound = CordovaMediaSound
 
-    override def loadSound(path: ResourcePath, extras: ResourcePath*): Loader[Sound] = {
-      val bestPath = (path +: extras).find(p => SupportedAudioFormats.contains(p.extension.getOrElse(""))).getOrElse(path)
+    override def loadSound(asset: sgl.assets.AudioAsset, extras: sgl.assets.AudioAsset*): Loader[Sound] = {
+      val paths = (asset +: extras).map(a => ResourcesRoot / a.resourceName)
+      val bestPath = paths.find(p => SupportedAudioFormats.contains(p.extension.getOrElse(""))).getOrElse(paths.head)
       Loader.successful(new CordovaMediaSound(bestPath))
     }
 
@@ -173,8 +174,9 @@ trait CordovaMediaAudioProvider extends AudioProvider {
     }
     type Music = CordovaMediaMusic
 
-    override def loadMusic(path: ResourcePath, extras: ResourcePath*): Loader[Music] = {
-      val bestPath = (path +: extras).find(p => SupportedAudioFormats.contains(p.extension.getOrElse(""))).getOrElse(path)
+    override def loadMusic(asset: sgl.assets.AudioAsset, extras: sgl.assets.AudioAsset*): Loader[Music] = {
+      val paths = (asset +: extras).map(a => ResourcesRoot / a.resourceName)
+      val bestPath = paths.find(p => SupportedAudioFormats.contains(p.extension.getOrElse(""))).getOrElse(paths.head)
       val media = js.Dynamic.newInstance(js.Dynamic.global.Media)(bestPath.path,
       	() => { println("success callback") },
 	(code: Int) => { println("failure: " + code) },

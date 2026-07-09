@@ -1,0 +1,25 @@
+---
+title: Audio
+description: Music and sound effects.
+---
+
+Audio is exposed through `AudioProvider` and loaded from typed generated `AudioAsset`s.
+
+```scala
+trait AbstractApp extends Application with AssetsProvider {
+  this: AudioProvider =>
+
+  private val soundLoader = Audio.loadSound(Assets.audio.beep)
+  private val musicLoader = Audio.loadMusic(Assets.audio.music)
+
+  def startAudio(): Unit = {
+    val sound = soundLoader.value.get.get
+    val music = musicLoader.value.get.get
+    music.setLooping(true)
+    music.play()
+    sound.play()
+  }
+}
+```
+
+Use `Sound` for short, overlapping effects and `Music` for long background tracks. A backend may stream music or buffer it in memory. Dispose sounds, configured sound variants, and music when their owning scene or application ends. Declare files with `sgl_audio_assets` and pass the asset target to `sgl_core_library`.

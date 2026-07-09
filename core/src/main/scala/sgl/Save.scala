@@ -69,7 +69,7 @@ trait SaveComponent {
     * want to combine several saves into more structured persistence
     * data for very large games.
     */
-  val Save: Save
+  def Save: Save
 
   /** A boolean-saved value with default and lazy loading.
     *

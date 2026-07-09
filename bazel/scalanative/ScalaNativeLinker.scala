@@ -1,7 +1,5 @@
 import java.nio.file.{Files, Paths}
 
-import scala.concurrent.ExecutionContext.Implicits.global
-
 import scala.scalanative.build.{Build, Config, GC, Logger, Mode, NativeConfig}
 import scala.scalanative.util.Scope
 

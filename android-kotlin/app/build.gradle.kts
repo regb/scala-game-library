@@ -15,6 +15,7 @@ val buildSglBazelJars by tasks.registering(Exec::class) {
         "bazel",
         "build",
         "//core:sgl-core",
+        "//engines:sgl-screen2d",
         "//modules:sgl-scene2d",
         "//modules:sgl-particles",
     )
@@ -24,6 +25,7 @@ val buildSglBazelJars by tasks.registering(Exec::class) {
 
 val sglBazelJars = files(
     sglBazelRepo.resolve("bazel-bin/core/sgl-core.jar"),
+    sglBazelRepo.resolve("bazel-bin/engines/sgl-screen2d.jar"),
     sglBazelRepo.resolve("bazel-bin/modules/sgl-scene2d.jar"),
     sglBazelRepo.resolve("bazel-bin/modules/sgl-particles.jar"),
 ).builtBy(buildSglBazelJars)

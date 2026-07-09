@@ -1,0 +1,1 @@
+typed Android asset packaging test

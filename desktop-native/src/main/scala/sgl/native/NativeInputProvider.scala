@@ -11,7 +11,7 @@ import sdl2.SDL._
 import sdl2.Extras._
 
 trait NativeInputProvider {
-  this: NativeWindowProvider with NativeGraphicsProvider with LoggingProvider =>
+  this: LoggingProvider =>
 
   private implicit val LogTag: NativeInputProvider.this.Logger.Tag = Logger.Tag("sgl.native.input")
 

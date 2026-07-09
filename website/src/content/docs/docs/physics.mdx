@@ -1,0 +1,14 @@
+---
+title: Physics
+description: Physics integration strategy.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+SGL does not currently bundle a full physics engine.
+
+<Aside type="note">
+The recommended approach is to integrate a physics library appropriate for your target platforms and keep synchronization with SGL transforms explicit.
+</Aside>
+
+For the GameObject engine, physics components can be ordinary components updated by systems.

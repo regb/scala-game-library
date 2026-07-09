@@ -2,7 +2,7 @@ package sgl
 package particles
 
 trait ParticleSystemComponent {
-  this: GraphicsProvider with SystemProvider =>
+  this: CanvasProvider with SystemProvider =>
 
   case class ParticleSystemConfig(
     // Duration during which the particle system will spawn particles.
@@ -16,10 +16,10 @@ trait ParticleSystemComponent {
     // Base spawn direction, in radians.
     spawnDirectionBase: Double,
     // The variation for the angle direction in radians.
-    // With math.Pi, the variation goes from -pi to +pi, which
+    // With scala.math.Pi, the variation goes from -pi to +pi, which
     // means 360 degrees.
     spawnDirectionVariation: Double,
-    //var spawnDirectionVariation = math.Pi
+    //var spawnDirectionVariation = scala.math.Pi
     minParticleVelocity: Double,
     maxParticleVelocity: Double,
     maxParticleSize: Int,
@@ -81,8 +81,8 @@ trait ParticleSystemComponent {
     private def setStartingVelocity(p: Particle): Unit = {
       val variation = random(-config.spawnDirectionVariation, config.spawnDirectionVariation)
       val direction = config.spawnDirectionBase + variation
-      p.vx = math.cos(direction) * random(config.minParticleVelocity, config.maxParticleVelocity)
-      p.vy = math.sin(direction) * random(config.minParticleVelocity, config.maxParticleVelocity)
+      p.vx = scala.math.cos(direction) * random(config.minParticleVelocity, config.maxParticleVelocity)
+      p.vy = scala.math.sin(direction) * random(config.minParticleVelocity, config.maxParticleVelocity)
     }
 
     private var age = 0L
@@ -239,12 +239,12 @@ trait ParticleSystemComponent {
     // List of bursts of particles to create at a given point in the lifetime of the particle system.
     spawnBursts = List(),
     // Base spawn direction, in radians.
-    spawnDirectionBase = -math.Pi/2,
+    spawnDirectionBase = -scala.math.Pi/2,
     // The variation for the angle direction in radians.
-    // With math.Pi, the variation goes from -pi to +pi, which
+    // With scala.math.Pi, the variation goes from -pi to +pi, which
     // means 360 degrees.
-    spawnDirectionVariation = math.Pi/8,
-    //var spawnDirectionVariation = math.Pi
+    spawnDirectionVariation = scala.math.Pi/8,
+    //var spawnDirectionVariation = scala.math.Pi
     minParticleVelocity = 30,
     maxParticleVelocity = 50,
     maxParticleSize = 3,
@@ -269,12 +269,12 @@ trait ParticleSystemComponent {
     // List of bursts of particles to create at a given point in the lifetime of the particle system.
     spawnBursts = List((0, 300)),
     // Base spawn direction, in radians.
-    spawnDirectionBase = -math.Pi/2,
+    spawnDirectionBase = -scala.math.Pi/2,
     // The variation for the angle direction in radians.
-    // With math.Pi, the variation goes from -pi to +pi, which
+    // With scala.math.Pi, the variation goes from -pi to +pi, which
     // means 360 degrees.
-    spawnDirectionVariation = math.Pi/3,
-    //var spawnDirectionVariation = math.Pi
+    spawnDirectionVariation = scala.math.Pi/3,
+    //var spawnDirectionVariation = scala.math.Pi
     minParticleVelocity = 3,
     maxParticleVelocity = 10,
     maxParticleSize = 2,

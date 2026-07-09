@@ -1,0 +1,66 @@
+---
+title: Platforms
+description: Desktop, web, native, and mobile targets.
+---
+
+Supported backend families include:
+
+- Desktop JVM with AWT Canvas
+- Desktop JVM with LWJGL/OpenGL/OpenAL
+- HTML5 Canvas and WebGL via Scala.js
+- Desktop native via Scala Native and SDL2
+- Android through the proxy backend / Android Kotlin integration
+
+```bash
+bazel build //examples/hello-canvas:desktop-awt
+bazel build //examples/hello-scalagl:html5
+bazel build //engines/gameobject/examples/asteroids:desktop-native
+```
+
+## Android wiring
+
+Android uses the core proxy providers. Define a wiring entry point in shared Scala code so provider-backed fields are initialized only after the platform proxy:
+
+```scala
+object Wiring {
+  def wire(platform: PlatformProxy): ProxiedGameApp =
+    new WiredProxyPlatform(platform) with AbstractApp
+}
+```
+
+Games that persist state can also mix in `ProxySaveProvider` and define a stable `SaveName`. Point `sgl_android_app.wiring_expression` at `Wiring.wire(platformProxy)` when the Android package differs from the core package. Running an Android target, rather than merely building it, generates the Gradle project and assembles the APK:
+
+```bash
+bazel run //examples/snake:android-debug
+```
+
+### Android system bars
+
+Android apps use immersive fullscreen by default. The navigation and status bars stay hidden while the game uses the full display, and an edge swipe reveals them temporarily.
+
+Configure this with `sgl_android_app`:
+
+```starlark
+sgl_android_app(
+    name = "android",
+    # "immersive", "safe-area", or "edge-to-edge"
+    system_bars_mode = "immersive",
+    # "transient-by-swipe" or "default"
+    system_bars_behavior = "transient-by-swipe",
+    navigation_bar_contrast_enforced = False,
+    # ...
+)
+```
+
+`safe-area` keeps the whole game surface outside system bars and display cutouts. `edge-to-edge` leaves the bars visible and lets the surface draw beneath them. In edge-to-edge mode, games must avoid placing controls under system overlays. `navigation_bar_contrast_enforced` controls Android's automatic navigation-bar scrim.
+
+## Asset roots
+
+Application code should use typed generated assets. Backend-specific roots are implementation details:
+
+- JVM desktop loads packaged classpath resources from the core target.
+- HTML5 serves copied assets below the generated `Html5AssetsServingRoot`.
+- Scala Native loads copied assets below `NativeAssetsRoot`.
+- Proxy backends, including Android Kotlin, receive plain string resource names from SGL and map them to platform-specific asset systems.
+
+Bazel app rules generate the backend-specific root overrides; game code should not depend on those root strings.

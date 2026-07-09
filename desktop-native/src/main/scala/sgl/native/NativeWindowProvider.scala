@@ -8,9 +8,10 @@ import sdl2.SDL._
 import sdl2.Extras._
 
 trait NativeWindowProvider extends WindowProvider {
-  this: GameStateComponent with NativeGraphicsProvider =>
 
   val frameDimension: (Int, Int)
+
+  val ScreenForcePPI: scala.Option[Float] = None
 
   class NativeWindow extends AbstractWindow {
     override def width: Int = frameDimension._1
@@ -30,18 +31,18 @@ trait NativeWindowProvider extends WindowProvider {
       _ppi = !ddpi
     }
 
-    override def xppi: Float = if(_xppi != 0f) _xppi else {
-      computePPIs()
+    override def xppi: Float = ScreenForcePPI.getOrElse {
+      if(_xppi == 0f) computePPIs()
       _xppi
     }
-    override def yppi: Float = if(_yppi != 0f) _yppi else {
-      computePPIs()
+    override def yppi: Float = ScreenForcePPI.getOrElse {
+      if(_yppi == 0f) computePPIs()
       _yppi
     }
 
     // TODO: rounding?
-    override def logicalPpi: Float = if(_ppi != 0f) _ppi else {
-      computePPIs()
+    override def logicalPpi: Float = ScreenForcePPI.getOrElse {
+      if(_ppi == 0f) computePPIs()
       _ppi
     }
   }

@@ -191,7 +191,7 @@ trait JsonProvider {
       def unapply(v: JValue): Option[Int] = v match {
         case JNumber(n) => 
           if(n <= Int.MaxValue &&
-             n == math.floor(n) &&
+             n == scala.math.floor(n) &&
              !n.isInfinite) 
             Some(n.toInt)
           else

@@ -1,0 +1,49 @@
+---
+title: Core Concepts
+description: Application lifecycle, providers, modules, and engines.
+---
+
+SGL is organized around provider traits and static composition.
+
+- **Core**: universal APIs such as application lifecycle, input, audio, typed assets, Canvas, OpenGL, and math.
+- **Engines**: primary app architectures: `screen2d` and `gameobject`.
+- **Modules and extensions**: reusable libraries such as scene2d, particles, and Tiled integrations.
+- **Backends**: AWT, LWJGL, HTML5, Scala Native, Android, and other platform implementations.
+
+```scala
+trait Application {
+  def create(): Unit = {}
+  def frame(dt: Double): Unit
+  def resize(width: Int, height: Int): Unit = {}
+  def dispose(): Unit = {}
+}
+```
+
+`frame` receives the elapsed time since the previous frame in seconds on every backend. Providers describe platform capabilities. A backend-generated main class supplies concrete providers, while your game declares what it needs through self-types or inheritance.
+
+```scala
+trait AbstractApp extends Application with AssetsProvider {
+  this: CanvasProvider with AudioProvider with WindowProvider =>
+
+  override def frame(dt: Double): Unit =
+    withFrameCanvas { canvas =>
+      canvas.drawRect(0, 0, Window.width, Window.height, Graphics.defaultPaint)
+    }
+}
+```
+
+## GameObject 2D
+
+The GameObject engine is component/system based and includes an OpenGL-backed 2D renderer. Spatial state is a normal component:
+
+```scala
+context.gameObject2D("Player", Transform2D(position = Vec2(64f, 64f))) { obj =>
+  obj.attach(new SpriteRenderer(_, SpriteVisual.Texture(playerTexture), 32f, 32f))
+
+  obj.component[Spatial2D].foreach { spatial =>
+    spatial.local = spatial.local.copy(position = spatial.local.position + Vec2(1f, 0f))
+  }
+}
+```
+
+Use scene/system helpers such as `context.gameObject2D` / `context.createObject2D` for scoped 2D objects and `context.gameObject3D` / `context.createObject3D` for 3D objects. Lower-level `World` creation methods require an active `Scope`. For points and rendered geometry in hierarchies with non-uniform scale, use `Spatial2D.transformPoint`; it preserves affine shear that cannot be represented by the decomposed `global` TRS value.

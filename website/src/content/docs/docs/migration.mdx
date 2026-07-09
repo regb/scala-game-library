@@ -1,0 +1,85 @@
+---
+title: Migration
+description: Notes for moving between APIs and engines.
+---
+
+## Frame timing
+
+`Application.frame(dt)` now receives seconds consistently on Canvas and OpenGL backends. Low-level Canvas applications that previously treated `dt` as milliseconds must convert explicitly when calling legacy millisecond-based code:
+
+```scala
+legacyUpdate((dt * 1000.0).toLong)
+```
+
+Recent package and architecture conventions:
+
+- Core is universal; engines are explicit app architectures layered on top.
+- 2D/3D math lives under `sgl.math`.
+- GameObject engine packages use `sgl.engine.gameobject`.
+- GameObject 2D rendering is OpenGL-backed.
+- Static files should be declared with typed asset rules and consumed by `sgl_core_library`.
+
+## Resource paths to typed assets
+
+Old application code often loaded resources by path:
+
+```scala
+Graphics.loadImage(ResourcesRoot / "drawable" / "player.png")
+Audio.loadMusic(ResourcesRoot / "audio" / "theme.wav")
+System.loadText(ResourcesRoot / "levels" / "level1.tmj")
+```
+
+New application code should use generated typed assets:
+
+```scala
+Graphics.loadImage(Assets.drawable.player)
+Audio.loadMusic(Assets.audio.theme)
+System.loadText(Assets.text.level1)
+```
+
+Declare assets with rules such as `sgl_drawable_assets`, `sgl_audio_assets`, and `sgl_text_assets`, pass those targets to `sgl_core_library(assets = [...])`, then add the generated provider mixin to each backend app:
+
+```python
+extra_mixins = ["my.game.core.GeneratedAssetsProvider"]
+```
+
+`ResourcesRoot`, backend serving roots, and packaged resource names are framework/backend details. They should not be used as the public asset API in game code.
+
+## Asset rule names
+
+The old generic `sgl_resource_assets` rule has been removed. Use typed rules instead:
+
+- images for rendering: `sgl_drawable_assets`
+- exact image files: `sgl_raw_image_assets`
+- text: `sgl_text_assets`
+- binary: `sgl_binary_assets` (`BinaryAsset` is distinct from `RawImageAsset`)
+- audio: `sgl_audio_assets`
+- fonts: `sgl_font_assets`
+
+`name_strip_prefix` was also removed. Use the single `strip_prefix` attr to derive typed names from source paths.
+
+## Tiled maps
+
+Prefer real Tiled project/layout files plus `sgl_tiled_import` instead of checked-in rewritten map JSON. The import rule rewrites Tiled image references to typed drawable asset URIs and emits assets for `sgl_core_library`.
+
+## GameObject spatial API
+
+After the GameObject refactor, 2D and 3D spatial state is accessed as components. Use `GameContext` helpers to create scoped objects:
+
+```scala
+context.gameObject2D("Player", Transform2D(position = spawn)) { obj =>
+  obj.attach(new PlayerController(_))
+}
+```
+
+Lower-level `World` creation methods such as `world.createObject2D` require an active `Scope`.
+
+For an arbitrary `GameObject`, query the component explicitly:
+
+```scala
+gameObject.component[Spatial2D].foreach { spatial =>
+  spatial.local = spatial.local.copy(position = nextPosition)
+}
+```
+
+Do not use older convenience accessors such as `gameObject.spatial2D`, `world.spatial2D`, or `world.objectWith`.

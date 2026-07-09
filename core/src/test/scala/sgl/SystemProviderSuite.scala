@@ -14,6 +14,21 @@ class SystemProviderSuite extends AnyFunSuite {
     override val System: System = new InstrumentedTestSystem
   }
 
+  test("TestSystemProvider exposes deterministic clocks and registered assets") {
+    val provider = new TestSystemProvider {}
+    val text = assets.AssetFactory.text("dialog.txt")
+    val binary = assets.AssetFactory.binary("data.bin")
+    provider.testSystem.wallClockMillis = 123L
+    provider.testSystem.monotonicNanos = 456L
+    provider.testSystem.textAssets(text) = Array("hello")
+    provider.testSystem.binaryAssets(binary) = Array[Byte](1, 2)
+
+    assert(provider.System.currentTimeMillis == 123L)
+    assert(provider.System.nanoTime == 456L)
+    assert(provider.System.loadText(text).value.get.get.sameElements(Array("hello")))
+    assert(provider.System.loadBinary(binary).value.get.get.sameElements(Array[Byte](1, 2)))
+  }
+
   test("openGooglePlayApp defaults to the correct URL without parameters") {
     InstrumentedSystemProvider.System.openGooglePlayApp("com.regblanc.sgl")
     val want = new java.net.URI("https://play.google.com/store/apps/details?id=com.regblanc.sgl")
@@ -54,6 +69,13 @@ class SystemProviderSuite extends AnyFunSuite {
     assert(r.extension === Some("txt"))
     val r2 = PartsResourcePathSystemProvider.ResourcesRoot / "a" / "b" / "c"
     assert(r2.extension === None)
+    assert(PartsResourcePathSystemProvider.ResourcesRoot.extension === None)
+    assert((PartsResourcePathSystemProvider.ResourcesRoot / "file.").extension === None)
+  }
+
+  test("PartsResourcePath ignores repeated separators") {
+    val r = PartsResourcePathSystemProvider.ResourcesRoot / "/a//b/"
+    assert(r.path === "root/a/b")
   }
 
   test("PartsResourcePath creates the correct path with .") {

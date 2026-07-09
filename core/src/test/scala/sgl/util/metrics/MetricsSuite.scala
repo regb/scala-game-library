@@ -104,5 +104,25 @@ class MetricsSuite extends AnyFunSuite {
     assert(g.count === 4)
   }
 
-  // TODO: test interesting properties of histogram.
+  test("Histogram validates input and renders useful summaries") {
+    intercept[IllegalArgumentException] {
+      new Histogram("invalid", Array(2f, 1f))
+    }
+    intercept[IllegalArgumentException] {
+      Histogram.linear("invalid", 0f, 1f, 0)
+    }
+
+    val h = new Histogram("latency", Array(1f, 2f))
+    assert(h.average === 0f)
+    intercept[IllegalArgumentException] {
+      h.observe(Float.NaN)
+    }
+    h.observe(0.5f)
+    h.observe(3f)
+    assert(h.toString.contains("count=2"))
+    assert(h.renderString.contains("2 samples"))
+    h.reset()
+    assert(h.count === 0)
+    assert(h.average === 0f)
+  }
 }

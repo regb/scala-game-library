@@ -4,6 +4,7 @@ package native
 import _root_.sgl._
 import _root_.sgl.util.{Loader, LoggingProvider}
 
+import scala.collection.mutable
 import scalanative.unsafe._
 import scalanative.unsigned._
 import scalanative.libc.stdlib
@@ -11,116 +12,246 @@ import scalanative.libc.stdlib
 import sdl2.SDL._
 import sdl2.Extras._
 
+@extern private object NativeAudioBindings {
+  def SDL_GetQueuedAudioSize(device: SDL_AudioDeviceID): UInt = extern
+  def SDL_MixAudioFormat(destination: Ptr[UByte], source: Ptr[UByte], format: UShort, length: UInt, volume: CInt): Unit = extern
+}
+
 trait NativeAudioProvider extends AudioProvider {
   this: NativeSystemProvider with LoggingProvider =>
 
   private implicit val AudioLogTag: NativeAudioProvider.this.Logger.Tag = Logger.Tag("native.audio")
 
   object NativeAudio extends Audio {
+    private val sounds = mutable.Set.empty[Sound]
+    private val musics = mutable.Set.empty[Music]
+    private val playbacks = mutable.Set.empty[Playback]
+
+    private final class SharedSoundData(
+        val audioSpec: Ptr[SDL_AudioSpec],
+        val audioBuffer: Ptr[UByte],
+        val audioLength: UInt,
+    ) {
+      private var references = 1
+      private var released = false
+
+      def retain(): Unit = {
+        if(released) throw new IllegalStateException("Trying to configure a disposed sound")
+        references += 1
+      }
+
+      def release(): Unit = {
+        if(references <= 0) return
+        references -= 1
+        if(references == 0 && !released) {
+          SDL_FreeWAV(audioBuffer)
+          stdlib.free(audioSpec.asInstanceOf[Ptr[Byte]])
+          released = true
+        }
+      }
+    }
+
+    final class Playback private[NativeAudio] (
+        private[NativeAudio] val device: SDL_AudioDeviceID,
+        private[NativeAudio] val owner: Sound,
+        private[NativeAudio] var remainingRepeats: Int,
+        private[NativeAudio] var infinite: Boolean,
+        private[NativeAudio] val volume: Float,
+    ) {
+      private[NativeAudio] var active = true
+    }
+
     class Sound private[NativeAudio] (
-      audioSpec: Ptr[SDL_AudioSpec],
-      audioBuffer: Ptr[UByte],
-      audioLength: UInt,
-      loopCount: Int,
-      rate: Float,
+        data: SharedSoundData,
+        loopCount: Int,
+        rate: Float,
     ) extends AbstractSound {
 
-      type PlayedSound = SDL_AudioDeviceID
+      type PlayedSound = Playback
+      private val ownedPlaybacks = mutable.Set.empty[Playback]
+      private var disposed = false
+      sounds += this
 
-      override def play(volume: Float): Option[PlayedSound] = {
-        val device = SDL_OpenAudioDevice(null, 0, audioSpec, null, 0)
+      override def play(volume: Float): Option[PlayedSound] = start(loopCount, volume)
+
+      private[NativeAudio] def start(loop: Int, volume: Float): Option[Playback] = {
+        if(disposed) return None
+        val device = Zone.acquire { implicit zone =>
+          val playbackSpec = alloc[SDL_AudioSpec](1)
+          !playbackSpec = !data.audioSpec
+          playbackSpec.freq = scala.math.max(1, (data.audioSpec.freq.toFloat * rate).toInt)
+          SDL_OpenAudioDevice(null, 0, playbackSpec, null, 0)
+        }
         if(device == 0.toUInt) {
           logger.warning("Failed to open SDL audio device: " + fromCString(SDL_GetError()))
           None
+        } else if(!queueAudio(device, volume)) {
+          logger.warning("Failed to queue SDL audio: " + fromCString(SDL_GetError()))
+          SDL_CloseAudioDevice(device)
+          None
         } else {
-          val repetitions = if(loopCount < 0) 64 else loopCount + 1
-          var i = 0
-          var queued = true
-          while(i < repetitions && queued) {
-            queued = SDL_QueueAudio(device, audioBuffer.asInstanceOf[Ptr[Byte]], audioLength) == 0
-            i += 1
-          }
-          if(queued) {
-            SDL_PauseAudioDevice(device, 0)
-            Some(device)
-          } else {
-            logger.warning("Failed to queue SDL audio: " + fromCString(SDL_GetError()))
-            SDL_CloseAudioDevice(device)
-            None
+          val playback = new Playback(device, this, loop max 0, loop < 0, volume)
+          ownedPlaybacks += playback
+          playbacks += playback
+          SDL_PauseAudioDevice(device, 0)
+          Some(playback)
+        }
+      }
+
+      override def withConfig(loop: Int, rate: Float): Sound = {
+        if(disposed) throw new IllegalStateException("Trying to configure a disposed sound")
+        if(loop < -1) throw new IllegalArgumentException("Loop count must be -1, zero, or positive")
+        if(rate < 0.5f || rate > 2f) throw new IllegalArgumentException("Playback rate must be between 0.5 and 2.0")
+        data.retain()
+        new Sound(data, loop, rate)
+      }
+
+      override def dispose(): Unit = {
+        if(disposed) return
+        disposed = true
+        ownedPlaybacks.toVector.foreach(closePlayback)
+        sounds -= this
+        data.release()
+      }
+
+      override def stop(id: PlayedSound): Unit = closePlayback(id)
+      override def pause(id: PlayedSound): Unit = if(ownedPlaybacks.contains(id)) SDL_PauseAudioDevice(id.device, 1)
+      override def resume(id: PlayedSound): Unit = if(ownedPlaybacks.contains(id)) SDL_PauseAudioDevice(id.device, 0)
+      override def endLoop(id: PlayedSound): Unit = if(ownedPlaybacks.contains(id)) {
+        id.infinite = false
+        id.remainingRepeats = 0
+      }
+
+      private[NativeAudio] def owns(playback: Playback): Boolean = ownedPlaybacks.contains(playback)
+      private[NativeAudio] def remove(playback: Playback): Unit = ownedPlaybacks -= playback
+      private def queueAudio(device: SDL_AudioDeviceID, volume: Float): Boolean = {
+        val clampedVolume = scala.math.max(0f, scala.math.min(1f, volume))
+        if(clampedVolume >= 1f) {
+          SDL_QueueAudio(device, data.audioBuffer.asInstanceOf[Ptr[Byte]], data.audioLength) == 0
+        } else {
+          val mixed = stdlib.calloc(data.audioLength.toUSize, 1.toUSize).asInstanceOf[Ptr[UByte]]
+          if(mixed == null) false
+          else {
+            NativeAudioBindings.SDL_MixAudioFormat(mixed, data.audioBuffer, data.audioSpec.format, data.audioLength, (clampedVolume * 128f).toInt)
+            val queued = SDL_QueueAudio(device, mixed.asInstanceOf[Ptr[Byte]], data.audioLength) == 0
+            stdlib.free(mixed.asInstanceOf[Ptr[Byte]])
+            queued
           }
         }
       }
 
-      override def withConfig(loop: Int, rate: Float): Sound =
-        new Sound(audioSpec, audioBuffer, audioLength, loop, rate)
-
-      override def dispose(): Unit = {
-        // Keep the shared WAV buffer alive for sounds derived through withConfig.
-      }
-
-      override def stop(id: PlayedSound): Unit = {
-        SDL_ClearQueuedAudio(id)
-        SDL_CloseAudioDevice(id)
-      }
-      override def pause(id: PlayedSound): Unit = SDL_PauseAudioDevice(id, 1)
-      override def resume(id: PlayedSound): Unit = SDL_PauseAudioDevice(id, 0)
-      override def endLoop(id: PlayedSound): Unit = SDL_ClearQueuedAudio(id)
+      private[NativeAudio] def queueNext(playback: Playback): Boolean = queueAudio(playback.device, playback.volume)
     }
 
-    override def loadSound(path: ResourcePath, extras: ResourcePath*): Loader[Sound] = {
+    private def closePlayback(playback: Playback): Unit = {
+      if(playback.active && playback.owner.owns(playback)) {
+        playback.active = false
+        SDL_ClearQueuedAudio(playback.device)
+        SDL_CloseAudioDevice(playback.device)
+        playback.owner.remove(playback)
+        playbacks -= playback
+      }
+    }
+
+    /** Requeues loops and closes completed SDL audio devices. */
+    private[native] def update(): Unit = {
+      playbacks.toVector.foreach { playback =>
+        if(NativeAudioBindings.SDL_GetQueuedAudioSize(playback.device) == 0.toUInt) {
+          if(playback.infinite || playback.remainingRepeats > 0) {
+            if(playback.remainingRepeats > 0) playback.remainingRepeats -= 1
+            if(!playback.owner.queueNext(playback)) {
+              logger.warning("Failed to requeue SDL audio: " + fromCString(SDL_GetError()))
+              closePlayback(playback)
+            }
+          } else closePlayback(playback)
+        }
+      }
+    }
+
+    override def loadSound(asset: sgl.assets.AudioAsset, extras: sgl.assets.AudioAsset*): Loader[Sound] = {
+      val path = nativeAssetPath(asset.resourceName)
       Zone.acquire { implicit z =>
         val spec = alloc[SDL_AudioSpec](1)
         val buffer = alloc[Ptr[UByte]](1)
         val length = alloc[UInt](1)
-        val loaded = SDL_LoadWAV(toCString(path.path), spec, buffer, length)
+        val loaded = SDL_LoadWAV(toCString(path), spec, buffer, length)
         if(loaded == null) {
-          Loader.failed(new Exception("Error while loading sound %s: %s".format(path.path, fromCString(SDL_GetError()))))
+          Loader.failed(new Exception("Error while loading sound %s: %s".format(path, fromCString(SDL_GetError()))))
         } else {
           val stableSpec = stdlib.malloc(sizeof[SDL_AudioSpec]).asInstanceOf[Ptr[SDL_AudioSpec]]
-          !stableSpec = !spec
-          Loader.successful(new Sound(stableSpec, !buffer, !length, 0, 1f))
+          if(stableSpec == null) {
+            SDL_FreeWAV(!buffer)
+            Loader.failed(new OutOfMemoryError("Could not allocate SDL audio specification"))
+          } else {
+            !stableSpec = !spec
+            Loader.successful(new Sound(new SharedSoundData(stableSpec, !buffer, !length), 0, 1f))
+          }
         }
       }
     }
 
     class Music private[NativeAudio] (sound: Sound) extends AbstractMusic {
-      private var current: Option[sound.PlayedSound] = None
-      private var looping: Boolean = false
-      private var volume: Float = 1f
+      private var current: Option[Playback] = None
+      private var looping = false
+      private var paused = false
+      private var volume = 1f
+      private var disposed = false
+      musics += this
 
       override def play(): Unit = {
-        stop()
-        val configured = sound.withConfig(if(looping) -1 else 0, 1f)
-        current = configured.play(volume)
+        if(disposed) throw new IllegalStateException("Trying to play disposed music")
+        current match {
+          case Some(playback) if playback.active && paused =>
+            sound.resume(playback)
+            paused = false
+          case Some(playback) if playback.active => ()
+          case _ =>
+            current = sound.start(if(looping) -1 else 0, volume)
+            paused = false
+        }
       }
-      override def pause(): Unit = current.foreach(sound.pause)
+      override def pause(): Unit = current.filter(_.active).foreach { playback =>
+        sound.pause(playback)
+        paused = true
+      }
       override def stop(): Unit = {
-        current.foreach(sound.stop)
+        current.filter(_.active).foreach(sound.stop)
         current = None
+        paused = false
       }
-      override def setVolume(volume: Float): Unit = {
-        this.volume = volume
-      }
+      override def setVolume(volume: Float): Unit = this.volume = volume
       override def setLooping(isLooping: Boolean): Unit = {
         looping = isLooping
+        current.filter(_.active).foreach { playback =>
+          playback.infinite = isLooping
+          if(!isLooping) playback.remainingRepeats = 0
+        }
       }
       override def dispose(): Unit = {
+        if(disposed) return
+        disposed = true
         stop()
+        musics -= this
         sound.dispose()
       }
     }
 
-    override def loadMusic(path: ResourcePath, extras: ResourcePath*): Loader[Music] = {
-      loadSound(path, extras*) match {
+    override def loadMusic(asset: sgl.assets.AudioAsset, extras: sgl.assets.AudioAsset*): Loader[Music] = {
+      loadSound(asset, extras*) match {
         case loader if loader.isLoaded && loader.value.exists(_.isSuccess) =>
           Loader.successful(new Music(loader.value.get.get))
         case loader if loader.isLoaded && loader.value.exists(_.isFailure) =>
           Loader.failed(loader.value.get.failed.get)
-        case _ =>
-          Loader.failed(new Exception("Native music loading did not complete synchronously"))
+        case _ => Loader.failed(new Exception("Native music loading did not complete synchronously"))
       }
     }
-  }
-  override val Audio = NativeAudio
 
+    private[native] def dispose(): Unit = {
+      musics.toVector.foreach(_.dispose())
+      sounds.toVector.foreach(_.dispose())
+      playbacks.toVector.foreach(closePlayback)
+    }
+  }
+
+  override val Audio: NativeAudio.type = NativeAudio
 }

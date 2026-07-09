@@ -1,7 +1,6 @@
 package sgl.android
 
 import android.os.Build
-import sgl.GameApp
 import sgl.proxy.ProxiedGameApp
 import sgl.android.AndroidCanvasProxy
 
@@ -14,6 +13,7 @@ class GameLoop(val app: BaseMainActivity, val gameApp: ProxiedGameApp): Runnable
 
     private val targetFramePeriod: Long? = if (gameApp.hasTargetFramePeriodMillis()) gameApp.targetFramePeriodMillis() else null
 
+    @Volatile
     var running = true
 
     override fun run(): Unit {
@@ -25,15 +25,10 @@ class GameLoop(val app: BaseMainActivity, val gameApp: ProxiedGameApp): Runnable
             // We check surfaceReady here, as the game loop is started on the onResume
             // callback and the surface is not necessarily ready yet. The rest of the loop
             // is safe to perform and will just sleep until the surface is actually ready.
-            if(app.surfaceReady) {
-
-                if(gameApp.gameState().screensStack().isEmpty) {
-                    // This is the first time we run here and there's no game state yet, so
-                    // let's initialize it.
-                    // It's important to initialize the startingScreen only once all the Android
-                    // system dependencies are ready (most notably, the surface).
-
-                    gameApp.gameState().newScreen(gameApp.startingScreen())
+            if(app.surfaceReady && app.appResumed) {
+                if (!app.applicationStarted) {
+                    gameApp.startup()
+                    app.applicationStarted = true
                 }
 
                 val canvas = app.gameView?.holder?.lockHardwareCanvas()
@@ -46,7 +41,7 @@ class GameLoop(val app: BaseMainActivity, val gameApp: ProxiedGameApp): Runnable
                 if(canvas != null) {
                     val newTime = java.lang.System.nanoTime()
                     val elapsed = newTime - lastTime
-                    //delta time, in ms (all time measures are in nano)
+                    // Java/Kotlin compatibility boundary: update receives milliseconds.
                     val dt = (elapsed / (1000*1000))
                     // At this point, we may have lost half a ms, so we should account for it in our lastTime, by
                     // shifting it back by the lost fraction.

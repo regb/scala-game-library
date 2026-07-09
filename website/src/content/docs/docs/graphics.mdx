@@ -1,0 +1,33 @@
+---
+title: Graphics
+description: Canvas, OpenGL, and rendering engines.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+SGL supports low-level Canvas rendering, low-level OpenGL/WebGL rendering, and higher-level engine renderers.
+
+```scala
+withFrameCanvas { canvas =>
+  val paint = Graphics.defaultPaint.withColor(Graphics.Color.rgb(255, 80, 120))
+  canvas.drawRect(32, 32, 128, 64, paint)
+}
+```
+
+Images are loaded from typed drawable assets:
+
+```scala
+val bitmapLoader = Graphics.loadImage(Assets.drawable.character)
+```
+
+OpenGL textures use the same typed asset model:
+
+```scala
+val textureLoader = OpenGL.loadTexture2D(Assets.drawable.tiles)
+```
+
+For GameObject 2D, load textures explicitly during scene loading and store loaded `Texture2D` handles in render components such as `SpriteVisual.Texture` or `Tilemap` quads.
+
+<Aside type="caution">
+The Canvas value passed to `withFrameCanvas` is only valid inside the callback. Do not store it.
+</Aside>

@@ -4,11 +4,17 @@ package html5
 import org.scalajs.dom
 
 trait Html5WindowProvider extends WindowProvider {
-  self: Html5App =>
+
+  /** The browser <canvas> element backing this HTML5 app.
+    *
+    * This is the DOM element, not the SGL CanvasProvider rendering API. Both
+    * HTML5 Canvas and WebGL apps use the same kind of browser element.
+    */
+  def htmlCanvas: dom.html.Canvas
 
   class Html5Window extends AbstractWindow {
-    override def width: Int = self.htmlCanvas.width
-    override def height: Int = self.htmlCanvas.height
+    override def width: Int = htmlCanvas.width
+    override def height: Int = htmlCanvas.height
 
     /*
      * On the web, pixels units are CSS pixels and are defined to be 1/96 of an

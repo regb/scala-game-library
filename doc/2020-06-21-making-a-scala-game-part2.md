@@ -245,7 +245,7 @@ package com.regblanc.scalavator
 package core
 
 import sgl._
-import sgl.geometry._
+import sgl.math._
 import sgl.util.Loader
 
 trait ScalavatorGame extends ViewportComponent {

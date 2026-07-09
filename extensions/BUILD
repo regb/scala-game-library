@@ -11,6 +11,17 @@ scala_library(
     visibility=["//visibility:public"],
 )
 
+scala_library(
+    name="sgl-tiled-gameobject",
+    srcs=glob(["tiled-gameobject/src/main/scala/**/*.scala"]),
+    deps = [
+        ":sgl-tiled",
+        "//core:sgl-core",
+        "//engines:sgl-gameobject",
+    ],
+    visibility=["//visibility:public"],
+)
+
 scala_test(
     name="sgl-tiled-tests",
     srcs=glob(["tiled/src/test/scala/**/*.scala"]),

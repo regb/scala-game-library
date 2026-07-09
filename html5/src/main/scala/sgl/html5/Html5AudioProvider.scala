@@ -9,10 +9,10 @@ import scala.util.{Failure, Success}
 import sgl.util._
 
 trait Html5AudioProvider extends AudioProvider {
-  this: Html5SystemProvider with Html5InputProvider with Html5App with LoggingProvider =>
+  this: Html5SystemProvider with Html5InputProvider with LoggingProvider =>
 
-  // TODO: Use the Web Audio API and rely on the current implementation as a fallback
-  //       when the API is not available.
+  // Canvas applications use HTML audio elements. OpenGL applications provide
+  // a Web Audio implementation through Html5OpenGLProvider.
 
   /** Control if we want to guard against the autoplay browser restrictions.
     *
@@ -26,105 +26,156 @@ trait Html5AudioProvider extends AudioProvider {
 
   object Html5Audio extends Audio {
 
-    class SoundTagInstance(val loader: Loader[HTMLAudioElement], var inUse: Boolean, var loop: Int)
+    class SoundTagInstance(
+        val loader: Loader[HTMLAudioElement],
+        var inUse: Boolean,
+        var loop: Int,
+        var owner: Option[Html5Sound]
+    )
 
-    class SoundTagPool(pathes: scala.collection.Seq[ResourcePath], initialTag: HTMLAudioElement) {
+    class SoundTagPool(resourceNames: scala.collection.Seq[String], initialTag: HTMLAudioElement) {
       private var audioTags: Vector[SoundTagInstance] = Vector(
-        new SoundTagInstance(Loader.successful(initialTag), false, 0)
+        new SoundTagInstance(Loader.successful(initialTag), false, 0, None)
       )
+      private var references = 1
+      private var disposed = false
 
-      def getReadyTag(): SoundTagInstance = {
-        audioTags.find(!_.inUse) match {
-          case Some(tag) =>
-            tag.inUse = true
-            tag
-          case None =>
-            // None are free, we need to instantiate a new one.
-            val tag = new SoundTagInstance(loadAudioTag(pathes), true, 0)
-            audioTags = audioTags :+ tag
-            tag
-        }
+      def retain(): Unit = {
+        if(disposed) throw new IllegalStateException("Trying to configure a disposed sound")
+        references += 1
       }
 
-      def returnTag(soundTag: SoundTagInstance): Unit = {
-        soundTag.inUse = false
+      def getReadyTag(owner: Html5Sound): SoundTagInstance = {
+        if(disposed) throw new IllegalStateException("Trying to play a disposed sound resource")
+        val tag = audioTags.find(!_.inUse).getOrElse {
+          val created = new SoundTagInstance(loadAudioTag(resourceNames), false, 0, None)
+          audioTags = audioTags :+ created
+          created
+        }
+        tag.inUse = true
+        tag.owner = Some(owner)
+        tag
+      }
+
+      def returnTag(tag: SoundTagInstance): Unit = {
+        tag.owner.foreach(_.removeTag(tag))
+        tag.owner = None
+        tag.inUse = false
+        tag.loop = 0
+      }
+
+      def release(): Unit = {
+        if(references <= 0) return
+        references -= 1
+        if(references == 0 && !disposed) {
+          disposed = true
+          audioTags.foreach { tag =>
+            tag.loader.foreach { audio =>
+              audio.pause()
+              audio.onended = null
+              if(audio.parentNode != null) audio.parentNode.removeChild(audio)
+            }
+            tag.owner.foreach(_.removeTag(tag))
+            tag.owner = None
+            tag.inUse = false
+          }
+          audioTags = Vector.empty
+        }
       }
     }
 
     class Html5Sound(pool: SoundTagPool, loop: Int = 0, rate: Float = 1f) extends AbstractSound {
 
       type PlayedSound = SoundTagInstance
+      private val activeTags = scala.collection.mutable.Set.empty[SoundTagInstance]
+      private var disposed = false
 
       override def play(volume: Float): Option[PlayedSound] = {
-        val tag = pool.getReadyTag()
+        if(disposed) return None
+        val tag = pool.getReadyTag(this)
+        activeTags += tag
         tag.loop = loop
-        tag.loader.foreach(a => {
-          a.onended = (_: dom.Event) => {
-            if(tag.loop > 0) {
-              tag.loop -= 1
-              val _ = a.play()
-            } else if(tag.loop == 0) {
-              a.onended = null
-              pool.returnTag(tag)
+        tag.loader.onLoad {
+          case Success(audio) =>
+            if(disposed || !activeTags.contains(tag)) pool.returnTag(tag)
+            else {
+              audio.onended = (_: dom.Event) => {
+                if(tag.loop > 0) {
+                  tag.loop -= 1
+                  val _ = audio.play()
+                } else if(tag.loop == 0) {
+                  audio.onended = null
+                  pool.returnTag(tag)
+                }
+              }
+              audio.volume = volume
+              audio.loop = loop < 0
+              audio.playbackRate = rate
+              val _ = audio.play()
             }
-          }
-
-          a.volume = volume
-          a.loop = false
-          if(loop == -1)
-            a.loop = true
-          a.playbackRate = rate
-
-          val _ = a.play()
-        })
+          case Failure(_) => pool.returnTag(tag)
+        }
         Some(tag)
       }
+
       override def withConfig(loop: Int, rate: Float): Sound = {
+        if(disposed) throw new IllegalStateException("Trying to configure a disposed sound")
+        if(loop < -1) throw new IllegalArgumentException("Loop count must be -1, zero, or positive")
+        if(rate < 0.5f || rate > 2f) throw new IllegalArgumentException("Playback rate must be between 0.5 and 2.0")
+        pool.retain()
         new Sound(pool, loop, rate)
       }
+
       override def dispose(): Unit = {
-        // TODO: remove tag and stop all running sounds loops.
+        if(disposed) return
+        disposed = true
+        activeTags.toVector.foreach(stop)
+        pool.release()
       }
 
       override def stop(id: PlayedSound): Unit = {
-        id.loader.foreach(a => {
-          a.pause()
-          a.onended = null
-          pool.returnTag(id)
-        })
+        if(activeTags.remove(id)) {
+          id.loader.onLoad {
+            case Success(audio) =>
+              audio.pause()
+              audio.onended = null
+              pool.returnTag(id)
+            case Failure(_) => pool.returnTag(id)
+          }
+        }
       }
-      override def pause(id: PlayedSound): Unit = {
-        id.loader.foreach(a => a.pause())
+      override def pause(id: PlayedSound): Unit = if(activeTags.contains(id)) id.loader.foreach(_.pause())
+      override def resume(id: PlayedSound): Unit = if(activeTags.contains(id)) {
+        id.loader.foreach(audio => { val _ = audio.play(); () })
       }
-      override def resume(id: PlayedSound): Unit = {
-        id.loader.foreach(a => { val _ = a.play(); () })
-      }
-      override def endLoop(id: PlayedSound): Unit = {
+      override def endLoop(id: PlayedSound): Unit = if(activeTags.contains(id)) {
         id.loop = 0
+        id.loader.foreach(_.loop = false)
       }
+
+      private[Html5Audio] def removeTag(tag: SoundTagInstance): Unit = activeTags -= tag
     }
     type Sound = Html5Sound
 
-    override def loadSound(path: ResourcePath, extras: ResourcePath*): Loader[Sound] = {
-      loadAudioTag(path +: extras).map(tag => new Html5Sound(new SoundTagPool(path +: extras, tag)))
+    override def loadSound(asset: sgl.assets.AudioAsset, extras: sgl.assets.AudioAsset*): Loader[Sound] = {
+      val resourceNames = (asset +: extras).map(_.resourceName)
+      loadAudioTag(resourceNames).map(tag => new Html5Sound(new SoundTagPool(resourceNames, tag)))
     }
 
     /** Music implementation for HTML5.
       *
       * This respects the core interface, with one small exception, due to restrictions
-      * in some browsers, it's not possible to autoplay a sound, so the play() call
-      * is automatically delaying the start of the sound until the player makes their
-      * first interaction with the page, at which point it is acceptable to start playing
-      * the sound.
-      *
-      * TODO: Export a setiings to ignore this constraint and just play
-      * whenever the API receives the call.
+      * in some browsers, it is not possible to autoplay sound, so when
+      * [[GuardAutoPlay]] is enabled the play call is delayed until the player's
+      * first interaction with the page.
       */
     class Html5Music(audio: HTMLAudioElement) extends AbstractMusic {
+      private var disposed = false
 
       override def play(): Unit = {
+        if(disposed) throw new IllegalStateException("Trying to play disposed music")
         if(GuardAutoPlay)
-          onInitialUserInteraction(() => { val _ = audio.play(); () })
+          onInitialUserInteraction(() => if(!disposed) { val _ = audio.play(); () })
         else {
           val _ = audio.play()
         }
@@ -134,6 +185,7 @@ trait Html5AudioProvider extends AudioProvider {
       }
       override def stop(): Unit = {
         audio.pause()
+        audio.currentTime = 0.0
       }
       override def setVolume(volume: Float): Unit = {
         audio.volume = volume
@@ -142,17 +194,20 @@ trait Html5AudioProvider extends AudioProvider {
         audio.loop = isLooping
       }
       override def dispose(): Unit = {
+        if(disposed) return
+        disposed = true
         audio.pause()
-        val _ = dom.document.body.removeChild(audio)
+        audio.onended = null
+        if(audio.parentNode != null) audio.parentNode.removeChild(audio)
       }
     }
     type Music = Html5Music
 
-    override def loadMusic(path: ResourcePath, extras: ResourcePath*): Loader[Music] = {
-      loadAudioTag(path +: extras).map(new Html5Music(_))
+    override def loadMusic(asset: sgl.assets.AudioAsset, extras: sgl.assets.AudioAsset*): Loader[Music] = {
+      loadAudioTag((asset +: extras).map(_.resourceName)).map(new Html5Music(_))
     }
 
-    private def audioMimeType(path: ResourcePath): String = path.extension match {
+    private def audioMimeType(resourceName: String): String = html5ResourceExtension(resourceName) match {
       case Some("ogg") => "audio/ogg"
       case Some("oga") => "audio/ogg"
       case Some("mp3") => "audio/mpeg"
@@ -162,21 +217,22 @@ trait Html5AudioProvider extends AudioProvider {
       case _ => ""
     }
 
-    private def loadAudioTag(pathes: scala.collection.Seq[ResourcePath]): Loader[HTMLAudioElement] = {
+    private def loadAudioTag(resourceNames: scala.collection.Seq[String]): Loader[HTMLAudioElement] = {
       val p = new DefaultLoader[HTMLAudioElement]()
       val audio = dom.document.createElement("audio").asInstanceOf[HTMLAudioElement]
 
       var errorCount = 0
       def onError(): Unit = {
         errorCount += 1
-        if(errorCount == pathes.size) {
-          val _ = p.failure(new RuntimeException(s"music <${pathes}> failed to load"))
+        if(errorCount == resourceNames.size) {
+          if(audio.parentNode != null) audio.parentNode.removeChild(audio)
+          val _ = p.failure(new RuntimeException(s"audio <${resourceNames.map(html5AssetUrl)}> failed to load"))
         }
       }
 
-      pathes.foreach(path => {
-        val tpe = audioMimeType(path)
-        html5ResourceObjectUrl(path, tpe).onLoad {
+      resourceNames.foreach(resourceName => {
+        val tpe = audioMimeType(resourceName)
+        html5ResourceObjectUrl(resourceName, tpe).onLoad {
           case Success(url) =>
             val source = dom.document.createElement("source").asInstanceOf[HTMLSourceElement]
             source.src = url

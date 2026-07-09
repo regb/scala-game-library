@@ -3,7 +3,7 @@ package scene
 package ui
 
 trait ButtonsComponent {
-  this: GraphicsProvider with WindowProvider with SystemProvider with ViewportComponent with SceneComponent =>
+  this: CanvasProvider with WindowProvider with SystemProvider with ViewportComponent with SceneComponent =>
 
   import Graphics._
 

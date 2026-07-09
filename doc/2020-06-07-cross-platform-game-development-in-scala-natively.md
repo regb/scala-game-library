@@ -259,7 +259,7 @@ placeholder shapes for starters:
 
 ```scala
 ...
-import sgl.geometry._
+import sgl.math._
 
   class MainScreen extends GameScreen {
     ...
@@ -281,7 +281,7 @@ import sgl.geometry._
 }
 ```
 
-We imported the `sgl.geometry._` package which provides a few basic geometric
+We imported the `sgl.math._` package which provides a few basic geometric
 classes (`Point`, `Vec`, `Rect`, etc). Now is a good time to explain the
 coordinates system of the screen. The origin (0, 0) is on the top left,
 the x axis expands on the right and the y axis expands towards the bottom.
@@ -394,7 +394,7 @@ import sgl.html5._
 import sgl.html5.themes.FixedWindowTheme
 import sgl.html5.util._
 
-object Main extends ScalavatorGame with Html5App
+object Main extends ScalavatorGame with Html5CanvasApp
   with Html5VerboseConsoleLoggingProvider {
 
   override val GameCanvasID = "scalavator_canvas"
@@ -406,7 +406,7 @@ object Main extends ScalavatorGame with Html5App
 ```
 
 This code is very similar to the `desktop` Main object, but instead it links in
-the `Html5App` implementation of SGL. It has a slightly different configuration,
+the `Html5CanvasApp` implementation of SGL. It has a slightly different configuration,
 because the settings you can control for a web app are different than for a
 desktop app. In particular, you have to set the `GameCanvasID`, which is the
 id of an HTML canvas tag that will be used to render the game. You have to

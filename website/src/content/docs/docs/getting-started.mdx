@@ -1,0 +1,42 @@
+---
+title: Getting Started
+description: Build your first SGL game.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+SGL lets you start small with the universal core APIs, then move to an engine when your game needs more structure.
+Core applications are plain Scala traits composed with the providers they need.
+
+```scala
+trait AbstractApp extends Application {
+  this: CanvasProvider with WindowProvider =>
+
+  override def frame(dt: Double): Unit =
+    withFrameCanvas { canvas =>
+      val paint = Graphics.defaultPaint.withColor(Graphics.Color.rgb(255, 80, 120))
+      canvas.drawRect(0, 0, Window.width, Window.height, paint)
+    }
+}
+```
+
+Most real games should also declare typed assets in Bazel and mix the generated provider into the app:
+
+```scala
+trait AbstractApp extends Application with AssetsProvider {
+  this: CanvasProvider with AudioProvider with WindowProvider =>
+
+  val player = Graphics.loadImage(Assets.drawable.player)
+  val music = Audio.loadMusic(Assets.audio.theme)
+}
+```
+
+<Aside type="tip" title="Pick one architecture">
+Use core Canvas/OpenGL directly, or choose Screen2D or GameObject as your primary engine. Core is universal; engines are explicit app architectures layered on top.
+</Aside>
+
+Run an existing example to see the generated Bazel app setup:
+
+```bash
+bazel run //examples/hello-canvas:desktop-awt
+```

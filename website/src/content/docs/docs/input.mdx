@@ -1,0 +1,14 @@
+---
+title: Input
+description: Keyboard, pointer, and input processors.
+---
+
+Poll keys directly or register an input processor.
+
+```scala
+if Input.isKeyPressed(Input.Keys.Space) then fire()
+
+Input.setInputProcessor(new InputProcessor {
+  override def keyDown(key: Input.Keys.Key): Boolean = true
+})
+```

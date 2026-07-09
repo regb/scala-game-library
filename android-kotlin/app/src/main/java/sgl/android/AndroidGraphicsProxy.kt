@@ -27,7 +27,6 @@ import sgl.proxy.FontProxy
 import sgl.proxy.GraphicsProxy
 import sgl.proxy.PaintProxy
 import sgl.proxy.ProxyResourceNotFoundException
-import sgl.proxy.ResourcePathProxy
 import sgl.proxy.TextLayoutProxy
 import sgl.util.Loader
 
@@ -35,16 +34,15 @@ class AndroidGraphicsProxy(val context: Context): GraphicsProxy {
 
     // TODO: we could use this as a metrics
     private var totalBytes: Long = 0
-    override fun loadImage(path: ResourcePathProxy?): Loader<BitmapProxy> = AndroidAsync.loader {
-        if(path !is AndroidResourcePathProxy)
-            throw IllegalArgumentException("Path must be an AndroidResourcePathProxy")
+    override fun loadImage(resourceName: String?): Loader<BitmapProxy> = AndroidAsync.loader {
+        val path = resourceName ?: throw IllegalArgumentException("Resource name cannot be null for loadImage")
+        val basename = path.substringAfterLast('/')
 
-        if(path.parts.size != 1)
-            throw IllegalArgumentException("Android drawable resources must be just a filename, without subdirectory")
-
-        // TODO: We should actually parse the extension and check it instead of just dropping the last 4
-        // characters (assuming .png here).
-        val filename = path.parts.first().dropLast(4)
+        // TODO: We should parse the extension more carefully.
+        val filename = basename.substringBeforeLast('.')
+            .lowercase()
+            .replace(Regex("[^a-z0-9_]"), "_")
+            .let { if (it.firstOrNull()?.isLetter() == true) it else "asset_$it" }
 
         val drawableId = context.resources.getIdentifier(filename, "drawable", context.getPackageName())
         if(drawableId == 0) { // 0 is returned when no resource if found.
@@ -170,17 +168,13 @@ class AndroidFontCompanionProxy(private val context: Context): FontCompanionProx
     override fun SansSerif(): FontProxy { return AndroidFontProxy(Typeface.SANS_SERIF, 14) }
     override fun Serif(): FontProxy { return AndroidFontProxy(Typeface.SERIF, 14) }
 
-    override fun load(path: ResourcePathProxy?): Loader<FontProxy> = AndroidAsync.loader {
-        if (path !is AndroidResourcePathProxy) {
-            throw IllegalArgumentException("Path must be an AndroidResourcePathProxy")
-        }
-
+    override fun load(resourceName: String?): Loader<FontProxy> = AndroidAsync.loader {
+        val assetPath = resourceName ?: throw IllegalArgumentException("Resource name cannot be null for font load")
         try {
-            val assetPath = path.parts.joinToString("/")
             val typeface = Typeface.createFromAsset(context.assets, assetPath)
             AndroidFontProxy(typeface, 14)
         } catch (e: RuntimeException) {
-            throw ProxyResourceNotFoundException(path)
+            throw ProxyResourceNotFoundException(assetPath)
         }
     }
 

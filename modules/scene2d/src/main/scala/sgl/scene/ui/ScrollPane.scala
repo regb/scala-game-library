@@ -4,7 +4,7 @@ package ui
 
 trait ScrollPaneComponent {
   this: SceneGraphComponent with ViewportComponent
-  with GraphicsProvider with SystemProvider with WindowProvider =>
+  with CanvasProvider with SystemProvider with WindowProvider =>
 
   /** A scrollable pane to hold SceneNodes.
     *

@@ -29,8 +29,8 @@ import java.util.{List => JList, Map => JMap}
  */
 trait PlatformProxy {
   val systemProxy: SystemProxy
-  val resourcesRoot: ResourcePathProxy
-  val multiDPIResourcesRoot: ResourcePathProxy
+  val resourcesRoot: String
+  val multiDPIResourcesRoot: String
 
   val windowProxy: WindowProxy
   val graphicsProxy: GraphicsProxy
@@ -38,14 +38,12 @@ trait PlatformProxy {
   val audioProxy: AudioProxy
   val loggerProxy: LoggerProxy
   val jsonProxy: JsonProxy
+
+  /** Creates a platform-backed persistent key-value store. */
+  def createSave(name: String): AbstractSave
 }
 
-case class ProxyResourceNotFoundException(path: ResourcePathProxy) extends Exception("Resource " + path.toString + " not found")
-
-trait ResourcePathProxy {
-  def / (filename: String): ResourcePathProxy
-  def extension: Option[String]
-}
+case class ProxyResourceNotFoundException(resourceName: String) extends Exception("Resource " + resourceName + " not found")
 
 trait LoggerProxy {
   /** Same ordinal convention as LoggingProvider.Logger.LogLevel. */
@@ -74,8 +72,8 @@ trait SystemProxy {
   def exit(): Unit
   def currentTimeMillis: Long
   def nanoTime: Long
-  def loadText(path: ResourcePathProxy): Loader[Array[String]]
-  def loadBinary(path: ResourcePathProxy): Loader[Array[Byte]]
+  def loadText(resourceName: String): Loader[Array[String]]
+  def loadBinary(resourceName: String): Loader[Array[Byte]]
   def openWebpage(uri: java.net.URI): Unit
   def openGooglePlayApp(id: String, params: Map[String, String]): Unit = {
     val base = s"https://play.google.com/store/apps/details?id=$id"
@@ -93,7 +91,7 @@ trait WindowProxy {
 }
 
 trait GraphicsProxy {
-  def loadImage(path: ResourcePathProxy): Loader[BitmapProxy]
+  def loadImage(resourceName: String): Loader[BitmapProxy]
 
   def fontCompanionProxy: FontCompanionProxy
   def colorCompanionProxy: ColorCompanionProxy
@@ -123,7 +121,7 @@ object FontProxy {
 }
 trait FontCompanionProxy {
   def create(family: String, style: FontProxy.Style, size: Int): FontProxy
-  def load(path: ResourcePathProxy): Loader[FontProxy]
+  def load(resourceName: String): Loader[FontProxy]
   val Default: FontProxy
   val DefaultBold: FontProxy
   val Monospace: FontProxy
@@ -177,8 +175,8 @@ trait SchedulerProxy {
 }
 
 trait AudioProxy {
-  def loadSound(path: ResourcePathProxy, extras: java.util.List[ResourcePathProxy]): Loader[SoundProxy]
-  def loadMusic(path: ResourcePathProxy, extras: java.util.List[ResourcePathProxy]): Loader[MusicProxy]
+  def loadSound(resourceName: String, extras: java.util.List[String]): Loader[SoundProxy]
+  def loadMusic(resourceName: String, extras: java.util.List[String]): Loader[MusicProxy]
 }
 
 trait SoundProxy {

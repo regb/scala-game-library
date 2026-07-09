@@ -1,0 +1,44 @@
+---
+import Hero from '../components/Hero.astro';
+import FeatureGrid from '../components/FeatureGrid.astro';
+import Showcase from '../components/Showcase.astro';
+import Quickstart from '../components/Quickstart.astro';
+import '../styles/custom.css';
+---
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Scala Game Library — Scala-first game framework</title>
+    <meta name="description" content="A Scala-first game framework for building fast, portable games." />
+    <link rel="icon" href="/favicon.svg" />
+  </head>
+  <body>
+    <main style="width:min(1120px, calc(100% - 2rem));margin:0 auto;">
+      <nav style="display:flex;justify-content:space-between;align-items:center;padding:1rem 0;">
+        <a href="/" style="display:flex;gap:.6rem;align-items:center;text-decoration:none;color:inherit;font-weight:900;"><img src="/logo.svg" width="34" height="34" alt="" /> SGL</a>
+        <div class="button-row"><a href="/docs/getting-started/">Docs</a><a href="https://github.com/regb/scala-game-library">GitHub</a></div>
+      </nav>
+      <Hero />
+      <FeatureGrid />
+      <section style="padding:3rem 0;">
+        <h2>Why this framework?</h2>
+        <div class="card-grid">
+          <article class="marketing-card"><h3>Above low-level bindings</h3><p>Keep platform glue, app lifecycle, input, assets, and audio behind coherent Scala APIs.</p></article>
+          <article class="marketing-card"><h3>More Scala-native than Java-first engines</h3><p>Designed around Scala composition, type safety, and cross-compilation rather than wrapping a Java object model.</p></article>
+          <article class="marketing-card"><h3>Choose your architecture</h3><p>Use core Canvas/OpenGL directly, or pick Screen2D or GameObject when your project needs structure.</p></article>
+        </div>
+      </section>
+      <Showcase />
+      <Quickstart />
+      <section style="padding:3rem 0;">
+        <h2>Community</h2>
+        <p>Follow development on GitHub, open issues, and share games built with SGL.</p>
+        <div class="button-row"><a class="btn primary" href="https://github.com/regb/scala-game-library">GitHub</a><a class="btn secondary" href="/docs/community/">Community docs</a></div>
+      </section>
+    </main>
+    <footer style="border-top:1px solid rgba(255,255,255,.12);margin-top:3rem;padding:2rem;text-align:center;color:var(--sl-color-gray-3);">
+      <a href="/docs/getting-started/">Docs</a> · <a href="https://github.com/regb/scala-game-library">GitHub</a> · <a href="https://github.com/regb/scala-game-library/releases">Releases</a> · <a href="/docs/community/">Community</a> · <a href="https://github.com/regb/scala-game-library/blob/main/LICENSE">License</a>
+    </footer>
+  </body>
+</html>

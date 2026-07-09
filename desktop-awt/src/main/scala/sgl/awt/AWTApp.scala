@@ -1,18 +1,27 @@
 package sgl
 package awt
 
+import sgl.desktop.JavaSoundAudioProvider
 import sgl.util._
 
 import java.awt.image.BufferedImage
 import java.awt.{Graphics2D, RenderingHints, Rectangle}
 import java.awt
 
-trait AWTApp extends GameApp 
-                with AWTGraphicsProvider with AWTInputProvider with AWTAudioProvider
-                with AWTWindowProvider with AWTSystemProvider with ThreadPoolSchedulerProvider
-                with GameStateComponent {
+trait AWTApp extends AWTCanvasProvider with AWTInputProvider with JavaSoundAudioProvider
+                with AWTWindowProvider with ThreadPoolSchedulerProvider {
 
-  this: LoggingProvider =>
+  this: Application with LoggingProvider with DesktopSystemProvider =>
+
+  val TargetFps: Option[Int] = Some(30)
+
+  private var currentFrameCanvas: Option[Graphics.Canvas] = None
+
+  override def withFrameCanvas[A](f: Graphics.Canvas => A): A =
+    currentFrameCanvas match {
+      case Some(canvas) => f(canvas)
+      case None => throw new IllegalStateException("Canvas is only available during a frame")
+    }
 
   /*
    * We use a separate thread to run the game loop as, I believe, the AWT
@@ -62,12 +71,7 @@ trait AWTApp extends GameApp
     this.gameCanvas = new awt.Canvas(AWTGraphicsConfig)
     this.applicationFrame = new ApplicationFrame(this.gameCanvas)
     this.applicationFrame.addWindowListener(new java.awt.event.WindowAdapter() {
-      override def windowClosing(windowEvent: java.awt.event.WindowEvent): Unit = {
-        pauseThread()
-        Scheduler.shutdown()
-        lifecycleListener.pause()
-        lifecycleListener.shutdown()
-      }
+      override def windowClosing(windowEvent: java.awt.event.WindowEvent): Unit = pauseThread()
     })
     
     if(HideCursor) {
@@ -82,10 +86,17 @@ trait AWTApp extends GameApp
     this.registerInputListeners()
     this.Audio.init()
 
-    gameState.newScreen(startingScreen)
+    try create()
+    catch {
+      case error: Throwable =>
+        try dispose()
+        finally {
+          Scheduler.shutdown()
+          applicationFrame.dispose()
+        }
+        throw error
+    }
 
-    lifecycleListener.startup()
-    lifecycleListener.resume()
     // TODO: pause on minimize window ?
 
     println("xppi: " + Window.xppi)
@@ -105,7 +116,7 @@ trait AWTApp extends GameApp
   }
   protected def pauseThread(): Unit = {
     Scheduler.pause()
-    gameLoop.running = false
+    if(gameLoop != null) gameLoop.running = false
   }
 
   private class GameLoop extends Runnable {
@@ -129,7 +140,7 @@ trait AWTApp extends GameApp
 
     private implicit val Tag: AWTApp.this.Logger.Tag = Logger.Tag("game-loop")
 
-    private val targetFramePeriod: Option[Long] = TargetFps map framePeriod
+    private val targetFramePeriod: Option[Long] = TargetFps.map(Application.framePeriodMillis)
 
     var running = true
 
@@ -191,14 +202,12 @@ trait AWTApp extends GameApp
               val canvas: Graphics.Canvas = Graphics.AWTCanvas(g, gameCanvas.getWidth.toFloat, gameCanvas.getHeight.toFloat)
 
               val newTime = java.lang.System.nanoTime
-              val elapsed = newTime - lastTime
-              // delta time, in ms (all time measures are in nanos).
-              val dt = (elapsed / (1000*1000)).toLong
-              // At this point, we may have lost half a ms, so we should account for it in our lastTime, by
-              // shifting it back by the lost fraction.
-              lastTime = newTime - (elapsed - dt*1000*1000)
+              val dt = (newTime - lastTime).toDouble / 1000000000.0
+              lastTime = newTime
 
-              gameLoopStep(dt, canvas)
+              currentFrameCanvas = Some(canvas)
+              try frame(dt)
+              finally currentFrameCanvas = None
 
               g.dispose()
               contentsRestored = strategy.contentsRestored()
@@ -226,6 +235,10 @@ trait AWTApp extends GameApp
         }
       }
 
+      try pause()
+      catch { case error: Exception => logger.warning("Error while pausing application during shutdown: " + error.getMessage) }
+      try dispose()
+      catch { case error: Exception => logger.warning("Error while disposing application during shutdown: " + error.getMessage) }
       Scheduler.shutdown()
       System.exit()
     }

@@ -7,13 +7,21 @@ if [[ -z "$workspace" ]]; then
 fi
 
 project_dir="$workspace/@PROJECT_DIR@"
+execution_root="$(cd "$workspace" && bazel info execution_root)"
 sgl_android_root="@SGL_ANDROID_REPO_ROOT@"
-if [[ "$sgl_android_root" != /* ]]; then
-  execution_root="$(cd "$workspace" && bazel info execution_root)"
+if [[ "$sgl_android_root" == "." ]]; then
+  sgl_android_root="$workspace"
+elif [[ "$sgl_android_root" != /* ]]; then
   sgl_android_root="$(cd "$execution_root/$sgl_android_root" && pwd)"
 fi
-script_dir="$(cd "$(dirname "$0")" && pwd)"
-template_dir="$script_dir/@PROJECT_TEMPLATE_DIR@"
+script_path="$(readlink -f "${BASH_SOURCE[0]}")"
+script_dir="$(dirname "$script_path")"
+runfiles_template_dir="$script_path.runfiles/_main/@PROJECT_TEMPLATE_DIR@"
+if [[ -d "$runfiles_template_dir" ]]; then
+  template_dir="$runfiles_template_dir"
+else
+  template_dir="$script_dir/@PROJECT_TEMPLATE_DIR@"
+fi
 
 cd "$workspace"
 bazel build @GAME_LABELS@
@@ -22,8 +30,25 @@ bazel build //core:sgl-core //modules:sgl-scene2d //modules:sgl-particles
 
 rm -rf "$project_dir"
 mkdir -p "$project_dir"
-cp -R "$template_dir/." "$project_dir/"
+cp -RL "$template_dir/." "$project_dir/"
 chmod -R u+w "$project_dir"
+
+python3 - "$project_dir/typed-assets.tsv" "$project_dir/app/src/main" "$execution_root" <<'PY'
+from pathlib import Path
+import shutil
+import sys
+manifest, android_main, execution_root = map(Path, sys.argv[1:])
+if manifest.exists():
+    for line in manifest.read_text().splitlines():
+        if not line:
+            continue
+        source, destination = line.split("\t", 1)
+        source_path = execution_root / source
+        destination_path = android_main / destination
+        destination_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_path, destination_path)
+    manifest.unlink()
+PY
 
 assets_dir="@ASSETS_DIR@"
 if [[ -n "$assets_dir" && -d "$workspace/$assets_dir" ]]; then

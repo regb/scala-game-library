@@ -16,6 +16,8 @@ class TiledMapResolvedDensityTest extends AnyFunSuite {
       margin = 2,
       spacing = 1,
       image = "test-tileset.png",
+      imageWidth = tileWidth * 2 + 5,
+      imageHeight = tileHeight * 2 + 5,
       tiles = Vector(
         Tileset.Tile(0, None, 2, 2, tileWidth, tileHeight, Vector.empty, None, Vector.empty),
         Tileset.Tile(1, None, 35, 2, tileWidth, tileHeight, Vector.empty, None, Vector.empty),
@@ -237,6 +239,8 @@ class TiledMapResolvedDensityTest extends AnyFunSuite {
       name = "test-image",
       id = 4,
       image = "test-image.png",
+      width = 100,
+      height = 80,
       isVisible = true,
       opacity = 1.0f,
       offsetX = 15,

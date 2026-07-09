@@ -4,7 +4,7 @@ package object scene {
 
   /** Provide a hierarchical scene of renderable objects
     *
-    * This builds on top of the core GraphicsProvider to provide
+    * This builds on top of the core CanvasProvider to provide
     * a scene graph with a structured hierarchy to render 
     * and organize objects on the screen.
     *

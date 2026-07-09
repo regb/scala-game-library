@@ -2,8 +2,8 @@ package sgl.html5
 
 import scala.scalajs.js
 
-// trait CordovaApp extends Html5App with CordovaMediaAudioProvider {
-trait CordovaApp extends Html5App with CordovaNativeAudioAudioProvider {
+// trait CordovaApp extends Html5CanvasApp with CordovaMediaAudioProvider {
+trait CordovaApp extends Html5CanvasApp with CordovaNativeAudioAudioProvider {
 
   override val Audio: Audio = CordovaNativeAudioAudio
   // override val Audio: Audio = CordovaMediaAudio

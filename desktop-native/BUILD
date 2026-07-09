@@ -10,10 +10,18 @@ filegroup(
 scala_library(
     name = "sgl-desktop-native",
     srcs = [":srcs"],
-    scalacopts = SGL_SCALACOPTS,
+    scalacopts = SGL_SCALACOPTS + [
+        # Native currently includes large generated/ported SDL/OpenGL bindings.
+        # Keep warnings strict elsewhere, but avoid flooding every native build/run
+        # with binding hygiene warnings.
+        "-no-indent",
+        "-Wconf:msg=.*Line is indented too far.*:silent",
+        "-Wconf:msg=.*unused.*:silent",
+    ],
     plugins = ["@maven//:org_scala_native_nscplugin_3_3_8"],
     deps = [
         "//core:sgl-core",
+        "//engines:sgl-screen2d",
         "//jvm-shared:jvm-shared",
         "@maven//:org_scala_native_scalalib_native0_5_3",
         "@maven//:org_scala_native_scala3lib_native0_5_3",

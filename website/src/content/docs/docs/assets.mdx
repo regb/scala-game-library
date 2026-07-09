@@ -1,0 +1,160 @@
+---
+title: Assets
+description: Typed assets and backend resource packaging.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+SGL game code should load **typed generated assets**, not public resource paths or string file names.
+Asset files are declared in Bazel, passed to `sgl_core_library`, and exposed through a generated `Assets` object.
+
+```python
+load("//bazel/sgl:defs.bzl", "sgl_core_library")
+load("//bazel/sgl:assets.bzl", "sgl_audio_assets", "sgl_drawable_assets")
+
+sgl_drawable_assets(
+    name = "drawables",
+    srcs = ["assets/drawable-xhdpi/character.png"],
+    strip_prefix = "examples/hello-canvas/assets/drawable-xhdpi",
+    source_density = "xhdpi",
+    target_densities = ["mdpi", "xhdpi"],
+)
+
+sgl_audio_assets(
+    name = "audio",
+    srcs = glob(["assets/audio/*.wav"]),
+    strip_prefix = "examples/hello-canvas/assets/audio",
+)
+
+sgl_core_library(
+    name = "core",
+    srcs = ["App.scala"],
+    assets = [":drawables", ":audio"],
+    package = "my.game.core",
+)
+```
+
+The generated core package contains:
+
+```scala
+trait AssetsProvider extends sgl.assets.AssetRuntime {
+  def Assets: Assets
+}
+```
+
+Mix the generated provider into the backend app and use the typed handles in game code:
+
+```scala
+trait AbstractApp extends Application with AssetsProvider {
+  this: CanvasProvider with AudioProvider with SystemProvider =>
+
+  val image = Graphics.loadImage(Assets.drawable.character)
+  val music = Audio.loadMusic(Assets.audio.music)
+}
+```
+
+<Aside type="caution" title="Do not use ResourcePath for app assets">
+Older examples used `ResourcesRoot / "..."` and `MultiDPIResourcesRoot / "..."` directly. New application code should use generated typed assets such as `Assets.drawable.player`, `Assets.audio.theme`, and `Assets.text.level1`.
+</Aside>
+
+## Asset rules
+
+Use one typed rule per asset kind:
+
+- `sgl_drawable_assets`: density-aware images for Canvas/OpenGL rendering.
+- `sgl_raw_image_assets`: exact image files when density processing is not wanted.
+- `sgl_text_assets`: text files loaded with `System.loadText`.
+- `sgl_binary_assets`: exact binary files loaded with `System.loadBinary`.
+- `sgl_audio_assets`: music and sound files loaded with `Audio.loadMusic` / `Audio.loadSound`.
+- `sgl_font_assets`: font files loaded with `Graphics.Font.load`.
+
+Most rules have a single `strip_prefix`: it is stripped from source paths to derive stable typed names. `sgl_drawable_assets` can instead use a prefix per supplied density. SGL packages files under backend-specific internal namespaces such as `drawable-mdpi/`, `audio/`, `text/`, `binary/`, `raw-image/`, and `font/`. Density resizing and Tiled extrusion support PNG and JPEG; WebP inputs must remain at their source density without extrusion.
+
+For example:
+
+```python
+sgl_audio_assets(
+    name = "audio",
+    srcs = glob(["assets/audio/*.wav"]),
+    strip_prefix = "my/game/assets/audio",
+)
+```
+
+`assets/audio/beep.wav` becomes available as:
+
+```scala
+Assets.audio.beep
+```
+
+The internal packaged resource name remains private framework metadata.
+
+## Supplied drawable densities
+
+When source artwork already has density variants, provide those files directly rather than resizing one source. Variants are grouped by the typed name derived after each density's strip prefix:
+
+```python
+sgl_drawable_assets(
+    name = "drawables",
+    density_srcs = {
+        "mdpi": glob(["assets/drawable-mdpi/drawable/*.png"]),
+        "xhdpi": glob(["assets/drawable-xhdpi/drawable/*.png"]),
+    },
+    density_strip_prefixes = {
+        "mdpi": "assets/drawable-mdpi/drawable",
+        "xhdpi": "assets/drawable-xhdpi/drawable",
+    },
+)
+```
+
+An image present in both directories gets mdpi and xhdpi variants. An image present only in the mdpi directory remains mdpi-only. Android places each supplied file in the corresponding `res/drawable-*` directory and selects the closest density. Other backends select the closest variant through `DrawableAsset`. The rule copies supplied variants exactly and does not synthesize missing densities.
+
+Use the original `srcs`, `source_density`, and `target_densities` form when SGL should resize one source into every requested target density.
+
+## Backend packaging
+
+JVM desktop apps read packaged classpath resources from the core target. HTML5 and Scala Native apps also need the asset targets in their app rule so the files are copied beside the generated app:
+
+```python
+sgl_html5_app(
+    name = "html5",
+    deps = [":core"],
+    assets = [":drawables", ":audio"],
+    assets_strip_prefix = "examples/hello-canvas/assets",
+    extra_mixins = ["my.game.core.GeneratedAssetsProvider"],
+)
+
+sgl_desktop_native_app(
+    name = "desktop-native",
+    deps = [":core"],
+    assets = [":drawables", ":audio"],
+    assets_strip_prefix = "examples/hello-canvas/assets",
+    extra_mixins = ["my.game.core.GeneratedAssetsProvider"],
+)
+
+sgl_android_app(
+    name = "android",
+    package = "my.game.android",
+    label = "My Game",
+    assets = [":drawables", ":audio"],
+)
+```
+
+## Tiled maps
+
+Use `sgl_tiled_import` for authored Tiled projects. It rewrites map and tileset image references to typed drawable asset URIs and emits both text map assets and drawable image assets for `sgl_core_library`. The pinned Tiled build tool currently runs on Linux and requires `xvfb-run`; image resizing and tile extrusion use SGL's hermetic Java asset tool rather than system ImageMagick.
+
+```python
+load("//bazel/tiled:defs.bzl", "sgl_tiled_import")
+
+sgl_tiled_import(
+    name = "tiled-assets",
+    project_root = "engines/screen2d/examples/platformer/tiled",
+    maps = glob(["tiled/maps/*.tmj"]),
+    tilesets = glob(["tiled/tilesets/*.tsj"]),
+    images = glob(["tiled/images/**/*.png"]),
+    source_density = "mdpi",
+    target_densities = ["mdpi"],
+)
+```
+
+Game code loads the imported map as typed text, then resolves image URIs through `AssetRuntime` helpers used by the Tiled integrations.

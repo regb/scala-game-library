@@ -10,7 +10,7 @@ import java.awt
 import sgl.util.LoggingProvider
 
 trait AWTWindowProvider extends WindowProvider {
-  this: GameStateComponent with GraphicsProvider with SystemProvider with LoggingProvider =>
+  this: CanvasProvider with SystemProvider with LoggingProvider =>
 
   /** The title of the frame */
   val frameTitle: String = "Default App"

@@ -1,37 +1,47 @@
 package sgl
 
-import sgl.util._
+import java.net.URI
 
-trait TestSystemProvider extends TestSystemNoResourcePathProvider {
+import scala.collection.mutable
 
-  class TestResourcePath extends AbstractResourcePath {
-    def / (filename: String): ResourcePath = ???
+import sgl.assets.{BinaryAsset, TextAsset}
+import sgl.util.Loader
 
-    override def extension: Option[String] = ???
-  }
-  type ResourcePath = TestResourcePath
-  override val ResourcesRoot: ResourcePath = new TestResourcePath
-  override val MultiDPIResourcesRoot: ResourcePath = new TestResourcePath
-
+trait TestSystemProvider extends TestSystemNoResourcePathProvider with PartsResourcePathProvider {
+  override val ResourcesRoot: ResourcePath = PartsResourcePath(Vector.empty)
+  override val MultiDPIResourcesRoot: ResourcePath = PartsResourcePath(Vector.empty)
 }
 
 trait TestSystemNoResourcePathProvider extends SystemProvider {
 
   class TestSystem extends System {
+    var exited: Boolean = false
+    var wallClockMillis: Long = 0L
+    var monotonicNanos: Long = 0L
+    var lastOpenedWebpage: Option[URI] = None
 
-    def exit(): Unit = ???
-    def millis(): Long = ???
+    val textAssets: mutable.Map[TextAsset, Array[String]] = mutable.Map.empty
+    val binaryAssets: mutable.Map[BinaryAsset, Array[Byte]] = mutable.Map.empty
 
-    def currentTimeMillis: Long = ???
-    def nanoTime: Long = ???
+    override def exit(): Unit = exited = true
+    override def currentTimeMillis: Long = wallClockMillis
+    override def nanoTime: Long = monotonicNanos
 
-    def loadText(path: ResourcePath): Loader[Array[String]] = ???
+    override def loadText(asset: TextAsset): Loader[Array[String]] =
+      textAssets.get(asset) match {
+        case Some(lines) => Loader.successful(lines.clone())
+        case None => Loader.failed(new NoSuchElementException(s"No test text asset registered: ${asset.resourceName}"))
+      }
 
-    def loadBinary(path: ResourcePath): Loader[Array[Byte]] = ???
+    override def loadBinary(asset: BinaryAsset): Loader[Array[Byte]] =
+      binaryAssets.get(asset) match {
+        case Some(bytes) => Loader.successful(bytes.clone())
+        case None => Loader.failed(new NoSuchElementException(s"No test binary asset registered: ${asset.resourceName}"))
+      }
 
-    def openWebpage(uri: java.net.URI): Unit = ???
-
+    override def openWebpage(uri: URI): Unit = lastOpenedWebpage = Some(uri)
   }
-  override val System: System = new TestSystem
 
+  val testSystem: TestSystem = new TestSystem
+  override val System: System = testSystem
 }

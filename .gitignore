@@ -14,3 +14,7 @@ project/metals.sbt
 /bazel-*
 /.bazel-android/
 /games
+
+website/node_modules
+website/dist
+website/.astro

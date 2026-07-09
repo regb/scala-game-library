@@ -1,0 +1,21 @@
+---
+const features = [
+  ['Cross-platform', '▣', '#ff4d6d', 'Target the JVM, Scala.js web, Scala Native, or Android from shared game code.'],
+  ['Scala-first APIs', 'λ', '#7c3aed', 'Use traits, self-types, immutable data, and type-safe engine abstractions instead of low-level bindings.'],
+  ['2D and 3D rendering', '◆', '#22d3ee', 'Use an expressive engine or drop down to the metal with OpenGL.'],
+  ['Assets', '◫', '#f59e0b', 'Declare assets in Bazel and load typed generated handles for images, sounds, maps, fonts, and data.'],
+  ['Input', '⌁', '#34d399', 'Keyboard, pointer, and platform input exposed through a consistent API.'],
+  ['Audio', '♪', '#fb7185', 'Music and sound effect providers with desktop, web, and native backends.'],
+];
+---
+<section style="padding:3rem 0;">
+  <h2>Everything you need to structure a game</h2>
+  <div class="card-grid feature-grid">
+    {features.map(([title, icon, accent, body]) => (
+      <article class="marketing-card" style={`--card-accent: ${accent}`}>
+        <h3><span class="feature-icon">{icon}</span>{title}</h3>
+        <p>{body}</p>
+      </article>
+    ))}
+  </div>
+</section>

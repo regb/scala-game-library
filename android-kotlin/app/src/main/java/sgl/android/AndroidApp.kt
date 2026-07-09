@@ -4,10 +4,14 @@ package sgl.android
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
+import android.view.ViewGroup
+import android.view.WindowInsets
 import android.view.WindowManager
+import android.widget.FrameLayout
 import android.window.OnBackInvokedCallback
 import sgl.`Input$`
 import sgl.InputActions
@@ -21,8 +25,28 @@ import sgl.proxy.ProxiedGameApp
  * the activity and start a game loop invoking the update/render functions,
  * rendering to the SurfaceView.
  */
+enum class AndroidSystemBarsMode {
+    SafeArea,
+    EdgeToEdge,
+    Immersive,
+}
+
+enum class AndroidSystemBarsBehavior {
+    Default,
+    TransientBySwipe,
+}
+
 open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPlatformProxy) -> ProxiedGameApp): Activity() {
 
+
+    /** Controls how the game surface interacts with Android system bars. */
+    var SystemBarsMode: AndroidSystemBarsMode = AndroidSystemBarsMode.Immersive
+
+    /** Controls how hidden system bars are revealed in immersive mode. */
+    var SystemBarsBehavior: AndroidSystemBarsBehavior = AndroidSystemBarsBehavior.TransientBySwipe
+
+    /** Controls Android's navigation-bar contrast scrim in edge-to-edge modes. */
+    var NavigationBarContrastEnforced: Boolean = false
 
     /** Control if the screen should always stay on.
      *
@@ -38,6 +62,7 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
      * onResume and onPause. We use this in the SurfaceHolder.Callback
      * to check if we should fire up a resume event for the app.
      */
+    @Volatile
     var appResumed: Boolean = false
 
     /** Indicates if the surface is ready to be drawn on
@@ -47,6 +72,7 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
      * should be used in conjunction with the appResumed
      * flag to control when to run the game loop.
      */
+    @Volatile
     var surfaceReady: Boolean = false
 
     var gameLoop: GameLoop? = null
@@ -55,6 +81,8 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
     var gameView: GameView? = null
 
     var gameApp: ProxiedGameApp? = null
+    @Volatile
+    var applicationStarted: Boolean = false
 
     var platformProxy: AndroidPlatformProxy? = null
 
@@ -71,7 +99,7 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
 
         gameView = GameView(this, null)
         gameView?.setOnTouchListener(AndroidInputListener(this))
-        setContentView(gameView)
+        setGameContentView(gameView!!)
 
         // Create the platform proxy first
         platformProxy = AndroidPlatformProxy(this, gameView!!)
@@ -95,27 +123,135 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         registerModernBackHandler()
+        applySystemBarsConfiguration()
 
-        // lifecycle of SGL
-        gameApp?.startup()
+        // Startup is deferred until the drawing surface is ready.
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
+    private fun setGameContentView(view: GameView) {
+        val container = FrameLayout(this)
+        container.addView(
+            view,
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+            ),
+        )
+        container.setOnApplyWindowInsetsListener { _, windowInsets ->
+            val (left, top, right, bottom) = if (SystemBarsMode == AndroidSystemBarsMode.SafeArea) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    val insets = windowInsets.getInsets(
+                        WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout(),
+                    )
+                    listOf(insets.left, insets.top, insets.right, insets.bottom)
+                } else {
+                    @Suppress("DEPRECATION")
+                    listOf(
+                        windowInsets.systemWindowInsetLeft,
+                        windowInsets.systemWindowInsetTop,
+                        windowInsets.systemWindowInsetRight,
+                        windowInsets.systemWindowInsetBottom,
+                    )
+                }
+            } else {
+                listOf(0, 0, 0, 0)
+            }
 
-        platformProxy?.let { platform ->
-            val audioProxy = platform.audioProxy()
-            if (audioProxy is AndroidAudioProxy) {
-                audioProxy.disposeAllMusic()
+            val params = view.layoutParams as FrameLayout.LayoutParams
+            if (
+                params.leftMargin != left ||
+                params.topMargin != top ||
+                params.rightMargin != right ||
+                params.bottomMargin != bottom
+            ) {
+                params.setMargins(left, top, right, bottom)
+                view.layoutParams = params
+            }
+            windowInsets
+        }
+        setContentView(container)
+        container.requestApplyInsets()
+    }
+
+    @Suppress("DEPRECATION")
+    private fun applySystemBarsConfiguration() {
+        if (SystemBarsMode != AndroidSystemBarsMode.SafeArea) {
+            window.statusBarColor = Color.TRANSPARENT
+            window.navigationBarColor = Color.TRANSPARENT
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                window.isNavigationBarContrastEnforced = NavigationBarContrastEnforced
             }
         }
 
-        unregisterModernBackHandler()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.setDecorFitsSystemWindows(false)
+            val controller = window.insetsController ?: return
+            if (SystemBarsMode == AndroidSystemBarsMode.Immersive) {
+                controller.systemBarsBehavior = when (SystemBarsBehavior) {
+                    AndroidSystemBarsBehavior.Default ->
+                        android.view.WindowInsetsController.BEHAVIOR_DEFAULT
+                    AndroidSystemBarsBehavior.TransientBySwipe ->
+                        android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                }
+                controller.hide(WindowInsets.Type.systemBars())
+            }
+        } else {
+            val layoutFlags =
+                android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+                android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+            window.decorView.systemUiVisibility = when (SystemBarsMode) {
+                AndroidSystemBarsMode.SafeArea -> layoutFlags
+                AndroidSystemBarsMode.EdgeToEdge -> layoutFlags
+                AndroidSystemBarsMode.Immersive -> layoutFlags or
+                    android.view.View.SYSTEM_UI_FLAG_FULLSCREEN or
+                    android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                    when (SystemBarsBehavior) {
+                        AndroidSystemBarsBehavior.Default -> android.view.View.SYSTEM_UI_FLAG_IMMERSIVE
+                        AndroidSystemBarsBehavior.TransientBySwipe -> android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                    }
+            }
+        }
+    }
 
-        (platformProxy?.schedulerProxy() as? AndroidSchedulerProxy)?.shutdown()
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) applySystemBarsConfiguration()
+    }
 
-        //lifecycle of SGL
-        gameApp?.shutdown()
+    override fun onDestroy() {
+        stopGameLoop()
+        try {
+            // Let the game release sounds and music before shutting down platform audio.
+            if (applicationStarted) {
+                gameApp?.shutdown()
+                applicationStarted = false
+            }
+        } finally {
+            try {
+                platformProxy?.let { platform ->
+                    (platform.audioProxy() as? AndroidAudioProxy)?.dispose()
+                }
+            } finally {
+                unregisterModernBackHandler()
+                (platformProxy?.schedulerProxy() as? AndroidSchedulerProxy)?.shutdown()
+                super.onDestroy()
+            }
+        }
+    }
+
+    private fun stopGameLoop() {
+        gameLoop?.running = false
+        val thread = gameLoopThread
+        if (thread != null && thread !== Thread.currentThread()) {
+            try {
+                thread.join(2000L)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+            }
+        }
+        gameLoop = null
+        gameLoopThread = null
     }
 
     // Although we use flags for the various state, we should
@@ -126,6 +262,7 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
     // invoked when the user loses focus for a significant amount of time.
     override fun onResume() {
         super.onResume()
+        applySystemBarsConfiguration()
 
         appResumed = true
 
@@ -144,7 +281,7 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
 
         // TODO: maybe the lifecycle resume event should be more precise and take into account
         //       things like surfaceReady and focus flags.
-        gameApp?.resume()
+        if (applicationStarted) gameApp?.resume()
     }
 
     override fun onPause() {
@@ -159,10 +296,10 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
             }
         }
 
-        gameLoop?.running = false
+        stopGameLoop()
         (platformProxy?.schedulerProxy() as? AndroidSchedulerProxy)?.pause()
 
-        gameApp?.pause()
+        if (applicationStarted) gameApp?.pause()
     }
 
     /** Enable the back button events.
@@ -182,7 +319,7 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
         }
     }
 
-    @Deprecated("Deprecated in Java")
+    @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
     override fun onBackPressed() {
         if(EnableBackButtonEvents) {
             `Input$`.`MODULE$`.inputProcessor().systemAction(InputActions.`Back$`())

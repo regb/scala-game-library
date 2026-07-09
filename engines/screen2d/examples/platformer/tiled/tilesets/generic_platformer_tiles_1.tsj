@@ -1,0 +1,76 @@
+{
+ "columns": 5,
+ "image": "../images/tilesets/tileset.png",
+ "imageheight": 188,
+ "imagewidth": 188,
+ "margin": 10,
+ "name": "generic_platformer_tiles_1",
+ "spacing": 2,
+ "tilecount": 25,
+ "tileheight": 32,
+ "tiles": [
+  {
+   "animation": [
+    {
+     "duration": 50,
+     "tileid": 0
+    },
+    {
+     "duration": 70,
+     "tileid": 1
+    },
+    {
+     "duration": 200,
+     "tileid": 2
+    },
+    {
+     "duration": 400,
+     "tileid": 3
+    },
+    {
+     "duration": 100,
+     "tileid": 4
+    },
+    {
+     "duration": 100,
+     "tileid": 5
+    },
+    {
+     "duration": 1000,
+     "tileid": 24
+    },
+    {
+     "duration": 100,
+     "tileid": 6
+    }
+   ],
+   "id": 24,
+   "objectgroup": {
+    "draworder": "index",
+    "name": "",
+    "objects": [
+     {
+      "height": 0,
+      "id": 1,
+      "name": "",
+      "rotation": 0,
+      "type": "",
+      "visible": true,
+      "width": 0,
+      "x": 15.206015037594,
+      "y": 14.5002506265664
+     }
+    ],
+    "opacity": 1,
+    "type": "objectgroup",
+    "visible": true,
+    "x": 0,
+    "y": 0
+   }
+  }
+ ],
+ "tilewidth": 32,
+ "type": "tileset",
+ "version": 1.4,
+ "tiledversion": "1.4.0"
+}

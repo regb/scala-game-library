@@ -2,36 +2,33 @@ package sgl
 package proxy
 
 import sgl.util._
-import scala.util.Failure
 
-trait ProxySystemProvider extends SystemProvider {
+trait ProxySystemProvider extends SystemProvider with PartsResourcePathProvider {
 
   val PlatformProxy: PlatformProxy
+
+  private def joinResource(root: String, resourceName: String): String =
+    if(root.isEmpty) resourceName else root.stripSuffix("/") + "/" + resourceName.stripPrefix("/")
 
   object ProxySystem extends System {
     def exit(): Unit = PlatformProxy.systemProxy.exit()
     def currentTimeMillis: Long = PlatformProxy.systemProxy.currentTimeMillis
     def nanoTime: Long = PlatformProxy.systemProxy.nanoTime
-    def loadText(path: ResourcePath): Loader[Array[String]] = PlatformProxy.systemProxy.loadText(path.path).transform {
-      case Failure(_: ProxyResourceNotFoundException) => Failure(ResourceNotFoundException(path))
-      case other => other
-    }
-    def loadBinary(path: ResourcePath): Loader[Array[Byte]] = PlatformProxy.systemProxy.loadBinary(path.path).transform {
-      case Failure(_: ProxyResourceNotFoundException) => Failure(ResourceNotFoundException(path))
-      case other => other
-    }
+    def loadText(asset: sgl.assets.TextAsset): Loader[Array[String]] =
+      PlatformProxy.systemProxy.loadText(joinResource(PlatformProxy.resourcesRoot, asset.resourceName)).transform {
+        case scala.util.Failure(e: ProxyResourceNotFoundException) => scala.util.Failure(ResourceNotFoundException(PartsResourcePath(e.resourceName.split('/').toVector)))
+        case other => other
+      }
+    def loadBinary(asset: sgl.assets.BinaryAsset): Loader[Array[Byte]] =
+      PlatformProxy.systemProxy.loadBinary(joinResource(PlatformProxy.resourcesRoot, asset.resourceName)).transform {
+        case scala.util.Failure(e: ProxyResourceNotFoundException) => scala.util.Failure(ResourceNotFoundException(PartsResourcePath(e.resourceName.split('/').toVector)))
+        case other => other
+      }
     def openWebpage(uri: java.net.URI): Unit  = PlatformProxy.systemProxy.openWebpage(uri)
     override def openGooglePlayApp(id: String, params: Map[String, String]): Unit = PlatformProxy.systemProxy.openGooglePlayApp(id, params)
   }
   override val System: System = ProxySystem
 
-  case class ProxyResourcePath(path: ResourcePathProxy) extends AbstractResourcePath {
-    override def / (filename: String): ResourcePath = ProxyResourcePath(path / filename)
-    def extension: Option[String] = path.extension
-  }
-  type ResourcePath = ProxyResourcePath
-
-  override def ResourcesRoot: ResourcePath = ProxyResourcePath(PlatformProxy.resourcesRoot)
-  override def MultiDPIResourcesRoot: ResourcePath = ProxyResourcePath(PlatformProxy.multiDPIResourcesRoot)
-
+  override def ResourcesRoot: ResourcePath = PartsResourcePath(PlatformProxy.resourcesRoot.split('/').filter(_.nonEmpty).toVector)
+  override def MultiDPIResourcesRoot: ResourcePath = PartsResourcePath(PlatformProxy.multiDPIResourcesRoot.split('/').filter(_.nonEmpty).toVector)
 }

@@ -1,0 +1,27 @@
+---
+const code = `trait AbstractApp extends Application {
+  this: CanvasProvider with WindowProvider =>
+
+  override def frame(dt: Double): Unit =
+    withFrameCanvas { canvas =>
+      canvas.drawRect(
+        0, 0, Window.width, Window.height,
+        Graphics.defaultPaint.withColor(Graphics.Color.rgb(20, 24, 40))
+      )
+    }
+}`;
+---
+<section class="hero-layout" style="display:grid;grid-template-columns:1.05fr .95fr;gap:2rem;align-items:center;padding:5rem 0 3rem;">
+  <div>
+    <p style="color:var(--sl-color-accent);font-weight:800;letter-spacing:.08em;text-transform:uppercase;">Scala Game Library</p>
+    <h1 style="font-size:clamp(2.6rem,7vw,5.6rem);line-height:.95;margin:.2rem 0 1rem;">Build fast, portable games in Scala.</h1>
+    <p style="font-size:1.25rem;color:var(--sl-color-gray-2);max-width:48rem;">A Scala-first game framework for building fast, portable games across desktop, web, native, and mobile-oriented targets.</p>
+    <div class="button-row" style="margin-top:1.5rem;">
+      <a class="btn primary" href="/docs/getting-started/">Get started</a>
+      <a class="btn secondary" href="https://github.com/regb/scala-game-library">View on GitHub</a>
+    </div>
+  </div>
+  <div class="hero-code">
+    <pre><code class="language-scala">{code}</code></pre>
+  </div>
+</section>

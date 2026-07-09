@@ -1,0 +1,15 @@
+{
+ "columns": 2,
+ "image": "../images/tilesets/tileset.png",
+ "imageheight": 188,
+ "imagewidth": 188,
+ "margin": 10,
+ "name": "double-tileset",
+ "spacing": 2,
+ "tilecount": 4,
+ "tileheight": 64,
+ "tilewidth": 64,
+ "type": "tileset",
+ "version": 1.4,
+ "tiledversion": "1.4.0"
+}

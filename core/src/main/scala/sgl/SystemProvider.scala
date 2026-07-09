@@ -1,5 +1,6 @@
 package sgl
 
+import sgl.assets.{BinaryAsset, TextAsset}
 import sgl.util._
 
 
@@ -21,7 +22,7 @@ import sgl.util._
   * cross-platform.
   *
   * The SystemProvider is a mandatory part of the game cake. It provides
-  * The ResourcePath type which is used to identfiy all game resources
+  * The ResourcePath type which is used to identify all game resources
   * (audio files, bitmap files, general text-based data), hence most
   * other providers depend on it.
   */
@@ -39,7 +40,7 @@ trait SystemProvider {
       */
     def exit(): Unit
     /*
-     * Although, `exit` is not necessarly a good
+     * Although, `exit` is not necessarily a good
      * functionality to provide in our System interface, as it is not
      * well-defined on a platform such as the web, and one could argue
      * that exiting the game should be done by stopping the game loop
@@ -51,13 +52,13 @@ trait SystemProvider {
       * midnight, January 1, 1970 UTC. It can be used when one wants to now the
       * real time now, but it is not very precise (it can be a few ms off, and
       * some OS actually represents time in units of tens of milliseconds) and
-      * it is not necesarily monotonic because it is based on the system clock,
+      * it is not necessarily monotonic because it is based on the system clock,
       * which can be subject to external modification (user reset it, or it
       * synchronized with a more precise time).
       *
       * It is not a good choice to measure performance, unless the operation is
       * pretty expensive (several seconds). And even then there is the risk
-      * that a clock adjustement might falsify the result.
+      * that a clock adjustment might falsify the result.
       */
     def currentTimeMillis: Long
 
@@ -105,16 +106,16 @@ trait SystemProvider {
      * for text files), so it seems better to simplify the signature and just assume we always load 
      * in memory a complete array with the content of the file.
      *
-     * A missing file will be visible by a completed Loader with failure.
+     * A missing file is represented by a failed Loader.
      */
-    def loadText(path: ResourcePath): Loader[Array[String]]
+    def loadText(asset: TextAsset): Loader[Array[String]]
 
     /*
      * Loads the binary data from the file in the resources bundle, identified by the path.
      *
-     * A missing file will be visible by a completed Loader with failure.
+     * A missing file is represented by a failed Loader.
      */
-    def loadBinary(path: ResourcePath): Loader[Array[Byte]]
+    def loadBinary(asset: BinaryAsset): Loader[Array[Byte]]
 
     /** Opens a webpage.
       *
@@ -137,7 +138,7 @@ trait SystemProvider {
       * a native app first (PlayStore on Android), then defaulting to a
       * webpage if no native way exists (on iOS, or on the web).
       *
-      * Use params to speicfy additional URL parameters, such as referrer for
+      * Use params to specify additional URL parameters, such as referrer for
       * UTM.
       */
     def openGooglePlayApp(id: String, params: Map[String, String] = Map()): Unit = {
@@ -192,7 +193,7 @@ trait SystemProvider {
   /** A path to access a resource in the system.
     *
     * This abstracts the way to reference to a resource in the current
-    * system. It is not necessarly a path in the filesystem, as it could
+    * system. It is not necessarily a path in the filesystem, as it could
     * be a path for an AJAX call on a browser game. A path is still
     * hierarchy-based, with a succession of directory and a final filename.
     * The root refers to the starting point in the resource system of the
@@ -203,7 +204,7 @@ trait SystemProvider {
     * be absolute, starting from the ResourcesPrefix path. It means that
     * We do not support relative path. It seems that relative path are not
     * too important in the typical game application, where all the resources
-    * comme bundled in some predictable way.
+    * come bundled in some predictable way.
     *
     * We try to provide just the minimal set of tools for building cross-platform
     * games, and having a way to identify resource file, and then a few different
@@ -253,7 +254,7 @@ trait SystemProvider {
     * This exception is thrown when trying to load a resource format
     * that is not understood by the system. It could be either an error
     * (trying to load sound with a loadBitmap), or a file format not supported
-    * on the back (a valid format but that the current backend implementation
+    * on the backend (a valid format but that the current backend implementation
     * is not able to support).
     */
   case class ResourceFormatUnsupportedException(path: ResourcePath) extends Exception("File format of resource " + path.toString + " not supported")
@@ -290,7 +291,7 @@ trait PartsResourcePathProvider {
     def path: String = parts.mkString("/")
 
     override def / (filename: String): ResourcePath = {
-      val subparts = filename.split("/").toIndexedSeq
+      val subparts = filename.split("/").iterator.filter(_.nonEmpty).toIndexedSeq
       joinWithSubparts(subparts)
     }
 
@@ -306,9 +307,9 @@ trait PartsResourcePathProvider {
       r.joinWithSubparts(subparts.tail)
     }
 
-    override def extension: Option[String] = {
-      val i = parts.last.lastIndexOf('.')
-      if(i > 0) Some(parts.last.substring(i+1)) else None
+    override def extension: Option[String] = parts.lastOption.flatMap { filename =>
+      val i = filename.lastIndexOf('.')
+      if(i > 0 && i < filename.length - 1) Some(filename.substring(i + 1)) else None
     }
   }
   type ResourcePath = PartsResourcePath

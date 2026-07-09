@@ -4,7 +4,7 @@ import org.scalatest.funsuite.AnyFunSuite
 
 class GraphicsHelperSuite extends AnyFunSuite {
 
-  val graphicsProvider = new TestGraphicsProvider with TestSystemProvider {}
+  val graphicsProvider = new TestCanvasProvider with TestSystemProvider {}
 
   test("BitmapRegion with single bitmap") {
     import graphicsProvider.Graphics._
@@ -80,6 +80,24 @@ class GraphicsHelperSuite extends AnyFunSuite {
     assert(brs2(1).y === 32)
     assert(brs2(1).width === 30)
     assert(brs2(1).height === 32)
+  }
+
+  test("TestCanvasProvider loads registered images and records drawing") {
+    import graphicsProvider.Graphics._
+
+    val asset = assets.AssetFactory.drawable("sprite.png")
+    imageSizes(asset) = (32, 24)
+    val bitmap = loadImage(asset).value.get.get
+
+    graphicsProvider.withFrameCanvas { canvas =>
+      canvas.drawBitmap(bitmap, 2f, 3f)
+    }
+    assert(graphicsProvider.frameCanvas.calls.exists(_.startsWith("drawBitmap(2.0,3.0")))
+
+    bitmap.release()
+    intercept[IllegalStateException] {
+      graphicsProvider.frameCanvas.drawBitmap(bitmap, 0f, 0f)
+    }
   }
 
 }
