@@ -2,6 +2,7 @@ package sgl.android.analytics
 
 import android.content.Context
 import android.os.Bundle
+import android.provider.Settings
 import scala.Option
 import sgl.analytics.AbstractAnalytics
 import sgl.analytics.EventParams
@@ -10,6 +11,12 @@ import com.google.firebase.analytics.FirebaseAnalytics
 class AndroidFirebaseAnalytics(private val context: Context) : AbstractAnalytics() {
     
     private val firebaseAnalytics: FirebaseAnalytics = FirebaseAnalytics.getInstance(context)
+
+    init {
+        if (Settings.System.getString(context.contentResolver, "firebase.test.lab") == "true") {
+            firebaseAnalytics.setAnalyticsCollectionEnabled(false)
+        }
+    }
     
     private fun eventParamsToBundle(params: EventParams?): Bundle {
         val bundle = Bundle()

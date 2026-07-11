@@ -12,7 +12,7 @@ class GameLoop(val app: BaseMainActivity, val gameApp: ProxiedGameApp): Runnable
     // logging calls in the GameLoop uses that tag instead.
     //private implicit val LogTag = Logger.Tag("game-loop")
 
-    private val targetFramePeriod: Long? = 30// TargetFps map framePeriod
+    private val targetFramePeriod: Long? = if (gameApp.hasTargetFramePeriodMillis()) gameApp.targetFramePeriodMillis() else null
 
     var running = true
 

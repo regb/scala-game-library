@@ -13,8 +13,6 @@ import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
 import java.net.URI
 import android.content.ActivityNotFoundException
-import sgl.SystemProvider
-import sgl.SystemProvider.ResourceNotFoundException
 
 class AndroidResourcePathProxy(val parts: List<String>): ResourcePathProxy {
     override fun `$div`(filename: String?): ResourcePathProxy {
@@ -108,23 +106,25 @@ class AndroidSystemProxy(private val activity: Activity): SystemProxy {
         }
     }
 
-    // Commented out as it's not in SystemProxy interface
-    /*
-    override fun openGooglePlayApp(id: String, params: Map<String, String>) {
-        val paramString = params.map { (k, v) -> "&$k=$v" }.joinToString("")
+    override fun openGooglePlayApp(id: String?, params: scala.collection.immutable.Map<String, String>?) {
+        if (id == null) return
+        val paramString = buildString {
+            params?.iterator()?.let { iterator ->
+                while (iterator.hasNext()) {
+                    val tuple = iterator.next()
+                    append("&")
+                    append(tuple._1())
+                    append("=")
+                    append(tuple._2())
+                }
+            }
+        }
         try {
             val marketUri = Uri.parse("market://details?id=$id$paramString")
             val intent = Intent(Intent.ACTION_VIEW, marketUri)
             activity.startActivity(intent)
         } catch (ex: ActivityNotFoundException) {
-            // Fallback to opening webpage
-            val webUriString = "https://play.google.com/store/apps/details?id=$id$paramString"
-            try {
-                openWebpage(URI(webUriString))
-            } catch (e: Exception) {
-                // Failed to even open fallback webpage, log or handle.
-            }
+            openWebpage(URI("https://play.google.com/store/apps/details?id=$id$paramString"))
         }
     }
-    */
 }

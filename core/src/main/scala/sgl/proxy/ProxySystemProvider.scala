@@ -14,6 +14,7 @@ trait ProxySystemProvider extends SystemProvider {
     def loadText(path: ResourcePath): Loader[Array[String]] = PlatformProxy.systemProxy.loadText(path.path)
     def loadBinary(path: ResourcePath): Loader[Array[Byte]] = PlatformProxy.systemProxy.loadBinary(path.path)
     def openWebpage(uri: java.net.URI): Unit  = PlatformProxy.systemProxy.openWebpage(uri)
+    override def openGooglePlayApp(id: String, params: Map[String, String]): Unit = PlatformProxy.systemProxy.openGooglePlayApp(id, params)
   }
   override val System: System = ProxySystem
 

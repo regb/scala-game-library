@@ -48,7 +48,12 @@ trait SystemProxy {
   def nanoTime: Long
   def loadText(path: ResourcePathProxy): Loader[Array[String]]
   def loadBinary(path: ResourcePathProxy): Loader[Array[Byte]]
-  def openWebpage(uri: java.net.URI): Unit 
+  def openWebpage(uri: java.net.URI): Unit
+  def openGooglePlayApp(id: String, params: Map[String, String]): Unit = {
+    val base = s"https://play.google.com/store/apps/details?id=$id"
+    val uri = new java.net.URI(base + params.map{ case (k, v) => s"&$k=$v"}.mkString)
+    openWebpage(uri)
+  }
 }
 
 trait WindowProxy {

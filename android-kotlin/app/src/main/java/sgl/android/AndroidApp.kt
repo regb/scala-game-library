@@ -91,7 +91,7 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         // lifecycle of SGL
-        //lifecycleListener.startup()
+        gameApp?.startup()
     }
 
     override fun onDestroy() {
@@ -107,7 +107,7 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
         (platformProxy?.schedulerProxy() as? AndroidSchedulerProxy)?.shutdown()
 
         //lifecycle of SGL
-      //  lifecycleListener.shutdown()
+        gameApp?.shutdown()
     }
 
     // Although we use flags for the various state, we should
@@ -136,7 +136,7 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
 
         // TODO: maybe the lifecycle resume event should be more precise and take into account
         //       things like surfaceReady and focus flags.
-        //lifecycleListener.resume()
+        gameApp?.resume()
     }
 
     override fun onPause() {
@@ -154,7 +154,7 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
         gameLoop?.running = false
         (platformProxy?.schedulerProxy() as? AndroidSchedulerProxy)?.pause()
 
-        //lifecycleListener.pause()
+        gameApp?.pause()
     }
 
     /** Enable the back button events.

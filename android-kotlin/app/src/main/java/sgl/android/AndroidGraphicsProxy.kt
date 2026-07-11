@@ -10,6 +10,10 @@ import android.graphics.Paint.Align
 import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Typeface
+import android.os.Build
+import android.text.Layout
+import android.text.StaticLayout
+import android.text.TextPaint
 
 import scala.Function0
 import scala.math.`package`.toDegrees
@@ -320,13 +324,40 @@ class AndroidCanvasProxy(val canvas: Canvas): CanvasProxy {
     }
 
     override fun drawText(text: TextLayoutProxy?, x: Float, y: Float) {
-        TODO("not implemented")
-            //text.draw(canvas, x, y)
+        if (text !is AndroidTextLayoutProxy) {
+            throw IllegalArgumentException("TextLayoutProxy must be an AndroidTextLayoutProxy")
+        }
+        text.draw(canvas, x, y)
     }
 
     override fun renderText(text: String?, width: Int, paint: PaintProxy?): TextLayoutProxy {
-        TODO("not implemented")
-    //AndroidTextLayout(text, width, paint)
+        if (paint !is AndroidPaintProxy) {
+            throw IllegalArgumentException("PaintProxy must be an AndroidPaintProxy")
+        }
+        return AndroidTextLayoutProxy(text ?: "", width, paint)
     }
 
+}
+
+class AndroidTextLayoutProxy(text: String, width: Int, paint: AndroidPaintProxy): TextLayoutProxy {
+    private val textPaint = TextPaint(paint.paint)
+    private val messageLayout: StaticLayout = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        StaticLayout.Builder.obtain(text, 0, text.length, textPaint, width)
+            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+            .setLineSpacing(1f, 1f)
+            .setIncludePad(false)
+            .build()
+    } else {
+        @Suppress("DEPRECATION")
+        StaticLayout(text, textPaint, width, Layout.Alignment.ALIGN_NORMAL, 1f, 1f, false)
+    }
+
+    override fun height(): Int = messageLayout.height
+
+    fun draw(canvas: Canvas, x: Float, y: Float) {
+        canvas.save()
+        canvas.translate(x, y + textPaint.ascent())
+        messageLayout.draw(canvas)
+        canvas.restore()
+    }
 }
