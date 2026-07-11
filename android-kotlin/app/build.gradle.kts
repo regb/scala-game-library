@@ -15,7 +15,6 @@ val buildSglBazelJars by tasks.registering(Exec::class) {
         "bazel",
         "build",
         "//core:sgl-core",
-        "//jvm-shared:jvm-shared",
         "//modules:sgl-scene2d",
         "//modules:sgl-particles",
     )
@@ -27,7 +26,6 @@ val sglBazelJars = files(
     sglBazelRepo.resolve("bazel-bin/core/sgl-core.jar"),
     sglBazelRepo.resolve("bazel-bin/modules/sgl-scene2d.jar"),
     sglBazelRepo.resolve("bazel-bin/modules/sgl-particles.jar"),
-    sglBazelRepo.resolve("bazel-bin/jvm-shared/jvm-shared.jar"),
 ).builtBy(buildSglBazelJars)
 
 android {

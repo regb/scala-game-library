@@ -104,7 +104,7 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
             }
         }
 
-        //Scheduler.shutdown()
+        (platformProxy?.schedulerProxy() as? AndroidSchedulerProxy)?.shutdown()
 
         //lifecycle of SGL
       //  lifecycleListener.shutdown()
@@ -125,7 +125,7 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
         val t = Thread(gameLoop)
         gameLoopThread = t
         t.start()
-        //Scheduler.resume()
+        (platformProxy?.schedulerProxy() as? AndroidSchedulerProxy)?.resume()
 
         platformProxy?.let { platform ->
             val audioProxy = platform.audioProxy()
@@ -152,7 +152,7 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
         }
 
         gameLoop?.running = false
-        //Scheduler.pause()
+        (platformProxy?.schedulerProxy() as? AndroidSchedulerProxy)?.pause()
 
         //lifecycleListener.pause()
     }

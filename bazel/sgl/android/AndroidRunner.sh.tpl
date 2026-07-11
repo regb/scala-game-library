@@ -14,7 +14,7 @@ template_dir="$script_dir/@PROJECT_TEMPLATE_DIR@"
 cd "$workspace"
 bazel build @GAME_LABELS@
 cd "$sgl_android_root"
-bazel build //core:sgl-core //jvm-shared:jvm-shared //modules:sgl-scene2d //modules:sgl-particles
+bazel build //core:sgl-core //modules:sgl-scene2d //modules:sgl-particles
 
 rm -rf "$project_dir"
 mkdir -p "$project_dir"

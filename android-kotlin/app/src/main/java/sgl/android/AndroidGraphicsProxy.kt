@@ -30,9 +30,9 @@ class AndroidGraphicsProxy(val context: Context): GraphicsProxy {
 
     // TODO: we could use this as a metrics
     private var totalBytes: Long = 0
-    override fun loadImage(path: ResourcePathProxy?): Loader<BitmapProxy> {
+    override fun loadImage(path: ResourcePathProxy?): Loader<BitmapProxy> = AndroidAsync.loader {
         if(path !is AndroidResourcePathProxy)
-            throw Exception()
+            throw IllegalArgumentException("Path must be an AndroidResourcePathProxy")
 
         if(path.parts.size != 1)
             throw IllegalArgumentException("Android drawable resources must be just a filename, without subdirectory")
@@ -63,8 +63,7 @@ class AndroidGraphicsProxy(val context: Context): GraphicsProxy {
 
         val bitmap = BitmapFactory.decodeResource(context.resources, drawableId, opts)
         totalBytes += bitmap.byteCount
-        // TODO: use loader for entire operation
-        return Loader.successful(AndroidBitmapProxy(bitmap))
+        AndroidBitmapProxy(bitmap)
     }
 
     override fun fontCompanionProxy(): FontCompanionProxy {
@@ -165,25 +164,14 @@ class AndroidFontCompanionProxy(private val context: Context): FontCompanionProx
     override fun SansSerif(): FontProxy { return AndroidFontProxy(Typeface.SANS_SERIF, 14) }
     override fun Serif(): FontProxy { return AndroidFontProxy(Typeface.SERIF, 14) }
 
-    override fun load(path: ResourcePathProxy?): Loader<FontProxy> {
-        if (path == null) {
-            return Loader.failed(IllegalArgumentException("ResourcePathProxy cannot be null"))
-        }
-        // Assuming AndroidResourcePathProxy and a way to get the asset path string
-        // This might need adjustment based on actual AndroidResourcePathProxy structure.
+    override fun load(path: ResourcePathProxy?): Loader<FontProxy> = AndroidAsync.loader {
         if (path !is AndroidResourcePathProxy) {
-            return Loader.failed(IllegalArgumentException("Path must be an AndroidResourcePathProxy"))
+            throw IllegalArgumentException("Path must be an AndroidResourcePathProxy")
         }
 
-        // Construct asset path from parts
         val assetPath = path.parts.joinToString("/")
-
-        return try {
-            val typeface = Typeface.createFromAsset(context.assets, assetPath)
-            Loader.successful(AndroidFontProxy(typeface, 14)) // Assuming default size 14
-        } catch (e: Exception) {
-            Loader.failed(e)
-        }
+        val typeface = Typeface.createFromAsset(context.assets, assetPath)
+        AndroidFontProxy(typeface, 14)
     }
 
 }

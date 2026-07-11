@@ -58,33 +58,26 @@ class AndroidSystemProxy(private val activity: Activity): SystemProxy {
         return java.lang.System.nanoTime()
     }
 
-    override fun loadText(path: ResourcePathProxy?): Loader<Array<String>> {
-        if (path == null) {
-            return Loader.failed(IllegalArgumentException("ResourcePathProxy cannot be null for loadText"))
-        }
+    override fun loadText(path: ResourcePathProxy?): Loader<Array<String>> = AndroidAsync.loader {
         if (path !is AndroidResourcePathProxy) {
-            return Loader.failed(IllegalArgumentException("Path must be an AndroidResourcePathProxy for loadText"))
+            throw IllegalArgumentException("Path must be an AndroidResourcePathProxy for loadText")
         }
-        val assetPath = (path as AndroidResourcePathProxy).generatePathString()
-        return try {
-            val lines = activity.assets.open(assetPath).bufferedReader().use {
+        val assetPath = path.generatePathString()
+        try {
+            activity.assets.open(assetPath).bufferedReader().use {
                 it.readLines().toTypedArray()
             }
-            Loader.successful(lines)
         } catch (e: IOException) {
-            Loader.failed(Exception("Resource not found: " + path))
+            throw Exception("Resource not found: $path", e)
         }
     }
 
-    override fun loadBinary(path: ResourcePathProxy?): Loader<ByteArray> {
-        if (path == null) {
-            return Loader.failed(IllegalArgumentException("ResourcePathProxy cannot be null for loadBinary"))
-        }
+    override fun loadBinary(path: ResourcePathProxy?): Loader<ByteArray> = AndroidAsync.loader {
         if (path !is AndroidResourcePathProxy) {
-            return Loader.failed(IllegalArgumentException("Path must be an AndroidResourcePathProxy for loadBinary"))
+            throw IllegalArgumentException("Path must be an AndroidResourcePathProxy for loadBinary")
         }
-        val assetPath = (path as AndroidResourcePathProxy).generatePathString()
-        return try {
+        val assetPath = path.generatePathString()
+        try {
             val byteArrayOutputStream = ByteArrayOutputStream()
             activity.assets.open(assetPath).use { inputStream ->
                 BufferedInputStream(inputStream).use { bufferedInputStream ->
@@ -95,9 +88,9 @@ class AndroidSystemProxy(private val activity: Activity): SystemProxy {
                     }
                 }
             }
-            Loader.successful(byteArrayOutputStream.toByteArray())
+            byteArrayOutputStream.toByteArray()
         } catch (e: IOException) {
-            Loader.failed(Exception("Resource not found: " + path))
+            throw Exception("Resource not found: $path", e)
         }
     }
 
