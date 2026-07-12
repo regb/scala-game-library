@@ -95,24 +95,15 @@ class AndroidAudioProxy(private val context: Context) : AudioProxy {
         }
     }
     
-    override fun loadSound(path: ResourcePathProxy?): Loader<SoundProxy> {
+    override fun loadSound(path: ResourcePathProxy?, extras: MutableList<ResourcePathProxy>?): Loader<SoundProxy> {
         if (path == null) {
             return Loader.failed<SoundProxy>(IllegalArgumentException("ResourcePathProxy cannot be null for loadSound"))
         }
         
         initSoundPool()
         
-        // Choose the first resource that matches supported formats, otherwise use the default
-        val chosenResource = if (path is AndroidResourcePathProxy) {
-            val extension = if(path.extension().isEmpty()) "" else path.extension().get()
-            if (SUPPORTED_AUDIO_FORMATS.contains(extension)) {
-                path
-            } else {
-                path // Use default anyway
-            }
-        } else {
-            return Loader.failed<SoundProxy>(IllegalArgumentException("Path must be an AndroidResourcePathProxy"))
-        }
+        val chosenResource = chooseSupportedAudioResource(path, extras)
+            ?: return Loader.failed<SoundProxy>(IllegalArgumentException("Paths must be AndroidResourcePathProxy instances"))
         
         return try {
             val assetPath = chosenResource.generatePathString()
@@ -138,22 +129,13 @@ class AndroidAudioProxy(private val context: Context) : AudioProxy {
         }
     }
 
-    override fun loadMusic(path: ResourcePathProxy?): Loader<MusicProxy> {
+    override fun loadMusic(path: ResourcePathProxy?, extras: MutableList<ResourcePathProxy>?): Loader<MusicProxy> {
         if (path == null) {
             return Loader.failed<MusicProxy>(IllegalArgumentException("ResourcePathProxy cannot be null for loadMusic"))
         }
         
-        if (path !is AndroidResourcePathProxy) {
-            return Loader.failed<MusicProxy>(IllegalArgumentException("Path must be an AndroidResourcePathProxy"))
-        }
-        
-        // Choose the first resource that matches supported formats, otherwise use the default
-        val extension = if(path.extension().isEmpty()) "" else path.extension().get()
-        val chosenResource = if (SUPPORTED_AUDIO_FORMATS.contains(extension)) {
-            path
-        } else {
-            path // Use default anyway
-        }
+        val chosenResource = chooseSupportedAudioResource(path, extras)
+            ?: return Loader.failed<MusicProxy>(IllegalArgumentException("Paths must be AndroidResourcePathProxy instances"))
         
         return try {
             val music = AndroidMusicProxy(context, chosenResource, this)
@@ -166,6 +148,18 @@ class AndroidAudioProxy(private val context: Context) : AudioProxy {
         } catch (e: IOException) {
             Loader.failed<MusicProxy>(ProxyResourceNotFoundException(path))
         }
+    }
+
+    private fun chooseSupportedAudioResource(
+        path: ResourcePathProxy,
+        extras: MutableList<ResourcePathProxy>?,
+    ): AndroidResourcePathProxy? {
+        val candidates = listOf(path) + (extras ?: emptyList())
+        val androidCandidates = candidates.map { it as? AndroidResourcePathProxy ?: return null }
+        return androidCandidates.firstOrNull { candidate ->
+            val extension = if (candidate.extension().isEmpty()) "" else candidate.extension().get()
+            SUPPORTED_AUDIO_FORMATS.contains(extension)
+        } ?: androidCandidates.first()
     }
     
     private inner class SoundPoolOnLoadCompleteListener : SoundPool.OnLoadCompleteListener {

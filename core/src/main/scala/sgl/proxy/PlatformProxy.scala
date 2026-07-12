@@ -177,8 +177,8 @@ trait SchedulerProxy {
 }
 
 trait AudioProxy {
-  def loadSound(path: ResourcePathProxy): Loader[SoundProxy]
-  def loadMusic(path: ResourcePathProxy): Loader[MusicProxy]
+  def loadSound(path: ResourcePathProxy, extras: java.util.List[ResourcePathProxy]): Loader[SoundProxy]
+  def loadMusic(path: ResourcePathProxy, extras: java.util.List[ResourcePathProxy]): Loader[MusicProxy]
 }
 
 trait SoundProxy {
