@@ -61,9 +61,6 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
 
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.analytics)
-
     // SGL jars built by Bazel from this checkout.
     api(sglBazelJars)
 

@@ -28,3 +28,4 @@ rootProject.name = "@LABEL@ Android"
 include(":app")
 include(":sgl-android")
 project(":sgl-android").projectDir = file("@SGL_ANDROID_ROOT@/android-kotlin/app")
+@OPTIONAL_MODULES@

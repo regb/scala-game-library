@@ -6,7 +6,7 @@ import sgl.util.SchedulerProvider
 trait ProxyPlatformProvider extends ProxiedGameApp with SchedulerProvider
   with ProxySystemProvider with ProxyWindowProvider with ProxySchedulerProvider 
   with ProxyGraphicsProvider
-  with ProxyAudioProvider with ProxyLoggingProvider {
+  with ProxyAudioProvider with ProxyLoggingProvider with ProxyJsonProvider {
 
   val PlatformProxy: PlatformProxy
 

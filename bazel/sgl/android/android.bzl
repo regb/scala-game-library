@@ -39,6 +39,10 @@ def _android_runner_impl(ctx):
     ])
 
     application_icon = "        android:icon=\"%s\"\n" % ctx.attr.launcher_icon if ctx.attr.launcher_icon else ""
+    firebase_enabled = bool(ctx.attr.google_services_json)
+    optional_modules = "include(\":sgl-android-firebase\")\nproject(\":sgl-android-firebase\").projectDir = file(\"%s/android-kotlin/firebase\")" % ctx.attr.sgl_android_root if firebase_enabled else ""
+    optional_dependencies = "    implementation(project(\":sgl-android-firebase\"))" if firebase_enabled else ""
+    optional_imports = "import sgl.android.analytics.AndroidFirebaseAnalytics\n" if firebase_enabled else ""
 
     substitutions = {
         "@PACKAGE@": ctx.attr.package,
@@ -46,6 +50,9 @@ def _android_runner_impl(ctx):
         "@APPLICATION_ICON@": application_icon,
         "@JAR_DEPENDENCIES@": jar_dependencies,
         "@WIRING_EXPRESSION@": wiring_expression,
+        "@OPTIONAL_MODULES@": optional_modules,
+        "@OPTIONAL_DEPENDENCIES@": optional_dependencies,
+        "@OPTIONAL_IMPORTS@": optional_imports,
         "@SGL_ANDROID_ROOT@": ctx.attr.sgl_android_root,
         "@VERSION_CODE@": str(ctx.attr.version_code),
         "@VERSION_NAME@": ctx.attr.version_name,

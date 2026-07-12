@@ -2,6 +2,7 @@ package sgl
 package proxy
 
 import sgl.util._
+import java.util.{List => JList, Map => JMap}
 
 /** A platform abstraction to define for implementing a backend of SGL.
  *
@@ -36,6 +37,7 @@ trait PlatformProxy {
   val schedulerProxy: SchedulerProxy
   val audioProxy: AudioProxy
   val loggerProxy: LoggerProxy
+  val jsonProxy: JsonProxy
 }
 
 case class ProxyResourceNotFoundException(path: ResourcePathProxy) extends Exception("Resource " + path.toString + " not found")
@@ -53,6 +55,19 @@ trait LoggerProxy {
   def info(tag: String, msg: String): Unit
   def debug(tag: String, msg: String): Unit
   def trace(tag: String, msg: String): Unit
+}
+
+trait JsonProxy {
+  def parse(raw: String): AnyRef
+  def select(ast: AnyRef, field: String): AnyRef
+  def jNothing: AnyRef
+  def isJNothing(ast: AnyRef): Boolean
+  def isJNull(ast: AnyRef): Boolean
+  def asString(ast: AnyRef): Option[String]
+  def asNumber(ast: AnyRef): Option[Double]
+  def asBoolean(ast: AnyRef): Option[Boolean]
+  def objectFields(ast: AnyRef): JMap[String, AnyRef]
+  def arrayItems(ast: AnyRef): JList[AnyRef]
 }
 
 trait SystemProxy {

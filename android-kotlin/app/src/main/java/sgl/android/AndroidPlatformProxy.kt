@@ -5,6 +5,7 @@ import android.content.Context
 import sgl.proxy.AudioProxy
 
 import sgl.proxy.GraphicsProxy
+import sgl.proxy.JsonProxy
 import sgl.proxy.LoggerProxy
 import sgl.proxy.PlatformProxy
 import sgl.proxy.ResourcePathProxy
@@ -28,6 +29,7 @@ class AndroidPlatformProxy(val context: Context, val gameView: GameView): Platfo
     private val _schedulerProxy: SchedulerProxy by lazy { AndroidSchedulerProxy() }
     private val _audioProxy: AudioProxy by lazy { AndroidAudioProxy(context) }
     private val _loggerProxy: LoggerProxy by lazy { AndroidLoggerProxy() }
+    private val _jsonProxy: JsonProxy by lazy { AndroidJsonProxy() }
     
     override fun systemProxy(): SystemProxy {
         return _systemProxy
@@ -59,5 +61,9 @@ class AndroidPlatformProxy(val context: Context, val gameView: GameView): Platfo
 
     override fun loggerProxy(): LoggerProxy {
         return _loggerProxy
+    }
+
+    override fun jsonProxy(): JsonProxy {
+        return _jsonProxy
     }
 }

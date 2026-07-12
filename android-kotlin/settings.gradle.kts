@@ -23,3 +23,5 @@ dependencyResolutionManagement {
 rootProject.name = "SGL Android Toolkit"
 include(":sgl-android")
 project(":sgl-android").projectDir = file("app")
+include(":sgl-android-firebase")
+project(":sgl-android-firebase").projectDir = file("firebase")

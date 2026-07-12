@@ -78,5 +78,6 @@ play {
 
 dependencies {
     implementation(project(":sgl-android"))
+@OPTIONAL_DEPENDENCIES@
 @JAR_DEPENDENCIES@
 }
