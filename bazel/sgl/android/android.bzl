@@ -41,10 +41,12 @@ def _android_runner_impl(ctx):
     application_icon = "        android:icon=\"%s\"\n" % ctx.attr.launcher_icon if ctx.attr.launcher_icon else ""
     firebase_enabled = bool(ctx.attr.google_services_json)
     admob_enabled = bool(ctx.attr.admob_application_id)
+    play_games_enabled = bool(ctx.attr.play_games_project_id)
 
     optional_modules = []
     optional_dependencies = []
     optional_imports = []
+    optional_res_values = []
     if firebase_enabled:
         optional_modules.append("include(\":sgl-android-firebase\")\nproject(\":sgl-android-firebase\").projectDir = file(\"%s/android-kotlin/firebase\")" % ctx.attr.sgl_android_root)
         optional_dependencies.append("    implementation(project(\":sgl-android-firebase\"))")
@@ -53,8 +55,18 @@ def _android_runner_impl(ctx):
         optional_modules.append("include(\":sgl-android-admob\")\nproject(\":sgl-android-admob\").projectDir = file(\"%s/android-kotlin/admob\")" % ctx.attr.sgl_android_root)
         optional_dependencies.append("    implementation(project(\":sgl-android-admob\"))")
         optional_imports.append("import sgl.android.ads.AndroidAdMobAds\n")
+        optional_res_values.append("        resValue(\"string\", \"sgl_admob_interstitial_ad_unit_id\", \"%s\")" % ctx.attr.admob_interstitial_ad_unit_id)
+        optional_res_values.append("        resValue(\"string\", \"sgl_admob_rewarded_ad_unit_id\", \"%s\")" % ctx.attr.admob_rewarded_ad_unit_id)
+        optional_res_values.append("        resValue(\"bool\", \"sgl_admob_always_preload\", \"%s\")" % ("true" if ctx.attr.admob_always_preload else "false"))
+    if play_games_enabled:
+        optional_modules.append("include(\":sgl-android-play-games\")\nproject(\":sgl-android-play-games\").projectDir = file(\"%s/android-kotlin/play-games\")" % ctx.attr.sgl_android_root)
+        optional_dependencies.append("    implementation(project(\":sgl-android-play-games\"))")
+        optional_imports.append("import sgl.android.play.AndroidPlayGamesServices\n")
 
     admob_application_id_metadata = "        <meta-data\n            android:name=\"com.google.android.gms.ads.APPLICATION_ID\"\n            android:value=\"%s\" />\n" % ctx.attr.admob_application_id if admob_enabled else ""
+    play_games_metadata = "        <meta-data\n            android:name=\"com.google.android.gms.games.APP_ID\"\n            android:value=\"@string/play_games_project_id\" />\n" if play_games_enabled else ""
+    if play_games_enabled:
+        optional_res_values.append("        resValue(\"string\", \"play_games_project_id\", \"%s\")" % ctx.attr.play_games_project_id)
 
     substitutions = {
         "@PACKAGE@": ctx.attr.package,
@@ -66,6 +78,8 @@ def _android_runner_impl(ctx):
         "@OPTIONAL_DEPENDENCIES@": "\n".join(optional_dependencies),
         "@OPTIONAL_IMPORTS@": "".join(optional_imports),
         "@ADMOB_APPLICATION_ID_METADATA@": admob_application_id_metadata,
+        "@PLAY_GAMES_METADATA@": play_games_metadata,
+        "@OPTIONAL_RES_VALUES@": ("\n".join(optional_res_values) + "\n") if optional_res_values else "",
         "@SGL_ANDROID_ROOT@": ctx.attr.sgl_android_root,
         "@VERSION_CODE@": str(ctx.attr.version_code),
         "@VERSION_NAME@": ctx.attr.version_name,
@@ -129,6 +143,10 @@ _android_runner = rule(
         "android_resources_dir": attr.string(default = ""),
         "google_services_json": attr.string(default = ""),
         "admob_application_id": attr.string(default = ""),
+        "admob_interstitial_ad_unit_id": attr.string(default = "ca-app-pub-3940256099942544/1033173712"),
+        "admob_rewarded_ad_unit_id": attr.string(default = "ca-app-pub-3940256099942544/5224354917"),
+        "admob_always_preload": attr.bool(default = True),
+        "play_games_project_id": attr.string(default = ""),
         "launcher_icon": attr.string(default = ""),
         "project_name": attr.string(mandatory = True),
         "gradle_task": attr.string(mandatory = True),
@@ -160,6 +178,10 @@ def sgl_android_app(
         android_resources_dir = "",
         google_services_json = "",
         admob_application_id = "",
+        admob_interstitial_ad_unit_id = "ca-app-pub-3940256099942544/1033173712",
+        admob_rewarded_ad_unit_id = "ca-app-pub-3940256099942544/5224354917",
+        admob_always_preload = True,
+        play_games_project_id = "",
         launcher_icon = ""):
     for suffix, task, launch, gradle_env in [
         ("debug", ":app:assembleDebug", False, ""),
@@ -183,6 +205,10 @@ def sgl_android_app(
             android_resources_dir = android_resources_dir,
             google_services_json = google_services_json,
             admob_application_id = admob_application_id,
+            admob_interstitial_ad_unit_id = admob_interstitial_ad_unit_id,
+            admob_rewarded_ad_unit_id = admob_rewarded_ad_unit_id,
+            admob_always_preload = admob_always_preload,
+            play_games_project_id = play_games_project_id,
             launcher_icon = launcher_icon,
             project_name = name,
             gradle_task = task,

@@ -7,6 +7,7 @@ lifecycleRuntimeKtx = "2.9.2"
 activity = "1.10.1"
 fragment = "1.8.9"
 playServicesAds = "24.5.0"
+playServicesGamesV2 = "21.0.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -17,6 +18,7 @@ firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics" }
 play-services-ads = { module = "com.google.android.gms:play-services-ads", version.ref = "playServicesAds" }
+play-services-games-v2 = { module = "com.google.android.gms:play-services-games-v2", version.ref = "playServicesGamesV2" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

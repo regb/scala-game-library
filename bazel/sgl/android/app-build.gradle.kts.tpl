@@ -33,7 +33,7 @@ android {
         targetSdk = 37
         versionCode = @VERSION_CODE@
         versionName = "@VERSION_NAME@"
-    }
+@OPTIONAL_RES_VALUES@    }
 
     signingConfigs {
         if (hasUploadSigning) {

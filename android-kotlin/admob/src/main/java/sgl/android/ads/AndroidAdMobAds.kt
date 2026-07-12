@@ -155,6 +155,26 @@ class AndroidAdMobAds(
         @Volatile
         private var isRewardedLoading = false
 
+        fun fromResources(context: Context): AndroidAdMobAds {
+            val resources = context.resources
+            val packageName = context.packageName
+            fun stringResource(name: String, defaultValue: String): String {
+                val id = resources.getIdentifier(name, "string", packageName)
+                return if (id == 0) defaultValue else resources.getString(id)
+            }
+            fun boolResource(name: String, defaultValue: Boolean): Boolean {
+                val id = resources.getIdentifier(name, "bool", packageName)
+                return if (id == 0) defaultValue else resources.getBoolean(id)
+            }
+
+            return AndroidAdMobAds(
+                context = context,
+                alwaysPreload = boolResource("sgl_admob_always_preload", true),
+                interstitialAdUnitId = stringResource("sgl_admob_interstitial_ad_unit_id", TEST_INTERSTITIAL_AD_UNIT_ID),
+                rewardedAdUnitId = stringResource("sgl_admob_rewarded_ad_unit_id", TEST_REWARDED_AD_UNIT_ID),
+            )
+        }
+
         private fun initialize(activity: Activity, onInitialized: () -> Unit) {
             synchronized(this) {
                 if (initialized) {

@@ -11,6 +11,7 @@
 /build
 /firebase/build
 /admob/build
+/play-games/build
 /captures
 .externalNativeBuild
 .cxx
