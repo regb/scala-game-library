@@ -124,6 +124,7 @@ trait Html5App extends GameApp
       //      setInterval during the time away from the tab.
       val dt: Double = now - lastTime.getOrElse(now)
       lastTime = Some(now)
+      canvas.resetForFrame()
       gameLoopStep(dt.toLong, canvas)
       if(requestAnimationFrameSupported) {
         val _ = dom.window.requestAnimationFrame(t => frameCode(t))

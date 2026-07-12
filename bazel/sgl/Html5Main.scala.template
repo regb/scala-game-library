@@ -5,6 +5,8 @@ import sgl.html5._
 import sgl.html5.util._
 import sgl.html5.themes._
 import sgl.util.metrics._
+import sgl.analytics._
+import sgl.ads._
 
 import scala.scalajs.js.annotation.JSExportTopLevel
 
@@ -13,6 +15,8 @@ object {{MAIN_CLASS}} extends Html5App with {{CORE_ABSTRACT_CLASS}}
   with LocalStorageSaveComponent
   with Html5DefaultConsoleLoggingProvider
   with Html5JsonProvider
+  with NoAdsProvider
+  with NoAnalyticsProvider
   with GameLoopStatisticsComponent
   with DefaultInstrumentationProvider
 {

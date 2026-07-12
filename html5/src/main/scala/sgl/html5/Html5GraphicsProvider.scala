@@ -221,6 +221,14 @@ trait Html5GraphicsProvider extends GraphicsProvider {
       val context = canvas.getContext("2d").asInstanceOf[Ctx2D]
       context.imageSmoothingEnabled = false;
 
+      def resetForFrame(): Unit = {
+        context.setTransform(1, 0, 0, 1, 0, 0)
+        context.globalAlpha = 1f
+        context.imageSmoothingEnabled = false
+        this.width = canvas.width.toFloat
+        this.height = canvas.height.toFloat
+      }
+
       //note that the scala.js compiler is able to inline the body, so
       //you don't pay any performance cost for using the nice auto wrapping
       //syntax
