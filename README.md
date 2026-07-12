@@ -71,8 +71,9 @@ The current implementation provides the following backends:
     but can also serve as a final release if you are able to distribute your
     game to people that have a JVM. It will be cross-platform across Windows,
     Mac, and Linux.
-  * *Android*. The Android backend is implemented with the native Android SDK
-    for Java, which means that SGL supports Android natively.
+  * *Android*. The Android backend is implemented as a Kotlin/Android library
+    under `android-kotlin/`, with Bazel helpers that generate Gradle Android
+    app projects for games.
   * *Web* with Scalajs. The web backend is implemented with scalajs
     and uses the HTML5 canvas for graphics, the HTML5 audio tag for audio, and
     other standard web features.
@@ -170,13 +171,12 @@ SGL is currently splited into the following sub-projects:
   * desktopNative, depends on coreNative and use scala-native and OpenGL to
     build a native executable.
   * html5, depends on coreJS and use scala.js to generate a javascript game.
-  * coreAndroid and android, for the android platform.
-  * jvmShared, some non-core utilities shared by all JVM-based platform.
+  * android-kotlin, the Android backend and optional Android service modules
+    used by generated Gradle Android app projects.
+  * jvmShared, some non-core utilities shared by JVM-based platforms.
 
-These projects are defined in the [built.sbt](build.sbt) file and have their
-sources in each corresponding subdirectory. Android definitions are in a
-[sub-directory](android/build.sbt) because the Android plugins does not
-work with the most recent sbt version.
+These projects are defined in the [built.sbt](build.sbt) and Bazel files and
+have their sources in each corresponding subdirectory.
 
 ## Understanding the Versioning
 

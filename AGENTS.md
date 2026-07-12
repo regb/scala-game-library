@@ -7,12 +7,12 @@ SGL leverages Scala mutli-compiler and multi-platform support:
 * JVM for desktop development
 * ScalaJS for web
 * ScalaNative for native targets
-* Android through their JVM
+* Android through the Kotlin Android backend and generated Gradle app projects
 * iOS with web view
 
 ## Code Organization
 - `core/`: Cross-platform game logic and abstract interfaces
-- `desktop-awt/`, `desktop-native`, `html5/`, `android/`: Platform-specific implementations
+- `desktop-awt/`, `desktop-native`, `html5/`, `android-kotlin/`: Platform-specific implementations
 - `examples/`: Sample games showing usage patterns. Game code typically extends `GameApp` trait and implements screen-based architecture.
 - `bazel/`: Rules to suppor cross-platform scala builds as well as to provide a framework to users for building games with SGL.
 
