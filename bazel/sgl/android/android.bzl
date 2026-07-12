@@ -40,9 +40,21 @@ def _android_runner_impl(ctx):
 
     application_icon = "        android:icon=\"%s\"\n" % ctx.attr.launcher_icon if ctx.attr.launcher_icon else ""
     firebase_enabled = bool(ctx.attr.google_services_json)
-    optional_modules = "include(\":sgl-android-firebase\")\nproject(\":sgl-android-firebase\").projectDir = file(\"%s/android-kotlin/firebase\")" % ctx.attr.sgl_android_root if firebase_enabled else ""
-    optional_dependencies = "    implementation(project(\":sgl-android-firebase\"))" if firebase_enabled else ""
-    optional_imports = "import sgl.android.analytics.AndroidFirebaseAnalytics\n" if firebase_enabled else ""
+    admob_enabled = bool(ctx.attr.admob_application_id)
+
+    optional_modules = []
+    optional_dependencies = []
+    optional_imports = []
+    if firebase_enabled:
+        optional_modules.append("include(\":sgl-android-firebase\")\nproject(\":sgl-android-firebase\").projectDir = file(\"%s/android-kotlin/firebase\")" % ctx.attr.sgl_android_root)
+        optional_dependencies.append("    implementation(project(\":sgl-android-firebase\"))")
+        optional_imports.append("import sgl.android.analytics.AndroidFirebaseAnalytics\n")
+    if admob_enabled:
+        optional_modules.append("include(\":sgl-android-admob\")\nproject(\":sgl-android-admob\").projectDir = file(\"%s/android-kotlin/admob\")" % ctx.attr.sgl_android_root)
+        optional_dependencies.append("    implementation(project(\":sgl-android-admob\"))")
+        optional_imports.append("import sgl.android.ads.AndroidAdMobAds\n")
+
+    admob_application_id_metadata = "        <meta-data\n            android:name=\"com.google.android.gms.ads.APPLICATION_ID\"\n            android:value=\"%s\" />\n" % ctx.attr.admob_application_id if admob_enabled else ""
 
     substitutions = {
         "@PACKAGE@": ctx.attr.package,
@@ -50,9 +62,10 @@ def _android_runner_impl(ctx):
         "@APPLICATION_ICON@": application_icon,
         "@JAR_DEPENDENCIES@": jar_dependencies,
         "@WIRING_EXPRESSION@": wiring_expression,
-        "@OPTIONAL_MODULES@": optional_modules,
-        "@OPTIONAL_DEPENDENCIES@": optional_dependencies,
-        "@OPTIONAL_IMPORTS@": optional_imports,
+        "@OPTIONAL_MODULES@": "\n".join(optional_modules),
+        "@OPTIONAL_DEPENDENCIES@": "\n".join(optional_dependencies),
+        "@OPTIONAL_IMPORTS@": "".join(optional_imports),
+        "@ADMOB_APPLICATION_ID_METADATA@": admob_application_id_metadata,
         "@SGL_ANDROID_ROOT@": ctx.attr.sgl_android_root,
         "@VERSION_CODE@": str(ctx.attr.version_code),
         "@VERSION_NAME@": ctx.attr.version_name,
@@ -115,6 +128,7 @@ _android_runner = rule(
         "assets_dir": attr.string(default = ""),
         "android_resources_dir": attr.string(default = ""),
         "google_services_json": attr.string(default = ""),
+        "admob_application_id": attr.string(default = ""),
         "launcher_icon": attr.string(default = ""),
         "project_name": attr.string(mandatory = True),
         "gradle_task": attr.string(mandatory = True),
@@ -145,6 +159,7 @@ def sgl_android_app(
         assets_dir = "",
         android_resources_dir = "",
         google_services_json = "",
+        admob_application_id = "",
         launcher_icon = ""):
     for suffix, task, launch, gradle_env in [
         ("debug", ":app:assembleDebug", False, ""),
@@ -167,6 +182,7 @@ def sgl_android_app(
             assets_dir = assets_dir,
             android_resources_dir = android_resources_dir,
             google_services_json = google_services_json,
+            admob_application_id = admob_application_id,
             launcher_icon = launcher_icon,
             project_name = name,
             gradle_task = task,
