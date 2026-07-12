@@ -2,15 +2,12 @@ package sgl.android
 
 import android.content.Context
 import android.media.AudioAttributes
-import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.SoundPool
-import android.os.Build
-import android.os.Handler
-import android.os.Looper
 import scala.Option
 import sgl.proxy.AudioProxy
 import sgl.proxy.MusicProxy
+import sgl.proxy.ProxyResourceNotFoundException
 import sgl.proxy.ResourcePathProxy
 import sgl.proxy.SoundProxy
 import sgl.util.DefaultLoader
@@ -31,6 +28,7 @@ class AndroidAudioProxy(private val context: Context) : AudioProxy {
     // Track active music instances for lifecycle management
     private val activeMusicInstances = mutableListOf<AndroidMusicProxy>()
     private val musicLock = Object()
+    private var activityPaused = false
     
     private fun initSoundPool() {
         if (soundPool == null) {
@@ -51,30 +49,37 @@ class AndroidAudioProxy(private val context: Context) : AudioProxy {
     
     // Add methods for app lifecycle management
     fun pauseAllMusic() {
-        synchronized(musicLock) {
-            for (music in activeMusicInstances) {
-                music.pauseForAppLifecycle()
-            }
+        val musics = synchronized(musicLock) {
+            activityPaused = true
+            activeMusicInstances.toList()
+        }
+        for (music in musics) {
+            music.pauseForAppLifecycle()
         }
     }
     
     fun resumeAllMusic() {
-        synchronized(musicLock) {
-            for (music in activeMusicInstances) {
+        val musics = synchronized(musicLock) {
+            activityPaused = false
+            activeMusicInstances.toList()
+        }
+        for (music in musics) {
+            if (music.isReleased()) {
+                unregisterMusicInstance(music)
+            } else {
                 music.resumeForAppLifecycle()
             }
         }
     }
     
     fun disposeAllMusic() {
-        synchronized(musicLock) {
-            // Create a copy of the list to avoid concurrent modification
-            val musicToDispose = activeMusicInstances.toList()
-            for (music in musicToDispose) {
-                music.dispose()
-            }
-            // Clear the list (though dispose() should have removed them already)
+        val musics = synchronized(musicLock) {
+            val copy = activeMusicInstances.toList()
             activeMusicInstances.clear()
+            copy
+        }
+        for (music in musics) {
+            music.onDestroy()
         }
     }
     
@@ -129,7 +134,7 @@ class AndroidAudioProxy(private val context: Context) : AudioProxy {
             }
             loader.loader()
         } catch (e: IOException) {
-            Loader.failed<SoundProxy>(Exception("Resource not found: $path"))
+            Loader.failed<SoundProxy>(ProxyResourceNotFoundException(path))
         }
     }
 
@@ -152,9 +157,14 @@ class AndroidAudioProxy(private val context: Context) : AudioProxy {
         
         return try {
             val music = AndroidMusicProxy(context, chosenResource, this)
+            synchronized(musicLock) {
+                if (activityPaused) {
+                    music.pauseForAppLifecycle()
+                }
+            }
             Loader.successful<MusicProxy>(music)
         } catch (e: IOException) {
-            Loader.failed<MusicProxy>(Exception("Resource not found: $path"))
+            Loader.failed<MusicProxy>(ProxyResourceNotFoundException(path))
         }
     }
     
@@ -261,8 +271,7 @@ class AndroidMusicProxy(
     private val path: AndroidResourcePathProxy,
     private val audioProxy: AndroidAudioProxy
 ) : MusicProxy, MediaPlayer.OnPreparedListener, MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener {
-    
-    // State management
+
     private sealed class State {
         object Idle : State()
         object Playing : State()
@@ -272,90 +281,39 @@ class AndroidMusicProxy(
         object Stopped : State()
         object Released : State()
     }
-    
+
     private val musicLock = Object()
     private var state: State = State.Idle
     private var shouldLoop = false
     private var mainPlayerPrepared = false
     private var backupPlayerPrepared = false
     private var androidVolume: Float = 1f
-    
-    // Track if we were paused due to app lifecycle vs user action
-    private var wasPlayingBeforeAppPause = false
-    
+
     private var mainPlayer: MediaPlayer? = null
     private var backupPlayer: MediaPlayer? = null
-    
+
     init {
         synchronized(musicLock) {
             mainPlayer = initPlayer(path)
             mainPlayer?.prepareAsync()
         }
-        // Register this instance with the audio proxy
         audioProxy.registerMusicInstance(this)
     }
-    
-    // Add lifecycle management methods
-    internal fun pauseForAppLifecycle() {
-        synchronized(musicLock) {
-            if (state is State.Released) return
-            
-            try {
-                wasPlayingBeforeAppPause = state is State.Playing
-                if (wasPlayingBeforeAppPause && mainPlayer != null && mainPlayerPrepared) {
-                    // Check if MediaPlayer is in a valid state before pausing
-                    if (mainPlayer?.isPlaying == true) {
-                        mainPlayer?.pause()
-                        state = State.Paused
-                    }
-                } else {
-                }
-            } catch (e: IllegalStateException) {
-                // Reset state on error
-                wasPlayingBeforeAppPause = false
-            }
-        }
-    }
-    
-    internal fun resumeForAppLifecycle() {
-        synchronized(musicLock) {
-            if (state is State.Released) return
-            
-            try {
-                if (wasPlayingBeforeAppPause && state is State.Paused && mainPlayer != null && mainPlayerPrepared) {
-                    // Double-check that MediaPlayer is in a valid state
-                    if (mainPlayer?.isPlaying == false) {
-                        mainPlayer?.start()
-                        state = State.Playing
-                    }
-                    wasPlayingBeforeAppPause = false
-                } else {
-                    wasPlayingBeforeAppPause = false
-                }
-            } catch (e: IllegalStateException) {
-                // Reset state on error
-                wasPlayingBeforeAppPause = false
-            }
-        }
-    }
-    
+
+    internal fun pauseForAppLifecycle() = freezeOnPause()
+    internal fun resumeForAppLifecycle() = unfreezeOnResume()
+
     override fun play() {
         synchronized(musicLock) {
             if (state is State.Released) {
                 throw RuntimeException("Trying to play a released resource")
             }
-            
-            wasPlayingBeforeAppPause = false // Reset lifecycle flag when user explicitly plays
-            
-            try {
-                if (mainPlayerPrepared && mainPlayer != null) {
-                    mainPlayer?.start()
-                    state = State.Playing
-                } else {
-                    state = State.WaitPlaying
-                }
-            } catch (e: IllegalStateException) {
-                state = State.Idle
+
+            if (mainPlayerPrepared) {
+                mainPlayer?.start()
+                state = State.Playing
+            } else {
+                state = State.WaitPlaying
             }
         }
     }
@@ -365,19 +323,11 @@ class AndroidMusicProxy(
             if (state is State.Released) {
                 throw RuntimeException("Trying to pause a released resource")
             }
-            
-            wasPlayingBeforeAppPause = false // Reset lifecycle flag when user explicitly pauses
-            
-            try {
-                if (mainPlayer != null && state is State.Playing) {
-                    if (mainPlayer?.isPlaying == true) {
-                        mainPlayer?.pause()
-                    }
-                }
-                state = State.Paused
-            } catch (e: IllegalStateException) {
-                state = State.Paused // Still mark as paused even if operation failed
+
+            if (mainPlayer != null && state is State.Playing) {
+                mainPlayer?.pause()
             }
+            state = State.Paused
         }
     }
 
@@ -386,24 +336,15 @@ class AndroidMusicProxy(
             if (state is State.Released) {
                 throw RuntimeException("Trying to stop a released resource")
             }
-            
-            wasPlayingBeforeAppPause = false // Reset lifecycle flag when user explicitly stops
-            
-            try {
-                mainPlayer?.let { player ->
-                    if (state is State.Playing || state is State.PlayingComplete || state is State.Paused) {
-                        if (player.isPlaying) {
-                            player.stop()
-                        }
-                        mainPlayerPrepared = false
-                        player.prepareAsync()
-                    }
+
+            mainPlayer?.let { player ->
+                if (state is State.Playing || state is State.PlayingComplete || state is State.Paused) {
+                    player.stop()
+                    mainPlayerPrepared = false
+                    player.prepareAsync()
                 }
-                state = State.Stopped
-            } catch (e: IllegalStateException) {
-                // On error, mark as stopped but don't try to re-prepare
-                state = State.Stopped
             }
+            state = State.Stopped
         }
     }
 
@@ -417,39 +358,18 @@ class AndroidMusicProxy(
 
     override fun setLooping(isLooping: Boolean) {
         synchronized(musicLock) {
-            if (shouldLoop != isLooping) {
-                shouldLoop = isLooping
-                
-                mainPlayer?.let {
-                    if (shouldLoop) {
-                        backupPlayer = initPlayer(path)
-                        backupPlayerPrepared = false
-                        backupPlayer?.prepareAsync()
-                    } else {
-                        // Properly clean up backup player when disabling looping
-                        backupPlayer?.let { player ->
-                            try {
-                                // Reset listeners to prevent callbacks after release
-                                player.setOnPreparedListener(null)
-                                player.setOnCompletionListener(null)
-                                player.setOnErrorListener(null)
-                                
-                                // Stop if playing and release
-                                if (player.isPlaying) {
-                                    player.stop()
-                                }
-                                player.release()
-                            } catch (e: Exception) {
-                                // Force release even on error
-                                try {
-                                    player.release()
-                                } catch (e2: Exception) {
-                                }
-                            }
-                        }
-                        backupPlayer = null
-                        backupPlayerPrepared = false
-                    }
+            if (shouldLoop == isLooping) return
+
+            shouldLoop = isLooping
+            if (mainPlayer != null) {
+                if (shouldLoop) {
+                    backupPlayer = initPlayer(path)
+                    backupPlayerPrepared = false
+                    backupPlayer?.prepareAsync()
+                } else {
+                    backupPlayer?.release()
+                    backupPlayer = null
+                    backupPlayerPrepared = false
                 }
             }
         }
@@ -457,153 +377,73 @@ class AndroidMusicProxy(
 
     override fun dispose() {
         synchronized(musicLock) {
-            
-            // First mark as released to prevent further operations
-            state = State.Released
-            
-            // Reset all state immediately
-            mainPlayerPrepared = false
-            backupPlayerPrepared = false
-            wasPlayingBeforeAppPause = false
-            
-            // Defer the actual MediaPlayer cleanup to avoid releasing from callback threads
-            val playersToRelease = mutableListOf<MediaPlayer>()
-            
-            mainPlayer?.let { player ->
-                playersToRelease.add(player)
+            if (mainPlayerPrepared && mainPlayer != null) {
+                mainPlayer?.release()
                 mainPlayer = null
             }
-            
-            backupPlayer?.let { player ->
-                playersToRelease.add(player)
+            if (backupPlayerPrepared && backupPlayer != null) {
+                backupPlayer?.release()
                 backupPlayer = null
             }
-            
-            // Release players on the main thread after a brief delay to ensure callbacks complete
-            if (playersToRelease.isNotEmpty()) {
-                Handler(Looper.getMainLooper()).post {
-                    for (player in playersToRelease) {
-                        try {
-                            // Check if player is in a valid state before any operations
-                            val wasPlaying = try {
-                                player.isPlaying
-                            } catch (e: IllegalStateException) {
-                                false // Assume not playing if we can't check
-                            }
-                            
-                            // Stop if playing, but be defensive about it
-                            if (wasPlaying) {
-                                try {
-                                    player.stop()
-                                } catch (e: IllegalStateException) {
-                                }
-                            }
-                            
-                            // Reset listeners to prevent callbacks after release
-                            player.setOnPreparedListener(null)
-                            player.setOnCompletionListener(null)
-                            player.setOnErrorListener(null)
-                            
-                            player.release()
-                        } catch (e: Exception) {
-                            // Force release even on error
-                            try {
-                                player.setOnPreparedListener(null)
-                                player.setOnCompletionListener(null)
-                                player.setOnErrorListener(null)
-                                player.release()
-                            } catch (e2: Exception) {
-                            }
-                        }
-                    }
-                }
-            }
+            state = State.Released
         }
-        // Unregister this instance from the audio proxy
         audioProxy.unregisterMusicInstance(this)
     }
-    
+
+    internal fun isReleased(): Boolean = synchronized(musicLock) { state is State.Released }
+
     override fun onPrepared(mp: MediaPlayer) {
         synchronized(musicLock) {
-            // Early return if instance has been disposed
-            if (state is State.Released) {
-                try {
-                    mp.setOnPreparedListener(null)
-                    mp.setOnCompletionListener(null)
-                    mp.setOnErrorListener(null)
+            if (mp == mainPlayer) {
+                if (state is State.Released) {
                     mp.release()
-                } catch (e: Exception) {
+                    mainPlayer = null
+                    return
+                }
+
+                mainPlayerPrepared = true
+                if (state is State.WaitPlaying) {
+                    mainPlayer?.start()
+                    state = State.Playing
                 }
                 return
             }
-            
-            when (mp) {
-                mainPlayer -> {
-                    mainPlayerPrepared = true
-                    if (state is State.WaitPlaying) {
-                        try {
-                            mainPlayer?.start()
-                            state = State.Playing
-                        } catch (e: IllegalStateException) {
-                            state = State.Idle
-                        }
-                    }
+
+            if (mp == backupPlayer) {
+                if (state is State.Released) {
+                    mp.release()
+                    backupPlayer = null
                     return
                 }
-                backupPlayer -> {
-                    if (!shouldLoop) {
-                        return
-                    }
-                    
-                    backupPlayerPrepared = true
-                    
-                    when (state) {
-                        is State.Idle, is State.WaitPlaying, is State.Playing, is State.Paused, is State.Stopped -> {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-                                try {
-                                    mainPlayer?.setNextMediaPlayer(backupPlayer)
-                                } catch (e: IllegalStateException) {
-                                }
-                            }
-                            return
-                            // For older versions, we don't have setNextMediaPlayer - no action needed
-                        }
-                        is State.PlayingComplete -> {
-                            // Let onCompletion handle the swap with proper deferral
-                        }
-                        is State.Released -> { /* handled above */ }
-                    }
+                if (!shouldLoop) {
+                    return
                 }
-                else -> {
+
+                backupPlayerPrepared = true
+                when (state) {
+                    is State.Idle, is State.WaitPlaying, is State.Playing, is State.Paused, is State.Stopped -> {
+                        mainPlayer?.setNextMediaPlayer(backupPlayer)
+                    }
+                    is State.PlayingComplete -> {
+                        swapAndPrepare()
+                        mainPlayer?.start()
+                        state = State.Playing
+                    }
+                    is State.Released -> Unit
                 }
             }
         }
     }
-    
+
     override fun onCompletion(mp: MediaPlayer) {
         synchronized(musicLock) {
             if (state !is State.Playing || mp != mainPlayer) {
                 return
             }
-            
+
             if (shouldLoop) {
                 if (backupPlayerPrepared) {
-                    // Defer the swap operation to avoid releasing MediaPlayer from within its own callback
-                    Handler(Looper.getMainLooper()).post {
-                        synchronized(musicLock) {
-                            // Double-check state hasn't changed
-                            if (state !is State.Released && mp == mainPlayer) {
-                                swapAndPrepare()
-                                // Start the new main player (which was the backup)
-                                try {
-                                    mainPlayer?.start()
-                                    state = State.Playing
-                                } catch (e: IllegalStateException) {
-                                    state = State.Stopped
-                                }
-                            }
-                        }
-                    }
+                    swapAndPrepare()
                 } else {
                     state = State.PlayingComplete
                 }
@@ -612,62 +452,25 @@ class AndroidMusicProxy(
             }
         }
     }
-    
+
     override fun onError(mp: MediaPlayer, what: Int, extra: Int): Boolean {
         synchronized(musicLock) {
-            
             if (mp != mainPlayer && mp != backupPlayer) {
                 return false
             }
-            
-            // Log the specific player that had the error
-            val playerType = when (mp) {
-                mainPlayer -> "main"
-                backupPlayer -> "backup" 
-                else -> "unknown"
-            }
-            
-            // Clean up the specific player that had the error
-            try {
-                mp.setOnPreparedListener(null)
-                mp.setOnCompletionListener(null)
-                mp.setOnErrorListener(null)
-                mp.release()
-            } catch (e: Exception) {
-            }
-            
-            // Update state based on which player failed
-            when (mp) {
-                mainPlayer -> {
-                    mainPlayer = null
-                    mainPlayerPrepared = false
-                }
-                backupPlayer -> {
-                    backupPlayer = null
-                    backupPlayerPrepared = false
-                }
-            }
-            
-            // If the main player failed, we need to stop playback
-            if (mp == mainPlayer) {
-                state = State.Stopped
-                wasPlayingBeforeAppPause = false
-            }
-            
-            // Return true to indicate we handled the error
-            return true
+
+            freezeOnPauseLocked()
+            return false
         }
     }
-    
+
     private fun initPlayer(path: AndroidResourcePathProxy): MediaPlayer {
         val mp = MediaPlayer()
         val assetPath = path.generatePathString()
-        val am = context.assets
-        val afd = am.openFd(assetPath)
+        val afd = context.assets.openFd(assetPath)
         mp.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
         afd.close()
-        
-        // Set audio attributes for consistent volume behavior with sound effects
+
         val attrs = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_GAME)
             .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
@@ -680,37 +483,71 @@ class AndroidMusicProxy(
         mp.setOnErrorListener(this)
         return mp
     }
-    
+
     private fun swapAndPrepare() {
-        // Properly clean up the main player before releasing
-        mainPlayer?.let { player ->
-            try {
-                // Reset listeners to prevent callbacks after release
-                player.setOnPreparedListener(null)
-                player.setOnCompletionListener(null)
-                player.setOnErrorListener(null)
-                
-                // Stop if playing
-                if (player.isPlaying) {
-                    player.stop()
-                }
-                player.release()
-            } catch (e: Exception) {
-                // Force release even on error
-                try {
-                    player.release()
-                } catch (e2: Exception) {
-                }
-            }
-        }
-        
-        // Move backup to main
+        mainPlayer?.stop()
+        mainPlayer?.release()
         mainPlayer = backupPlayer
         mainPlayerPrepared = backupPlayerPrepared
-        
-        // Create new backup player
+
         backupPlayer = initPlayer(path)
         backupPlayerPrepared = false
         backupPlayer?.prepareAsync()
+    }
+
+    private fun initPlayersAfterFreeze() {
+        mainPlayer = initPlayer(path)
+        mainPlayerPrepared = false
+        mainPlayer?.prepareAsync()
+
+        if (shouldLoop) {
+            backupPlayer = initPlayer(path)
+            backupPlayerPrepared = false
+            backupPlayer?.prepareAsync()
+        }
+    }
+
+    private fun freezeOnPause() {
+        synchronized(musicLock) {
+            freezeOnPauseLocked()
+        }
+    }
+
+    private fun freezeOnPauseLocked() {
+        mainPlayer?.let { player ->
+            if (state is State.Playing) {
+                player.stop()
+            }
+            player.release()
+            mainPlayer = null
+        }
+        backupPlayer?.release()
+        backupPlayer = null
+    }
+
+    private fun unfreezeOnResume() {
+        synchronized(musicLock) {
+            when (state) {
+                is State.Idle -> initPlayersAfterFreeze()
+                is State.Playing -> {
+                    initPlayersAfterFreeze()
+                    state = State.WaitPlaying
+                }
+                is State.WaitPlaying -> initPlayersAfterFreeze()
+                is State.PlayingComplete -> initPlayersAfterFreeze()
+                is State.Paused -> initPlayersAfterFreeze()
+                is State.Stopped -> initPlayersAfterFreeze()
+                is State.Released -> Unit
+            }
+        }
+    }
+
+    fun onDestroy() {
+        synchronized(musicLock) {
+            mainPlayer?.release()
+            mainPlayer = null
+            backupPlayer?.release()
+            backupPlayer = null
+        }
     }
 }

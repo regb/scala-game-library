@@ -2,12 +2,11 @@ package sgl
 package proxy
 
 import sgl.util.SchedulerProvider
-import sgl.util.NoLoggingProvider
 
 trait ProxyPlatformProvider extends ProxiedGameApp with SchedulerProvider
   with ProxySystemProvider with ProxyWindowProvider with ProxySchedulerProvider 
   with ProxyGraphicsProvider
-  with ProxyAudioProvider with NoLoggingProvider {
+  with ProxyAudioProvider with ProxyLoggingProvider {
 
   val PlatformProxy: PlatformProxy
 

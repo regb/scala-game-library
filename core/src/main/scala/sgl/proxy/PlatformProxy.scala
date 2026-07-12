@@ -35,11 +35,24 @@ trait PlatformProxy {
   val graphicsProxy: GraphicsProxy
   val schedulerProxy: SchedulerProxy
   val audioProxy: AudioProxy
+  val loggerProxy: LoggerProxy
 }
+
+case class ProxyResourceNotFoundException(path: ResourcePathProxy) extends Exception("Resource " + path.toString + " not found")
 
 trait ResourcePathProxy {
   def / (filename: String): ResourcePathProxy
   def extension: Option[String]
+}
+
+trait LoggerProxy {
+  /** Same ordinal convention as LoggingProvider.Logger.LogLevel. */
+  def logLevelOrdinal: Int
+  def error(tag: String, msg: String): Unit
+  def warning(tag: String, msg: String): Unit
+  def info(tag: String, msg: String): Unit
+  def debug(tag: String, msg: String): Unit
+  def trace(tag: String, msg: String): Unit
 }
 
 trait SystemProxy {

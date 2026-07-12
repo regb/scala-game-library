@@ -4,9 +4,11 @@ package sgl.android
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.WindowManager
+import android.window.OnBackInvokedCallback
 import sgl.`Input$`
 import sgl.InputActions
 import sgl.proxy.ProxiedGameApp
@@ -56,6 +58,8 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
 
     var platformProxy: AndroidPlatformProxy? = null
 
+    private var backInvokedCallback: OnBackInvokedCallback? = null
+
     //private implicit val LogTag: Logger.Tag = Logger.Tag("sgl-main-activity")
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -90,6 +94,8 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
         if(KeepScreenOn)
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
+        registerModernBackHandler()
+
         // lifecycle of SGL
         gameApp?.startup()
     }
@@ -103,6 +109,8 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
                 audioProxy.disposeAllMusic()
             }
         }
+
+        unregisterModernBackHandler()
 
         (platformProxy?.schedulerProxy() as? AndroidSchedulerProxy)?.shutdown()
 
@@ -166,12 +174,38 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
 
     var EnableMenuButtonEvents = false
 
+    private fun handleBackPressed() {
+        if(EnableBackButtonEvents) {
+            `Input$`.`MODULE$`.inputProcessor().systemAction(InputActions.`Back$`())
+        } else {
+            finish()
+        }
+    }
+
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         if(EnableBackButtonEvents) {
             `Input$`.`MODULE$`.inputProcessor().systemAction(InputActions.`Back$`())
         } else {
             super.onBackPressed()
+        }
+    }
+
+    private fun registerModernBackHandler() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && backInvokedCallback == null) {
+            val callback = OnBackInvokedCallback { handleBackPressed() }
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                callback
+            )
+            backInvokedCallback = callback
+        }
+    }
+
+    private fun unregisterModernBackHandler() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            backInvokedCallback?.let { onBackInvokedDispatcher.unregisterOnBackInvokedCallback(it) }
+            backInvokedCallback = null
         }
     }
 

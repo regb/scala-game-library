@@ -26,6 +26,7 @@ import sgl.proxy.FontCompanionProxy
 import sgl.proxy.FontProxy
 import sgl.proxy.GraphicsProxy
 import sgl.proxy.PaintProxy
+import sgl.proxy.ProxyResourceNotFoundException
 import sgl.proxy.ResourcePathProxy
 import sgl.proxy.TextLayoutProxy
 import sgl.util.Loader
@@ -47,7 +48,7 @@ class AndroidGraphicsProxy(val context: Context): GraphicsProxy {
 
         val drawableId = context.resources.getIdentifier(filename, "drawable", context.getPackageName())
         if(drawableId == 0) { // 0 is returned when no resource if found.
-            throw Exception("Resource not found: " + path)
+            throw ProxyResourceNotFoundException(path)
         }
 
         val opts = BitmapFactory.Options()
@@ -173,9 +174,13 @@ class AndroidFontCompanionProxy(private val context: Context): FontCompanionProx
             throw IllegalArgumentException("Path must be an AndroidResourcePathProxy")
         }
 
-        val assetPath = path.parts.joinToString("/")
-        val typeface = Typeface.createFromAsset(context.assets, assetPath)
-        AndroidFontProxy(typeface, 14)
+        try {
+            val assetPath = path.parts.joinToString("/")
+            val typeface = Typeface.createFromAsset(context.assets, assetPath)
+            AndroidFontProxy(typeface, 14)
+        } catch (e: RuntimeException) {
+            throw ProxyResourceNotFoundException(path)
+        }
     }
 
 }

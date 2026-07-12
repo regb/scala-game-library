@@ -2,6 +2,7 @@ package sgl
 package proxy
 
 import sgl.util._
+import scala.util.Failure
 
 trait ProxyAudioProvider extends AudioProvider {
   this: ProxySystemProvider =>
@@ -26,7 +27,10 @@ trait ProxyAudioProvider extends AudioProvider {
 
     override def loadSound(path: ResourcePath, extras: ResourcePath*): Loader[Sound] = {
       // For now, we only use the first path. In the future, we could extend AudioProxy to support multiple formats
-      PlatformProxy.audioProxy.loadSound(path.path).map(s => ProxySound(s))
+      PlatformProxy.audioProxy.loadSound(path.path).transform {
+        case Failure(_: ProxyResourceNotFoundException) => Failure(ResourceNotFoundException(path))
+        case other => other
+      }.map(s => ProxySound(s))
     }
 
     case class ProxyMusic(music: MusicProxy) extends AbstractMusic {
@@ -41,7 +45,10 @@ trait ProxyAudioProvider extends AudioProvider {
 
     override def loadMusic(path: ResourcePath, extras: ResourcePath*): Loader[Music] = {
       // For now, we only use the first path. In the future, we could extend AudioProxy to support multiple formats
-      PlatformProxy.audioProxy.loadMusic(path.path).map(m => ProxyMusic(m))
+      PlatformProxy.audioProxy.loadMusic(path.path).transform {
+        case Failure(_: ProxyResourceNotFoundException) => Failure(ResourceNotFoundException(path))
+        case other => other
+      }.map(m => ProxyMusic(m))
     }
   }
 

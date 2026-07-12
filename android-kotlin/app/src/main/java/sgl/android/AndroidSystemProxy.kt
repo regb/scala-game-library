@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import scala.Option
+import sgl.proxy.ProxyResourceNotFoundException
 import sgl.proxy.ResourcePathProxy
 import sgl.proxy.SystemProxy
 import sgl.util.Loader
@@ -66,7 +67,7 @@ class AndroidSystemProxy(private val activity: Activity): SystemProxy {
                 it.readLines().toTypedArray()
             }
         } catch (e: IOException) {
-            throw Exception("Resource not found: $path", e)
+            throw ProxyResourceNotFoundException(path)
         }
     }
 
@@ -88,7 +89,7 @@ class AndroidSystemProxy(private val activity: Activity): SystemProxy {
             }
             byteArrayOutputStream.toByteArray()
         } catch (e: IOException) {
-            throw Exception("Resource not found: $path", e)
+            throw ProxyResourceNotFoundException(path)
         }
     }
 
