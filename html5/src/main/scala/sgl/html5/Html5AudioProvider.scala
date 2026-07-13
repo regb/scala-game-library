@@ -4,6 +4,8 @@ package html5
 import org.scalajs.dom
 import dom.{HTMLAudioElement, HTMLSourceElement}
 
+import scala.util.{Failure, Success}
+
 import sgl.util._
 
 trait Html5AudioProvider extends AudioProvider {
@@ -150,6 +152,16 @@ trait Html5AudioProvider extends AudioProvider {
       loadAudioTag(path +: extras).map(new Html5Music(_))
     }
 
+    private def audioMimeType(path: ResourcePath): String = path.extension match {
+      case Some("ogg") => "audio/ogg"
+      case Some("oga") => "audio/ogg"
+      case Some("mp3") => "audio/mpeg"
+      case Some("aac") => "audio/aac"
+      case Some("m4a") => "audio/mp4"
+      case Some("wav") => "audio/wav"
+      case _ => ""
+    }
+
     private def loadAudioTag(pathes: scala.collection.Seq[ResourcePath]): Loader[HTMLAudioElement] = {
       val p = new DefaultLoader[HTMLAudioElement]()
       val audio = dom.document.createElement("audio").asInstanceOf[HTMLAudioElement]
@@ -163,20 +175,18 @@ trait Html5AudioProvider extends AudioProvider {
       }
 
       pathes.foreach(path => {
-        val source = dom.document.createElement("source").asInstanceOf[HTMLSourceElement]
-        source.src = path.path
-        val tpe = path.extension match {
-          case Some("ogg") => "audio/ogg"
-          case Some("oga") => "audio/ogg"
-          case Some("mp3") => "audio/mpeg"
-          case Some("aac") => "audio/aac"
-          case Some("m4a") => "audio/mp4"
-          case Some("wav") => "audio/wav"
-          case _ => ""
+        val tpe = audioMimeType(path)
+        html5ResourceObjectUrl(path, tpe).onLoad {
+          case Success(url) =>
+            val source = dom.document.createElement("source").asInstanceOf[HTMLSourceElement]
+            source.src = url
+            source.`type` = tpe
+            source.addEventListener("error", (_: dom.Event) => onError())
+            val _ = audio.appendChild(source)
+            audio.load()
+          case Failure(_) =>
+            onError()
         }
-        source.`type` = tpe
-        source.addEventListener("error", (_: dom.Event) => onError())
-        val _ = audio.appendChild(source)
       })
 
       // TODO: we should set a timer and automatically fail the loader after a while, because
@@ -194,10 +204,8 @@ trait Html5AudioProvider extends AudioProvider {
         // Apparently the event can fire several times, so we trySuccess instead.
         val _ = p.trySuccess(audio)
       })
-      // Let's explicitly load() the audio, it seems to be needed on iOS, as the device
-      // does not start loading the audio files otherwise. All other platforms seem to
-      // load automatically and trigger the canplaythrough event eventually.
-      audio.load()
+      // Each source calls load() after its in-memory object URL is attached. This is
+      // needed on iOS, as the device does not start loading the audio files otherwise.
 
       val _ = dom.document.body.appendChild(audio)
 

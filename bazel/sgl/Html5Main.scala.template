@@ -28,4 +28,5 @@ object {{MAIN_CLASS}} extends Html5App with {{CORE_ABSTRACT_CLASS}}
   }
 
   override val ResourcesRoot: ResourcePath = PartsResourcePath(Vector("{{ASSETS_SERVING_ROOT}}"))
+{{ASSET_PACK_MANIFEST_OVERRIDE}}
 }

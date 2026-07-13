@@ -71,7 +71,9 @@ func main() {
 			staticFolder = "static"
 		}
 
-		files := strings.Split(staticFiles, ";")
+		files := strings.FieldsFunc(staticFiles, func(r rune) bool {
+			return r == ';' || r == ' ' || r == '\n' || r == '\t'
+		})
 		for _, file := range files {
 			if file == "" {
 				continue

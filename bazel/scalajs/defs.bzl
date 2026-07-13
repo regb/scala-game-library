@@ -89,7 +89,7 @@ def run_server(name, scalajs_module, main_class, static_files = [], static_strip
     # Build static files list for environment variable
     static_files_env = ""
     if static_files:
-        static_files_locations = ["$(location {})".format(f) for f in static_files]
+        static_files_locations = ["$(locations {})".format(f) for f in static_files]
         static_files_env = ";".join(static_files_locations)
     
     # Build environment variable assignments

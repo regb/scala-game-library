@@ -34,17 +34,29 @@ trait Html5GraphicsProvider extends GraphicsProvider {
     // Load an image resource which comes from resources for a given dpi.
     // If the path is for drawable-mdpi, the dpi will be mdpi, it's the role
     // of this function to make sure the bitmap is scaled if it needs to.
+    private def imageMimeType(path: ResourcePath): String = path.extension match {
+      case Some("jpg") => "image/jpeg"
+      case Some("jpeg") => "image/jpeg"
+      case Some("png") => "image/png"
+      case Some("gif") => "image/gif"
+      case Some("webp") => "image/webp"
+      case Some("svg") => "image/svg+xml"
+      case _ => "application/octet-stream"
+    }
+
     private def tryLoadImageDpi(path: ResourcePath, dpi: String): Loader[Bitmap] = {
-      val p = new DefaultLoader[Bitmap]()
-      val img = dom.document.createElement("img").asInstanceOf[HTMLImageElement]
-      img.addEventListener("load", (_: dom.Event) => {
-        val _ = p.success(Html5Bitmap(img, dom.window.devicePixelRatio/dpiToRatio(dpi)))
-      })
-      img.addEventListener("error", (_: dom.Event) => {
-        val _ = p.failure(new RuntimeException(s"image <${path.path}> failed to load"))
-      })
-      img.src = path.path
-      p.loader
+      html5ResourceObjectUrl(path, imageMimeType(path)).flatMap { url =>
+        val p = new DefaultLoader[Bitmap]()
+        val img = dom.document.createElement("img").asInstanceOf[HTMLImageElement]
+        img.addEventListener("load", (_: dom.Event) => {
+          val _ = p.success(Html5Bitmap(img, dom.window.devicePixelRatio/dpiToRatio(dpi)))
+        })
+        img.addEventListener("error", (_: dom.Event) => {
+          val _ = p.failure(new RuntimeException(s"image <${path.path}> failed to load"))
+        })
+        img.src = url
+        p.loader
+      }
     }
 
     override def loadImage(path: ResourcePath): Loader[Bitmap] = {
@@ -118,16 +130,30 @@ trait Html5GraphicsProvider extends GraphicsProvider {
           s"sgl-custom-font-$fontId"
         }
 
+        val fontMimeType = path.extension match {
+          case Some("ttf") => "font/ttf"
+          case Some("otf") => "font/otf"
+          case Some("woff") => "font/woff"
+          case Some("woff2") => "font/woff2"
+          case _ => "application/octet-stream"
+        }
+        val fontFormat = path.extension match {
+          case Some("ttf") => "truetype"
+          case Some("otf") => "opentype"
+          case Some("woff") => "woff"
+          case Some("woff2") => "woff2"
+          case _ => "opentype"
+        }
+
         val styleNode = dom.document.createElement("style")
-        // TODO: find a generic way to set the correct format
-        //       (opentype vs truetype vs other) A trivial but
-        //       incomplete way would be to check the file extension.
-        styleNode.textContent = raw"""
+        html5ResourceObjectUrl(path, fontMimeType).foreach { url =>
+          styleNode.textContent = raw"""
 @font-face {
   font-family: '${fontName}';
-  src: url('${path.path}') format("opentype");
+  src: url('${url}') format("${fontFormat}");
 }"""
-        dom.document.body.appendChild(styleNode)
+          dom.document.body.appendChild(styleNode)
+        }
 
         // This is a hack to insert an invisible text node using the newly defined font.
         // This will force to load the font right away. Otherwise, the browser waits
