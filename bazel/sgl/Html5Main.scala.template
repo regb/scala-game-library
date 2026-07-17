@@ -12,7 +12,7 @@ import scala.scalajs.js.annotation.JSExportTopLevel
 
 @JSExportTopLevel("{{MAIN_CLASS}}")
 object {{MAIN_CLASS}} extends Html5App with {{CORE_ABSTRACT_CLASS}}
-  with LocalStorageSaveComponent
+  with {{SAVE_COMPONENT}}
   with Html5DefaultConsoleLoggingProvider
   with Html5JsonProvider
   with NoAdsProvider
@@ -23,9 +23,7 @@ object {{MAIN_CLASS}} extends Html5App with {{CORE_ABSTRACT_CLASS}}
 
   override val TargetFps: Option[Int] = None
 
-  override val theme: Theme = new FixedWindowTheme {
-    override val frameSize: (Int, Int) = ({{CANVAS_WIDTH}}, {{CANVAS_HEIGHT}})
-  }
+  override val theme: Theme = {{THEME_EXPRESSION}}
 
   override val ResourcesRoot: ResourcePath = PartsResourcePath(Vector("{{ASSETS_SERVING_ROOT}}"))
 {{ASSET_PACK_MANIFEST_OVERRIDE}}

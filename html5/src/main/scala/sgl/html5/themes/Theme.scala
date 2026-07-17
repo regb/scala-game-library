@@ -39,6 +39,11 @@ abstract class Theme {
     */
   def onResize(canvas: html.Canvas): Unit
 
+  /** Whether Html5App should preserve the canvas CSS size exactly as laid out
+    * by the hosting page when preparing the high-DPI backing store.
+    */
+  def preserveCanvasCssSize: Boolean = false
+
 }
 
 /** Do not use any special theme.
@@ -53,5 +58,7 @@ class NoTheme extends Theme {
   override def init(canvas: html.Canvas): Unit = {}
 
   override def onResize(canvas: html.Canvas): Unit = {}
+
+  override def preserveCanvasCssSize: Boolean = true
 
 }

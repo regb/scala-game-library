@@ -30,14 +30,15 @@ trait Html5InputProvider {
    * The actual coordinates need to be translated to the canvas coordinates.
    * First we need to offset them by the canvas top-left coordinates, then we
    * need to adapt them to the actual canvas size.
-   * The canvas is scaled up by devicePixelRatio, and thus its internal coordinates
-   * system is finer than its size in CSS, but the click event will contain the
-   * CSS coordinates, so we need to scale these up.
+   * The canvas internal size can differ from its CSS size. The event contains
+   * CSS coordinates, so scale them to the actual canvas coordinate system.
    */
   private def getCursorPosition(canvas: html.Canvas, clientX: Int, clientY: Int): (Int, Int) = {
     val rect = canvas.getBoundingClientRect()
-    val x = ((clientX - rect.left)*dom.window.devicePixelRatio).toInt
-    val y = ((clientY - rect.top)*dom.window.devicePixelRatio).toInt
+    val scaleX = canvas.width.toDouble / rect.width
+    val scaleY = canvas.height.toDouble / rect.height
+    val x = ((clientX - rect.left)*scaleX).toInt
+    val y = ((clientY - rect.top)*scaleY).toInt
     (x, y)
   }
   private def getCursorPosition(canvas: html.Canvas, e: dom.MouseEvent): (Int, Int) = {
@@ -47,6 +48,20 @@ trait Html5InputProvider {
   // We track if the user has interacted with the game in any significant way (touch, click,
   // pressed keys?). This is because some browsers have a policy to not autoplay music, and
   // we need to wait for an actual user action before being able to play.
+  private val MaxTouchPointers = 10
+  private val touchIdentifiers = new scala.collection.mutable.HashMap[Int, Int]
+
+  private def sglTouchPointer(touchIdentifier: Int): Int = {
+    touchIdentifiers.getOrElseUpdate(touchIdentifier, {
+      val usedPointers = touchIdentifiers.values.toSet
+      (0 until MaxTouchPointers).find(!usedPointers.contains(_)).getOrElse(0)
+    })
+  }
+
+  private def releaseSglTouchPointer(touchIdentifier: Int): Unit = {
+    touchIdentifiers.remove(touchIdentifier)
+  }
+
   private var hasUserInteracted = false
   private val actionsOnUserInteraction = new scala.collection.mutable.ListBuffer[() => Unit]
   // The function registered here will be called either immediately if the user already
@@ -124,7 +139,7 @@ trait Html5InputProvider {
         val touch = touches(i)
         i += 1
         val (x,y) = getCursorPosition(this.htmlCanvas, touch.clientX.toInt, touch.clientY.toInt)
-        val id = touch.identifier.toInt
+        val id = sglTouchPointer(touch.identifier.toInt)
         Input.inputProcessor.touchDown(x, y, id)
       }
     })
@@ -140,8 +155,10 @@ trait Html5InputProvider {
         val touch = touches(i)
         i += 1
         val (x,y) = getCursorPosition(this.htmlCanvas, touch.clientX.toInt, touch.clientY.toInt)
-        val id = touch.identifier.toInt
+        val touchIdentifier = touch.identifier.toInt
+        val id = sglTouchPointer(touchIdentifier)
         Input.inputProcessor.touchUp(x, y, id)
+        releaseSglTouchPointer(touchIdentifier)
       }
     })
     this.htmlCanvas.addEventListener("touchmove", (e: dom.Event) => {
@@ -155,7 +172,7 @@ trait Html5InputProvider {
         val touch = touches(i)
         i += 1
         val (x,y) = getCursorPosition(this.htmlCanvas, touch.clientX.toInt, touch.clientY.toInt)
-        val id = touch.identifier.toInt
+        val id = sglTouchPointer(touch.identifier.toInt)
         Input.inputProcessor.touchMoved(x, y, id)
       }
     })

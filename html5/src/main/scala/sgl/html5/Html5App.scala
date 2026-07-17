@@ -49,10 +49,17 @@ trait Html5App extends GameApp
    * some scaling at runtime.
    */
   def prepareCanvas(canvas: html.Canvas): Unit = {
-    canvas.style.width = s"${canvas.width}px"
-    canvas.style.height = s"${canvas.height}px"
-    canvas.width = (dom.window.devicePixelRatio*canvas.width).toInt
-    canvas.height = (dom.window.devicePixelRatio*canvas.height).toInt
+    val rect = canvas.getBoundingClientRect()
+    val cssWidth = math.max(1, rect.width.toInt)
+    val cssHeight = math.max(1, rect.height.toInt)
+
+    if(!theme.preserveCanvasCssSize) {
+      canvas.style.width = s"${cssWidth}px"
+      canvas.style.height = s"${cssHeight}px"
+    }
+
+    canvas.width = (dom.window.devicePixelRatio*cssWidth).toInt
+    canvas.height = (dom.window.devicePixelRatio*cssHeight).toInt
   }
   @JSExport
   def run(canvas: html.Canvas): Unit = {

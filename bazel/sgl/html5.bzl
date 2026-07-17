@@ -79,14 +79,23 @@ html5_asset_pack = rule(
 def _html5_main_template_impl(ctx):
     """Implementation for scalajs_html_template rule."""
     
+    if ctx.attr.use_provided_canvas:
+        theme_expression = "new ProvidedCanvasTheme"
+    elif ctx.attr.fullscreen:
+        theme_expression = "new FullScreenTheme"
+    else:
+        theme_expression = """new FixedWindowTheme {
+    override val frameSize: (Int, Int) = (%s, %s)
+  }""" % (ctx.attr.canvas_width, ctx.attr.canvas_height)
+
     substitutions = {
         "{{PACKAGE}}": ctx.attr.package,
         "{{MAIN_CLASS}}": ctx.attr.main_class,
         "{{CORE_ABSTRACT_CLASS}}": ctx.attr.core_abstract_class,
-        "{{CANVAS_WIDTH}}": str(ctx.attr.canvas_width),
-        "{{CANVAS_HEIGHT}}": str(ctx.attr.canvas_height),
+        "{{THEME_EXPRESSION}}": theme_expression,
         "{{ASSETS_SERVING_ROOT}}": str(ctx.attr.assets_serving_root),
         "{{ASSET_PACK_MANIFEST_OVERRIDE}}": ctx.attr.asset_pack_manifest_override,
+        "{{SAVE_COMPONENT}}": ctx.attr.save_component,
     }
     
     output = ctx.actions.declare_file(ctx.attr.name + ".scala")
@@ -137,6 +146,21 @@ html5_main = rule(
             doc = "Generated Scala override configuring an HTML5 asset pack manifest.",
             default = "",
         ),
+        "fullscreen": attr.bool(
+            mandatory = False,
+            doc = "Use the HTML5 full-screen theme instead of a fixed-size canvas.",
+            default = False,
+        ),
+        "use_provided_canvas": attr.bool(
+            mandatory = False,
+            doc = "Use the canvas element as laid out by the hosting page.",
+            default = False,
+        ),
+        "save_component": attr.string(
+            mandatory = False,
+            doc = "Save component mixed into the generated HTML5 main object.",
+            default = "LocalStorageSaveComponent",
+        ),
     },
     doc = "Generate a Main entrypoint for the HTML5 backend of SGL",
 )
@@ -155,6 +179,9 @@ def sgl_html5_app(
   canvas_height = 600,
   use_extension_tiled = False,
   pack_assets = False,
+  save_component = "LocalStorageSaveComponent",
+  fullscreen = False,
+  use_provided_canvas = False,
 ):
 
     full_deps = deps + [
@@ -192,6 +219,9 @@ def sgl_html5_app(
         canvas_width = canvas_width,
         canvas_height = canvas_height,
         asset_pack_manifest_override = asset_pack_manifest_override,
+        save_component = save_component,
+        fullscreen = fullscreen,
+        use_provided_canvas = use_provided_canvas,
     )
     
     scalajs_module(
