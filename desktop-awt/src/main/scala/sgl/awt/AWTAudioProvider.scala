@@ -255,12 +255,37 @@ trait AWTAudioProvider extends AudioProvider {
     }
   
     override def loadSound(path: ResourcePath, extras: ResourcePath*): Loader[Sound] = FutureLoader {
+      loadFirstSupportedSound(path +: extras.toSeq)
+    }
+
+    private def loadFirstSupportedSound(paths: Seq[ResourcePath]): Sound = {
+      var lastFailure: Option[Exception] = None
+      val remainingPaths = paths.iterator
+      var loadedSound: Option[Sound] = None
+      while(loadedSound.isEmpty && remainingPaths.hasNext) {
+        val path = remainingPaths.next()
+        try {
+          loadedSound = Some(loadSingleSound(path))
+        } catch {
+          case e @ (_: ResourceNotFoundException | _: ResourceFormatUnsupportedException) =>
+            lastFailure = Some(e)
+            logger.warning("Unable to load sound resource %s: %s. Trying next format if available.".format(path.path, e.getMessage))
+        }
+      }
+      loadedSound.getOrElse(throw lastFailure.getOrElse(new ResourceNotFoundException(paths.head)))
+    }
+
+    private def loadSingleSound(path: ResourcePath): Sound = {
       logger.info("Loading sound resource: " + path.path)
       val resourceAudioStream = loadAudioInputStream(path)
       val (convertedAudioStream, _) = convertToBestStream(resourceAudioStream).getOrElse{
         throw new ResourceFormatUnsupportedException(path)
       }
       val wrapper = AudioInputStreamWrapper.fromAudioInputStream(convertedAudioStream)
+      if(wrapper.frameLength <= 0) {
+        logger.warning("Sound resource %s decoded to an empty audio stream.".format(path.path))
+        throw new ResourceFormatUnsupportedException(path)
+      }
       new Sound(wrapper, 0)
     }
   
