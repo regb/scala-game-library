@@ -80,6 +80,27 @@ trait GameStateComponent {
       * something.
       */
     def onLoaded(): Unit = {}
+
+    /** Prepare the screen for update/render if all preloaders are completed.
+      *
+      * This is normally called by the game loop for the current screen. It is
+      * also useful for transition screens that need to render the next screen
+      * before making it current.
+      *
+      * @return true if the screen is ready to update/render, false if it is
+      *         still waiting for preloaders.
+      */
+    def prepareForRenderIfLoaded(): Boolean = {
+      if(_isLoading && preloaders.exists((l: Loader[_]) => !l.isLoaded)) {
+        false
+      } else {
+        if(_isLoading) {
+          onLoaded()
+          _isLoading = false
+        }
+        true
+      }
+    }
   
     /** Determine whether next screen on the stack should be rendered 
       *

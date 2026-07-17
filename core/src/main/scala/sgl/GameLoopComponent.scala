@@ -117,15 +117,9 @@ trait GameLoopComponent {
 
     val currentScreen = gameState.screensStack.head
 
-    if(currentScreen.isLoading && currentScreen.preloaders.exists((l: Loader[_]) => !l.isLoaded)) {
+    if(!currentScreen.prepareForRenderIfLoaded()) {
       currentScreen.loadingRender(canvas)
     } else {
-      if(currentScreen.isLoading) {
-        // current screen just finished loading
-        currentScreen.onLoaded()
-        currentScreen._isLoading = false
-      }
-
       if(rdt > 0) {
         gameLoopListener.onUpdateStart()
         currentScreen.update(rdt)
