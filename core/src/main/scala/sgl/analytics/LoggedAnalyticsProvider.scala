@@ -1,52 +1,58 @@
 package sgl
 package analytics
 
-import util.LoggingProvider
+import sgl.util.LoggingProvider
 
-/** An implementation of the Analytics module that only logs.
-  *
-  * This implementation relies on the logging module to log each event but it
-  * does not send the data to an analysis service. One could technically
-  * collect the logs to extract the data, but more likely this can be used when
-  * one does not wish (or can't) to send analytics data.
-  */
 trait LoggedAnalyticsProvider extends AnalyticsProvider {
-  this: GameStateComponent with GraphicsProvider with SystemProvider with LoggingProvider =>
+  this: LoggingProvider =>
+
+  override type Analytics = LoggedAnalytics
+
+  override val Analytics = new LoggedAnalytics
+
+  private implicit val LogTag: Logger.Tag = Logger.Tag("analytics")
 
   class LoggedAnalytics extends AbstractAnalytics {
-
-    implicit val tag: LoggedAnalyticsProvider.this.Logger.Tag = Logger.Tag("analytics")
+    private def renderCustoms(customs: Seq[(String, AnalyticsValue)]): Map[String, Any] = customs.map {
+      case (key, AnalyticsStringValue(value)) => key -> value
+      case (key, AnalyticsLongValue(value)) => key -> value
+      case (key, AnalyticsDoubleValue(value)) => key -> value
+      case (key, AnalyticsBooleanValue(value)) => key -> value
+    }.toMap
 
     override def logCustomEvent(name: String, params: EventParams): Unit = {
-      logger.info(s"${name}: ${params}")
+      logger.info(s"custom_event: {name=${name}, params=${params}}")
     }
 
-    override def logLevelUpEvent(level: Long): Unit = {
-      logger.info(s"level_up: {level=${level}}")
+    override def logLevelUpEvent(level: Long, customs: (String, AnalyticsValue)*): Unit = {
+      logger.info(s"level_up: {level=${level}, customs=${renderCustoms(customs)}}")
     }
-    override def logLevelStartEvent(level: String): Unit = {
-      logger.info(s"level_start: {level=${level}}")
+    override def logLevelStartEvent(levelName: String, customs: (String, AnalyticsValue)*): Unit = {
+      logger.info(s"level_start: {level_name=${levelName}, customs=${renderCustoms(customs)}}")
     }
-    override def logLevelEndEvent(level: String, success: Boolean): Unit = {
-      logger.info(s"level_end: {level=${level}, success=${success}}")
+    override def logLevelEndEvent(levelName: String, success: Boolean, customs: (String, AnalyticsValue)*): Unit = {
+      logger.info(s"level_end: {level_name=${levelName}, success=${success}, customs=${renderCustoms(customs)}}")
     }
-    override def logShareEvent(itemId: Option[String]): Unit = {
-      logger.info(s"share: {item_id=${itemId}}")
+    override def logShareEvent(itemId: Option[String], customs: (String, AnalyticsValue)*): Unit = {
+      logger.info(s"share: {item_id=${itemId}, customs=${renderCustoms(customs)}}")
     }
-    override def logGameOverEvent(score: Option[Long], map: Option[String]): Unit = {
-      logger.info(s"game_over: {score=${score}, map=${map}}")
+    override def logGameOverEvent(score: Option[Long], levelName: Option[String], customs: (String, AnalyticsValue)*): Unit = {
+      logger.info(s"game_over: {score=${score}, level_name=${levelName}, customs=${renderCustoms(customs)}}")
     }
-    override def logBeginTutorialEvent(): Unit = {
-      logger.info(s"begin_tutorial")
+    override def logBeginTutorialEvent(tutorialId: String, levelName: Option[String], customs: (String, AnalyticsValue)*): Unit = {
+      logger.info(s"begin_tutorial: {tutorial_id=${tutorialId}, level_name=${levelName}, customs=${renderCustoms(customs)}}")
     }
-    override def logCompleteTutorialEvent(): Unit = {
-      logger.info(s"complete_tutorial")
+    override def logCompleteTutorialEvent(tutorialId: String, levelName: Option[String], customs: (String, AnalyticsValue)*): Unit = {
+      logger.info(s"complete_tutorial: {tutorial_id=${tutorialId}, level_name=${levelName}, customs=${renderCustoms(customs)}}")
     }
-    override def logUnlockAchievementEvent(achievement: String): Unit = {
-      logger.info(s"unlock_achievement: {achievement=${achievement}}")
+    override def logUnlockAchievementEvent(achievement: String, customs: (String, AnalyticsValue)*): Unit = {
+      logger.info(s"unlock_achievement: {achievement=${achievement}, customs=${renderCustoms(customs)}}")
     }
-    override def logPostScoreEvent(score: Long, level: Option[Long], character: Option[String]): Unit = {
-      logger.info(s"post_score: {score=${score}, level=${level}, character=${character}}")
+    override def logPurchaseEvent(transactionId: Option[String], value: Double, currency: String, itemId: Option[String], customs: (String, AnalyticsValue)*): Unit = {
+      logger.info(s"purchase: {transaction_id=${transactionId}, value=${value}, currency=${currency}, item_id=${itemId}, customs=${renderCustoms(customs)}}")
+    }
+    override def logPostScoreEvent(score: Long, level: Option[Long], character: Option[String], customs: (String, AnalyticsValue)*): Unit = {
+      logger.info(s"post_score: {score=${score}, level=${level}, character=${character}, customs=${renderCustoms(customs)}}")
     }
 
     override def setGameScreen(gameScreen: String): Unit = {
@@ -54,12 +60,7 @@ trait LoggedAnalyticsProvider extends AnalyticsProvider {
     }
 
     override def setPlayerProperty(name: String, value: String): Unit = {
-      logger.info(s"setting player property ${name}=${value}")
+      logger.info(s"setting player property: $name=$value")
     }
   }
-
-  override type Analytics = LoggedAnalytics
-
-  override val Analytics: Analytics = new LoggedAnalytics
-
 }

@@ -1,6 +1,8 @@
 package sgl
 package analytics
 
+import scala.language.implicitConversions
+
 /** The interface for the Analytics module.
   *
   * Analytics is used to instrument game code with user activity logging for
@@ -117,34 +119,35 @@ trait AnalyticsProvider {
       analytics.foreach(_.logCustomEvent(name, params))
     }
 
-    override def logLevelUpEvent(level: Long): Unit = {
-      analytics.foreach(_.logLevelUpEvent(level))
+    override def logLevelUpEvent(level: Long, customs: (String, AnalyticsValue)*): Unit = {
+      analytics.foreach(_.logLevelUpEvent(level, customs: _*))
     }
-    // TODO: level up as in player level but level levelStart as in map level..
-    //       not good and we need to fix these names!
-    override def logLevelStartEvent(level: String): Unit = {
-      analytics.foreach(_.logLevelStartEvent(level))
+    override def logLevelStartEvent(levelName: String, customs: (String, AnalyticsValue)*): Unit = {
+      analytics.foreach(_.logLevelStartEvent(levelName, customs: _*))
     }
-    override def logLevelEndEvent(level: String, success: Boolean): Unit = {
-      analytics.foreach(_.logLevelEndEvent(level, success))
+    override def logLevelEndEvent(levelName: String, success: Boolean, customs: (String, AnalyticsValue)*): Unit = {
+      analytics.foreach(_.logLevelEndEvent(levelName, success, customs: _*))
     }
-    override def logShareEvent(itemId: Option[String]): Unit = {
-      analytics.foreach(_.logShareEvent(itemId))
+    override def logShareEvent(itemId: Option[String], customs: (String, AnalyticsValue)*): Unit = {
+      analytics.foreach(_.logShareEvent(itemId, customs: _*))
     }
-    override def logGameOverEvent(score: Option[Long], map: Option[String]): Unit = {
-      analytics.foreach(_.logGameOverEvent(score, map))
+    override def logGameOverEvent(score: Option[Long], levelName: Option[String], customs: (String, AnalyticsValue)*): Unit = {
+      analytics.foreach(_.logGameOverEvent(score, levelName, customs: _*))
     }
-    override def logBeginTutorialEvent(): Unit = {
-      analytics.foreach(_.logBeginTutorialEvent())
+    override def logBeginTutorialEvent(tutorialId: String, levelName: Option[String], customs: (String, AnalyticsValue)*): Unit = {
+      analytics.foreach(_.logBeginTutorialEvent(tutorialId, levelName, customs: _*))
     }
-    override def logCompleteTutorialEvent(): Unit = {
-      analytics.foreach(_.logCompleteTutorialEvent())
+    override def logCompleteTutorialEvent(tutorialId: String, levelName: Option[String], customs: (String, AnalyticsValue)*): Unit = {
+      analytics.foreach(_.logCompleteTutorialEvent(tutorialId, levelName, customs: _*))
     }
-    override def logUnlockAchievementEvent(achievementId: String): Unit = {
-      analytics.foreach(_.logUnlockAchievementEvent(achievementId))
+    override def logUnlockAchievementEvent(achievementId: String, customs: (String, AnalyticsValue)*): Unit = {
+      analytics.foreach(_.logUnlockAchievementEvent(achievementId, customs: _*))
     }
-    override def logPostScoreEvent(score: Long, level: Option[Long], character: Option[String]): Unit = {
-      analytics.foreach(_.logPostScoreEvent(score, level, character))
+    override def logPostScoreEvent(score: Long, level: Option[Long], character: Option[String], customs: (String, AnalyticsValue)*): Unit = {
+      analytics.foreach(_.logPostScoreEvent(score, level, character, customs: _*))
+    }
+    override def logPurchaseEvent(transactionId: Option[String], value: Double, currency: String, itemId: Option[String], customs: (String, AnalyticsValue)*): Unit = {
+      analytics.foreach(_.logPurchaseEvent(transactionId, value, currency, itemId, customs: _*))
     }
 
     override def setGameScreen(gameScreen: String): Unit = {
@@ -171,18 +174,42 @@ trait AnalyticsProvider {
   *
   * character is the identification of a character in the game.
   *
-  * level is not a map identifier, but the level of the player.
+  * level is not a level name identifier, but the numeric level of the player.
   *
-  * levelName is a map identifier.
+  * levelName is a stable level identifier, such as a map/stage id.
   *
   * customs is for any extra, custom parameters
   */
+sealed trait AnalyticsValue
+case class AnalyticsStringValue(value: String) extends AnalyticsValue
+case class AnalyticsLongValue(value: Long) extends AnalyticsValue
+case class AnalyticsDoubleValue(value: Double) extends AnalyticsValue
+case class AnalyticsBooleanValue(value: Boolean) extends AnalyticsValue
+
+object AnalyticsValue {
+  implicit def stringToAnalyticsValue(value: String): AnalyticsValue = AnalyticsStringValue(value)
+  implicit def intToAnalyticsValue(value: Int): AnalyticsValue = AnalyticsLongValue(value.toLong)
+  implicit def longToAnalyticsValue(value: Long): AnalyticsValue = AnalyticsLongValue(value)
+  implicit def doubleToAnalyticsValue(value: Double): AnalyticsValue = AnalyticsDoubleValue(value)
+  implicit def floatToAnalyticsValue(value: Float): AnalyticsValue = AnalyticsDoubleValue(value.toDouble)
+  implicit def booleanToAnalyticsValue(value: Boolean): AnalyticsValue = AnalyticsBooleanValue(value)
+
+  implicit def stringParamToAnalyticsParam(param: (String, String)): (String, AnalyticsValue) = param._1 -> AnalyticsStringValue(param._2)
+  implicit def intParamToAnalyticsParam(param: (String, Int)): (String, AnalyticsValue) = param._1 -> AnalyticsLongValue(param._2.toLong)
+  implicit def longParamToAnalyticsParam(param: (String, Long)): (String, AnalyticsValue) = param._1 -> AnalyticsLongValue(param._2)
+  implicit def doubleParamToAnalyticsParam(param: (String, Double)): (String, AnalyticsValue) = param._1 -> AnalyticsDoubleValue(param._2)
+  implicit def floatParamToAnalyticsParam(param: (String, Float)): (String, AnalyticsValue) = param._1 -> AnalyticsDoubleValue(param._2.toDouble)
+  implicit def booleanParamToAnalyticsParam(param: (String, Boolean)): (String, AnalyticsValue) = param._1 -> AnalyticsBooleanValue(param._2)
+}
+
 case class EventParams(
   value: Option[Double] = None, level: Option[Long] = None,
   itemId: Option[String] = None, score: Option[Long] = None,
   levelName: Option[String] = None, character: Option[String] = None,
-  customs: Map[String, String] = Map()
-)
+  customs: Map[String, AnalyticsValue] = Map()
+) {
+  def withCustoms(extra: (String, AnalyticsValue)*): EventParams = copy(customs = customs ++ extra.toMap)
+}
 
 abstract class AbstractAnalytics {
 
@@ -196,9 +223,9 @@ abstract class AbstractAnalytics {
     * to limit the number of unique events to a constant (that is, not dynamically
     * generating the name).
     *
-    * As an example, an event that a map was completed could have a name "complete-map"
-    * and include a parameter for the mapid. Alternatively, if the game has a small and bounded
-    * number of levels, one could consider generating the event name by including the map id
+    * As an example, an event that a level was completed could have a name "complete_level"
+    * and include a parameter for the level name. Alternatively, if the game has a small and bounded
+    * number of levels, one could consider generating the event name by including the level name
     * into the name, and being parameterless. Both designs have merits, and it does depend
     * on the kind of analysis that want to be done in the end, although both should
     * enable to query essentially the same data in the end.
@@ -207,6 +234,8 @@ abstract class AbstractAnalytics {
     * parameters should be used as additional dimensions to observe the event on.
     */
   def logCustomEvent(name: String, params: EventParams): Unit
+  def logCustomEvent(name: String, customs: (String, AnalyticsValue)*): Unit =
+    logCustomEvent(name, EventParams(customs = customs.toMap))
 
   /* log semantics events 
    * Some predefined events, the implementation will either
@@ -236,30 +265,35 @@ abstract class AbstractAnalytics {
     * must provide the new level that the player reached. This event can
     * help to identify difficult phase in the game.
     */
-  def logLevelUpEvent(level: Long): Unit
+  def logLevelUpEvent(level: Long, customs: (String, AnalyticsValue)*): Unit
 
 
   /** Log an event when the player starts a new level.
     *
-    * Identify the level with a string.
+    * Identify the level with a stable name.
     */
-  def logLevelStartEvent(level: String): Unit
+  def logLevelStartEvent(levelName: String, customs: (String, AnalyticsValue)*): Unit
 
-  /** Log an event when the player starts a new level.
+  /** Log an event when the player ends a level.
     *
-    * Identify the level with a string. 
+    * Identify the level with a stable name.
     */
-  def logLevelEndEvent(level: String, success: Boolean): Unit
+  def logLevelEndEvent(levelName: String, success: Boolean, customs: (String, AnalyticsValue)*): Unit
 
-  def logShareEvent(itemId: Option[String]): Unit
-  def logGameOverEvent(score: Option[Long], map: Option[String]): Unit
-  def logBeginTutorialEvent(): Unit
-  def logCompleteTutorialEvent(): Unit
+  def logShareEvent(itemId: Option[String], customs: (String, AnalyticsValue)*): Unit
+  def logGameOverEvent(score: Option[Long], levelName: Option[String], customs: (String, AnalyticsValue)*): Unit
+  def logBeginTutorialEvent(tutorialId: String, levelName: Option[String], customs: (String, AnalyticsValue)*): Unit
+  def logCompleteTutorialEvent(tutorialId: String, levelName: Option[String], customs: (String, AnalyticsValue)*): Unit
 
-  def logUnlockAchievementEvent(achievementId: String): Unit
+  def logUnlockAchievementEvent(achievementId: String, customs: (String, AnalyticsValue)*): Unit
 
-  // TODO: currency typesafe.
-  // def logIAPEvent(cartId: String, itemId: String, amount: Long, currency: String): Unit
+  /** Log a purchase event.
+    *
+    * The value should be expressed in the provided ISO 4217 currency code.
+    * transactionId and itemId are optional because some platforms may not expose
+    * them for every purchase flow.
+    */
+  def logPurchaseEvent(transactionId: Option[String], value: Double, currency: String, itemId: Option[String], customs: (String, AnalyticsValue)*): Unit
 
   /** post a score in the game
     *
@@ -270,7 +304,7 @@ abstract class AbstractAnalytics {
     * level of the player, such as current stage, or total xp, as long
     * as it is used consistently).
     */
-  def logPostScoreEvent(score: Long, level: Option[Long], character: Option[String]): Unit
+  def logPostScoreEvent(score: Long, level: Option[Long], character: Option[String], customs: (String, AnalyticsValue)*): Unit
 
 
   /** Set the current game screen.
@@ -305,7 +339,5 @@ abstract class AbstractAnalytics {
     */
   def setPlayerProperty(name: String, value: String): Unit
 
-  // TODO: expose a Metrics API as well
-  // class Metrics { ... }
 }
 

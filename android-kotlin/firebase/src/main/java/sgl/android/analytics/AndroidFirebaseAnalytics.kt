@@ -4,7 +4,14 @@ import android.content.Context
 import android.os.Bundle
 import android.provider.Settings
 import scala.Option
+import scala.Tuple2
+import scala.collection.immutable.Seq
 import sgl.analytics.AbstractAnalytics
+import sgl.analytics.AnalyticsBooleanValue
+import sgl.analytics.AnalyticsDoubleValue
+import sgl.analytics.AnalyticsLongValue
+import sgl.analytics.AnalyticsStringValue
+import sgl.analytics.AnalyticsValue
 import sgl.analytics.EventParams
 import com.google.firebase.analytics.FirebaseAnalytics
 
@@ -15,6 +22,25 @@ class AndroidFirebaseAnalytics(private val context: Context) : AbstractAnalytics
     init {
         if (Settings.System.getString(context.contentResolver, "firebase.test.lab") == "true") {
             firebaseAnalytics.setAnalyticsCollectionEnabled(false)
+        }
+    }
+
+    private fun putAnalyticsValue(bundle: Bundle, key: String, value: AnalyticsValue?) {
+        when (value) {
+            is AnalyticsStringValue -> bundle.putString(key, value.value())
+            is AnalyticsLongValue -> bundle.putLong(key, value.value())
+            is AnalyticsDoubleValue -> bundle.putDouble(key, value.value())
+            is AnalyticsBooleanValue -> bundle.putLong(key, if (value.value()) 1L else 0L)
+        }
+    }
+
+    private fun putCustoms(bundle: Bundle, customs: Seq<Tuple2<String, AnalyticsValue>>?) {
+        customs?.let {
+            val iterator = it.iterator()
+            while (iterator.hasNext()) {
+                val tuple = iterator.next()
+                putAnalyticsValue(bundle, tuple._1(), tuple._2())
+            }
         }
     }
     
@@ -43,16 +69,15 @@ class AndroidFirebaseAnalytics(private val context: Context) : AbstractAnalytics
                     is Number -> bundle.putLong(FirebaseAnalytics.Param.SCORE, it.toLong())
                 }
             }
-            p.levelName().getOrNull()?.let { bundle.putString("level_map", it) }
+            p.levelName().getOrNull()?.let { bundle.putString(FirebaseAnalytics.Param.LEVEL_NAME, it) }
             p.character().getOrNull()?.let { bundle.putString(FirebaseAnalytics.Param.CHARACTER, it) }
             
-            // Handle Scala Map iteration
             val customs = p.customs()
             if (customs != null) {
                 val iterator = customs.iterator()
                 while (iterator.hasNext()) {
                     val tuple = iterator.next()
-                    bundle.putString(tuple._1(), tuple._2())
+                    putAnalyticsValue(bundle, tuple._1(), tuple._2())
                 }
             }
         }
@@ -69,32 +94,36 @@ class AndroidFirebaseAnalytics(private val context: Context) : AbstractAnalytics
         }
     }
 
-    override fun logLevelUpEvent(level: Long) {
+    override fun logLevelUpEvent(level: Long, customs: Seq<Tuple2<String, AnalyticsValue>>?) {
         val bundle = Bundle()
         bundle.putLong(FirebaseAnalytics.Param.LEVEL, level)
+        putCustoms(bundle, customs)
         firebaseAnalytics.logEvent(FirebaseAnalytics.Event.LEVEL_UP, bundle)
     }
 
-    override fun logLevelStartEvent(level: String?) {
+    override fun logLevelStartEvent(levelName: String?, customs: Seq<Tuple2<String, AnalyticsValue>>?) {
         val bundle = Bundle()
-        level?.let { bundle.putString(FirebaseAnalytics.Param.LEVEL_NAME, it) }
+        levelName?.let { bundle.putString(FirebaseAnalytics.Param.LEVEL_NAME, it) }
+        putCustoms(bundle, customs)
         firebaseAnalytics.logEvent(FirebaseAnalytics.Event.LEVEL_START, bundle)
     }
 
-    override fun logLevelEndEvent(level: String?, success: Boolean) {
+    override fun logLevelEndEvent(levelName: String?, success: Boolean, customs: Seq<Tuple2<String, AnalyticsValue>>?) {
         val bundle = Bundle()
-        level?.let { bundle.putString(FirebaseAnalytics.Param.LEVEL_NAME, it) }
+        levelName?.let { bundle.putString(FirebaseAnalytics.Param.LEVEL_NAME, it) }
         bundle.putLong(FirebaseAnalytics.Param.SUCCESS, if (success) 1 else 0)
+        putCustoms(bundle, customs)
         firebaseAnalytics.logEvent(FirebaseAnalytics.Event.LEVEL_END, bundle)
     }
 
-    override fun logShareEvent(itemId: Option<String>?) {
+    override fun logShareEvent(itemId: Option<String>?, customs: Seq<Tuple2<String, AnalyticsValue>>?) {
         val bundle = Bundle()
         itemId.getOrNull()?.let { bundle.putString(FirebaseAnalytics.Param.ITEM_ID, it) }
+        putCustoms(bundle, customs)
         firebaseAnalytics.logEvent(FirebaseAnalytics.Event.SHARE, bundle)
     }
 
-    override fun logGameOverEvent(score: Option<Any>?, map: Option<String>?) {
+    override fun logGameOverEvent(score: Option<Any>?, levelName: Option<String>?, customs: Seq<Tuple2<String, AnalyticsValue>>?) {
         val bundle = Bundle()
         score.getOrNull()?.let { s ->
             when (s) {
@@ -103,27 +132,47 @@ class AndroidFirebaseAnalytics(private val context: Context) : AbstractAnalytics
                 is Number -> bundle.putLong(FirebaseAnalytics.Param.SCORE, s.toLong())
             }
         }
-        map.getOrNull()?.let { bundle.putString("level_map", it) }
+        levelName.getOrNull()?.let { bundle.putString(FirebaseAnalytics.Param.LEVEL_NAME, it) }
+        putCustoms(bundle, customs)
         firebaseAnalytics.logEvent("game_over", bundle)
     }
 
-    override fun logBeginTutorialEvent() {
-        firebaseAnalytics.logEvent(FirebaseAnalytics.Event.TUTORIAL_BEGIN, Bundle())
+    override fun logBeginTutorialEvent(tutorialId: String?, levelName: Option<String>?, customs: Seq<Tuple2<String, AnalyticsValue>>?) {
+        val bundle = Bundle()
+        tutorialId?.takeIf { it.isNotEmpty() }?.let { bundle.putString("tutorial_id", it) }
+        levelName.getOrNull()?.let { bundle.putString(FirebaseAnalytics.Param.LEVEL_NAME, it) }
+        putCustoms(bundle, customs)
+        firebaseAnalytics.logEvent(FirebaseAnalytics.Event.TUTORIAL_BEGIN, bundle)
     }
 
-    override fun logCompleteTutorialEvent() {
-        firebaseAnalytics.logEvent(FirebaseAnalytics.Event.TUTORIAL_COMPLETE, Bundle())
+    override fun logCompleteTutorialEvent(tutorialId: String?, levelName: Option<String>?, customs: Seq<Tuple2<String, AnalyticsValue>>?) {
+        val bundle = Bundle()
+        tutorialId?.takeIf { it.isNotEmpty() }?.let { bundle.putString("tutorial_id", it) }
+        levelName.getOrNull()?.let { bundle.putString(FirebaseAnalytics.Param.LEVEL_NAME, it) }
+        putCustoms(bundle, customs)
+        firebaseAnalytics.logEvent(FirebaseAnalytics.Event.TUTORIAL_COMPLETE, bundle)
     }
 
-    override fun logUnlockAchievementEvent(achievementId: String?) {
+    override fun logUnlockAchievementEvent(achievementId: String?, customs: Seq<Tuple2<String, AnalyticsValue>>?) {
         achievementId?.let {
             val bundle = Bundle()
             bundle.putString(FirebaseAnalytics.Param.ACHIEVEMENT_ID, it)
+            putCustoms(bundle, customs)
             firebaseAnalytics.logEvent(FirebaseAnalytics.Event.UNLOCK_ACHIEVEMENT, bundle)
         }
     }
 
-    override fun logPostScoreEvent(score: Long, level: Option<Any>?, character: Option<String>?) {
+    override fun logPurchaseEvent(transactionId: Option<String>?, value: Double, currency: String?, itemId: Option<String>?, customs: Seq<Tuple2<String, AnalyticsValue>>?) {
+        val bundle = Bundle()
+        bundle.putDouble(FirebaseAnalytics.Param.VALUE, value)
+        currency?.let { bundle.putString(FirebaseAnalytics.Param.CURRENCY, it) }
+        transactionId.getOrNull()?.let { bundle.putString(FirebaseAnalytics.Param.TRANSACTION_ID, it) }
+        itemId.getOrNull()?.let { bundle.putString(FirebaseAnalytics.Param.ITEM_ID, it) }
+        putCustoms(bundle, customs)
+        firebaseAnalytics.logEvent(FirebaseAnalytics.Event.PURCHASE, bundle)
+    }
+
+    override fun logPostScoreEvent(score: Long, level: Option<Any>?, character: Option<String>?, customs: Seq<Tuple2<String, AnalyticsValue>>?) {
         val bundle = Bundle()
         bundle.putLong(FirebaseAnalytics.Param.SCORE, score)
         level.getOrNull()?.let { l ->
@@ -134,14 +183,15 @@ class AndroidFirebaseAnalytics(private val context: Context) : AbstractAnalytics
             }
         }
         character.getOrNull()?.let { bundle.putString(FirebaseAnalytics.Param.CHARACTER, it) }
+        putCustoms(bundle, customs)
         firebaseAnalytics.logEvent(FirebaseAnalytics.Event.POST_SCORE, bundle)
     }
 
     override fun setGameScreen(gameScreen: String?) {
         gameScreen?.let {
-            if (context is android.app.Activity) {
-                firebaseAnalytics.setCurrentScreen(context, it, null)
-            }
+            val bundle = Bundle()
+            bundle.putString(FirebaseAnalytics.Param.SCREEN_NAME, it)
+            firebaseAnalytics.logEvent(FirebaseAnalytics.Event.SCREEN_VIEW, bundle)
         }
     }
 

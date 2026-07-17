@@ -35,6 +35,25 @@ trait RandomProvider {
     /** Return a uniformly distributed Long value. */
     def nextLong(): Long
 
+    /** Return a random UUID v4 string.
+      *
+      * This uses this Random instance as the source of randomness, so it is
+      * deterministic when the Random instance is seeded.
+      */
+    def nextUuidString(): String = {
+      val randomHex = fixedHex(nextLong()) + fixedHex(nextLong())
+      val uuidHex = randomHex.updated(12, '4').updated(16, uuidVariantChar(nextInt(4)))
+      s"${uuidHex.substring(0, 8)}-${uuidHex.substring(8, 12)}-${uuidHex.substring(12, 16)}-${uuidHex.substring(16, 20)}-${uuidHex.substring(20, 32)}"
+    }
+
+    private def fixedHex(value: Long): String = {
+      val hex = java.lang.Long.toHexString(value)
+      if(hex.length >= 16) hex.takeRight(16)
+      else "0" * (16 - hex.length) + hex
+    }
+
+    private def uuidVariantChar(index: Int): Char = "89ab"(index)
+
     /** Returns a uniformly distributed value between min (inclusive) and max (exclusive). */
     def nextDouble(min: Double, max: Double): Double = {
       val diff = max - min

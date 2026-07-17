@@ -20,19 +20,20 @@ trait NoAnalyticsProvider extends AnalyticsProvider {
 
 class NoAnalytics extends AbstractAnalytics {
 
-    override def logCustomEvent(name: String, params: EventParams): Unit = {}
+  override def logCustomEvent(name: String, params: EventParams): Unit = {}
 
-    override def logLevelUpEvent(level: Long): Unit = {}
-    override def logLevelStartEvent(level: String): Unit = {}
-    override def logLevelEndEvent(level: String, success: Boolean): Unit = {}
-    override def logShareEvent(itemId: Option[String]): Unit = {}
-    override def logGameOverEvent(score: Option[Long], map: Option[String]): Unit = {}
-    override def logBeginTutorialEvent(): Unit = {}
-    override def logCompleteTutorialEvent(): Unit = {}
-    override def logUnlockAchievementEvent(achievement: String): Unit = {}
-    override def logPostScoreEvent(score: Long, level: Option[Long], character: Option[String]): Unit = {}
+  override def logLevelUpEvent(level: Long, customs: (String, AnalyticsValue)*): Unit = {}
+  override def logLevelStartEvent(levelName: String, customs: (String, AnalyticsValue)*): Unit = {}
+  override def logLevelEndEvent(levelName: String, success: Boolean, customs: (String, AnalyticsValue)*): Unit = {}
+  override def logShareEvent(itemId: Option[String], customs: (String, AnalyticsValue)*): Unit = {}
+  override def logGameOverEvent(score: Option[Long], levelName: Option[String], customs: (String, AnalyticsValue)*): Unit = {}
+  override def logBeginTutorialEvent(tutorialId: String, levelName: Option[String], customs: (String, AnalyticsValue)*): Unit = {}
+  override def logCompleteTutorialEvent(tutorialId: String, levelName: Option[String], customs: (String, AnalyticsValue)*): Unit = {}
+  override def logUnlockAchievementEvent(achievement: String, customs: (String, AnalyticsValue)*): Unit = {}
+  override def logPurchaseEvent(transactionId: Option[String], value: Double, currency: String, itemId: Option[String], customs: (String, AnalyticsValue)*): Unit = {}
+  override def logPostScoreEvent(score: Long, level: Option[Long], character: Option[String], customs: (String, AnalyticsValue)*): Unit = {}
 
-    override def setGameScreen(gameScreen: String): Unit = {}
+  override def setGameScreen(gameScreen: String): Unit = {}
 
-    override def setPlayerProperty(name: String, value: String): Unit = {}
-  }
+  override def setPlayerProperty(name: String, value: String): Unit = {}
+}
