@@ -12,7 +12,10 @@ def _desktop_awt_main_impl(ctx):
         "{{FRAME_HEIGHT}}": str(ctx.attr.frame_height),
     }
 
-    if ctx.attr.file_save:
+    if ctx.attr.save_component:
+        substitutions["{{SAVE_COMPONENT}}"] = ctx.attr.save_component
+        substitutions["{{SAVE_COMPONENT_INIT}}"] = ""
+    elif ctx.attr.file_save:
         substitutions["{{SAVE_COMPONENT}}"] = "SaveComponent"
         substitutions["{{SAVE_COMPONENT_INIT}}"] = """
   type Save = FileSave
@@ -52,7 +55,12 @@ desktop_awt_main = rule(
         ),
         "file_save": attr.string(
             mandatory = False,
-            doc = "A filename to use for saving the game progress. Will be written to by the game. If empty, the game will save in memory.",
+            doc = "A filename to use for saving the game progress. Will be written to by the game. If empty, the game will save in memory unless save_component is set.",
+            default = "",
+        ),
+        "save_component": attr.string(
+            mandatory = False,
+            doc = "A SaveComponent implementation to mix into the generated desktop app, such as NoSaveComponent or MemorySaveComponent. If set, file_save is ignored.",
             default = "",
         ),
         "frame_width": attr.int(
@@ -74,6 +82,7 @@ def sgl_desktop_awt_app(
   main_class,
   core_abstract_class,
   file_save = "",
+  save_component = "",
   frame_width = 800,
   frame_height = 800,
   use_extension_tiled = False,
@@ -94,6 +103,7 @@ def sgl_desktop_awt_app(
         main_class = main_class,
         core_abstract_class = core_abstract_class,
         file_save = file_save,
+        save_component = save_component,
         frame_width = frame_width,
         frame_height = frame_height,
     )
