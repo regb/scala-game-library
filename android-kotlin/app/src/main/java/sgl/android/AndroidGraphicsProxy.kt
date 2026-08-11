@@ -80,7 +80,8 @@ class AndroidGraphicsProxy(val context: Context): GraphicsProxy {
     }
 
     override fun defaultPaint(): PaintProxy {
-        return AndroidPaintProxy(Paint()).
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG)
+        return AndroidPaintProxy(paint).
                     withFont(fontCompanionProxy().Default()).
                     withColor(colorCompanionProxy().rgb(0,0,0)).
                     withAlignment(AlignmentsProxy.`Left$`.`MODULE$`)
@@ -237,12 +238,7 @@ class AndroidPaintProxy(val paint: Paint): PaintProxy {
     }
 
     private fun clonePaint(): Paint {
-        val p = Paint()
-        p.setColor(paint.color)
-        p.setTypeface(paint.typeface)
-        p.setTextSize(paint.textSize)
-        p.textAlign = paint.textAlign
-        return p
+        return Paint(paint)
     }
 
 }

@@ -34,6 +34,13 @@ trait AWTApp extends GameApp
     */
   val EnableAntiAliasingHint = false
 
+  /** Set the text anti-aliasing rendering hint (default is enabled).
+    *
+    * Text is usually expected to be smooth even when shape anti-aliasing is
+    * disabled for pixel-art style rendering.
+    */
+  val EnableTextAntiAliasingHint = true
+
   /** Set the bilinear interpolation rendering hint (default is disabled).
     *
     * This is particularly useful when scaling up bitmaps, as
@@ -165,6 +172,10 @@ trait AWTApp extends GameApp
 
               if(EnableAntiAliasingHint)
                 g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+              if(EnableTextAntiAliasingHint) {
+                g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
+                g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON)
+              }
               if(EnableBilinearInterpolationHint) {
                 // There's also the BICUBIC interpolation, but that seems too slow for games on the
                 // few examples I used it, the FPS dropped significantly.
