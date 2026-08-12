@@ -26,6 +26,7 @@ val playReleaseStatus = System.getenv("ANDROID_PLAY_RELEASE_STATUS") ?: "DRAFT"
 android {
     namespace = "@PACKAGE@"
     compileSdk = 37
+    compileSdkMinor = 0
 
     defaultConfig {
         applicationId = "@PACKAGE@"

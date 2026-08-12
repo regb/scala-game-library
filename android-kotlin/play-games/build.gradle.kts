@@ -6,6 +6,7 @@ plugins {
 android {
     namespace = "sgl.android.play"
     compileSdk = 37
+    compileSdkMinor = 0
 
     defaultConfig {
         minSdk = 26

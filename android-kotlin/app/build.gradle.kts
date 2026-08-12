@@ -31,6 +31,7 @@ val sglBazelJars = files(
 android {
     namespace = "sgl.android"
     compileSdk = 37
+    compileSdkMinor = 0
 
     defaultConfig {
         minSdk = 26
