@@ -20,6 +20,12 @@ def _expand(ctx, template, output, substitutions):
 
 def _android_runner_impl(ctx):
     package_path = ctx.attr.package.replace(".", "/")
+    android_rule_dir_suffix = "/bazel/sgl/android"
+    android_rule_dir = ctx.file._runner_template.dirname
+    if not android_rule_dir.endswith(android_rule_dir_suffix):
+        fail("Unexpected SGL Android rule path: %s" % android_rule_dir)
+    sgl_android_repo_root = ctx.attr.sgl_android_root or android_rule_dir[:-len(android_rule_dir_suffix)]
+    project_sgl_android_root = "@SGL_ANDROID_ROOT@"
     game_labels = []
     game_jars = []
     for label in [ctx.attr.core] + ctx.attr.extra_jars:
@@ -48,18 +54,18 @@ def _android_runner_impl(ctx):
     optional_imports = []
     optional_res_values = []
     if firebase_enabled:
-        optional_modules.append("include(\":sgl-android-firebase\")\nproject(\":sgl-android-firebase\").projectDir = file(\"%s/android-kotlin/firebase\")" % ctx.attr.sgl_android_root)
+        optional_modules.append("include(\":sgl-android-firebase\")\nproject(\":sgl-android-firebase\").projectDir = file(\"%s/android-kotlin/firebase\")" % project_sgl_android_root)
         optional_dependencies.append("    implementation(project(\":sgl-android-firebase\"))")
         optional_imports.append("import sgl.android.analytics.AndroidFirebaseAnalytics\n")
     if admob_enabled:
-        optional_modules.append("include(\":sgl-android-admob\")\nproject(\":sgl-android-admob\").projectDir = file(\"%s/android-kotlin/admob\")" % ctx.attr.sgl_android_root)
+        optional_modules.append("include(\":sgl-android-admob\")\nproject(\":sgl-android-admob\").projectDir = file(\"%s/android-kotlin/admob\")" % project_sgl_android_root)
         optional_dependencies.append("    implementation(project(\":sgl-android-admob\"))")
         optional_imports.append("import sgl.android.ads.AndroidAdMobAds\n")
         optional_res_values.append("        resValue(\"string\", \"sgl_admob_interstitial_ad_unit_id\", \"%s\")" % ctx.attr.admob_interstitial_ad_unit_id)
         optional_res_values.append("        resValue(\"string\", \"sgl_admob_rewarded_ad_unit_id\", \"%s\")" % ctx.attr.admob_rewarded_ad_unit_id)
         optional_res_values.append("        resValue(\"bool\", \"sgl_admob_always_preload\", \"%s\")" % ("true" if ctx.attr.admob_always_preload else "false"))
     if play_games_enabled:
-        optional_modules.append("include(\":sgl-android-play-games\")\nproject(\":sgl-android-play-games\").projectDir = file(\"%s/android-kotlin/play-games\")" % ctx.attr.sgl_android_root)
+        optional_modules.append("include(\":sgl-android-play-games\")\nproject(\":sgl-android-play-games\").projectDir = file(\"%s/android-kotlin/play-games\")" % project_sgl_android_root)
         optional_dependencies.append("    implementation(project(\":sgl-android-play-games\"))")
         optional_imports.append("import sgl.android.play.AndroidPlayGamesServices\n")
 
@@ -80,7 +86,6 @@ def _android_runner_impl(ctx):
         "@ADMOB_APPLICATION_ID_METADATA@": admob_application_id_metadata,
         "@PLAY_GAMES_METADATA@": play_games_metadata,
         "@OPTIONAL_RES_VALUES@": ("\n".join(optional_res_values) + "\n") if optional_res_values else "",
-        "@SGL_ANDROID_ROOT@": ctx.attr.sgl_android_root,
         "@VERSION_CODE@": str(ctx.attr.version_code),
         "@VERSION_NAME@": ctx.attr.version_name,
     }
@@ -107,7 +112,7 @@ def _android_runner_impl(ctx):
             "@PROJECT_DIR@": project_dir,
             "@PROJECT_TEMPLATE_DIR@": project_template_dir,
             "@GAME_LABELS@": " ".join(game_labels),
-            "@SGL_ANDROID_ROOT@": ctx.attr.sgl_android_root,
+            "@SGL_ANDROID_REPO_ROOT@": sgl_android_repo_root,
             "@ASSETS_DIR@": ctx.attr.assets_dir,
             "@ANDROID_RESOURCES_DIR@": ctx.attr.android_resources_dir,
             "@GOOGLE_SERVICES_JSON@": ctx.attr.google_services_json,
@@ -136,7 +141,7 @@ _android_runner = rule(
         "core": attr.string(default = ":core"),
         "extra_jars": attr.string_list(default = []),
         "wiring_expression": attr.string(default = ""),
-        "sgl_android_root": attr.string(default = "/home/regb/vcs/games/scala-game-library-android"),
+        "sgl_android_root": attr.string(default = ""),
         "version_code": attr.int(default = 1),
         "version_name": attr.string(default = "1.0"),
         "assets_dir": attr.string(default = ""),
@@ -171,7 +176,7 @@ def sgl_android_app(
         core = ":core",
         extra_jars = [],
         wiring_expression = "",
-        sgl_android_root = "/home/regb/vcs/games/scala-game-library-android",
+        sgl_android_root = "",
         version_code = 1,
         version_name = "1.0",
         assets_dir = "",

@@ -7,7 +7,11 @@ if [[ -z "$workspace" ]]; then
 fi
 
 project_dir="$workspace/@PROJECT_DIR@"
-sgl_android_root="@SGL_ANDROID_ROOT@"
+sgl_android_root="@SGL_ANDROID_REPO_ROOT@"
+if [[ "$sgl_android_root" != /* ]]; then
+  execution_root="$(cd "$workspace" && bazel info execution_root)"
+  sgl_android_root="$(cd "$execution_root/$sgl_android_root" && pwd)"
+fi
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 template_dir="$script_dir/@PROJECT_TEMPLATE_DIR@"
 
