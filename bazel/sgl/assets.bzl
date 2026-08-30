@@ -502,6 +502,7 @@ PY
 """.format(),
         arguments = [out.path, ctx.attr.package] + [m.path for m in manifests],
         mnemonic = "SglAssetsProvider",
+        use_default_shell_env = True,
     )
     return [DefaultInfo(files = depset([out]))]
 
