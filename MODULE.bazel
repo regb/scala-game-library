@@ -1,5 +1,5 @@
 module(
-    name = "sgl.bzl"
+    name = "sgl.bzl",
 
     #version = ""
     #compatibility_level = 0
@@ -12,6 +12,8 @@ bazel_dep(name = "rules_java", version = "9.6.1")
 bazel_dep(name = "platforms", version = "1.1.0")
 bazel_dep(name = "protobuf", version = "33.4")
 
+bazel_dep(name = "buildifier_prebuilt", version = "8.5.1.4", dev_dependency = True)
+
 scala_config = use_extension(
     "@rules_scala//scala/extensions:config.bzl",
     "scala_config",
@@ -22,6 +24,7 @@ scala_deps = use_extension(
     "@rules_scala//scala/extensions:deps.bzl",
     "scala_deps",
 )
+
 # Defines a default toolchain repo for the configured Scala version that loads
 # Maven deps like the Scala compiler and standard libs. Enable and configure
 # other builtin toolchains by instantiating their corresponding tag classes.
@@ -34,15 +37,15 @@ scala_deps = use_extension(
 # module extension to instantiate other optional `rules_scala` toolchains
 # without it.
 scala_deps.scala()
+
 #scala_deps.scalafmt()
 scala_deps.scalatest()
 
 maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
 maven.install(
-    known_contributing_modules = ["protobuf"],
     artifacts = [
         "com.googlecode.soundlibs:vorbisspi:1.0.3-2",
-        "net.liftweb:lift-json_2.13:3.4.3", 
+        "net.liftweb:lift-json_2.13:3.4.3",
         "org.scalatest:scalatest_3:3.2.19",
         "org.scala-js:scalajs-compiler_2.13.18:1.20.1",
         "org.scala-js:scalajs-library_2.13:1.20.1",
@@ -91,6 +94,7 @@ maven.install(
         "org.lwjgl:lwjgl-openal::natives-macos-arm64:3.3.6",
         "org.lwjgl:lwjgl-stb::natives-macos-arm64:3.3.6",
     ],
+    known_contributing_modules = ["protobuf"],
     repositories = [
         "https://repo1.maven.org/maven2",
     ],

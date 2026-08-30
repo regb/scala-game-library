@@ -1,21 +1,20 @@
 load("//bazel:cross.bzl", "scala_library")
-load("@rules_scala//scala:scala.bzl", "scala_test")
 
 scala_library(
-    name="sgl-scene2d",
-    srcs=glob(["scene2d/src/main/scala/**/*.scala"]),
+    name = "sgl-scene2d",
+    srcs = glob(["scene2d/src/main/scala/**/*.scala"]),
+    visibility = ["//visibility:public"],
     deps = [
-        "//engines:sgl-screen2d",
         "//core:sgl-core",
+        "//engines:sgl-screen2d",
     ],
-    visibility=["//visibility:public"],
 )
 
 scala_library(
-    name="sgl-particles",
-    srcs=glob(["particles/src/main/scala/**/*.scala"]),
+    name = "sgl-particles",
+    srcs = glob(["particles/src/main/scala/**/*.scala"]),
+    visibility = ["//visibility:public"],
     deps = [
         "//core:sgl-core",
     ],
-    visibility=["//visibility:public"],
 )

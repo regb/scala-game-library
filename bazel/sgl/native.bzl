@@ -1,11 +1,9 @@
 load("//bazel:cross.bzl", sgl_scala_library = "scala_library")
 load("//bazel:scalanative.bzl", "scala_native_binary")
 
-
 def _path_to_vector(path):
     parts = [p for p in path.strip("/").split("/") if p]
     return "Vector(" + ", ".join(["\"%s\"" % p for p in parts]) + ")"
-
 
 def _absolute_scala_type(type_name, default_package = None):
     if type_name.startswith("_root_."):
@@ -13,7 +11,6 @@ def _absolute_scala_type(type_name, default_package = None):
     if default_package and "." not in type_name:
         return "_root_." + default_package + "." + type_name
     return "_root_." + type_name
-
 
 def _desktop_native_main_impl(ctx):
     resource_roots = ""
@@ -49,7 +46,6 @@ def _desktop_native_main_impl(ctx):
 
     return [DefaultInfo(files = depset([output]))]
 
-
 desktop_native_main = rule(
     implementation = _desktop_native_main_impl,
     attrs = {
@@ -73,7 +69,6 @@ desktop_native_main = rule(
     },
     doc = "Generate a Main entrypoint for the Desktop Scala Native backend of SGL",
 )
-
 
 def sgl_desktop_native_app(
         name,

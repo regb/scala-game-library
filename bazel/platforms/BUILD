@@ -5,11 +5,13 @@ constraint_value(
     constraint_setting = ":compiler_backend",
     visibility = ["//visibility:public"],
 )
+
 constraint_value(
     name = "compiler_js",
     constraint_setting = ":compiler_backend",
     visibility = ["//visibility:public"],
 )
+
 constraint_value(
     name = "compiler_native",
     constraint_setting = ":compiler_backend",
@@ -17,7 +19,7 @@ constraint_value(
 )
 
 platform(
-    name="scala_jvm",
+    name = "scala_jvm",
     constraint_values = [
         ":compiler_jvm",
         "@platforms//cpu:x86_64",
@@ -25,17 +27,19 @@ platform(
     ],
     visibility = ["//visibility:public"],
 )
+
 platform(
-    name="scala_js",
+    name = "scala_js",
     constraint_values = [
-       ":compiler_js",
+        ":compiler_js",
         "@platforms//cpu:x86_64",
         "@platforms//os:linux",
     ],
     visibility = ["//visibility:public"],
 )
+
 platform(
-    name="scala_native_x86",
+    name = "scala_native_x86",
     constraint_values = [
         ":compiler_native",
         "@platforms//cpu:x86_64",

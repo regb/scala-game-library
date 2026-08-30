@@ -10,7 +10,10 @@ java_binary(
 
 java_test(
     name = "image_asset_tool_test",
-    srcs = ["ImageAssetTool.java", "ImageAssetToolTest.java"],
+    srcs = [
+        "ImageAssetTool.java",
+        "ImageAssetToolTest.java",
+    ],
     main_class = "sgl.bazel.tools.ImageAssetToolTest",
     use_testrunner = False,
 )

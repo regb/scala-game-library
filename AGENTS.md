@@ -13,6 +13,8 @@ SGL is a cross-platform Scala game library targeting JVM desktop, Scala.js, Scal
 ## Main commands
 
 ```bash
+bazel run @buildifier_prebuilt//:buildifier -- -mode=check -lint=off -r .
+bazel run @buildifier_prebuilt//:buildifier -- -mode=check -lint=warn -r .
 bazel build //...
 bazel test //...
 ```

@@ -8,11 +8,11 @@ scala_library(
     name = "desktop-jvm-shared",
     srcs = glob(["src/main/**/*.scala"]),
     scalacopts = SGL_SCALACOPTS,
-    deps = [
-        "//core:sgl-core",
-        "//backends/jvm-shared:jvm-shared",
-        "@maven//:net_liftweb_lift_json_2_13",
-        "@maven//:com_googlecode_soundlibs_vorbisspi",
-    ],
     visibility = ["//visibility:public"],
+    deps = [
+        "//backends/jvm-shared",
+        "//core:sgl-core",
+        "@maven//:com_googlecode_soundlibs_vorbisspi",
+        "@maven//:net_liftweb_lift_json_2_13",
+    ],
 )

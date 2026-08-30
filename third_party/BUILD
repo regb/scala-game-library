@@ -8,4 +8,3 @@ exports_files(["maven_install.json"])
 # It seems like the lock file is always the source of truth used for external deps, and the list
 # of artifacts listed in maven.install is only read when running the :pin command, which
 # can update the state of all dependencies.
-

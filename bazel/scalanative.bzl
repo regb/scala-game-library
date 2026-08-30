@@ -1,6 +1,5 @@
 load("@rules_java//java/common:java_info.bzl", "JavaInfo")
 
-
 def _scala_native_transition_impl(settings, attr):
     return {"//command_line_option:platforms": ["//bazel/platforms:scala_native_x86"]}
 
@@ -9,7 +8,6 @@ _scala_native_transition = transition(
     inputs = [],
     outputs = ["//command_line_option:platforms"],
 )
-
 
 def _scala_native_binary_impl(ctx):
     transitive_jars = []

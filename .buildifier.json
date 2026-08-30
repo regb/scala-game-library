@@ -1,0 +1,16 @@
+{
+  "mode": "check",
+  "lint": "warn",
+  "warningsList": [
+    "depset-iteration",
+    "depset-union",
+    "deprecated-function",
+    "dict-concatenation",
+    "duplicated-name",
+    "integer-division",
+    "load",
+    "print",
+    "redefined-variable",
+    "return-value"
+  ]
+}

@@ -1,6 +1,5 @@
 load("//bazel/sgl:assets.bzl", "SglAssetsInfo")
 
-
 def _android_resource_name(name):
     normalized = ""
     lowercase = name.lower()
@@ -10,7 +9,6 @@ def _android_resource_name(name):
     if not normalized or normalized[0] not in "abcdefghijklmnopqrstuvwxyz":
         normalized = "asset_" + normalized
     return normalized
-
 
 def _label_and_jar(package_name, label):
     if label.startswith(":"):
@@ -23,7 +21,6 @@ def _label_and_jar(package_name, label):
     jar = "bazel-bin/%s/%s.jar" % (package_name, name) if package_name else "bazel-bin/%s.jar" % name
     return full_label, jar
 
-
 def _system_bars_mode(value):
     return {
         "safe-area": "AndroidSystemBarsMode.SafeArea",
@@ -31,13 +28,11 @@ def _system_bars_mode(value):
         "immersive": "AndroidSystemBarsMode.Immersive",
     }[value]
 
-
 def _system_bars_behavior(value):
     return {
         "default": "AndroidSystemBarsBehavior.Default",
         "transient-by-swipe": "AndroidSystemBarsBehavior.TransientBySwipe",
     }[value]
-
 
 def _expand(ctx, template, output, substitutions):
     ctx.actions.expand_template(
@@ -45,7 +40,6 @@ def _expand(ctx, template, output, substitutions):
         output = output,
         substitutions = substitutions,
     )
-
 
 def _android_runner_impl(ctx):
     package_path = ctx.attr.package.replace(".", "/")
@@ -208,7 +202,6 @@ def _android_runner_impl(ctx):
         ),
     ]
 
-
 _android_runner = rule(
     implementation = _android_runner_impl,
     executable = True,
@@ -250,7 +243,6 @@ _android_runner = rule(
         "_runner_template": attr.label(default = "//bazel/sgl/android:AndroidRunner.sh.tpl", allow_single_file = True),
     },
 )
-
 
 def sgl_android_app(
         name,

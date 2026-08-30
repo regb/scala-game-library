@@ -92,19 +92,18 @@ desktop_lwjgl_main = rule(
 )
 
 def sgl_desktop_lwjgl_app(
-  name,
-  deps,
-  package,
-  main_class,
-  core_abstract_class,
-  data = [],
-  frame_width = 800,
-  frame_height = 600,
-  window_title = "SGL LWJGL App",
-  target_fps = 60,
-  file_save = "",
-  extra_mixins = [],
-):
+        name,
+        deps,
+        package,
+        main_class,
+        core_abstract_class,
+        data = [],
+        frame_width = 800,
+        frame_height = 600,
+        window_title = "SGL LWJGL App",
+        target_fps = 60,
+        file_save = "",
+        extra_mixins = []):
     full_deps = deps + [
         Label("//core:sgl-core"),
         Label("//backends/desktop-jvm-shared:desktop-jvm-shared"),

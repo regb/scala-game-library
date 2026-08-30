@@ -2,15 +2,13 @@ load("//bazel:cross.bzl", "scala_library")
 load("//bazel/sgl:assets.bzl", "sgl_assets_provider")
 
 def sgl_core_library(
-  name,
-  srcs,
-  assets = [],
-  package = None,
-  deps=[],
-  use_extension_tiled=False,
-  include_default_modules=False,
-):
-
+        name,
+        srcs,
+        assets = [],
+        package = None,
+        deps = [],
+        use_extension_tiled = False,
+        include_default_modules = False):
     full_deps = deps + [
         Label("//core:sgl-core"),
     ]
@@ -42,4 +40,3 @@ def sgl_core_library(
         resources = resources,
         resource_strip_prefix = (native.package_name() + "/assets").strip("/") if assets else "",
     )
-

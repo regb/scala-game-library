@@ -1,17 +1,17 @@
 load(
     "@rules_scala//scala:scala.bzl",
-    _scala_library = "scala_library", "scala_binary",
+    _scala_library = "scala_library",
 )
 load("//bazel:scala_opts.bzl", "SGL_SCALACOPTS")
 
-def scala_library(deps = [],
-                  plugins = [],
-                  scalacopts = [],
-                  target_compatible_with = [],
-                  **kwords):
-
+def scala_library(
+        deps = [],
+        plugins = [],
+        scalacopts = [],
+        target_compatible_with = [],
+        **kwords):
     cross_deps = select({
-        Label("//bazel/platforms:compiler_js"): deps+[Label("@maven//:org_scala_js_scalajs_library_2_13")],
+        Label("//bazel/platforms:compiler_js"): deps + [Label("@maven//:org_scala_js_scalajs_library_2_13")],
         Label("//bazel/platforms:compiler_native"): deps + [
             Label("@maven//:org_scala_native_scalalib_native0_5_3"),
             Label("@maven//:org_scala_native_scala3lib_native0_5_3"),
@@ -40,7 +40,5 @@ def scala_library(deps = [],
         plugins = cross_plugins,
         scalacopts = SGL_SCALACOPTS + cross_scalacopts + scalacopts,
         target_compatible_with = cross_target_compatible_with,
-        **kwords,
+        **kwords
     )
-
-

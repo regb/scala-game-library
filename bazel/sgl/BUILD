@@ -1,5 +1,5 @@
-load("//bazel/sgl:assets.bzl", "sgl_assets_provider", "sgl_text_assets")
 load("@rules_java//java:java_test.bzl", "java_test")
+load("//bazel/sgl:assets.bzl", "sgl_assets_provider", "sgl_text_assets")
 
 exports_files(
     [
@@ -20,8 +20,8 @@ sgl_text_assets(
 
 sgl_assets_provider(
     name = "keyword_assets_provider",
-    package = "sgl.assets.test",
     asset_groups = [":keyword_text_asset"],
+    package = "sgl.assets.test",
 )
 
 java_test(

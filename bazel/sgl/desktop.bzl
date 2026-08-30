@@ -34,14 +34,14 @@ def _desktop_awt_main_impl(ctx):
     else:
         substitutions["{{SAVE_COMPONENT}}"] = "_root_.sgl.MemorySaveComponent"
         substitutions["{{SAVE_COMPONENT_INIT}}"] = ""
-    
+
     output = ctx.actions.declare_file(ctx.attr.name + ".scala")
     ctx.actions.expand_template(
         template = ctx.file._template,
         output = output,
-        substitutions = substitutions
+        substitutions = substitutions,
     )
-    
+
     return [DefaultInfo(files = depset([output]))]
 
 desktop_awt_main = rule(
@@ -99,25 +99,23 @@ desktop_awt_main = rule(
 )
 
 def sgl_desktop_awt_app(
-  name,
-  deps,
-  package,
-  main_class,
-  core_abstract_class,
-  file_save = "",
-  save_component = "",
-  frame_width = 800,
-  frame_height = 800,
-  use_extension_tiled = False,
-  use_screen2d = True,
-  extra_mixins = [],
-):
-
+        name,
+        deps,
+        package,
+        main_class,
+        core_abstract_class,
+        file_save = "",
+        save_component = "",
+        frame_width = 800,
+        frame_height = 800,
+        use_extension_tiled = False,
+        use_screen2d = True,
+        extra_mixins = []):
     full_deps = deps + [
-          Label("//core:sgl-core"),
-          Label("//backends/jvm-shared:jvm-shared"),
-          Label("//backends/desktop-jvm-shared:desktop-jvm-shared"),
-          Label("//backends/desktop-awt:sgl-desktop-awt"),
+        Label("//core:sgl-core"),
+        Label("//backends/jvm-shared:jvm-shared"),
+        Label("//backends/desktop-jvm-shared:desktop-jvm-shared"),
+        Label("//backends/desktop-awt:sgl-desktop-awt"),
     ]
     if use_screen2d:
         full_deps.extend([
@@ -141,11 +139,11 @@ def sgl_desktop_awt_app(
         use_screen2d = use_screen2d,
         extra_mixins = extra_mixins,
     )
-    
+
     scala_binary(
         name = name,
         srcs = [":" + name + "_Main"],
         deps = full_deps,
         scalacopts = SGL_SCALACOPTS,
-        main_class = package + ".desktop." + main_class
+        main_class = package + ".desktop." + main_class,
     )

@@ -6,9 +6,9 @@ scala_binary(
     srcs = ["ScalaNativeLinker.scala"],
     main_class = "ScalaNativeLinker",
     scalacopts = SGL_SCALACOPTS,
+    visibility = ["//visibility:public"],
     deps = [
         "@maven//:org_scala_native_tools_3",
         "@maven//:org_scala_native_util_3",
     ],
-    visibility = ["//visibility:public"],
 )
