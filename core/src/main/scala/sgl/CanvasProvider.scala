@@ -222,8 +222,24 @@ trait CanvasProvider extends GraphicsHelpersComponent {
     type Paint <: AbstractPaint
     def defaultPaint: Paint
 
+    /** A reusable, width-constrained block of text.
+      *
+      * Metrics use positive distances. `width` is the widest rendered line,
+      * while `layoutWidth` is the width supplied to [[AbstractCanvas.renderText]].
+      * Explicit empty lines are included in `lines` and `lineCount`.
+      */
     trait AbstractTextLayout {
+      def width: Int
+      def layoutWidth: Int
       def height: Int
+      def lineCount: Int
+      def lineHeight: Int
+      def ascent: Int
+      def descent: Int
+      def lines: Seq[String]
+
+      /** True when even a single character could not fit in `layoutWidth`. */
+      def overflowed: Boolean
     }
     type TextLayout <: AbstractTextLayout
 
@@ -426,11 +442,21 @@ trait CanvasProvider extends GraphicsHelpersComponent {
         */
       def drawCircle(x: Float, y: Float, radius: Float, paint: Paint): Unit = drawOval(x, y, 2*radius, 2*radius, paint)
 
+      /** Draw one string with `y` as its baseline. */
       def drawString(str: String, x: Float, y: Float, paint: Paint): Unit
-      //TODO: provide alignment option
+
+      /** Draw a text layout with `(x, y)` as the top-left of its layout box.
+        *
+        * The paint alignment captured by the layout aligns each line inside
+        * `layoutWidth`.
+        */
       def drawText(text: TextLayout, x: Float, y: Float): Unit
 
-      /** Pre-render the text into a TextLayout object */
+      /** Lay out text in a positive-width box.
+        *
+        * Explicit newlines and empty lines are preserved. Backends split words
+        * wider than the box at character boundaries.
+        */
       def renderText(text: String, width: Int, paint: Paint): TextLayout
     }
     type Canvas <: AbstractCanvas

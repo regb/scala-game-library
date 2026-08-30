@@ -118,19 +118,36 @@ trait AbstractApp extends Application with AssetsProvider {
       val animationTimeMillis = (elapsedSeconds * 1000.0).toLong
       canvas.drawBitmap(characterAnimation.currentFrame(animationTimeMillis), x, y, 160f / Window.logicalPpi, 0.5f)
 
-      val rectWidth: Float = 50f
-      canvas.translate(200f, 10f)
-      canvas.drawRect(0, 0, rectWidth, rectWidth, Graphics.defaultPaint.withColor(Color.Red))
-      canvas.translate(rectWidth + 10f, 0)
       canvas.withSave {
-        canvas.scale(4f, 4f)
-        canvas.drawRect(0, 0, rectWidth / 4, rectWidth / 4, Graphics.defaultPaint.withColor(Color.Red))
+        val rectWidth: Float = 50f
+        canvas.translate(200f, 10f)
+        canvas.drawRect(0, 0, rectWidth, rectWidth, Graphics.defaultPaint.withColor(Color.Red))
+        canvas.translate(rectWidth + 10f, 0)
+        canvas.withSave {
+          canvas.scale(4f, 4f)
+          canvas.drawRect(0, 0, rectWidth / 4, rectWidth / 4, Graphics.defaultPaint.withColor(Color.Red))
+        }
+        canvas.translate(rectWidth + 10f, 0)
+        canvas.withSave {
+          canvas.scale(8f, 8f)
+          canvas.drawRect(0, 0, rectWidth / 8, rectWidth / 8, Graphics.defaultPaint.withColor(Color.Red))
+        }
       }
-      canvas.translate(rectWidth + 10f, 0)
-      canvas.withSave {
-        canvas.scale(8f, 8f)
-        canvas.drawRect(0, 0, rectWidth / 8, rectWidth / 8, Graphics.defaultPaint.withColor(Color.Red))
-      }
+
+      val textPanel = Graphics.TextBox(20f, 185f, Width - 40f, 115f)
+      canvas.drawRect(textPanel.x, textPanel.y, textPanel.width, textPanel.height,
+        Graphics.defaultPaint.withColor(Color.rgb(35, 55, 80)))
+      canvas.drawTextBox(
+        "Wrapped text now keeps blank lines, aligns each row, and shrinks to fit this box.\n\nResize the copy without adding baseline offsets.",
+        textPanel,
+        Graphics.defaultPaint
+          .withColor(Color.White)
+          .withFont(Graphics.Font.SansSerif.withSize(18)),
+        horizontalAlignment = Graphics.Alignments.Center,
+        verticalAlignment = Graphics.VerticalAlignment.Middle,
+        minFontSize = Some(12),
+        maxLines = Some(5),
+      )
     }
   }
 

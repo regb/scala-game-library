@@ -280,45 +280,32 @@ trait AWTCanvasProvider extends CanvasProvider {
     type Canvas = AWTCanvas
 
     type TextLayout = AWTTextLayout
-    case class AWTTextLayout(text: String, width: Int, textMetrics: FontMetrics, paint: Paint) extends AbstractTextLayout {
+    case class AWTTextLayout(text: String, layoutWidth: Int, textMetrics: FontMetrics, paint: Paint) extends AbstractTextLayout {
 
-      private val lineHeight = textMetrics.getHeight
+      private val wrapped = TextWrapping.wrap(text, layoutWidth, value => textMetrics.stringWidth(value).toFloat)
 
-      /* 
-       * Split the text into rows, each row taking as 
-       * much space as available, ready to be drawn
-       */
-      val rows: List[String] = {
-        val res = new scala.collection.mutable.ListBuffer[String]()
-
-        val lines = text.split("\n")
-        for(line <- lines) {
-          val words = line.split(" ")
-
-          var nIndex = 0
-
-          while(nIndex < words.length) {
-            var currentLine = words(nIndex)
-            nIndex += 1
-            while(nIndex < words.length && textMetrics.stringWidth(currentLine + " " + words(nIndex)) < width) {
-              currentLine = currentLine + " " + words(nIndex)
-              nIndex += 1
-            }
-            res.append(currentLine)
-          }
-        }
-
-        res.toList
-      }
-
-      override val height: Int = rows.size * lineHeight
+      override val lines: Vector[String] = wrapped.lines
+      val rows: Seq[String] = lines
+      override val overflowed: Boolean = wrapped.overflowed
+      override val lineCount: Int = lines.size
+      override val lineHeight: Int = textMetrics.getHeight
+      override val ascent: Int = textMetrics.getAscent
+      override val descent: Int = textMetrics.getDescent
+      override val width: Int = lines.foldLeft(0)((maximum, line) => scala.math.max(maximum, textMetrics.stringWidth(line)))
+      override val height: Int = ascent + descent + (lineCount - 1) * lineHeight
 
       def draw(g: Graphics2D, x: Float, y: Float): Unit = {
-        var startY = y
-        rows.foreach(line => {
-          g.drawString(line, x, startY)
-          startY += lineHeight
-        })
+        var baseline = y + ascent
+        lines.foreach { line =>
+          val lineWidth = textMetrics.stringWidth(line)
+          val lineX = paint.alignment match {
+            case Alignments.Left => x
+            case Alignments.Center => x + (layoutWidth - lineWidth) / 2f
+            case Alignments.Right => x + layoutWidth - lineWidth
+          }
+          g.drawString(line, lineX, baseline)
+          baseline += lineHeight
+        }
       }
 
       //def renderText(text: String, x: Int, y: Int, width: Int, textMetrics: FontMetrics, g: Graphics): Unit = {

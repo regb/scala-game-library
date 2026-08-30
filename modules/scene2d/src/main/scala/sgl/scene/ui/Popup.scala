@@ -136,7 +136,7 @@ trait PopupsComponent extends ButtonsComponent {
       canvas.drawLine(x+_width, y+totalHeight, x, y+totalHeight, outlinePaint)
       canvas.drawLine(x, y+totalHeight, x, y, outlinePaint)
 
-      canvas.drawText(labelText, x + leftMargin, y + topMargin + fontSize)
+      canvas.drawText(labelText, x + leftMargin, y + topMargin)
 
       buttons.foreach(button => {
         button.y = y + buttonsY

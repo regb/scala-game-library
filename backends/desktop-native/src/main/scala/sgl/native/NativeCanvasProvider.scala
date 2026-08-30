@@ -269,11 +269,19 @@ trait NativeCanvasProvider extends CanvasProvider {
     var renderer: Ptr[SDL_Renderer] = _
   
     type TextLayout = NativeTextLayout
-    case class NativeTextLayout(text: String, width: Int, paint: Paint) extends AbstractTextLayout {
-  
-      val rows: List[String] = List(text)
-  
-      override val height: Int = paint.font.size
+    case class NativeTextLayout(text: String, layoutWidth: Int, paint: Paint) extends AbstractTextLayout {
+
+      private def estimatedWidth(value: String): Float = value.length * paint.font.size * 0.6f
+      private val wrapped = TextWrapping.wrap(text, layoutWidth, estimatedWidth)
+      override val lines: Vector[String] = wrapped.lines
+      val rows: Seq[String] = lines
+      override val overflowed: Boolean = wrapped.overflowed
+      override val lineCount: Int = lines.size
+      override val lineHeight: Int = paint.font.size
+      override val ascent: Int = scala.math.ceil(lineHeight * 0.8).toInt
+      override val descent: Int = lineHeight - ascent
+      override val width: Int = scala.math.ceil(lines.foldLeft(0f)((maximum, line) => scala.math.max(maximum, estimatedWidth(line)))).toInt
+      override val height: Int = ascent + descent + (lineCount - 1) * lineHeight
   
       def draw(renderer: Ptr[SDL_Renderer], x: Int, y: Int): Unit = ()
       

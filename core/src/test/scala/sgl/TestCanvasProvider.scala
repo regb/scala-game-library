@@ -85,11 +85,17 @@ trait TestCanvasProvider extends CanvasProvider {
     type Paint = TestPaint
     override def defaultPaint: Paint = new TestPaint(Font.Default, Color.Black, Alignments.Left)
 
-    final class TestTextLayout(val text: String, val width: Int, val paint: Paint) extends AbstractTextLayout {
-      override def height: Int = {
-        val lineCount = if(text.isEmpty) 0 else text.count(_ == '\n') + 1
-        lineCount * paint.font.size
-      }
+    final class TestTextLayout(val text: String, val layoutWidth: Int, val paint: Paint) extends AbstractTextLayout {
+      private def measure(value: String): Float = value.length * paint.font.size / 2f
+      private val wrapped = TextWrapping.wrap(text, layoutWidth, measure)
+      override val lines: Vector[String] = wrapped.lines
+      override val overflowed: Boolean = wrapped.overflowed
+      override val lineCount: Int = lines.size
+      override val lineHeight: Int = paint.font.size
+      override val ascent: Int = scala.math.ceil(lineHeight * 0.8).toInt
+      override val descent: Int = lineHeight - ascent
+      override val width: Int = scala.math.ceil(lines.foldLeft(0f)((maximum, line) => scala.math.max(maximum, measure(line)))).toInt
+      override val height: Int = ascent + descent + (lineCount - 1) * lineHeight
     }
     type TextLayout = TestTextLayout
 

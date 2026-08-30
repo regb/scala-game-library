@@ -356,51 +356,35 @@ trait Html5CanvasProvider extends CanvasProvider {
     type Canvas = Html5Canvas
 
     type TextLayout = Html5TextLayout
-    case class Html5TextLayout(text: String, width: Int, context: Ctx2D, paint: Paint) extends AbstractTextLayout {
+    case class Html5TextLayout(text: String, layoutWidth: Int, context: Ctx2D, paint: Paint) extends AbstractTextLayout {
 
       paint.prepareContext(context)
+      private val wrapped = TextWrapping.wrap(text, layoutWidth, value => context.measureText(value).width.toFloat)
 
-      /* 
-       * Split the text into rows, each row taking as 
-       * much space as available, ready to be drawn
-       */
-      val rows: List[String] = {
-        val res = new scala.collection.mutable.ListBuffer[String]()
-
-        val lines = text.split("\n")
-        for(line <- lines) {
-          val words = line.split(" ")
-
-          var nIndex = 0
-
-          while(nIndex < words.length) {
-            var currentLine = words(nIndex)
-            nIndex += 1
-            while(nIndex < words.length && context.measureText(currentLine + " " + words(nIndex)).width < width) {
-              currentLine = currentLine + " " + words(nIndex)
-              nIndex += 1
-            }
-            res.append(currentLine)
-          }
-        }
-
-        res.toList
-      }
-
-      //TODO: maybe need to add a few extra px? Need to check exact specs of what is
-      //      the line height with respect to the font size
-      //      Also need to make sure we are consistent across all platforms
-      private val lineHeight = paint.font.size
-
-      override val height: Int = rows.size * lineHeight
+      override val lines: Vector[String] = wrapped.lines
+      val rows: Seq[String] = lines
+      override val overflowed: Boolean = wrapped.overflowed
+      override val lineCount: Int = lines.size
+      override val lineHeight: Int = paint.font.size
+      override val ascent: Int = scala.math.ceil(paint.font.size * 0.8).toInt
+      override val descent: Int = scala.math.max(0, lineHeight - ascent)
+      override val width: Int = scala.math.ceil(lines.foldLeft(0d) { (maximum, line) =>
+        scala.math.max(maximum, context.measureText(line).width)
+      }).toInt
+      override val height: Int = ascent + descent + (lineCount - 1) * lineHeight
 
       def draw(ctx: Ctx2D, x: Float, y: Float): Unit = {
         paint.prepareContext(ctx)
-        var startY = y
-        rows.foreach(line => {
-          ctx.fillText(line, x, startY)
-          startY += lineHeight
-        })
+        var baseline = y + ascent
+        lines.foreach { line =>
+          val lineX = paint.alignment match {
+            case Alignments.Left => x
+            case Alignments.Center => x + layoutWidth / 2f
+            case Alignments.Right => x + layoutWidth
+          }
+          ctx.fillText(line, lineX, baseline)
+          baseline += lineHeight
+        }
       }
 
     }

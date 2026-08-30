@@ -2,6 +2,7 @@ package sgl
 package proxy
 
 import sgl.util._
+import scala.jdk.CollectionConverters._
 import scala.util.Failure
 
 
@@ -103,7 +104,15 @@ trait ProxyCanvasProvider extends CanvasProvider {
     override def defaultPaint: Paint = ProxyPaint(PlatformProxy.graphicsProxy.defaultPaint)
 
     case class ProxyTextLayout(textLayout: TextLayoutProxy) extends AbstractTextLayout {
+      override def width: Int = textLayout.width
+      override def layoutWidth: Int = textLayout.layoutWidth
       override def height: Int = textLayout.height
+      override def lineCount: Int = textLayout.lineCount
+      override def lineHeight: Int = textLayout.lineHeight
+      override def ascent: Int = textLayout.ascent
+      override def descent: Int = textLayout.descent
+      override def lines: Seq[String] = textLayout.lines.asScala.toSeq
+      override def overflowed: Boolean = textLayout.overflowed
     }
     type TextLayout = ProxyTextLayout
 

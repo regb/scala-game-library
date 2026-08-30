@@ -82,6 +82,64 @@ class GraphicsHelperSuite extends AnyFunSuite {
     assert(brs2(1).height === 32)
   }
 
+  test("text wrapping preserves explicit empty lines and trailing newlines") {
+    val wrapped = TextWrapping.wrap("one\n\nthree\n", 20, _.length.toFloat)
+    assert(wrapped.lines === Vector("one", "", "three", ""))
+    assert(!wrapped.overflowed)
+  }
+
+  test("text wrapping splits long words at character boundaries") {
+    val wrapped = TextWrapping.wrap("abcdefgh", 3, _.length.toFloat)
+    assert(wrapped.lines === Vector("abc", "def", "gh"))
+    assert(!wrapped.overflowed)
+
+    val oversizedGlyph = TextWrapping.wrap("ab", 1, value => value.length * 2f)
+    assert(oversizedGlyph.lines === Vector("a", "b"))
+    assert(oversizedGlyph.overflowed)
+  }
+
+  test("drawTextBox shrinks, centers, and clips text") {
+    import graphicsProvider.Graphics._
+
+    graphicsProvider.frameCanvas.calls.clear()
+    val paint = defaultPaint.withFont(Font.Default.withSize(20))
+    val layout = graphicsProvider.frameCanvas.drawTextBox(
+      "12345678",
+      TextBox(5f, 5f, 40f, 30f),
+      paint,
+      horizontalAlignment = Alignments.Center,
+      verticalAlignment = VerticalAlignment.Middle,
+      minFontSize = Some(10),
+      maxLines = Some(1),
+    )
+
+    assert(layout.lineCount === 1)
+    assert(layout.lineHeight === 10)
+    assert(layout.width === 40)
+    assert(graphicsProvider.frameCanvas.calls === Seq(
+      "save",
+      "clipRect(5.0,5.0,40.0,30.0)",
+      "drawText(12345678,5.0,15.0)",
+      "restore",
+    ))
+  }
+
+  test("drawTextBox truncates to maxLines with an ellipsis") {
+    import graphicsProvider.Graphics._
+
+    graphicsProvider.frameCanvas.calls.clear()
+    val layout = graphicsProvider.frameCanvas.drawTextBox(
+      "123456789",
+      TextBox(0f, 0f, 20f, 100f),
+      defaultPaint.withFont(Font.Default.withSize(10)),
+      maxLines = Some(2),
+    )
+
+    assert(layout.lines === Seq("1234", "567…"))
+    assert(layout.lineCount === 2)
+    assert(graphicsProvider.frameCanvas.calls.contains("drawText(1234\n567…,0.0,0.0)"))
+  }
+
   test("TestCanvasProvider loads registered images and records drawing") {
     import graphicsProvider.Graphics._
 

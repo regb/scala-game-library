@@ -152,7 +152,15 @@ trait PaintProxy {
 }
 
 trait TextLayoutProxy {
+  def width: Int
+  def layoutWidth: Int
   def height: Int
+  def lineCount: Int
+  def lineHeight: Int
+  def ascent: Int
+  def descent: Int
+  def lines: java.util.List[String]
+  def overflowed: Boolean
 }
 
 trait CanvasProxy {

@@ -22,6 +22,15 @@ private[sgl] trait GraphicsHelpersComponent {
   trait GraphicsExtension {
     this: Graphics =>
 
+    case class TextBox(x: Float, y: Float, width: Float, height: Float)
+
+    sealed trait VerticalAlignment
+    object VerticalAlignment {
+      case object Top extends VerticalAlignment
+      case object Middle extends VerticalAlignment
+      case object Bottom extends VerticalAlignment
+    }
+
     /** Provides non-primitive methods for Canvas.
       *
       * Most methods here involve some computation and composition
@@ -97,6 +106,72 @@ private[sgl] trait GraphicsHelpersComponent {
         */
       def drawBitmap(region: BitmapRegion, x: Float, y: Float, w: Float, h: Float, alpha: Float): Unit = {
         this.drawBitmap(region.bitmap, x, y, w, h, region.x, region.y, region.width, region.height, alpha)
+      }
+
+      /** Lay out and draw text inside a rectangle.
+        *
+        * If `minFontSize` is set, the helper tries each whole font size down to
+        * that value and uses the largest layout that fits the box and
+        * `maxLines`. If the smallest layout still has too many lines, the
+        * helper truncates its last visible line and adds an ellipsis. Content
+        * that remains too tall is clipped to the box.
+        */
+      def drawTextBox(
+        text: String,
+        box: TextBox,
+        paint: Paint,
+        horizontalAlignment: Alignments.Alignment = Alignments.Left,
+        verticalAlignment: VerticalAlignment = VerticalAlignment.Top,
+        minFontSize: Option[Int] = None,
+        maxLines: Option[Int] = None
+      ): TextLayout = {
+        require(box.width > 0, "Text box width must be greater than zero")
+        require(box.height >= 0, "Text box height must not be negative")
+        require(maxLines.forall(_ > 0), "maxLines must be greater than zero")
+
+        val initialSize = paint.font.size
+        val smallestSize = minFontSize.getOrElse(initialSize)
+        require(smallestSize > 0 && smallestSize <= initialSize,
+          "minFontSize must be positive and no larger than the paint font")
+
+        val alignedPaint = paint.withAlignment(horizontalAlignment)
+        val layoutWidth = scala.math.max(1, box.width.toInt)
+        var size = initialSize
+        var layoutPaint = alignedPaint
+        var layout = renderText(text, layoutWidth, layoutPaint)
+        var fits = layout.height <= box.height && maxLines.forall(layout.lineCount <= _)
+        while(!fits && size > smallestSize) {
+          size -= 1
+          layoutPaint = alignedPaint.withFont(alignedPaint.font.withSize(size))
+          layout = renderText(text, layoutWidth, layoutPaint)
+          fits = layout.height <= box.height && maxLines.forall(layout.lineCount <= _)
+        }
+
+        maxLines.filter(layout.lineCount > _).foreach { limit =>
+          val leadingLines = layout.lines.take(limit - 1)
+          var lastLine = layout.lines(limit - 1).reverse.dropWhile(_.isWhitespace).reverse
+          def truncatedText: String = (leadingLines :+ (lastLine + "…")).mkString("\n")
+
+          var truncatedLayout = renderText(truncatedText, layoutWidth, layoutPaint)
+          while(truncatedLayout.lineCount > limit && lastLine.nonEmpty) {
+            val lastCharacter = Character.offsetByCodePoints(lastLine, lastLine.length, -1)
+            lastLine = lastLine.substring(0, lastCharacter)
+            truncatedLayout = renderText(truncatedText, layoutWidth, layoutPaint)
+          }
+          layout = truncatedLayout
+        }
+
+        val drawY = verticalAlignment match {
+          case VerticalAlignment.Top => box.y
+          case VerticalAlignment.Middle => box.y + (box.height - layout.height) / 2f
+          case VerticalAlignment.Bottom => box.y + box.height - layout.height
+        }
+
+        withSave {
+          clipRect(box.x, box.y, box.width, box.height)
+          drawText(layout, box.x, drawY)
+        }
+        layout
       }
 
     }
