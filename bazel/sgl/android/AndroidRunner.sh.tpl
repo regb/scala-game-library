@@ -100,5 +100,5 @@ PY
 
 cd "$project_dir"
 @GRADLE_ENV@
-"$sgl_android_root/android-kotlin/gradlew" @GRADLE_TASK@ -PsglBazelRepo="$sgl_android_root"
+"$sgl_android_root/backends/android-kotlin/gradlew" @GRADLE_TASK@ -PsglBazelRepo="$sgl_android_root"
 @LAUNCH_CMD@

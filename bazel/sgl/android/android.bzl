@@ -87,18 +87,18 @@ def _android_runner_impl(ctx):
     optional_imports = []
     optional_res_values = []
     if firebase_enabled:
-        optional_modules.append("include(\":sgl-android-firebase\")\nproject(\":sgl-android-firebase\").projectDir = file(\"%s/android-kotlin/firebase\")" % project_sgl_android_root)
+        optional_modules.append("include(\":sgl-android-firebase\")\nproject(\":sgl-android-firebase\").projectDir = file(\"%s/backends/android-kotlin/firebase\")" % project_sgl_android_root)
         optional_dependencies.append("    implementation(project(\":sgl-android-firebase\"))")
         optional_imports.append("import sgl.android.analytics.AndroidFirebaseAnalytics\n")
     if admob_enabled:
-        optional_modules.append("include(\":sgl-android-admob\")\nproject(\":sgl-android-admob\").projectDir = file(\"%s/android-kotlin/admob\")" % project_sgl_android_root)
+        optional_modules.append("include(\":sgl-android-admob\")\nproject(\":sgl-android-admob\").projectDir = file(\"%s/backends/android-kotlin/admob\")" % project_sgl_android_root)
         optional_dependencies.append("    implementation(project(\":sgl-android-admob\"))")
         optional_imports.append("import sgl.android.ads.AndroidAdMobAds\n")
         optional_res_values.append("        resValue(\"string\", \"sgl_admob_interstitial_ad_unit_id\", \"%s\")" % ctx.attr.admob_interstitial_ad_unit_id)
         optional_res_values.append("        resValue(\"string\", \"sgl_admob_rewarded_ad_unit_id\", \"%s\")" % ctx.attr.admob_rewarded_ad_unit_id)
         optional_res_values.append("        resValue(\"bool\", \"sgl_admob_always_preload\", \"%s\")" % ("true" if ctx.attr.admob_always_preload else "false"))
     if play_games_enabled:
-        optional_modules.append("include(\":sgl-android-play-games\")\nproject(\":sgl-android-play-games\").projectDir = file(\"%s/android-kotlin/play-games\")" % project_sgl_android_root)
+        optional_modules.append("include(\":sgl-android-play-games\")\nproject(\":sgl-android-play-games\").projectDir = file(\"%s/backends/android-kotlin/play-games\")" % project_sgl_android_root)
         optional_dependencies.append("    implementation(project(\":sgl-android-play-games\"))")
         optional_imports.append("import sgl.android.play.AndroidPlayGamesServices\n")
 

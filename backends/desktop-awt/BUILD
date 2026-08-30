@@ -13,8 +13,8 @@ scala_library(
     deps=[
         "//core:sgl-core",
         "//engines:sgl-screen2d",
-        "//jvm-shared:jvm-shared",
-        "//desktop-jvm-shared:desktop-jvm-shared",
+        "//backends/jvm-shared:jvm-shared",
+        "//backends/desktop-jvm-shared:desktop-jvm-shared",
     ],
     visibility=["//visibility:public"],
 )
@@ -28,8 +28,8 @@ scala_test(
         "//core:sgl-core",
         "//core:sgl-core-testlib",
         "//engines:sgl-screen2d",
-        "//jvm-shared:jvm-shared",
-        "//desktop-jvm-shared:desktop-jvm-shared",
+        "//backends/jvm-shared:jvm-shared",
+        "//backends/desktop-jvm-shared:desktop-jvm-shared",
         "@maven//:org_scalatest_scalatest_3",
     ],
     visibility=["//visibility:public"],

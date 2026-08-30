@@ -236,7 +236,7 @@ def sgl_html5_app(
 ):
     full_deps = deps + [
           Label("//core:sgl-core"),
-          Label("//html5:sgl-html5"),
+          Label("//backends/html5:sgl-html5"),
           Label("@maven//:org_scala_js_scalajs_dom_sjs1_3"),
     ]
     if use_screen2d:
@@ -326,7 +326,7 @@ def sgl_html5_opengl_app(
 ):
     full_deps = deps + [
         Label("//core:sgl-core"),
-        Label("//html5:sgl-html5"),
+        Label("//backends/html5:sgl-html5"),
         Label("@maven//:org_scala_js_scalajs_dom_sjs1_3"),
     ]
 

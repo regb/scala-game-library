@@ -66,7 +66,7 @@ The current implementation provides the following backends:
     game to people that have a JVM. It will be cross-platform across Windows,
     Mac, and Linux.
   * *Android*. The Android backend is implemented as a Kotlin/Android library
-    under `android-kotlin/`, with Bazel helpers that generate Gradle Android
+    under `backends/android-kotlin/`, with Bazel helpers that generate Gradle Android
     app projects for games.
   * *Web* with Scalajs. The web backend is implemented with scalajs
     and uses the HTML5 canvas for graphics, the HTML5 audio tag for audio, and

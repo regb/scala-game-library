@@ -22,7 +22,7 @@ scala_library(
     deps = [
         "//core:sgl-core",
         "//engines:sgl-screen2d",
-        "//jvm-shared:jvm-shared",
+        "//backends/jvm-shared:jvm-shared",
         "@maven//:org_scala_native_scalalib_native0_5_3",
         "@maven//:org_scala_native_scala3lib_native0_5_3",
         "@maven//:org_scala_native_nativelib_native0_5_3",

@@ -10,7 +10,7 @@ scala_library(
     scalacopts = SGL_SCALACOPTS,
     deps = [
         "//core:sgl-core",
-        "//jvm-shared:jvm-shared",
+        "//backends/jvm-shared:jvm-shared",
         "@maven//:net_liftweb_lift_json_2_13",
         "@maven//:com_googlecode_soundlibs_vorbisspi",
     ],

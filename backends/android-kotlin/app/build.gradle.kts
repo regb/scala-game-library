@@ -6,7 +6,7 @@ plugins {
 val sglBazelRepo = file(
     providers.gradleProperty("sglBazelRepo")
         .orElse(providers.environmentVariable("SGL_BAZEL_REPO"))
-        .getOrElse(rootProject.file("..").path)
+        .getOrElse(rootProject.file("../..").path)
 )
 
 val buildSglBazelJars by tasks.registering(Exec::class) {

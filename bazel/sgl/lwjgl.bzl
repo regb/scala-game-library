@@ -107,8 +107,8 @@ def sgl_desktop_lwjgl_app(
 ):
     full_deps = deps + [
         Label("//core:sgl-core"),
-        Label("//desktop-jvm-shared:desktop-jvm-shared"),
-        Label("//desktop-lwjgl:sgl-desktop-lwjgl"),
+        Label("//backends/desktop-jvm-shared:desktop-jvm-shared"),
+        Label("//backends/desktop-lwjgl:sgl-desktop-lwjgl"),
     ]
 
     desktop_lwjgl_main(

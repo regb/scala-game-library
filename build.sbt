@@ -1,7 +1,7 @@
 // organization := "com.regblanc.sgl",
 // scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature")
 
-//lazy val desktopNative = (project in file("./desktop-native"))
+//lazy val desktopNative = (project in file("./backends/desktop-native"))
 //  .enablePlugins(ScalaNativePlugin)
 //  .settings(commonSettings: _*)
 //  .settings(scalaVersion := scalaVer)
@@ -14,7 +14,7 @@
 //  .dependsOn(coreNative)
 
 
-//lazy val html5Firebase = (project in file("./html5/firebase"))
+//lazy val html5Firebase = (project in file("./backends/html5/firebase"))
 //  .enablePlugins(ScalaJSPlugin)
 //  .settings(commonSettings: _*)
 //  .settings(
@@ -24,7 +24,7 @@
 //  )
 //  .dependsOn(coreJS % "test->test;compile->compile")
 //
-//lazy val html5Cordova = (project in file("./html5/cordova"))
+//lazy val html5Cordova = (project in file("./backends/html5/cordova"))
 //  .enablePlugins(ScalaJSPlugin)
 //  .settings(commonSettings: _*)
 //  .settings(

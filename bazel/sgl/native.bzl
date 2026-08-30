@@ -101,8 +101,8 @@ def sgl_desktop_native_app(
 
     full_deps = deps + [
         Label("//core:sgl-core"),
-        Label("//jvm-shared:jvm-shared"),
-        Label("//desktop-native:sgl-desktop-native"),
+        Label("//backends/jvm-shared:jvm-shared"),
+        Label("//backends/desktop-native:sgl-desktop-native"),
     ]
     if use_screen2d:
         full_deps.extend([

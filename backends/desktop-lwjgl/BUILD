@@ -10,7 +10,7 @@ scala_library(
     scalacopts = SGL_SCALACOPTS,
     deps = [
         "//core:sgl-core",
-        "//desktop-jvm-shared:desktop-jvm-shared",
+        "//backends/desktop-jvm-shared:desktop-jvm-shared",
         "@maven//:org_lwjgl_lwjgl",
         "@maven//:org_lwjgl_lwjgl_glfw",
         "@maven//:org_lwjgl_lwjgl_opengl",

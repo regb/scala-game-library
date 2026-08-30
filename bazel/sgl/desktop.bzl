@@ -115,9 +115,9 @@ def sgl_desktop_awt_app(
 
     full_deps = deps + [
           Label("//core:sgl-core"),
-          Label("//jvm-shared:jvm-shared"),
-          Label("//desktop-jvm-shared:desktop-jvm-shared"),
-          Label("//desktop-awt:sgl-desktop-awt"),
+          Label("//backends/jvm-shared:jvm-shared"),
+          Label("//backends/desktop-jvm-shared:desktop-jvm-shared"),
+          Label("//backends/desktop-awt:sgl-desktop-awt"),
     ]
     if use_screen2d:
         full_deps.extend([
