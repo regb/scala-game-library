@@ -65,6 +65,7 @@ trait Html5OpenGLProvider extends OpenGLProvider {
     override val CullFace: Int = WebGLRenderingContext.CULL_FACE
     override val Back: Int = WebGLRenderingContext.BACK
     override val Blend: Int = WebGLRenderingContext.BLEND
+    override val ScissorTest: Int = WebGLRenderingContext.SCISSOR_TEST
     override val SrcAlpha: Int = WebGLRenderingContext.SRC_ALPHA
     override val OneMinusSrcAlpha: Int = WebGLRenderingContext.ONE_MINUS_SRC_ALPHA
     override val VertexShader: Int = WebGLRenderingContext.VERTEX_SHADER
@@ -91,6 +92,7 @@ trait Html5OpenGLProvider extends OpenGLProvider {
     override def disable(capability: Int): Unit = webgl.disable(capability)
     override def cullFace(mode: Int): Unit = webgl.cullFace(mode)
     override def blendFunc(source: Int, destination: Int): Unit = webgl.blendFunc(source, destination)
+    override def scissor(x: Int, y: Int, width: Int, height: Int): Unit = webgl.scissor(x, y, width, height)
     override def clearColor(red: Float, green: Float, blue: Float, alpha: Float): Unit = webgl.clearColor(red, green, blue, alpha)
     override def clear(mask: Int): Unit = webgl.clear(mask)
 
@@ -142,16 +144,30 @@ trait Html5OpenGLProvider extends OpenGLProvider {
     override def deleteTexture(texture: Texture): Unit = webgl.deleteTexture(texture)
     override def texParameteri(target: TextureTarget, parameter: TextureParameter, value: TextureParameterValue): Unit = webgl.texParameteri(target, parameter, value)
 
-    override def loadTexture2D(asset: DrawableAsset): Loader[Texture] = {
+    override def createTextureImage2D(width: Int, height: Int, rgba: Array[Byte]): TextureImage = {
+      require(width > 0 && height > 0, "Texture dimensions must be positive")
+      require(rgba.length == width * height * 4, "Texture data must contain tightly packed RGBA8 pixels")
+      val texture = genTexture()
+      bindTexture(Texture2D, texture)
+      texParameteri(Texture2D, TextureMinFilter, Nearest)
+      texParameteri(Texture2D, TextureMagFilter, Nearest)
+      texParameteri(Texture2D, TextureWrapS, ClampToEdge)
+      texParameteri(Texture2D, TextureWrapT, ClampToEdge)
+      val pixels = new js.typedarray.Uint8Array(rgba.map(value => (value.toInt & 0xff).toShort).toJSArray)
+      webgl.texImage2D(Texture2D, 0, WebGLRenderingContext.RGBA, width, height, 0, WebGLRenderingContext.RGBA, WebGLRenderingContext.UNSIGNED_BYTE, pixels)
+      new TextureImage(texture, width, height)
+    }
+
+    override def loadTextureImage2D(asset: DrawableAsset): Loader[TextureImage] = {
       val variant = asset.bestVariantForDpi(Window.logicalPpi)
       loadTexture2DResource(variant.resourceName)
     }
 
-    override def loadTexture2D(asset: RawImageAsset): Loader[Texture] =
+    override def loadTextureImage2D(asset: RawImageAsset): Loader[TextureImage] =
       loadTexture2DResource(asset.resourceName)
 
-    private def loadTexture2DResource(resourceName: String): Loader[Texture] = {
-      val promise = new DefaultLoader[Texture]
+    private def loadTexture2DResource(resourceName: String): Loader[TextureImage] = {
+      val promise = new DefaultLoader[TextureImage]
       val texture = genTexture()
       bindTexture(Texture2D, texture)
       texParameteri(Texture2D, TextureMinFilter, Nearest)
@@ -166,7 +182,7 @@ trait Html5OpenGLProvider extends OpenGLProvider {
         bindTexture(Texture2D, texture)
         webgl.texImage2D(Texture2D, 0, WebGLRenderingContext.RGBA, WebGLRenderingContext.RGBA, WebGLRenderingContext.UNSIGNED_BYTE, img)
         webgl.generateMipmap(Texture2D)
-        promise.success(texture)
+        promise.success(new TextureImage(texture, img.naturalWidth, img.naturalHeight))
       }
       img.addEventListener("error", (_: dom.Event) => {
         promise.failure(new RuntimeException("Could not load texture " + html5AssetUrl(resourceName)))

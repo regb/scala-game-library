@@ -64,6 +64,7 @@ maven.install(
         "org.scala-native:tools_3:0.5.12",
         "org.scala-native:util_3:0.5.12",
         "org.lwjgl:lwjgl:3.3.6",
+        "org.lwjgl:lwjgl-egl:3.3.6",
         "org.lwjgl:lwjgl-glfw:3.3.6",
         "org.lwjgl:lwjgl-opengl:3.3.6",
         "org.lwjgl:lwjgl-openal:3.3.6",

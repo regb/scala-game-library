@@ -154,8 +154,12 @@ private[sgl] trait GraphicsHelpersComponent {
 
           var truncatedLayout = renderText(truncatedText, layoutWidth, layoutPaint)
           while(truncatedLayout.lineCount > limit && lastLine.nonEmpty) {
-            val lastCharacter = Character.offsetByCodePoints(lastLine, lastLine.length, -1)
-            lastLine = lastLine.substring(0, lastCharacter)
+            val lastIndex = lastLine.length - 1
+            val lastCharacter = lastLine.charAt(lastIndex)
+            val removeFrom =
+              if(lastCharacter >= '\uDC00' && lastCharacter <= '\uDFFF' && lastIndex > 0) lastIndex - 1
+              else lastIndex
+            lastLine = lastLine.substring(0, removeFrom)
             truncatedLayout = renderText(truncatedText, layoutWidth, layoutPaint)
           }
           layout = truncatedLayout

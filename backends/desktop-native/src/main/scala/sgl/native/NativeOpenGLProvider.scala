@@ -21,6 +21,7 @@ private[native] object GLES3 {
   def glDisable(cap: UInt): Unit = extern
   def glCullFace(mode: UInt): Unit = extern
   def glBlendFunc(sfactor: UInt, dfactor: UInt): Unit = extern
+  def glScissor(x: CInt, y: CInt, width: CInt, height: CInt): Unit = extern
   def glClearColor(red: CFloat, green: CFloat, blue: CFloat, alpha: CFloat): Unit = extern
   def glClear(mask: UInt): Unit = extern
 
@@ -109,6 +110,7 @@ trait NativeOpenGLProvider extends OpenGLProvider {
     override val CullFace: Int = 0x0B44
     override val Back: Int = 0x0405
     override val Blend: Int = 0x0BE2
+    override val ScissorTest: Int = 0x0C11
     override val SrcAlpha: Int = 0x0302
     override val OneMinusSrcAlpha: Int = 0x0303
 
@@ -140,6 +142,7 @@ trait NativeOpenGLProvider extends OpenGLProvider {
     override def disable(capability: Int): Unit = GLES3.glDisable(capability.toUInt)
     override def cullFace(mode: Int): Unit = GLES3.glCullFace(mode.toUInt)
     override def blendFunc(source: Int, destination: Int): Unit = GLES3.glBlendFunc(source.toUInt, destination.toUInt)
+    override def scissor(x: Int, y: Int, width: Int, height: Int): Unit = GLES3.glScissor(x, y, width, height)
 
     override def clearColor(red: Float, green: Float, blue: Float, alpha: Float): Unit =
       GLES3.glClearColor(red, green, blue, alpha)
@@ -292,16 +295,36 @@ trait NativeOpenGLProvider extends OpenGLProvider {
     }
     override def texParameteri(target: TextureTarget, parameter: TextureParameter, value: TextureParameterValue): Unit = GLES3.glTexParameteri(target.toUInt, parameter.toUInt, value)
 
-    override def loadTexture2D(asset: DrawableAsset): Loader[Texture] = {
+    override def createTextureImage2D(width: Int, height: Int, rgba: Array[Byte]): TextureImage = {
+      require(width > 0 && height > 0, "Texture dimensions must be positive")
+      require(rgba.length == width * height * 4, "Texture data must contain tightly packed RGBA8 pixels")
+      val nativePixels = stdlib.malloc(rgba.length.toUInt).asInstanceOf[Ptr[Byte]]
+      var index = 0
+      while(index < rgba.length) {
+        nativePixels(index) = rgba(index)
+        index += 1
+      }
+      val texture = genTexture()
+      bindTexture(Texture2D, texture)
+      texParameteri(Texture2D, TextureMinFilter, Nearest)
+      texParameteri(Texture2D, TextureMagFilter, Nearest)
+      texParameteri(Texture2D, TextureWrapS, ClampToEdge)
+      texParameteri(Texture2D, TextureWrapT, ClampToEdge)
+      GLES3.glTexImage2D(Texture2D.toUInt, 0, 0x1908, width, height, 0, 0x1908.toUInt, 0x1401.toUInt, nativePixels)
+      stdlib.free(nativePixels)
+      new TextureImage(texture, width, height)
+    }
+
+    override def loadTextureImage2D(asset: DrawableAsset): Loader[TextureImage] = {
       val variant = asset.bestVariantForDpi(Window.logicalPpi)
       loadTexture2DResource(variant.resourceName)
     }
 
-    override def loadTexture2D(asset: RawImageAsset): Loader[Texture] =
+    override def loadTextureImage2D(asset: RawImageAsset): Loader[TextureImage] =
       loadTexture2DResource(asset.resourceName)
 
-    private def loadTexture2DResource(resourceName: String): Loader[Texture] = {
-      val promise = new DefaultLoader[Texture]
+    private def loadTexture2DResource(resourceName: String): Loader[TextureImage] = {
+      val promise = new DefaultLoader[TextureImage]
       val thread = new Thread(new Runnable {
         override def run(): Unit = {
           try {
@@ -310,7 +333,7 @@ trait NativeOpenGLProvider extends OpenGLProvider {
               runOnOpenGLThread {
                 try {
                   val texture = uploadTextureSurface(surface)
-                  promise.success(texture)
+                  promise.success(new TextureImage(texture, surface.w, surface.h))
                 } catch {
                   case t: Throwable => promise.failure(t)
                 } finally {

@@ -26,17 +26,17 @@ private[sgl] object TextWrapping {
             remaining = ""
           } else {
             var fittingLength = 0
-            var candidateLength = Character.offsetByCodePoints(remaining, 0, 1)
+            var candidateLength = nextCodePointIndex(remaining, 0)
             while(candidateLength <= remaining.length && measure(remaining.substring(0, candidateLength)) <= width) {
               fittingLength = candidateLength
               if(candidateLength < remaining.length)
-                candidateLength = Character.offsetByCodePoints(remaining, candidateLength, 1)
+                candidateLength = nextCodePointIndex(remaining, candidateLength)
               else
                 candidateLength = remaining.length + 1
             }
 
             if(fittingLength == 0) {
-              val firstCharacterLength = Character.offsetByCodePoints(remaining, 0, 1)
+              val firstCharacterLength = nextCodePointIndex(remaining, 0)
               result += remaining.substring(0, firstCharacterLength)
               remaining = remaining.substring(firstCharacterLength)
               overflowed = true
@@ -52,5 +52,13 @@ private[sgl] object TextWrapping {
     }
 
     Result(result.result(), overflowed)
+  }
+
+  private def nextCodePointIndex(value: String, index: Int): Int = {
+    val first = value.charAt(index)
+    if(first >= '\uD800' && first <= '\uDBFF' && index + 1 < value.length) {
+      val second = value.charAt(index + 1)
+      if(second >= '\uDC00' && second <= '\uDFFF') index + 2 else index + 1
+    } else index + 1
   }
 }

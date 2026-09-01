@@ -1,109 +1,17 @@
 # TODO
 
-## Backlog for 0.0.2
+## Interactive headless controller
 
-There are many things that are highly annoying right now. But they will have to
-wait for 0.0.2, because 0.0.1 is used in a relatively large game, and we want
-to ship this first and then publish 0.0.1 as a stable version. But let's keep
-track of the things we notice while working on the game and that need to be
-addressed when going to 0.0.2.
+The `headless-opengl` backend exposes queued keyboard, mouse, touch, scroll,
+and system-action input through `HeadlessOpenGLApp.Controller`. It runs on a
+Mesa surfaceless EGL pbuffer with llvmpipe and advances only when its owner
+calls `step`.
 
-### Screenshots
+Add a controller process that streams captured frames and accepts input without
+linking the controller transport into game code. A browser client is the likely
+first frontend. Keep the transport protocol useful for both people and AI
+agents.
 
-Have a screenshots system that continuously take screenshots of the game (each
-frame, at the engine level).
-
-### Solve the dp2px and multi-density problem
-
-We have too many calls to dp2px with all constants. We need to be able to use
-viewports and cameras as a way to do this conversion at a single point.
-
-## Separate core into core and desktop backend
-
-Seems like there could be several different kind of desktop, but they would
-share stuff like FileSystemSave. Alternatively there could be one Desktop, but
-with several provider of Sound (OpenAL, Java) and grahics (OpenGL, AWT). And
-let the user compose the cake as they want.
-
-## HTTP server embeded for debugging.
-
-It is very convenient to have a way to re-configure the game live, and an
-HTTP server would provide a simple, high-level, protocol to do so. Devs can
-create their own API on top of HTTP for arbitrary changes to the game, and
-they can use name-value parameters (or the json module (or simple name-value parameters).
-
-SGL should provide a generic, lilghtweight, HTTP server provider,
-with the option to not include it in release mode. The actual protocol should
-be a separate concern. By default, we could also provide a ConfigProvider
-interface, which would have two main implementations:
-    * An implementation with constant, compile-time, values. This could be
-    used for quick iteration and on the release build.
-    * An implementation where the value is set from an HTTP protocol. This would
-    be used in dev mode to tweak some configuration at run time (could be mostly
-    primitive types: int, double, string). We would provide an implementation
-    based on the HTTP server module, so this would only be injected in build where 
-    we also inject the HTTP module.
-Because of the second implementation, the Config module would need to provide
-some sort of callback on each config value, meaning that the client should be
-notified when a new value is set and should update the game with that new value.
-Obviously, not all configurations need to be set through this style of config,
-only these that can be modified at runtime, without restarting the game,
-successfully.
-
-## Resource generator for assets
-
-Kind of like on Android, it would be good to have all assets within the assets/ folder
-automatically generate some object.Field -> Id mapping (with sbt), and then have
-the load methods take the ID instead of the string path. This would make basically the
-assets a compile time concept.
-
-This will need to be balanced with having the option to load assets from local
-disk, which can be convenient for development (compile once, then run many
-times with various art/sound) and for modding.
-
-On a similar note, we should be able to have multiple versions of the same
-assets (multiple resolution of a graphics, or multiple audio format for the
-same file) and the one that gets packaged in each backend should depend on a
-config which choose the best. Maybe Android supports better one kind of audio
-format, and iOS another kind, so we would have both versions as two extensions
-of the same asset in the shared asset folder, but we would package only the
-best one into the binary for each platform.
-
-## Rethink backend package path
-
-Right now, backends are in sgl.android._ or sgl.awt._, while the core is in
-sgl._
-It might make sense to have the backend in the same base directory (sgl._), because
-it's not visible anyway for the core module of the game, and the names never conflict.
-This could lead to a slightly simpler and more consistent organization.
-
-## Event system for the scheduler
-
-We could do a system of events, with dependency (wait, join, then, etc) between each
-event. Each event would be a small and efficient and quick task, that takes as little
-time as possible, so that the scheduler can stop at any point within the event graph.
-
-## Texture atlas
-
-This seems like the most popular tool: https://www.codeandweb.com/texturepacker
-It has a cli tool, so could be eventually integrated with sbt in the build.
-
-We need to design how the atlas loading can be integrated in the API. The best would
-be that it happens behind the scene, and we could either use it or not, and no
-game code need to change (so essentially the loadImage with an individual image
-would magically go into the atlas and extract the part of the atlas that we need,
-the system should then lazily load the atlas behind the scene and share it.
-
-## Bundle assets at build time
-
-It should be possible to bundle assets at build time, e.g. for map file data in txt or json,
-it would be nice to be able to use code generation to parse the asset during the build and
-generate the output (the Scala data structure) in the build, and then to have the Loader return
-the code instantiation without having to actually read a file. This would be quite nice in HTML
-where we avoid a round trip to the server.
-
-Ideally this is transparent to the user, they use the same API with a loader, and its a
-build configuration to choose whether to embed it or to have it dynamically loaded.
-
-Probably this ties together with a better story for loading dynamic assets instead of assets
-from the jar on the JVM.
+The runner also needs an injectable clock for code that does not use the frame
+delta, deterministic scheduler and asset-completion controls, and a Bazel test
+helper that stores failed frame captures as test artifacts.

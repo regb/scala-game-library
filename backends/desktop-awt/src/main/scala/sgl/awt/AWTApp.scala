@@ -9,7 +9,7 @@ import java.awt.{Graphics2D, RenderingHints, Rectangle}
 import java.awt
 
 trait AWTApp extends AWTCanvasProvider with AWTInputProvider with JavaSoundAudioProvider
-                with AWTWindowProvider with ThreadPoolSchedulerProvider {
+                with AWTWindowProvider with ThreadPoolSchedulerProvider with FrameCaptureProvider {
 
   this: Application with LoggingProvider with DesktopSystemProvider =>
 
@@ -179,37 +179,50 @@ trait AWTApp extends AWTCanvasProvider with AWTInputProvider with JavaSoundAudio
           while(contentsLost) {
             var contentsRestored = true
             while(contentsRestored) {
-              val g = strategy.getDrawGraphics().asInstanceOf[Graphics2D]
+              val displayGraphics = strategy.getDrawGraphics().asInstanceOf[Graphics2D]
+              val captureBatch = beginFrameCapture()
+              val capturedImage =
+                if(captureBatch.requested)
+                  Some(new BufferedImage(gameCanvas.getWidth, gameCanvas.getHeight, BufferedImage.TYPE_INT_ARGB))
+                else None
+              val g = capturedImage.map(_.createGraphics()).getOrElse(displayGraphics)
 
-              if(EnableAntiAliasingHint)
-                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-              if(EnableTextAntiAliasingHint) {
-                g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
-                g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON)
+              try {
+                if(EnableAntiAliasingHint)
+                  g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+                if(EnableTextAntiAliasingHint) {
+                  g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
+                  g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON)
+                }
+                if(EnableBilinearInterpolationHint) {
+                  // There's also the BICUBIC interpolation, but that seems too slow for games on the
+                  // few examples I used it, the FPS dropped significantly.
+                  g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+                }
+
+                val bounds = new Rectangle(0, 0, gameCanvas.getWidth, gameCanvas.getHeight)
+                g.setClip(bounds)
+
+                val canvas: Graphics.Canvas = Graphics.AWTCanvas(g, gameCanvas.getWidth.toFloat, gameCanvas.getHeight.toFloat)
+
+                val newTime = java.lang.System.nanoTime
+                val dt = (newTime - lastTime).toDouble / 1000000000.0
+                lastTime = newTime
+
+                currentFrameCanvas = Some(canvas)
+                try frame(dt)
+                finally currentFrameCanvas = None
+
+                capturedImage.foreach(image => displayGraphics.drawImage(image, 0, 0, null))
+                completeFrameCapture(captureBatch, capturedFrameFromImage(capturedImage.get))
+              } catch {
+                case error: Throwable =>
+                  failFrameCapture(captureBatch, error)
+                  throw error
+              } finally {
+                if(g ne displayGraphics) g.dispose()
+                displayGraphics.dispose()
               }
-              if(EnableBilinearInterpolationHint) {
-                // There's also the BICUBIC interpolation, but that seems too slow for games on the
-                // few examples I used it, the FPS dropped significantly.
-                g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
-              }
-
-              val bounds = new Rectangle(0, 0, gameCanvas.getWidth, gameCanvas.getHeight)
-              g.setClip(bounds)
-
-              // Maybe set background color and then fill it.
-              // g.fill(bounds)
-
-              val canvas: Graphics.Canvas = Graphics.AWTCanvas(g, gameCanvas.getWidth.toFloat, gameCanvas.getHeight.toFloat)
-
-              val newTime = java.lang.System.nanoTime
-              val dt = (newTime - lastTime).toDouble / 1000000000.0
-              lastTime = newTime
-
-              currentFrameCanvas = Some(canvas)
-              try frame(dt)
-              finally currentFrameCanvas = None
-
-              g.dispose()
               contentsRestored = strategy.contentsRestored()
             }
 
@@ -242,6 +255,23 @@ trait AWTApp extends AWTCanvasProvider with AWTInputProvider with JavaSoundAudio
       Scheduler.shutdown()
       System.exit()
     }
+  }
+
+  private def capturedFrameFromImage(image: BufferedImage): CapturedFrame = {
+    val argb = image.getRGB(0, 0, image.getWidth, image.getHeight, null, 0, image.getWidth)
+    val rgba = new Array[Byte](argb.length * CapturedFrame.BytesPerPixel)
+    var pixel = 0
+    var offset = 0
+    while(pixel < argb.length) {
+      val color = argb(pixel)
+      rgba(offset) = ((color >>> 16) & 0xff).toByte
+      rgba(offset + 1) = ((color >>> 8) & 0xff).toByte
+      rgba(offset + 2) = (color & 0xff).toByte
+      rgba(offset + 3) = ((color >>> 24) & 0xff).toByte
+      pixel += 1
+      offset += CapturedFrame.BytesPerPixel
+    }
+    new CapturedFrame(image.getWidth, image.getHeight, rgba)
   }
 
 }

@@ -37,7 +37,7 @@ jobs:
       - name: Install native build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --yes clang libglu1-mesa-dev libsdl2-dev libsdl2-image-dev
+          sudo apt-get install --yes clang libegl1-mesa-dev libgl1-mesa-dri libglu1-mesa-dev libsdl2-dev libsdl2-image-dev
 
       - name: Build
         run: bazel build //...

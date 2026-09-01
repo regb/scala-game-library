@@ -48,7 +48,7 @@ scalajs_html_template = rule(
     doc = "Generates an HTML file by substituting the ScalaJS output path and other values into a template",
 )
 
-def run_server(name, scalajs_module, main_class, static_files = [], static_strip_prefix = "", static_folder = "static", template = None, **kwargs):
+def run_server(name, scalajs_module, main_class, static_files = [], static_strip_prefix = "", static_folder = "static", template = None, html_output_name = "index.html", **kwargs):
     """Creates a server target that serves a ScalaJS application with generated HTML.
 
     Args:
@@ -67,7 +67,7 @@ def run_server(name, scalajs_module, main_class, static_files = [], static_strip
     html_attrs = {
         "scalajs_target": scalajs_module,
         "main_class": main_class,
-        "output_name": "index.html",
+        "output_name": html_output_name,
     }
 
     if template:

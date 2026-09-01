@@ -5,6 +5,11 @@ load(
 load("//bazel:cross.bzl", "scala_library")
 load("//bazel:scala_opts.bzl", "SGL_SCALACOPTS")
 
+exports_files(
+    ["src/main/scala/sgl/PortableFontData.scala"],
+    visibility = ["//tools/font-atlas-generator:__pkg__"],
+)
+
 scala_library(
     name = "sgl-core",
     srcs = glob(["src/main/scala/**/*.scala"]),

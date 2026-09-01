@@ -8,7 +8,7 @@ import dom.html
 
 import scala.scalajs.js.annotation.JSExport
 
-trait Html5OpenGLApp extends Html5WindowProvider with Html5OpenGLProvider with Html5SystemProvider with Html5InputProvider with SingleThreadSchedulerProvider {
+trait Html5OpenGLApp extends Html5WindowProvider with Html5OpenGLProvider with Html5SystemProvider with Html5InputProvider with SingleThreadSchedulerProvider with Html5FrameCapture {
   this: Application with LoggingProvider =>
 
   val TargetFps: Option[Int] = None
@@ -58,7 +58,15 @@ trait Html5OpenGLApp extends Html5WindowProvider with Html5OpenGLProvider with H
       val shouldRender = !requestAnimationFrameSupported || lastTime.isEmpty || targetFramePeriod.forall(period => elapsedMillis >= period.toDouble)
       if(shouldRender) {
         lastTime = Some(now)
-        frame((elapsedMillis min 1000.0) / 1000.0)
+        val captureBatch = beginFrameCapture()
+        try {
+          frame((elapsedMillis min 1000.0) / 1000.0)
+          completeFrameCapture(captureBatch, captureWebGLFrame(webgl, htmlCanvas.width, htmlCanvas.height))
+        } catch {
+          case error: Throwable =>
+            failFrameCapture(captureBatch, error)
+            throw error
+        }
       }
       if(requestAnimationFrameSupported && loopRunning) {
         val _ = dom.window.requestAnimationFrame(t => frameCode(t))

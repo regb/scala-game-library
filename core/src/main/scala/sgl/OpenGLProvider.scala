@@ -63,6 +63,7 @@ trait OpenGLProvider {
     val CullFace: Capability
     val Back: Face
     val Blend: Capability
+    val ScissorTest: Capability
     val SrcAlpha: BlendFactor
     val OneMinusSrcAlpha: BlendFactor
 
@@ -92,6 +93,7 @@ trait OpenGLProvider {
     def disable(capability: Capability): Unit
     def cullFace(mode: Face): Unit
     def blendFunc(source: BlendFactor, destination: BlendFactor): Unit
+    def scissor(x: Int, y: Int, width: Int, height: Int): Unit
     def clearColor(red: Float, green: Float, blue: Float, alpha: Float): Unit
     def clear(mask: ClearMask): Unit
 
@@ -137,8 +139,17 @@ trait OpenGLProvider {
     def unbindTexture(target: TextureTarget): Unit
     def deleteTexture(texture: Texture): Unit
     def texParameteri(target: TextureTarget, parameter: TextureParameter, value: TextureParameterValue): Unit
-    def loadTexture2D(asset: DrawableAsset): Loader[Texture]
-    def loadTexture2D(asset: RawImageAsset): Loader[Texture]
+
+    /** A texture together with the dimensions of its decoded source image. */
+    final class TextureImage(val texture: Texture, val width: Int, val height: Int) {
+      require(width > 0 && height > 0, "Texture image dimensions must be positive")
+    }
+
+    def createTextureImage2D(width: Int, height: Int, rgba: Array[Byte]): TextureImage
+    def loadTextureImage2D(asset: DrawableAsset): Loader[TextureImage]
+    def loadTextureImage2D(asset: RawImageAsset): Loader[TextureImage]
+    final def loadTexture2D(asset: DrawableAsset): Loader[Texture] = loadTextureImage2D(asset).map(_.texture)
+    final def loadTexture2D(asset: RawImageAsset): Loader[Texture] = loadTextureImage2D(asset).map(_.texture)
 
     def drawArrays(mode: DrawMode, first: Int, count: Int): Unit
     def drawElements(mode: DrawMode, count: Int, dataType: DataType, offset: Long): Unit

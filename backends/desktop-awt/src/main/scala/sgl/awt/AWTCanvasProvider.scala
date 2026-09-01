@@ -8,11 +8,13 @@ import java.awt.image.BufferedImage
 import java.awt.geom.{Rectangle2D, Ellipse2D, Line2D, AffineTransform}
 import javax.imageio.ImageIO
 
+import scala.collection.mutable
+
 trait AWTCanvasProvider extends CanvasProvider {
   this: AWTWindowProvider with DesktopSystemProvider with LoggingProvider =>
 
-  val AWTGraphicsEnvironment = GraphicsEnvironment.getLocalGraphicsEnvironment
-  val AWTGraphicsConfig = AWTGraphicsEnvironment.getDefaultScreenDevice.getDefaultConfiguration
+  lazy val AWTGraphicsEnvironment = GraphicsEnvironment.getLocalGraphicsEnvironment
+  lazy val AWTGraphicsConfig = AWTGraphicsEnvironment.getDefaultScreenDevice.getDefaultConfiguration
 
   object AWTGraphics extends Graphics {
 
@@ -64,9 +66,9 @@ trait AWTCanvasProvider extends CanvasProvider {
     }
     type Bitmap = AWTBitmap
 
-    case class AWTFont(f: java.awt.Font) extends AbstractFont {
-      override def withSize(s: Int): Font = AWTFont(f.deriveFont(f.getStyle, s.toFloat))
-      override def withStyle(s: Font.Style): Font = AWTFont(f.deriveFont(AWTFontCompanion.toAWTStyle(s)))
+    case class AWTFont(f: java.awt.Font, portable: Boolean = false) extends AbstractFont {
+      override def withSize(s: Int): Font = copy(f = f.deriveFont(f.getStyle, s.toFloat))
+      override def withStyle(s: Font.Style): Font = copy(f = f.deriveFont(AWTFontCompanion.toAWTStyle(s)))
 
       override def size: Int = f.getSize
 
@@ -106,11 +108,11 @@ trait AWTCanvasProvider extends CanvasProvider {
       //  case _ => Normal
       //}
 
-      override val Default: Font = AWTFont(new java.awt.Font(DIALOG, PLAIN, 14))
-      override val DefaultBold: Font = AWTFont(new java.awt.Font(DIALOG, BOLD, 14))
-      override val Monospace: Font = AWTFont(new java.awt.Font(MONOSPACED, PLAIN, 14))
-      override val SansSerif: Font = AWTFont(new java.awt.Font(SANS_SERIF, PLAIN, 14))
-      override val Serif: Font = AWTFont(new java.awt.Font(SERIF, PLAIN, 14))
+      override val Default: Font = AWTFont(new java.awt.Font(SANS_SERIF, PLAIN, 14), portable = true)
+      override val DefaultBold: Font = AWTFont(new java.awt.Font(SANS_SERIF, BOLD, 14), portable = true)
+      override val Monospace: Font = AWTFont(new java.awt.Font(MONOSPACED, PLAIN, 14), portable = true)
+      override val SansSerif: Font = AWTFont(new java.awt.Font(SANS_SERIF, PLAIN, 14), portable = true)
+      override val Serif: Font = AWTFont(new java.awt.Font(SERIF, PLAIN, 14), portable = true)
 
     }
     override val Font: AWTFontCompanion.type = AWTFontCompanion
@@ -130,6 +132,56 @@ trait AWTCanvasProvider extends CanvasProvider {
 
     type Paint = AWTPaint
     override def defaultPaint: Paint = AWTPaint(Font.Default, Color.Black, Alignments.Left)
+
+    private val portableAtlasCache = mutable.Map.empty[(Boolean, Int), BufferedImage]
+
+    private def portableMeasure(value: String, font: Font): Float =
+      PortableFont.measure(value, PortableFont.face(font.isBold), font.size)
+
+    private def portableAtlas(font: Font, color: Color): BufferedImage = {
+      val key = (font.isBold, color.getRGB)
+      portableAtlasCache.getOrElseUpdate(key, {
+        val face = PortableFont.face(font.isBold)
+        val image = new BufferedImage(face.atlasWidth, face.atlasHeight, BufferedImage.TYPE_INT_ARGB)
+        val pixels = new Array[Int](face.alpha.length)
+        val colorAlpha = color.getAlpha
+        var index = 0
+        while(index < pixels.length) {
+          val alpha = (face.alpha(index) & 0xff) * colorAlpha / 255
+          pixels(index) = (alpha << 24) | (color.getRed << 16) | (color.getGreen << 8) | color.getBlue
+          index += 1
+        }
+        image.setRGB(0, 0, face.atlasWidth, face.atlasHeight, pixels, 0, face.atlasWidth)
+        image
+      })
+    }
+
+    private def drawPortableString(graphics: Graphics2D, value: String, x: Float, baselineY: Float, paint: Paint): Unit = {
+      val face = PortableFont.face(paint.font.isBold)
+      val fontScale = PortableFont.scale(paint.font.size)
+      val startX = paint.alignment match {
+        case Alignments.Left => x
+        case Alignments.Center => x - portableMeasure(value, paint.font) / 2f
+        case Alignments.Right => x - portableMeasure(value, paint.font)
+      }
+      val atlas = portableAtlas(paint.font, paint.color)
+      val textGraphics = graphics.create().asInstanceOf[Graphics2D]
+      textGraphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+      try {
+        var cursorX = startX
+        PortableFont.foreachCodePoint(value) { codePoint =>
+          val glyph = face.glyph(codePoint)
+          if(glyph.width > 0 && glyph.height > 0) {
+            val glyphImage = atlas.getSubimage(glyph.x, glyph.y, glyph.width, glyph.height)
+            val transform = new AffineTransform
+            transform.translate(cursorX + glyph.bearingX * fontScale, baselineY + glyph.bearingY * fontScale)
+            transform.scale(fontScale, fontScale)
+            textGraphics.drawImage(glyphImage, transform, null)
+          }
+          cursorX += glyph.advance * fontScale
+        }
+      } finally textGraphics.dispose()
+    }
 
     case class AWTCanvas(var graphics: Graphics2D, var width: Float, var height: Float) extends AbstractCanvas {
       // We keep the virtual width/height so that we can set the proper rectangles when we need
@@ -241,28 +293,18 @@ trait AWTCanvasProvider extends CanvasProvider {
       }
 
       override def drawString(str: String, x: Float, y: Float, paint: Paint): Unit = {
-        graphics.setColor(paint.color)
-        graphics.setFont(paint.font.f)
-        paint.alignment match {
-          case Alignments.Center =>
-            drawCenteredString(str, x, y)
-          case Alignments.Right =>
-            drawRightAlignedString(str, x, y)
-          case Alignments.Left =>
-            graphics.drawString(str, x, y)
+        if(paint.font.portable) drawPortableString(graphics, str, x, y, paint)
+        else {
+          graphics.setColor(paint.color)
+          graphics.setFont(paint.font.f)
+          val metrics = graphics.getFontMetrics
+          val realX = paint.alignment match {
+            case Alignments.Left => x
+            case Alignments.Center => x - metrics.stringWidth(str) / 2f
+            case Alignments.Right => x - metrics.stringWidth(str)
+          }
+          graphics.drawString(str, realX, y)
         }
-      }
-
-      private def drawCenteredString(str: String, x: Float, y: Float): Unit = {
-        val metrics = graphics.getFontMetrics
-        val realX = x - metrics.stringWidth(str)/2
-        //val y = ((rect.height - metrics.getHeight()) / 2) - metrics.getAscent();
-        graphics.drawString(str, realX, y)
-      }
-      private def drawRightAlignedString(str: String, x: Float, y: Float): Unit = {
-        val metrics = graphics.getFontMetrics
-        val realX = x - metrics.stringWidth(str)
-        graphics.drawString(str, realX, y)
       }
 
       override def drawText(text: TextLayout, x: Float, y: Float): Unit = {
@@ -282,28 +324,38 @@ trait AWTCanvasProvider extends CanvasProvider {
     type TextLayout = AWTTextLayout
     case class AWTTextLayout(text: String, layoutWidth: Int, textMetrics: FontMetrics, paint: Paint) extends AbstractTextLayout {
 
-      private val wrapped = TextWrapping.wrap(text, layoutWidth, value => textMetrics.stringWidth(value).toFloat)
+      private val portableFace = PortableFont.face(paint.font.isBold)
+      private val portableScale = PortableFont.scale(paint.font.size)
+      private def measuredWidth(value: String): Float =
+        if(paint.font.portable) portableMeasure(value, paint.font) else textMetrics.stringWidth(value).toFloat
+      private val wrapped = TextWrapping.wrap(text, layoutWidth, measuredWidth)
 
       override val lines: Vector[String] = wrapped.lines
       val rows: Seq[String] = lines
       override val overflowed: Boolean = wrapped.overflowed
       override val lineCount: Int = lines.size
-      override val lineHeight: Int = textMetrics.getHeight
-      override val ascent: Int = textMetrics.getAscent
-      override val descent: Int = textMetrics.getDescent
-      override val width: Int = lines.foldLeft(0)((maximum, line) => scala.math.max(maximum, textMetrics.stringWidth(line)))
+      override val lineHeight: Int =
+        if(paint.font.portable) scala.math.ceil(portableFace.lineHeight * portableScale).toInt else textMetrics.getHeight
+      override val ascent: Int =
+        if(paint.font.portable) scala.math.ceil(portableFace.ascent * portableScale).toInt else textMetrics.getAscent
+      override val descent: Int =
+        if(paint.font.portable) scala.math.ceil(portableFace.descent * portableScale).toInt else textMetrics.getDescent
+      override val width: Int = scala.math.ceil(lines.foldLeft(0f)((maximum, line) => scala.math.max(maximum, measuredWidth(line)))).toInt
       override val height: Int = ascent + descent + (lineCount - 1) * lineHeight
 
       def draw(g: Graphics2D, x: Float, y: Float): Unit = {
         var baseline = y + ascent
         lines.foreach { line =>
-          val lineWidth = textMetrics.stringWidth(line)
+          val lineWidth = measuredWidth(line)
           val lineX = paint.alignment match {
             case Alignments.Left => x
             case Alignments.Center => x + (layoutWidth - lineWidth) / 2f
             case Alignments.Right => x + layoutWidth - lineWidth
           }
-          g.drawString(line, lineX, baseline)
+          if(paint.font.portable)
+            drawPortableString(g, line, lineX, baseline, paint.copy(alignment = Alignments.Left))
+          else
+            g.drawString(line, lineX, baseline)
           baseline += lineHeight
         }
       }

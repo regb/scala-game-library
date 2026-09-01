@@ -54,6 +54,67 @@ sgl_android_app(
 
 `safe-area` keeps the whole game surface outside system bars and display cutouts. `edge-to-edge` leaves the bars visible and lets the surface draw beneath them. In edge-to-edge mode, games must avoid placing controls under system overlays. `navigation_bar_contrast_enforced` controls Android's automatic navigation-bar scrim.
 
+## OpenGL-backed Canvas
+
+`OpenGLCanvasProvider` implements the Canvas API on top of the portable `OpenGLProvider`. It renders solid shapes, transformed and clipped geometry, bitmap regions, alpha blending, lines, ovals, and text with shaders and triangle batches. The same implementation compiles for desktop OpenGL, WebGL 2, and Scala Native OpenGL ES.
+
+Mix it into any OpenGL runner after the game application trait:
+
+```scala
+object Main extends LwjglApp
+  with MyCanvasGame
+  with OpenGLCanvasProvider
+  // platform providers
+```
+
+Default Canvas text uses a bundled Noto Sans glyph atlas and shared metrics. AWT and OpenGL Canvas therefore use the same glyph advances, baselines, wrapping, alignment, and text-box sizing. Regular and bold faces are included. The OpenGL renderer currently falls back to Noto Sans when asked to load another font asset.
+
+The Scala Native Canvas runner now uses this renderer instead of its former fixed-function OpenGL implementation. The Hello Canvas example provides OpenGL-backed targets for JVM and WebGL:
+
+```bash
+bazel run //examples/hello-canvas:desktop-lwjgl
+bazel run //examples/hello-canvas:html5-opengl
+```
+
+## Frame capture
+
+Every application backend implements `FrameCaptureProvider`. A request completes after the next frame that starts after the request, and returns top-left, tightly packed RGBA8 pixels:
+
+```scala
+captureNextFrame().foreach { frame =>
+  println(s"captured ${frame.width}x${frame.height}")
+}
+```
+
+The core API returns pixels rather than choosing a file format or storage mechanism. Desktop JVM applications can encode the result with `DesktopFrameIO.writePng(frame, path)`.
+
+The desktop AWT and LWJGL examples include an opt-in screenshot mixin. This captures after 30 warm-up frames:
+
+```bash
+SGL_SCREENSHOT_PATH=/tmp/frame.png bazel run //examples/hello-canvas:desktop-awt
+SGL_SCREENSHOT_PATH=/tmp/frame.png bazel run //examples/hello-scalagl:desktop-lwjgl
+```
+
+Set `SGL_SCREENSHOT_DELAY_FRAMES` to change the warm-up period.
+
+### Headless OpenGL
+
+The `//backends/headless-opengl:sgl-headless-opengl` backend creates a Mesa surfaceless EGL pbuffer. It needs no X11, Wayland, or physical GPU. Mix `HeadlessOpenGLApp` into an application, then drive the game and its input explicitly:
+
+```scala
+app.start()
+try {
+  app.Controller.keyDown(Input.Keys.Right)
+  app.step(1.0 / 60.0)
+  app.Controller.keyUp(Input.Keys.Right)
+  app.step(1.0 / 60.0)
+} finally app.stop()
+```
+
+`Controller` accepts keyboard, mouse, touch, scrolling, and system-action events from any thread. `step` dispatches queued events on the OpenGL thread before updating the game. A controller can request frames with `captureNextFrame` when it needs an observation.
+
+On Linux, set `EGL_PLATFORM=surfaceless` and `LIBGL_ALWAYS_SOFTWARE=1` to force Mesa software rendering. The backend's Bazel test also clears `DISPLAY` and `WAYLAND_DISPLAY` and checks that OpenGL reports llvmpipe.
+
 ## Asset roots
 
 Application code should use typed generated assets. Backend-specific roots are implementation details:

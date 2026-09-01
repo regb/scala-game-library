@@ -9,8 +9,9 @@ import js.annotation.JSExport
 import org.scalajs.dom
 import dom.html
 
-trait Html5CanvasApp extends Html5WindowProvider with Html5SystemProvider with Html5CanvasProvider 
-                  with Html5InputProvider with Html5AudioProvider with SingleThreadSchedulerProvider {
+trait Html5CanvasApp extends Html5WindowProvider with Html5SystemProvider with Html5CanvasProvider
+                  with Html5InputProvider with Html5AudioProvider with SingleThreadSchedulerProvider
+                  with Html5FrameCapture {
 
   this: Application with LoggingProvider =>
 
@@ -138,10 +139,17 @@ trait Html5CanvasApp extends Html5WindowProvider with Html5SystemProvider with H
       if(shouldRender) {
         val cappedMillis = Html5MaxLoopStepDelta.map(m => elapsedMillis min m.toDouble).getOrElse(elapsedMillis)
         lastTime = Some(now)
+        val captureBatch = beginFrameCapture()
         canvas.resetForFrame()
         currentFrameCanvas = Some(canvas)
-        try frame(cappedMillis / 1000.0)
-        finally currentFrameCanvas = None
+        try {
+          frame(cappedMillis / 1000.0)
+          completeFrameCapture(captureBatch, captureCanvasFrame(htmlCanvas))
+        } catch {
+          case error: Throwable =>
+            failFrameCapture(captureBatch, error)
+            throw error
+        } finally currentFrameCanvas = None
       }
       if(requestAnimationFrameSupported && loopRunning) {
         val _ = dom.window.requestAnimationFrame(t => frameCode(t))

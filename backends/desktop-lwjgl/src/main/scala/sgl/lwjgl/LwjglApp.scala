@@ -10,7 +10,7 @@ import org.lwjgl.glfw.GLFW._
 import org.lwjgl.opengl.GL
 import org.lwjgl.system.Platform
 
-trait LwjglApp extends LwjglWindowProvider with LwjglRenderThreadDispatcher with LwjglOpenGLProvider with LwjglAudioProvider with SingleThreadSchedulerProvider {
+trait LwjglApp extends LwjglGlfwWindowProvider with LwjglRenderThreadDispatcher with LwjglOpenGLProvider with LwjglAudioProvider with SingleThreadSchedulerProvider with LwjglFrameCapture {
   this: Application with LoggingProvider with DesktopSystemProvider =>
 
   val TargetFps: Option[Int] = Some(60)
@@ -185,19 +185,28 @@ trait LwjglApp extends LwjglWindowProvider with LwjglRenderThreadDispatcher with
         glfwPollEvents()
         runPendingRenderThreadTasks()
         Audio.update()
-        frame(dt)
+        val captureBatch = beginFrameCapture()
+        try {
+          frame(dt)
+          completeFrameCapture(captureBatch, captureOpenGLFrame())
+        } catch {
+          case error: Throwable =>
+            failFrameCapture(captureBatch, error)
+            throw error
+        }
         glfwSwapBuffers(window)
 
         val current = java.lang.System.nanoTime()
         Scheduler.run(targetFramePeriod.map(fp => fp - (current - begin) / 1000000L).getOrElse(10L))
       }
     } finally {
-      renderTaskLock.synchronized { acceptingRenderTasks = false }
       runPendingRenderThreadTasks()
       releaseInputs()
       try {
         if(applicationCreated) dispose()
       } finally {
+        renderTaskLock.synchronized { acceptingRenderTasks = false }
+        runPendingRenderThreadTasks()
         try disposeAudio()
         finally {
           glfwDestroyWindow(window)
@@ -206,4 +215,5 @@ trait LwjglApp extends LwjglWindowProvider with LwjglRenderThreadDispatcher with
       }
     }
   }
+
 }

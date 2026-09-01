@@ -1,62 +1,51 @@
-package sgl
-package native
+package sgl.native
 
-import _root_.sgl._
-import _root_.sgl.util._
+import sgl.{Application, OpenGLCanvasProvider}
+import sgl.util.LoggingProvider
 
-import scalanative.unsafe._
+import scalanative.unsafe.Ptr
 
 import sdl2.SDL._
 import sdl2.Extras._
-import gl.GL._
-import gl.Extras._
 
-/** Canvas-based native app runner kept as a backend option. */
+/** Canvas application rendered by the portable OpenGL Canvas implementation. */
 trait NativeApp extends NativeAppBase
-                   with NativeCanvasProvider with NativeInputProvider with NativeAudioProvider
-                   with NativeWindowProvider {
-
+    with NativeOpenGLProvider
+    with OpenGLCanvasProvider
+    with NativeInputProvider
+    with NativeAudioProvider
+    with NativeWindowProvider {
   this: Application with LoggingProvider =>
-
-  private var currentFrameCanvas: Option[Graphics.Canvas] = None
-
-  override def withFrameCanvas[A](f: Graphics.Canvas => A): A =
-    currentFrameCanvas match {
-      case Some(canvas) => f(canvas)
-      case None => throw new IllegalStateException("Canvas is only available during a frame")
-    }
 
   override val TargetFps: Option[Int] = Some(60)
   override val windowTitle: String = "Default App"
 
+  override def runOnOpenGLThread(task: => Unit): Unit = super[NativeAppBase].runOnOpenGLThread(task)
+
   override protected def configureGLContext(): Unit = {
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2)
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1)
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES.toInt)
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3)
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0)
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1)
   }
 
   override protected def initializeRenderer(): Unit = {
-    glEnable(GL_SCISSOR_TEST)
-    glMatrixMode(GL_PROJECTION)
-    glLoadIdentity()
-    glOrtho(0f, frameDimension._1, frameDimension._2, 0f, -1f, 1f)
-    glMatrixMode(GL_MODELVIEW)
-    glLoadIdentity()
-    glClearColor(0f, 0f, 0f, 1f)
     create()
+    resize(frameDimension._1, frameDimension._2)
   }
 
   override protected def handlePlatformEvent(event: Ptr[SDL_Event]): Unit = handleEvent(event)
 
   override protected def renderFrame(dt: Double): Unit = {
     Audio.update()
-    val canvas: Graphics.Canvas = new Graphics.NativeCanvas
-    currentFrameCanvas = Some(canvas)
-    try frame(dt)
-    finally currentFrameCanvas = None
+    frame(dt)
   }
 
   override protected def shutdownRenderer(): Unit = {
     try dispose()
-    finally Audio.dispose()
+    finally {
+      try disposeOpenGLCanvas()
+      finally Audio.dispose()
+    }
   }
 }

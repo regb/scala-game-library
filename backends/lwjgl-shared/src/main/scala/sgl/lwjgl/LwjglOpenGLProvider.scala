@@ -52,6 +52,7 @@ trait LwjglOpenGLProvider extends OpenGLProvider {
     override val CullFace: Int = GL11C.GL_CULL_FACE
     override val Back: Int = GL11C.GL_BACK
     override val Blend: Int = GL11C.GL_BLEND
+    override val ScissorTest: Int = GL11C.GL_SCISSOR_TEST
     override val SrcAlpha: Int = GL11C.GL_SRC_ALPHA
     override val OneMinusSrcAlpha: Int = GL11C.GL_ONE_MINUS_SRC_ALPHA
     override val VertexShader: Int = GL20C.GL_VERTEX_SHADER
@@ -78,6 +79,7 @@ trait LwjglOpenGLProvider extends OpenGLProvider {
     override def disable(capability: Int): Unit = GL11C.glDisable(capability)
     override def cullFace(mode: Int): Unit = GL11C.glCullFace(mode)
     override def blendFunc(source: Int, destination: Int): Unit = GL11C.glBlendFunc(source, destination)
+    override def scissor(x: Int, y: Int, width: Int, height: Int): Unit = GL11C.glScissor(x, y, width, height)
     override def clearColor(red: Float, green: Float, blue: Float, alpha: Float): Unit = GL11C.glClearColor(red, green, blue, alpha)
     override def clear(mask: Int): Unit = GL11C.glClear(mask)
 
@@ -129,23 +131,38 @@ trait LwjglOpenGLProvider extends OpenGLProvider {
     override def deleteTexture(texture: Texture): Unit = GL11C.glDeleteTextures(texture)
     override def texParameteri(target: TextureTarget, parameter: TextureParameter, value: TextureParameterValue): Unit = GL11C.glTexParameteri(target, parameter, value)
 
-    override def loadTexture2D(asset: DrawableAsset): Loader[Texture] = {
+    override def createTextureImage2D(width: Int, height: Int, rgba: Array[Byte]): TextureImage = {
+      require(width > 0 && height > 0, "Texture dimensions must be positive")
+      require(rgba.length == width * height * 4, "Texture data must contain tightly packed RGBA8 pixels")
+      val pixels = BufferUtils.createByteBuffer(rgba.length)
+      pixels.put(rgba).flip()
+      val texture = genTexture()
+      bindTexture(Texture2D, texture)
+      texParameteri(Texture2D, TextureMinFilter, Nearest)
+      texParameteri(Texture2D, TextureMagFilter, Nearest)
+      texParameteri(Texture2D, TextureWrapS, ClampToEdge)
+      texParameteri(Texture2D, TextureWrapT, ClampToEdge)
+      GL11C.glTexImage2D(Texture2D, 0, GL11C.GL_RGBA, width, height, 0, GL11C.GL_RGBA, GL11C.GL_UNSIGNED_BYTE, pixels)
+      new TextureImage(texture, width, height)
+    }
+
+    override def loadTextureImage2D(asset: DrawableAsset): Loader[TextureImage] = {
       val variant = asset.bestVariantForDpi(Window.logicalPpi)
       loadTexture2DFromResourceName(variant.resourceName)
     }
 
-    override def loadTexture2D(asset: RawImageAsset): Loader[Texture] =
+    override def loadTextureImage2D(asset: RawImageAsset): Loader[TextureImage] =
       loadTexture2DFromResourceName(asset.resourceName)
 
-    private def loadTexture2DFromResourceName(resourceName: String): Loader[Texture] = {
-      val promise = new DefaultLoader[Texture]
+    private def loadTexture2DFromResourceName(resourceName: String): Loader[TextureImage] = {
+      val promise = new DefaultLoader[TextureImage]
       Future {
         val decoded = decodeTexture(resourceName)
         try {
           runOnOpenGLThread {
             try {
               val texture = uploadTexture(decoded)
-              promise.success(texture)
+              promise.success(new TextureImage(texture, decoded.width, decoded.height))
             } catch {
               case t: Throwable => promise.failure(t)
             } finally {

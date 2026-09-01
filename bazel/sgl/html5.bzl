@@ -218,6 +218,7 @@ def sgl_html5_app(
         assets_strip_prefix = "",
         static_folder = "static",
         output_name = "index.js",
+        html_output_name = "index.html",
         canvas_width = 800,
         canvas_height = 600,
         use_extension_tiled = False,
@@ -299,6 +300,7 @@ def sgl_html5_app(
         static_files = static_files,
         static_strip_prefix = static_strip_prefix,
         static_folder = static_folder,
+        html_output_name = html_output_name,
     )
 
 def sgl_html5_opengl_app(
@@ -312,6 +314,7 @@ def sgl_html5_opengl_app(
         assets_strip_prefix = "",
         static_folder = "static",
         output_name = "index.js",
+        html_output_name = "index.html",
         canvas_width = 800,
         canvas_height = 600,
         target_fps = 0,
@@ -361,4 +364,5 @@ def sgl_html5_opengl_app(
         static_files = assets,
         static_strip_prefix = assets_strip_prefix,
         static_folder = static_folder,
+        html_output_name = html_output_name,
     )

@@ -5,6 +5,10 @@ import _root_.sgl.util._
 
 import scalanative.unsafe._
 import scalanative.unsigned._
+import scalanative.libc.stdlib
+
+import gl.GL._
+import gl.Extras._
 
 import sdl2.SDL._
 import sdl2.Extras._
@@ -20,7 +24,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
   * initialization, event handling, and per-frame rendering while sharing SDL
   * setup, image/audio initialization, timing, scheduler, and shutdown.
   */
-trait NativeAppBase extends NativeSystemProvider with NativeRenderThreadDispatcher with SingleThreadSchedulerProvider {
+trait NativeAppBase extends NativeSystemProvider with NativeRenderThreadDispatcher with SingleThreadSchedulerProvider with FrameCaptureProvider {
   this: LoggingProvider =>
 
   private implicit val LogTag: NativeAppBase.this.Logger.Tag = Logger.Tag("native.main")
@@ -111,7 +115,15 @@ trait NativeAppBase extends NativeSystemProvider with NativeRenderThreadDispatch
       }
 
       runPendingRenderThreadTasks()
-      renderFrame(dt)
+      val captureBatch = beginFrameCapture()
+      try {
+        renderFrame(dt)
+        completeFrameCapture(captureBatch, captureOpenGLFrame())
+      } catch {
+        case error: Throwable =>
+          failFrameCapture(captureBatch, error)
+          throw error
+      }
       SDL_GL_SwapWindow(window)
 
       val currentTime: Long = nanoTime
@@ -129,16 +141,42 @@ trait NativeAppBase extends NativeSystemProvider with NativeRenderThreadDispatch
     }
 
     } finally {
-      renderTaskLock.synchronized { acceptingRenderTasks = false }
       runPendingRenderThreadTasks()
       try {
         if(rendererInitialized) shutdownRenderer()
       } finally {
+        renderTaskLock.synchronized { acceptingRenderTasks = false }
+        runPendingRenderThreadTasks()
         IMG_Quit()
         SDL_GL_DeleteContext(glContext)
         SDL_DestroyWindow(window)
         SDL_Quit()
       }
     }
+  }
+
+  private def captureOpenGLFrame(): CapturedFrame = {
+    val width = frameDimension._1
+    val height = frameDimension._2
+    val rowBytes = width * CapturedFrame.BytesPerPixel
+    val size = rowBytes * height
+    val source = stdlib.malloc(size.toUInt).asInstanceOf[Ptr[Byte]]
+    if(source == null) throw new OutOfMemoryError(s"Could not allocate $size bytes for frame capture")
+
+    try {
+      glReadPixels(0, 0, width.toUInt, height.toUInt, GL_RGBA, GL_UNSIGNED_BYTE, source)
+      val rgba = new Array[Byte](size)
+      var destinationY = 0
+      while(destinationY < height) {
+        val sourceY = height - 1 - destinationY
+        var x = 0
+        while(x < rowBytes) {
+          rgba(destinationY * rowBytes + x) = !(source + sourceY * rowBytes + x)
+          x += 1
+        }
+        destinationY += 1
+      }
+      new CapturedFrame(width, height, rgba)
+    } finally stdlib.free(source)
   }
 }

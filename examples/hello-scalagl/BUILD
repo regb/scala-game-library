@@ -34,7 +34,10 @@ sgl_desktop_lwjgl_app(
         ":audio",
         ":images",
     ],
-    extra_mixins = ["sgl.examples.hello.scalagl.core.GeneratedAssetsProvider"],
+    extra_mixins = [
+        "sgl.examples.hello.scalagl.core.GeneratedAssetsProvider",
+        "_root_.sgl.desktop.SaveScreenshotFromProperty",
+    ],
     frame_height = 700,
     frame_width = 1000,
     main_class = "Main",

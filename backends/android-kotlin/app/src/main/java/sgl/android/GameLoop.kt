@@ -1,5 +1,7 @@
 package sgl.android
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.os.Build
 import sgl.proxy.ProxiedGameApp
 import sgl.android.AndroidCanvasProxy
@@ -47,9 +49,29 @@ class GameLoop(val app: BaseMainActivity, val gameApp: ProxiedGameApp): Runnable
                     // shifting it back by the lost fraction.
                     lastTime = newTime - (elapsed - dt*1000*1000)
 
-                    gameApp.update(dt, AndroidCanvasProxy(canvas))
+                    val captureRequested = gameApp.beginFrameCaptureForPlatform()
+                    val captureBitmap = if(captureRequested)
+                        Bitmap.createBitmap(canvas.width, canvas.height, Bitmap.Config.ARGB_8888)
+                    else null
+                    val frameCanvas = captureBitmap?.let(::Canvas) ?: canvas
 
-                    app.gameView?.holder?.unlockCanvasAndPost(canvas)
+                    try {
+                        gameApp.update(dt, AndroidCanvasProxy(frameCanvas))
+                        if(captureBitmap != null) {
+                            canvas.drawBitmap(captureBitmap, 0f, 0f, null)
+                            gameApp.completeFrameCaptureForPlatform(
+                                captureBitmap.width,
+                                captureBitmap.height,
+                                rgbaBytes(captureBitmap),
+                            )
+                        }
+                    } catch(error: Throwable) {
+                        if(captureRequested) gameApp.failFrameCaptureForPlatform(error)
+                        throw error
+                    } finally {
+                        captureBitmap?.recycle()
+                        app.gameView?.holder?.unlockCanvasAndPost(canvas)
+                    }
                 }
             }
 
@@ -64,5 +86,20 @@ class GameLoop(val app: BaseMainActivity, val gameApp: ProxiedGameApp): Runnable
                 //logger.warning(s"negative sleep time. target frame period: $targetFramePeriod, elapsed time: $frameElapsedTime.")
             }
         }
+    }
+
+    private fun rgbaBytes(bitmap: Bitmap): ByteArray {
+        val colors = IntArray(bitmap.width * bitmap.height)
+        bitmap.getPixels(colors, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        val rgba = ByteArray(colors.size * 4)
+        var offset = 0
+        for(color in colors) {
+            rgba[offset] = (color ushr 16).toByte()
+            rgba[offset + 1] = (color ushr 8).toByte()
+            rgba[offset + 2] = color.toByte()
+            rgba[offset + 3] = (color ushr 24).toByte()
+            offset += 4
+        }
+        return rgba
     }
 }
