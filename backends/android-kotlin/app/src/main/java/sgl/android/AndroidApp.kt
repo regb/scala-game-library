@@ -7,7 +7,6 @@ import android.content.Intent
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
-import android.view.KeyEvent
 import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.WindowManager
@@ -15,6 +14,7 @@ import android.widget.FrameLayout
 import android.window.OnBackInvokedCallback
 import sgl.`Input$`
 import sgl.InputActions
+import sgl.InputConfigurationListener
 import sgl.proxy.ProxiedGameApp
 
 /** Activity providing all providers implementation for Android.
@@ -87,6 +87,11 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
     var platformProxy: AndroidPlatformProxy? = null
 
     private var backInvokedCallback: OnBackInvokedCallback? = null
+    private val inputConfigurationListener = object : InputConfigurationListener {
+        override fun onInputConfigurationChanged() {
+            runOnUiThread { syncModernBackHandler() }
+        }
+    }
 
     //private implicit val LogTag: Logger.Tag = Logger.Tag("sgl-main-activity")
 
@@ -122,7 +127,8 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
         if(KeepScreenOn)
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        registerModernBackHandler()
+        `Input$`.`MODULE$`.addInputConfigurationListener(inputConfigurationListener)
+        syncModernBackHandler()
         applySystemBarsConfiguration()
 
         // Startup is deferred until the drawing surface is ready.
@@ -221,6 +227,7 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
 
     override fun onDestroy() {
         stopGameLoop()
+        `Input$`.`MODULE$`.removeInputConfigurationListener(inputConfigurationListener)
         try {
             // Let the game release sounds and music before shutting down platform audio.
             if (applicationStarted) {
@@ -302,40 +309,35 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
         if (applicationStarted) gameApp?.pause()
     }
 
-    /** Enable the back button events.
-     *
-     * If set to true, explicitly handles the back button pressed event.
-     * Otherwise, the system handles it by default and close the Activity.
-     */
-    var EnableBackButtonEvents = false
+    private fun gameHandlesBack(): Boolean =
+        `Input$`.`MODULE$`.handlesSystemAction(InputActions.`Back$`())
 
-    var EnableMenuButtonEvents = false
-
-    private fun handleBackPressed() {
-        if(EnableBackButtonEvents) {
-            `Input$`.`MODULE$`.inputProcessor().systemAction(InputActions.`Back$`())
-        } else {
-            finish()
-        }
-    }
+    private fun dispatchBackToGame(): Boolean =
+        `Input$`.`MODULE$`.inputProcessor().systemAction(InputActions.`Back$`())
 
     @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
     override fun onBackPressed() {
-        if(EnableBackButtonEvents) {
-            `Input$`.`MODULE$`.inputProcessor().systemAction(InputActions.`Back$`())
-        } else {
+        if (!gameHandlesBack() || !dispatchBackToGame()) {
             super.onBackPressed()
         }
     }
 
-    private fun registerModernBackHandler() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && backInvokedCallback == null) {
-            val callback = OnBackInvokedCallback { handleBackPressed() }
+    private fun syncModernBackHandler() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+
+        if (gameHandlesBack() && backInvokedCallback == null) {
+            val callback = OnBackInvokedCallback {
+                if (!dispatchBackToGame()) {
+                    finish()
+                }
+            }
             onBackInvokedDispatcher.registerOnBackInvokedCallback(
                 android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT,
                 callback
             )
             backInvokedCallback = callback
+        } else if (!gameHandlesBack()) {
+            unregisterModernBackHandler()
         }
     }
 
@@ -345,21 +347,6 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
             backInvokedCallback = null
         }
     }
-
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        if(keyCode == KeyEvent.KEYCODE_MENU && EnableMenuButtonEvents) {
-            `Input$`.`MODULE$`.inputProcessor().systemAction(InputActions.`Menu$`())
-            return true
-        }
-
-        // Important to call super.onKeyDown, because the default implementation handles
-        // the onBackPressed event. We also cannot just return false as is usual for
-        // a chain of onKeyDown, because we are actually overriding the base activity
-        // method, so there's no outer code that will check the result and call the
-        // base implementation on false.
-        return super.onKeyDown(keyCode, event)
-    }
-
 
     // TODO: Provide a config control for Portrait/Landscape/Locked, which is
     //  optional (if not used, do nothing, which means that the user can just

@@ -14,7 +14,6 @@ fun makeGameApp(context: Context, platformProxy: AndroidPlatformProxy): ProxiedG
 
 class MainActivity : BaseMainActivity(::makeGameApp) {
     init {
-        EnableBackButtonEvents = @ENABLE_BACK_BUTTON_EVENTS@
         KeepScreenOn = @KEEP_SCREEN_ON@
         SystemBarsMode = @SYSTEM_BARS_MODE@
         SystemBarsBehavior = @SYSTEM_BARS_BEHAVIOR@

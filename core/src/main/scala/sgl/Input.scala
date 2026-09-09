@@ -2,6 +2,10 @@ package sgl
 
 import scala.collection.mutable.HashMap
 
+trait InputConfigurationListener {
+  def onInputConfigurationChanged(): Unit
+}
+
  /* This is one of the few platform abstraction that doesn't use
   * the Cake pattern, the reason for this is because it doesn't need to access
   * other abstract type of the system, and since it doesn't need access to the
@@ -111,20 +115,48 @@ object Input {
   // TODO: maybe we can add an option to disable the stateinputprocessor, that could help save
   // resources if we know we don't rely on reading the current input state.
   private[sgl] var inputProcessor: InputProcessor = new StateInputProcessor{}
+  private var handledSystemActions: Set[InputActions.Action] = Set.empty
+  private var configurationListeners: List[InputConfigurationListener] = List.empty
 
-  /** Sets the main application InputProcessor.
-    *
-    * This is typically set when starting up the game, to handle all player
-    * inputs. This can still be updated later, if the game wants to swap between
-    * multiple input processor implementation.
-    */
+  /** Sets the main application InputProcessor without intercepting system actions. */
   def setInputProcessor(processor: InputProcessor): Unit = {
+    setInputProcessor(processor, Set.empty)
+  }
+
+  /** Sets the main application InputProcessor and the system actions it handles.
+    *
+    * Declaring handled system actions lets a platform decide whether to intercept
+    * an action before it occurs. This is required by Android predictive back,
+    * whose callback cannot return an unhandled event to the system.
+    */
+  def setInputProcessor(processor: InputProcessor, systemActions: Set[InputActions.Action]): Unit = {
     // TODO: Should this be synchronized so that this cannot change in the middle
     // of forwarding events?
     inputProcessor = new CombinedInputProcessor(new StateInputProcessor(), processor)
+    handledSystemActions = systemActions
+    notifyInputConfigurationChanged()
   }
+
   def clearInputProcessor(): Unit = {
     inputProcessor = new StateInputProcessor()
+    handledSystemActions = Set.empty
+    notifyInputConfigurationChanged()
+  }
+
+  def handlesSystemAction(action: InputActions.Action): Boolean = {
+    handledSystemActions.contains(action)
+  }
+
+  def addInputConfigurationListener(listener: InputConfigurationListener): Unit = {
+    configurationListeners ::= listener
+  }
+
+  def removeInputConfigurationListener(listener: InputConfigurationListener): Unit = {
+    configurationListeners = configurationListeners.filterNot(_ eq listener)
+  }
+
+  private def notifyInputConfigurationChanged(): Unit = {
+    configurationListeners.foreach(_.onInputConfigurationChanged())
   }
 
   private val keyStates = new HashMap[Keys.Key, Boolean]
@@ -333,17 +365,12 @@ object Input {
 }
 
 object InputActions {
-  /** A general action input depending on the system.
+  /** A semantic action initiated by the operating system.
     *
-    * Typical examples would be clicking the back or home
-    * button on Android. These are inputs that are better
-    * described as triggered or not (by opposition to keys
-    * which are Down/Up events) and they have a some sort of
-    * semantic meaning (like back on android meaning going back
-    * to the up activity/screen).
+    * Unlike keys, system actions are one-off events without separate down and
+    * up states. A platform may need advance notice that the game handles one.
     */
   sealed trait Action
 
   case object Back extends Action
-  case object Menu extends Action
 }
