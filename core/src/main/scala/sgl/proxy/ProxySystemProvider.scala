@@ -24,7 +24,8 @@ trait ProxySystemProvider extends SystemProvider with PartsResourcePathProvider 
         case scala.util.Failure(e: ProxyResourceNotFoundException) => scala.util.Failure(ResourceNotFoundException(PartsResourcePath(e.resourceName.split('/').toVector)))
         case other => other
       }
-    def openWebpage(uri: java.net.URI): Unit  = PlatformProxy.systemProxy.openWebpage(uri)
+    def openWebpage(uri: java.net.URI): Unit = PlatformProxy.systemProxy.openWebpage(uri)
+    override def share(text: String): Unit = PlatformProxy.systemProxy.share(text)
     override def openGooglePlayApp(id: String, params: Map[String, String]): Unit = PlatformProxy.systemProxy.openGooglePlayApp(id, params)
   }
   override val System: System = ProxySystem

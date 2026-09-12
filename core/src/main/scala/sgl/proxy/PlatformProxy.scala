@@ -75,6 +75,7 @@ trait SystemProxy {
   def loadText(resourceName: String): Loader[Array[String]]
   def loadBinary(resourceName: String): Loader[Array[Byte]]
   def openWebpage(uri: java.net.URI): Unit
+  def share(text: String): Unit = {}
   def openGooglePlayApp(id: String, params: Map[String, String]): Unit = {
     val base = s"https://play.google.com/store/apps/details?id=$id"
     val uri = new java.net.URI(base + params.map{ case (k, v) => s"&$k=$v"}.mkString)

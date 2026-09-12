@@ -128,7 +128,13 @@ trait SystemProvider {
       * open a web browser, but the game is likely to keep running
       * in parallel if it was on a non-fullscreen window.
       */
-    def openWebpage(uri: java.net.URI): Unit 
+    def openWebpage(uri: java.net.URI): Unit
+
+    /** Shares text using the system's sharing feature.
+      *
+      * If the platform has no system sharing feature, this operation is a no-op.
+      */
+    def share(text: String): Unit = {}
 
     /** Opens the Google Play Store at the app page.
       *

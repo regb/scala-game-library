@@ -61,6 +61,23 @@ class AndroidSystemProxy(private val activity: Activity): SystemProxy {
         }
     }
 
+    override fun share(text: String?) {
+        if (text == null) return
+        activity.runOnUiThread {
+            try {
+                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                    putExtra(Intent.EXTRA_TEXT, text)
+                    type = "text/plain"
+                }
+                if (sendIntent.resolveActivity(activity.packageManager) != null) {
+                    activity.startActivity(Intent.createChooser(sendIntent, null))
+                }
+            } catch (e: Exception) {
+                // Sharing is optional. Do nothing if the platform cannot handle it.
+            }
+        }
+    }
+
     override fun openGooglePlayApp(id: String?, params: scala.collection.immutable.Map<String, String>?) {
         if (id == null) return
         val paramString = buildString {
