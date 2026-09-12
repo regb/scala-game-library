@@ -17,5 +17,7 @@ object {{MAIN_CLASS}} extends _root_.sgl.awt.AWTApp {{SCREEN2D_MIXIN}} with {{CO
 
   override val ScreenForcePPI: Option[Float] = Some(160f)
 
+  override val SimulatedSafeAreaInsets: Option[(Int, Int, Int, Int)] = {{SIMULATED_SAFE_AREA_INSETS}}
+
   {{SAVE_COMPONENT_INIT}}
 }

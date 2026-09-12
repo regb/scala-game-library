@@ -85,6 +85,12 @@ trait SystemProxy {
 trait WindowProxy {
     def width: Int
     def height: Int
+    // Insets are an internal transport for Window.safeArea. Backends with a
+    // full-surface view override them; other proxy backends keep the zero defaults.
+    def safeAreaInsetLeft: Int = 0
+    def safeAreaInsetTop: Int = 0
+    def safeAreaInsetRight: Int = 0
+    def safeAreaInsetBottom: Int = 0
     def xppi: Float
     def yppi: Float
     def logicalPpi: Float

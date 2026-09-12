@@ -7,6 +7,7 @@ import java.awt.Dimension
 import java.awt.Toolkit
 import java.awt
 
+import sgl.Insets
 import sgl.util.LoggingProvider
 
 trait AWTWindowProvider extends WindowProvider {
@@ -25,6 +26,14 @@ trait AWTWindowProvider extends WindowProvider {
     * to have a consistent size.
     */
   val frameDimension: (Int, Int)
+
+  /** Optional left, top, right, and bottom insets used to test safe-area layouts.
+    *
+    * AWT windows have no unsafe region in their rendering canvas, so production
+    * applications should keep the default. Set this in a desktop test entrypoint
+    * to simulate a mobile display cutout, system bars, or gesture regions.
+    */
+  val SimulatedSafeAreaInsets: Option[(Int, Int, Int, Int)] = None
 
   class ApplicationFrame(canvas: awt.Canvas) extends JFrame {
     
@@ -62,6 +71,16 @@ trait AWTWindowProvider extends WindowProvider {
 
     override def width: Int = gameCanvas.getWidth
     override def height: Int = gameCanvas.getHeight
+
+    override def safeArea: Insets = SimulatedSafeAreaInsets match {
+      case None => super.safeArea
+      case Some((left, top, right, bottom)) =>
+        require(left >= 0 && top >= 0 && right >= 0 && bottom >= 0,
+          "Simulated safe-area insets must be non-negative")
+        require(left + right <= width && top + bottom <= height,
+          "Simulated safe-area insets must fit within the AWT game window")
+        Insets(left, top, right, bottom)
+    }
 
     /*
      * TODO: After doing some research, and trial and errors, it seems

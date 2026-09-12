@@ -10,12 +10,25 @@ def _desktop_awt_main_impl(ctx):
     tiled_mixins = "\n  with _root_.sgl.tiled.TiledMapRendererComponent\n  with _root_.sgl.tiled.TmxJsonParserComponent" if ctx.attr.use_extension_tiled else ""
     extra_mixins = "" if not ctx.attr.extra_mixins else "\n  with " + "\n  with ".join([_absolute_scala_type(m) for m in ctx.attr.extra_mixins])
 
+    safe_area_insets = ctx.attr.simulated_safe_area_insets
+    if safe_area_insets:
+        if len(safe_area_insets) != 4:
+            fail("simulated_safe_area_insets must contain [left, top, right, bottom]")
+        if any([inset < 0 for inset in safe_area_insets]):
+            fail("simulated_safe_area_insets values must be non-negative")
+        if safe_area_insets[0] + safe_area_insets[2] > ctx.attr.frame_width or safe_area_insets[1] + safe_area_insets[3] > ctx.attr.frame_height:
+            fail("simulated_safe_area_insets must fit within the AWT frame")
+        safe_area_config = "Some(({}, {}, {}, {}))".format(*safe_area_insets)
+    else:
+        safe_area_config = "None"
+
     substitutions = {
         "{{PACKAGE}}": ctx.attr.package,
         "{{MAIN_CLASS}}": ctx.attr.main_class,
         "{{CORE_ABSTRACT_CLASS}}": _absolute_scala_type(ctx.attr.core_abstract_class),
         "{{FRAME_WIDTH}}": str(ctx.attr.frame_width),
         "{{FRAME_HEIGHT}}": str(ctx.attr.frame_height),
+        "{{SIMULATED_SAFE_AREA_INSETS}}": safe_area_config,
         "{{TILED_MIXINS}}": tiled_mixins,
         "{{EXTRA_MIXINS}}": extra_mixins,
         "{{GAME_LOOP_STATISTICS_MIXIN}}": "with _root_.sgl.GameLoopStatisticsComponent" if ctx.attr.use_screen2d else "",
@@ -81,6 +94,10 @@ desktop_awt_main = rule(
             mandatory = False,
             doc = "The height of the frame that will be created on the system, in pixels.",
         ),
+        "simulated_safe_area_insets": attr.int_list(
+            default = [],
+            doc = "Optional [left, top, right, bottom] insets for testing safe-area layout on AWT.",
+        ),
         "use_extension_tiled": attr.bool(
             mandatory = False,
             default = False,
@@ -108,6 +125,7 @@ def sgl_desktop_awt_app(
         save_component = "",
         frame_width = 800,
         frame_height = 800,
+        simulated_safe_area_insets = [],
         use_extension_tiled = False,
         use_screen2d = True,
         extra_mixins = []):
@@ -135,6 +153,7 @@ def sgl_desktop_awt_app(
         save_component = save_component,
         frame_width = frame_width,
         frame_height = frame_height,
+        simulated_safe_area_insets = simulated_safe_area_insets,
         use_extension_tiled = use_extension_tiled,
         use_screen2d = use_screen2d,
         extra_mixins = extra_mixins,

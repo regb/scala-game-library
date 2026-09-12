@@ -14,8 +14,6 @@ trait AbstractApp extends Application {
 
   import Graphics._
 
-  private val NbRows = 30
-  private val NbCols = 30
   private val squareSize = 20
   private val fixedStepSeconds = 1.0 / 12.0
 
@@ -50,8 +48,23 @@ trait AbstractApp extends Application {
     })
   }
 
+  /** Number of columns and rows of squares that fit in the safe area. */
+  private def nbCols: Int = fieldWidth / squareSize
+  private def nbRows: Int = fieldHeight / squareSize
+
+  /** Top-left pixel of the grid, centered within the safe area. */
+  private def fieldOriginX: Int = Window.safeArea.left + (fieldWidth - nbCols * squareSize) / 2
+  private def fieldOriginY: Int = Window.safeArea.top + (fieldHeight - nbRows * squareSize) / 2
+
+  private def fieldWidth: Int = Window.width - Window.safeArea.horizontal
+  private def fieldHeight: Int = Window.height - Window.safeArea.vertical
+
+  private def fieldIsPlayable: Boolean = nbCols >= 2 && nbRows >= 2
+
   private def reset(): Unit = {
-    snake = Point(10, 10) :: Point(9, 10) :: Point(8, 10) :: Point(7, 10) :: Nil
+    if(!fieldIsPlayable) return
+    snake = Point(nbCols / 2, nbRows / 2) :: Point(nbCols / 2 - 1, nbRows / 2) ::
+      Point(nbCols / 2 - 2, nbRows / 2) :: Point(nbCols / 2 - 3, nbRows / 2) :: Nil
     userDirection = snake(0) - snake(1)
     apple = newApple()
   }
@@ -62,7 +75,7 @@ trait AbstractApp extends Application {
   }
 
   private def move(newPos: Point): Unit = {
-    if(newPos.x < 0 || newPos.y < 0 || newPos.x >= NbCols || newPos.y >= NbRows) {
+    if(newPos.x < 0 || newPos.y < 0 || newPos.x >= nbCols || newPos.y >= nbRows) {
       println("out of bounds")
       gameOver()
     } else if(snake.exists(_ == newPos)) {
@@ -77,6 +90,9 @@ trait AbstractApp extends Application {
   }
 
   private def fixedUpdate(): Unit = {
+    // A degenerate safe area (for example a software keyboard covering the
+    // window) leaves no room to play; wait for it to shrink again.
+    if(!fieldIsPlayable) return
     val head = snake.head
     val second = snake.tail.head
     val direction = head - second
@@ -87,7 +103,7 @@ trait AbstractApp extends Application {
   private def newApple(): Point = {
     var pos = Point(0, 0)
     while {
-      pos = Point(rand.nextInt(NbCols).toFloat, rand.nextInt(NbRows).toFloat)
+      pos = Point(rand.nextInt(nbCols).toFloat, rand.nextInt(nbRows).toFloat)
       snake.exists(_ == pos)
     } do ()
     pos
@@ -101,12 +117,37 @@ trait AbstractApp extends Application {
     }
   }
 
+  /** Draws one grid square, mapping grid coordinates to safe-area pixels. */
   private def drawSquare(canvas: Canvas, point: Point, paint: Paint): Unit = {
-    canvas.drawRect(point.x * squareSize, point.y * squareSize.toFloat, squareSize.toFloat, squareSize.toFloat, paint)
+    canvas.drawRect(
+      fieldOriginX + point.x * squareSize,
+      (fieldOriginY + point.y * squareSize).toFloat,
+      squareSize.toFloat,
+      squareSize.toFloat,
+      paint,
+    )
   }
 
   private def render(canvas: Canvas): Unit = {
+    // Background across the complete window, including unsafe regions.
     canvas.drawRect(0, 0, Window.width.toFloat, Window.height.toFloat, defaultPaint.withColor(Color.Black))
+
+    // Distinct playfield background confined to the safe area.
+    canvas.drawRect(
+      Window.safeArea.left.toFloat,
+      Window.safeArea.top.toFloat,
+      fieldWidth.toFloat,
+      fieldHeight.toFloat,
+      defaultPaint.withColor(Color.rgb(16, 48, 24)),
+    )
+
+    if(!fieldIsPlayable) {
+      val paint = defaultPaint.withColor(Color.White)
+      val layout = canvas.renderText("No safe area to play in", Window.width, paint)
+      canvas.drawText(layout, (Window.width - layout.width) / 2f, (Window.height - layout.height) / 2f)
+      return
+    }
+
     appleOption.foreach(drawSquare(canvas, _, applePaint))
     snake.headOption.foreach(drawSquare(canvas, _, snakeHeadPaint))
     snake.drop(1).foreach(drawSquare(canvas, _, snakePaint))

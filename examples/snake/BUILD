@@ -17,6 +17,23 @@ sgl_desktop_awt_app(
     deps = [":core"],
 )
 
+sgl_desktop_awt_app(
+    name = "desktop-awt-safe-area",
+    core_abstract_class = "sgl.examples.snake.core.AbstractApp",
+    frame_height = 600,
+    frame_width = 600,
+    main_class = "SafeAreaMain",
+    package = "sgl.examples.snake",
+    simulated_safe_area_insets = [
+        30,
+        50,
+        30,
+        50,
+    ],
+    use_screen2d = False,
+    deps = [":core"],
+)
+
 sgl_android_app(
     name = "android",
     label = "SGL Snake",

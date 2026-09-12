@@ -11,6 +11,11 @@ class AndroidWindowProxy(val gameView: GameView): WindowProxy {
         return gameView.height
     }
 
+    override fun safeAreaInsetLeft(): Int = gameView.safeAreaInsets.left()
+    override fun safeAreaInsetTop(): Int = gameView.safeAreaInsets.top()
+    override fun safeAreaInsetRight(): Int = gameView.safeAreaInsets.right()
+    override fun safeAreaInsetBottom(): Int = gameView.safeAreaInsets.bottom()
+
     override fun xppi(): Float {
         return gameView.resources.displayMetrics.xdpi
     }

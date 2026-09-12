@@ -6,6 +6,13 @@ import android.view.SurfaceHolder
 
 class GameView(val app: BaseMainActivity, attributeSet: AttributeSet?): SurfaceView(app), SurfaceHolder.Callback {
 
+    @Volatile var safeAreaInsets: sgl.Insets = sgl.Insets(0, 0, 0, 0)
+        private set
+
+    fun setSafeAreaInsets(insets: sgl.Insets) {
+        safeAreaInsets = insets
+    }
+
     //private implicit val LogTag = Logger.Tag("sgl-gameview")
 
     init {

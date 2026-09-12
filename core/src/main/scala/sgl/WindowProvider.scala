@@ -1,5 +1,26 @@
 package sgl
 
+/** Immutable distances from the edges of a region, in pixels.
+  *
+  * Unlike the mutable geometry types in sgl.math, Insets never change after
+  * construction, so passing an instance across the provider boundary or
+  * caching it is always safe.
+  */
+final case class Insets(left: Int, top: Int, right: Int, bottom: Int) {
+
+  /** Total space reserved along the horizontal axis. */
+  def horizontal: Int = left + right
+
+  /** Total space reserved along the vertical axis. */
+  def vertical: Int = top + bottom
+}
+
+object Insets {
+
+  /** Insets reserving no space at all. */
+  val Zero: Insets = Insets(0, 0, 0, 0)
+}
+
 /** Provides the Window abstraction, essentially a screen.
   *
   * A window is essentially the same as a screen as far as we are concerned for
@@ -83,7 +104,24 @@ trait WindowProvider {
       * are technically the smallest unit that can display a color, and
       * thus the lowest-level control we can possibly have.
       */
-    def height: Int 
+    def height: Int
+
+    /** Distances from the window edges that are unsafe for content, in pixels.
+      *
+      * `width` and `height` always describe the complete rendering surface. A game
+      * can draw backgrounds across that surface and use `safeArea` to inset controls,
+      * text, and other content that must not overlap unsafe display regions. For
+      * example, a safe block would occupy `Rect(safeArea.left, safeArea.top,
+      * width - safeArea.horizontal, height - safeArea.vertical)`.
+      *
+      * Mobile backends should account for display cutouts, system bars, and reserved
+      * gesture regions when the surface extends behind them. If the platform has no
+      * unsafe regions, or the backend has already constrained the rendering surface
+      * to them, return `Insets.Zero`. Do not include temporary application UI such
+      * as a software keyboard. The value may change with window size, orientation,
+      * or system UI, so games should not cache it.
+      */
+    def safeArea: Insets = Insets.Zero
 
     /** The exact horizontal number of pixels per inch.
       *

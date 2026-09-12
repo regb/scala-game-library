@@ -144,39 +144,76 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
             ),
         )
         container.setOnApplyWindowInsetsListener { _, windowInsets ->
-            val (left, top, right, bottom) = if (SystemBarsMode == AndroidSystemBarsMode.SafeArea) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    val insets = windowInsets.getInsets(
-                        WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout(),
-                    )
-                    listOf(insets.left, insets.top, insets.right, insets.bottom)
-                } else {
-                    @Suppress("DEPRECATION")
-                    listOf(
-                        windowInsets.systemWindowInsetLeft,
-                        windowInsets.systemWindowInsetTop,
-                        windowInsets.systemWindowInsetRight,
-                        windowInsets.systemWindowInsetBottom,
-                    )
-                }
+            val safeInsets = calculateSafeAreaInsets(windowInsets)
+            val surfaceInsets = if (SystemBarsMode == AndroidSystemBarsMode.SafeArea) {
+                safeInsets
             } else {
-                listOf(0, 0, 0, 0)
+                sgl.Insets(0, 0, 0, 0)
             }
+            val contentInsets = if (SystemBarsMode == AndroidSystemBarsMode.SafeArea) {
+                sgl.Insets(0, 0, 0, 0)
+            } else {
+                safeInsets
+            }
+
+            view.setSafeAreaInsets(contentInsets)
 
             val params = view.layoutParams as FrameLayout.LayoutParams
             if (
-                params.leftMargin != left ||
-                params.topMargin != top ||
-                params.rightMargin != right ||
-                params.bottomMargin != bottom
+                params.leftMargin != surfaceInsets.left() ||
+                params.topMargin != surfaceInsets.top() ||
+                params.rightMargin != surfaceInsets.right() ||
+                params.bottomMargin != surfaceInsets.bottom()
             ) {
-                params.setMargins(left, top, right, bottom)
+                params.setMargins(
+                    surfaceInsets.left(),
+                    surfaceInsets.top(),
+                    surfaceInsets.right(),
+                    surfaceInsets.bottom(),
+                )
                 view.layoutParams = params
             }
             windowInsets
         }
         setContentView(container)
         container.requestApplyInsets()
+    }
+
+    @Suppress("DEPRECATION")
+    private fun calculateSafeAreaInsets(windowInsets: WindowInsets): sgl.Insets {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val bars = windowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars())
+            val cutout = windowInsets.getInsets(WindowInsets.Type.displayCutout())
+            val gestures = windowInsets.getInsets(WindowInsets.Type.systemGestures())
+            return sgl.Insets(
+                maxOf(bars.left, cutout.left, gestures.left),
+                maxOf(bars.top, cutout.top, gestures.top),
+                maxOf(bars.right, cutout.right, gestures.right),
+                maxOf(bars.bottom, cutout.bottom, gestures.bottom),
+            )
+        }
+
+        var left = windowInsets.stableInsetLeft
+        var top = windowInsets.stableInsetTop
+        var right = windowInsets.stableInsetRight
+        var bottom = windowInsets.stableInsetBottom
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            windowInsets.displayCutout?.let { cutout ->
+                left = maxOf(left, cutout.safeInsetLeft)
+                top = maxOf(top, cutout.safeInsetTop)
+                right = maxOf(right, cutout.safeInsetRight)
+                bottom = maxOf(bottom, cutout.safeInsetBottom)
+            }
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val gestures = windowInsets.systemGestureInsets
+            left = maxOf(left, gestures.left)
+            top = maxOf(top, gestures.top)
+            right = maxOf(right, gestures.right)
+            bottom = maxOf(bottom, gestures.bottom)
+        }
+        return sgl.Insets(left, top, right, bottom)
     }
 
     @Suppress("DEPRECATION")
