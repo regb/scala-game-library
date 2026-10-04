@@ -46,7 +46,9 @@ if manifest.exists():
         source_path = execution_root / source
         destination_path = android_main / destination
         destination_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source_path, destination_path)
+        # Bazel outputs are read-only. Copy the contents without preserving the
+        # source mode so Gradle can process the generated Android project.
+        shutil.copyfile(source_path, destination_path)
     manifest.unlink()
 PY
 

@@ -114,9 +114,16 @@ object Input {
   // By default, there's no input processor from the game, but we still run the StateInputProcessor.
   // TODO: maybe we can add an option to disable the stateinputprocessor, that could help save
   // resources if we know we don't rely on reading the current input state.
-  private[sgl] var inputProcessor: InputProcessor = new StateInputProcessor{}
-  private var handledSystemActions: Set[InputActions.Action] = Set.empty
+  private case class ActiveInputConfiguration(
+    inputProcessor: InputProcessor,
+    handledSystemActions: Set[InputActions.Action]
+  )
+
+  @volatile private var activeConfiguration =
+    ActiveInputConfiguration(new StateInputProcessor{}, Set.empty)
   private var configurationListeners: List[InputConfigurationListener] = List.empty
+
+  private[sgl] def inputProcessor: InputProcessor = activeConfiguration.inputProcessor
 
   /** Sets the main application InputProcessor without intercepting system actions. */
   def setInputProcessor(processor: InputProcessor): Unit = {
@@ -132,19 +139,20 @@ object Input {
   def setInputProcessor(processor: InputProcessor, systemActions: Set[InputActions.Action]): Unit = {
     // TODO: Should this be synchronized so that this cannot change in the middle
     // of forwarding events?
-    inputProcessor = new CombinedInputProcessor(new StateInputProcessor(), processor)
-    handledSystemActions = systemActions
+    activeConfiguration = ActiveInputConfiguration(
+      new CombinedInputProcessor(new StateInputProcessor(), processor),
+      systemActions
+    )
     notifyInputConfigurationChanged()
   }
 
   def clearInputProcessor(): Unit = {
-    inputProcessor = new StateInputProcessor()
-    handledSystemActions = Set.empty
+    activeConfiguration = ActiveInputConfiguration(new StateInputProcessor(), Set.empty)
     notifyInputConfigurationChanged()
   }
 
   def handlesSystemAction(action: InputActions.Action): Boolean = {
-    handledSystemActions.contains(action)
+    activeConfiguration.handledSystemActions.contains(action)
   }
 
   def addInputConfigurationListener(listener: InputConfigurationListener): Unit = {

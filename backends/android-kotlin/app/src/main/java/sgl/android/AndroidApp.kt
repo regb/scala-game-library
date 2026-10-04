@@ -259,7 +259,10 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) applySystemBarsConfiguration()
+        if (hasFocus) {
+            applySystemBarsConfiguration()
+            syncModernBackHandler()
+        }
     }
 
     override fun onDestroy() {
@@ -307,6 +310,7 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
     override fun onResume() {
         super.onResume()
         applySystemBarsConfiguration()
+        syncModernBackHandler()
 
         appResumed = true
 
