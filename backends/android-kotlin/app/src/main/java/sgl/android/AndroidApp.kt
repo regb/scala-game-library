@@ -13,7 +13,6 @@ import android.view.WindowManager
 import android.widget.FrameLayout
 import android.window.OnBackInvokedCallback
 import sgl.`Input$`
-import sgl.InputActions
 import sgl.InputConfigurationListener
 import sgl.proxy.ProxiedGameApp
 
@@ -351,10 +350,10 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
     }
 
     private fun gameHandlesBack(): Boolean =
-        `Input$`.`MODULE$`.handlesSystemAction(InputActions.`Back$`())
+        `Input$`.`MODULE$`.handlesSystemAction(AndroidSystemActions.Back)
 
     private fun dispatchBackToGame(): Boolean =
-        `Input$`.`MODULE$`.inputProcessor().systemAction(InputActions.`Back$`())
+        `Input$`.`MODULE$`.inputProcessor().systemAction(AndroidSystemActions.Back)
 
     @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
     override fun onBackPressed() {
