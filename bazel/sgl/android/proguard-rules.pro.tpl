@@ -6,7 +6,5 @@
 # SDK does not provide; silence those instead of keeping the dead code.
 -dontwarn scala.**
 
-# SGL loads drawables through Resources#getIdentifier with names derived from
-# asset paths (see AndroidGraphicsProxy.loadImage), which R8 cannot see, so
-# all drawable resources must be kept from the resource shrinker as well.
--keep class **.R$drawable { <fields>; }
+# Drawable retention belongs to the resource shrinker, not Java R-field keeps.
+# Generated res/raw/sgl_keep.xml preserves names loaded with getIdentifier.

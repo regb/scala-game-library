@@ -170,6 +170,7 @@ def _android_runner_impl(ctx):
         (ctx.file._manifest_template, ctx.actions.declare_file("%s/app/src/main/AndroidManifest.xml" % project_template_dir), substitutions),
         (ctx.file._main_activity_template, ctx.actions.declare_file("%s/app/src/main/java/%s/MainActivity.kt" % (project_template_dir, package_path)), substitutions),
         (ctx.file._proguard_template, ctx.actions.declare_file("%s/app/proguard-rules.pro" % project_template_dir), substitutions),
+        (ctx.file._resource_keep_template, ctx.actions.declare_file("%s/app/src/main/res/raw/sgl_keep.xml" % project_template_dir), substitutions),
     ]
     for template, output, subs in outputs:
         _expand(ctx, template, output, subs)
@@ -239,6 +240,7 @@ _android_runner = rule(
         "_app_build_template": attr.label(default = "//bazel/sgl/android:app-build.gradle.kts.tpl", allow_single_file = True),
         "_manifest_template": attr.label(default = "//bazel/sgl/android:AndroidManifest.xml.tpl", allow_single_file = True),
         "_main_activity_template": attr.label(default = "//bazel/sgl/android:MainActivity.kt.tpl", allow_single_file = True),
+        "_resource_keep_template": attr.label(default = "//bazel/sgl/android:sgl-keep.xml.tpl", allow_single_file = True),
         "_proguard_template": attr.label(default = "//bazel/sgl/android:proguard-rules.pro.tpl", allow_single_file = True),
         "_runner_template": attr.label(default = "//bazel/sgl/android:AndroidRunner.sh.tpl", allow_single_file = True),
     },

@@ -34,6 +34,22 @@ Games that persist state can also mix in `ProxySaveProvider` and define a stable
 bazel run //examples/snake:android-debug
 ```
 
+### Android build requirements
+
+The Android backend and generated projects use AGP 9.2.1, Gradle 9.4.1, and Gradle Play Publisher 4.1.1. Install JDK 17, Android SDK Platform 37.0, and SDK Build Tools 36.0.0 or newer. Set `ANDROID_HOME` to the SDK directory. Apps still target SDK 37 and require Android API 26 or newer.
+
+AGP supplies built-in Kotlin. Do not apply `org.jetbrains.kotlin.android` to these modules or disable `android.builtInKotlin` or `android.newDsl`. Configure Kotlin JVM targets through `kotlin.compilerOptions`, not `android.kotlinOptions`.
+
+Run the backend tests separately from Bazel:
+
+```bash
+backends/android-kotlin/gradlew -p backends/android-kotlin :sgl-android:testDebugUnitTest
+```
+
+Generated release builds enable R8 optimization and obfuscation. `sgl_android_app.shrink_resources` controls resource shrinking and defaults to `True`. AGP 9 automatically uses optimized resource shrinking when enabled. An existing consumer with `shrink_resources = False` must opt in separately, after testing its release build.
+
+SGL resolves drawable names at runtime. Generated `res/raw/sgl_keep.xml` preserves all drawable names and density variants, including legacy drawable assets. Other resource types can shrink. Fonts, audio, levels, and other files under `assets/` are not Android resources and this option does not shrink them. Test release asset loading and Android Back behavior before changing a consumer's SGL pin or enabling resource shrinking.
+
 ### Android system bars
 
 Android apps use immersive fullscreen by default. The navigation and status bars stay hidden while the game uses the full display, and an edge swipe reveals them temporarily.

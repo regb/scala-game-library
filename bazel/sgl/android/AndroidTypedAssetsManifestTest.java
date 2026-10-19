@@ -35,6 +35,29 @@ public final class AndroidTypedAssetsManifestTest {
         requireText(activity, "SystemBarsBehavior = AndroidSystemBarsBehavior.TransientBySwipe");
         requireText(activity, "NavigationBarContrastEnforced = false");
 
+        Path project = manifest.getParent();
+        String appBuild = Files.readString(project.resolve("app/build.gradle.kts"));
+        requireText(appBuild, "compileSdk = 37");
+        requireText(appBuild, "targetSdk = 37");
+        requireText(appBuild, "isMinifyEnabled = true");
+        requireText(appBuild, "isShrinkResources = true");
+        requireText(appBuild, "proguard-android-optimize.txt");
+        requireText(appBuild, "compilerOptions {");
+        requireText(appBuild, "JvmTarget.JVM_1_8");
+        requireText(appBuild, "resValues = true");
+        rejectText(appBuild, "org.jetbrains.kotlin.android");
+        rejectText(appBuild, "kotlinOptions");
+        String rootBuild = Files.readString(project.resolve("build.gradle.kts"));
+        requireText(rootBuild, "version \"9.2.1\"");
+        requireText(rootBuild, "version \"4.1.1\"");
+        rejectText(rootBuild, "org.jetbrains.kotlin.android");
+        String properties = Files.readString(project.resolve("gradle.properties"));
+        rejectText(properties, "android.builtInKotlin=false");
+        rejectText(properties, "android.newDsl=false");
+        rejectText(properties, "suppressUnsupportedCompileSdk");
+        String resourceKeep = Files.readString(project.resolve("app/src/main/res/raw/sgl_keep.xml"));
+        requireText(resourceKeep, "tools:keep=\"@drawable/*\"");
+
         Path generatedAssets;
         try (var paths = Files.walk(runfiles)) {
             generatedAssets = paths
@@ -49,7 +72,13 @@ public final class AndroidTypedAssetsManifestTest {
 
     private static void requireText(String text, String expected) {
         if (!text.contains(expected)) {
-            throw new AssertionError("Generated MainActivity.kt is missing: " + expected);
+            throw new AssertionError("Generated file is missing: " + expected);
+        }
+    }
+
+    private static void rejectText(String text, String unexpected) {
+        if (text.contains(unexpected)) {
+            throw new AssertionError("Generated file contains: " + unexpected);
         }
     }
 

@@ -12,6 +12,7 @@ exports_files(
         "proguard-rules.pro.tpl",
         "root-build.gradle.kts.tpl",
         "settings.gradle.kts.tpl",
+        "sgl-keep.xml.tpl",
     ],
     visibility = ["//visibility:public"],
 )
