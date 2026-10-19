@@ -4,11 +4,9 @@ package sgl.android
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.view.ViewGroup
-import android.view.WindowInsets
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.window.OnBackInvokedCallback
@@ -144,7 +142,7 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
             ),
         )
         container.setOnApplyWindowInsetsListener { _, windowInsets ->
-            val safeInsets = calculateSafeAreaInsets(windowInsets)
+            val safeInsets = AndroidSystemBars.calculateSafeAreaInsets(windowInsets)
             val surfaceInsets = if (SystemBarsMode == AndroidSystemBarsMode.SafeArea) {
                 safeInsets
             } else {
@@ -179,82 +177,14 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
         container.requestApplyInsets()
     }
 
-    @Suppress("DEPRECATION")
-    private fun calculateSafeAreaInsets(windowInsets: WindowInsets): sgl.Insets {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val bars = windowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars())
-            val cutout = windowInsets.getInsets(WindowInsets.Type.displayCutout())
-            val gestures = windowInsets.getInsets(WindowInsets.Type.systemGestures())
-            return sgl.Insets(
-                maxOf(bars.left, cutout.left, gestures.left),
-                maxOf(bars.top, cutout.top, gestures.top),
-                maxOf(bars.right, cutout.right, gestures.right),
-                maxOf(bars.bottom, cutout.bottom, gestures.bottom),
-            )
-        }
-
-        var left = windowInsets.stableInsetLeft
-        var top = windowInsets.stableInsetTop
-        var right = windowInsets.stableInsetRight
-        var bottom = windowInsets.stableInsetBottom
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            windowInsets.displayCutout?.let { cutout ->
-                left = maxOf(left, cutout.safeInsetLeft)
-                top = maxOf(top, cutout.safeInsetTop)
-                right = maxOf(right, cutout.safeInsetRight)
-                bottom = maxOf(bottom, cutout.safeInsetBottom)
-            }
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val gestures = windowInsets.systemGestureInsets
-            left = maxOf(left, gestures.left)
-            top = maxOf(top, gestures.top)
-            right = maxOf(right, gestures.right)
-            bottom = maxOf(bottom, gestures.bottom)
-        }
-        return sgl.Insets(left, top, right, bottom)
-    }
-
-    @Suppress("DEPRECATION")
     private fun applySystemBarsConfiguration() {
-        if (SystemBarsMode != AndroidSystemBarsMode.SafeArea) {
-            window.statusBarColor = Color.TRANSPARENT
-            window.navigationBarColor = Color.TRANSPARENT
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                window.isNavigationBarContrastEnforced = NavigationBarContrastEnforced
-            }
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window.setDecorFitsSystemWindows(false)
-            val controller = window.insetsController ?: return
-            if (SystemBarsMode == AndroidSystemBarsMode.Immersive) {
-                controller.systemBarsBehavior = when (SystemBarsBehavior) {
-                    AndroidSystemBarsBehavior.Default ->
-                        android.view.WindowInsetsController.BEHAVIOR_DEFAULT
-                    AndroidSystemBarsBehavior.TransientBySwipe ->
-                        android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                }
-                controller.hide(WindowInsets.Type.systemBars())
-            }
-        } else {
-            val layoutFlags =
-                android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
-                android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
-                android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-            window.decorView.systemUiVisibility = when (SystemBarsMode) {
-                AndroidSystemBarsMode.SafeArea -> layoutFlags
-                AndroidSystemBarsMode.EdgeToEdge -> layoutFlags
-                AndroidSystemBarsMode.Immersive -> layoutFlags or
-                    android.view.View.SYSTEM_UI_FLAG_FULLSCREEN or
-                    android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-                    when (SystemBarsBehavior) {
-                        AndroidSystemBarsBehavior.Default -> android.view.View.SYSTEM_UI_FLAG_IMMERSIVE
-                        AndroidSystemBarsBehavior.TransientBySwipe -> android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                    }
-            }
-        }
+        AndroidSystemBars.apply(
+            window,
+            SystemBarsMode,
+            SystemBarsBehavior,
+            NavigationBarContrastEnforced,
+            applicationInfo.targetSdkVersion,
+        )
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

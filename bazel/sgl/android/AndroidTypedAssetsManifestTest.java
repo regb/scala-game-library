@@ -35,6 +35,16 @@ public final class AndroidTypedAssetsManifestTest {
         requireText(activity, "SystemBarsBehavior = AndroidSystemBarsBehavior.TransientBySwipe");
         requireText(activity, "NavigationBarContrastEnforced = false");
 
+        Path project = manifest.getParent();
+        String androidManifest = Files.readString(project.resolve("app/src/main/AndroidManifest.xml"));
+        requireText(androidManifest, "android:theme=\"@android:style/Theme.Material.NoActionBar\"");
+        if (androidManifest.contains("Fullscreen")) {
+            throw new AssertionError("System-bar visibility must be controlled by the selected mode");
+        }
+        String gradle = Files.readString(project.resolve("app/build.gradle.kts"));
+        requireText(gradle, "minSdk = 26");
+        requireText(gradle, "targetSdk = 37");
+
         Path generatedAssets;
         try (var paths = Files.walk(runfiles)) {
             generatedAssets = paths
@@ -49,7 +59,7 @@ public final class AndroidTypedAssetsManifestTest {
 
     private static void requireText(String text, String expected) {
         if (!text.contains(expected)) {
-            throw new AssertionError("Generated MainActivity.kt is missing: " + expected);
+            throw new AssertionError("Generated Android project is missing: " + expected);
         }
     }
 

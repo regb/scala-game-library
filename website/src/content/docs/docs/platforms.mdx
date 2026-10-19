@@ -52,7 +52,13 @@ sgl_android_app(
 )
 ```
 
-`safe-area` keeps the whole game surface outside system bars and display cutouts. `edge-to-edge` leaves the bars visible and lets the surface draw beneath them. In edge-to-edge mode, games must avoid placing controls under system overlays. `navigation_bar_contrast_enforced` controls Android's automatic navigation-bar scrim.
+Android support starts at API 26, Android 8. Generated apps target API 37. On Android 15 and later, apps targeting API 35 or later use platform-enforced edge-to-edge without deprecated window setup calls. Earlier devices, and custom apps targeting older APIs, use a version-gated compatibility implementation. Do not opt out of edge-to-edge enforcement in a custom theme.
+
+`safe-area` leaves the bars visible and keeps the whole game surface outside system bars, display cutouts, and gesture regions. Its `Window.safeArea` is zero because the surface is already inset. `edge-to-edge` leaves the bars visible and lets the surface draw beneath them. `immersive` hides the bars and also uses the full surface. In both full-surface modes, use `Window.safeArea` to protect controls while drawing backgrounds across the window. Insets reserve bar space even while bars are hidden, so transient bars do not move controls. Games can paint unsafe areas themselves, including a black bottom area.
+
+Android 11 and later allow rendering into cutouts on every edge. Android 9 and 10 allow short-edge cutouts but may letterbox long-edge cutouts. `navigation_bar_contrast_enforced` controls Android's automatic navigation-bar scrim on Android 10 and later.
+
+Play's general edge-to-edge compatibility recommendation is separate from its deprecated-API warning. Deprecated calls remain in compatibility code and may also exist in dependencies, so Play may still flag the packaged app even though those calls are not used by the modern path. Neither warning is guaranteed to clear until Play analyzes a newly uploaded release.
 
 ## OpenGL-backed Canvas
 
