@@ -38,6 +38,7 @@ public final class AndroidTypedAssetsManifestTest {
         Path project = manifest.getParent();
         String appBuild = Files.readString(project.resolve("app/build.gradle.kts"));
         requireText(appBuild, "compileSdk = 37");
+        requireText(appBuild, "minSdk = 26");
         requireText(appBuild, "targetSdk = 37");
         requireText(appBuild, "isMinifyEnabled = true");
         requireText(appBuild, "isShrinkResources = true");
@@ -57,6 +58,11 @@ public final class AndroidTypedAssetsManifestTest {
         rejectText(properties, "suppressUnsupportedCompileSdk");
         String resourceKeep = Files.readString(project.resolve("app/src/main/res/raw/sgl_keep.xml"));
         requireText(resourceKeep, "tools:keep=\"@drawable/*\"");
+        String androidManifest = Files.readString(project.resolve("app/src/main/AndroidManifest.xml"));
+        requireText(androidManifest, "android:theme=\"@android:style/Theme.Material.NoActionBar\"");
+        if (androidManifest.contains("Fullscreen")) {
+            throw new AssertionError("System-bar visibility must be controlled by the selected mode");
+        }
 
         Path generatedAssets;
         try (var paths = Files.walk(runfiles)) {
