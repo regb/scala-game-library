@@ -9,6 +9,7 @@ import java.nio.ByteOrder
 import javax.sound.sampled.{AudioSystem, AudioInputStream, Clip, LineListener, LineEvent, UnsupportedAudioFileException}
 
 import scala.collection.mutable.{HashMap, HashSet}
+import scala.util.control.NonFatal
 
 /** AudioProvider implementation for the official Java Sound API.
   *
@@ -39,6 +40,12 @@ import scala.collection.mutable.{HashMap, HashSet}
   */
 trait JavaSoundAudioProvider extends AudioProvider {
   this: DesktopSystemProvider with LoggingProvider =>
+
+  // Override only the device lookup in tests; no real mixer is needed.
+  protected def acquireJavaSoundClip(format: javax.sound.sampled.AudioFormat): Clip = {
+    val info = new javax.sound.sampled.DataLine.Info(classOf[Clip], format)
+    AudioSystem.getLine(info).asInstanceOf[Clip]
+  }
 
   import JavaSoundHelpers._
   
@@ -148,9 +155,10 @@ trait JavaSoundAudioProvider extends AudioProvider {
       // can be restarted from the same point. We track 
       def stop(index: Int): Unit = Locker.synchronized {
         pool.get(index).foreach(clip => {
+          // A mixer may deliver STOP synchronously from stop().
+          paused(index) = true
           if(clip.isRunning)
             clip.stop()
-          paused(index) = true
         })
       }
     }
@@ -169,12 +177,7 @@ trait JavaSoundAudioProvider extends AudioProvider {
 
       private def instantiateFreshClip(volume: Float): Option[Clip] = Locker.synchronized {
         val audioStream = audioInputStreamWrapper.newAudioInputStream
-        tryGetClip(audioStream.getFormat).map(clip => {
-          clip.open(audioStream)
-          // Volume can only be set once a Line is open, according to doc.
-          setClipVolume(clip, volume)
-          clip
-        })
+        tryOpenClip(audioStream, Some(acquireJavaSoundClip(audioStream.getFormat)), Some(volume))
       }
   
       override def play(volume: Float): Option[PlayedSound] = Locker.synchronized {
@@ -278,10 +281,14 @@ trait JavaSoundAudioProvider extends AudioProvider {
     private def loadSingleSound(asset: sgl.assets.AudioAsset): Sound = {
       logger.info("Loading sound resource: " + asset.resourceName)
       val resourceAudioStream = loadAudioInputStream(asset)
-      val (convertedAudioStream, _) = convertToBestStream(resourceAudioStream).getOrElse{
-        throw new ResourceFormatUnsupportedException(PartsResourcePath(asset.resourceName.split('/').toVector))
-      }
-      val wrapper = AudioInputStreamWrapper.fromAudioInputStream(convertedAudioStream)
+      val wrapper = try {
+        val (convertedAudioStream, probeClip) = convertToBestStream(resourceAudioStream).getOrElse{
+          throw new ResourceFormatUnsupportedException(PartsResourcePath(asset.resourceName.split('/').toVector))
+        }
+        closeAudioResource(probeClip)
+        try AudioInputStreamWrapper.fromAudioInputStream(convertedAudioStream)
+        finally closeAudioResource(convertedAudioStream)
+      } finally closeAudioResource(resourceAudioStream)
       if(wrapper.frameLength <= 0) {
         logger.warning("Sound resource %s decoded to an empty audio stream.".format(asset.resourceName))
         throw new ResourceFormatUnsupportedException(PartsResourcePath(asset.resourceName.split('/').toVector))
@@ -331,27 +338,15 @@ trait JavaSoundAudioProvider extends AudioProvider {
     override def loadMusic(asset: sgl.assets.AudioAsset, extras: sgl.assets.AudioAsset*): Loader[Music] = FutureLoader {
       logger.info("Loading music resource: " + asset.resourceName)
       val resourceAudioStream = loadAudioInputStream(asset)
-      val (convertedAudioStream, clip) = convertToBestStream(resourceAudioStream).getOrElse{
-        throw new ResourceFormatUnsupportedException(PartsResourcePath(asset.resourceName.split('/').toVector))
-      }
-      // Sometimes the converted stream has a frame length of -1, which seems wrong as it
-      // should be in a well-defined PCM format with a known number of bytes per frames and thus
-      // a known number of frames. The clip then seems to fail on some platforms (OpenJDK with icedtea
-      // pulse audio implementation) when trying to open the audio stream (with a negative array
-      // exception which can clearly be traced to that negative frame length). So the trick here
-      // is to actually manually compute the frame length and create a new AudioInputStream with
-      // the same data but with the correct frame length.
-      if(convertedAudioStream.getFrameLength != -1) {
-        // If it's not -1, no need for this hack.
-        clip.open(convertedAudioStream)
-      } else {
-        val wrapper = AudioInputStreamWrapper.fromAudioInputStream(convertedAudioStream)
-        logger.debug("Data length recomputed from reading the file: %d bytes".format(wrapper.frameLength))
-        val finalStream = wrapper.newAudioInputStream
-        logger.debug("Converted AudioInputStream: format=<%s> frame_length=%d".format(finalStream.getFormat, finalStream.getFrameLength))
-        clip.open(finalStream)
-      }
-      new Music(clip)
+      try {
+        val (convertedAudioStream, clip) = convertToBestStream(resourceAudioStream).getOrElse{
+          throw new ResourceFormatUnsupportedException(PartsResourcePath(asset.resourceName.split('/').toVector))
+        }
+        val opened = tryOpenMusicClip(convertedAudioStream, clip).getOrElse{
+          throw new javax.sound.sampled.LineUnavailableException("Unable to open music clip for " + asset.resourceName)
+        }
+        new Music(opened)
+      } finally closeAudioResource(resourceAudioStream)
     }
 
     // Load the resource into an AudioInputStream. This will use the standard
@@ -408,26 +403,78 @@ trait JavaSoundAudioProvider extends AudioProvider {
     * sound.
     */
   object JavaSoundHelpers {
-    import javax.sound.sampled.{AudioFormat, FloatControl, DataLine}
+    import javax.sound.sampled.{AudioFormat, FloatControl}
+
+    private var warnedUnavailable = false
+
+    // Bound warnings across all sounds/music, including repeated clicks and retries.
+    private def warnUnavailable(detail: String): Unit = synchronized {
+      if(!warnedUnavailable) {
+        warnedUnavailable = true
+        logger.warning("JavaSound audio unavailable: " + detail +
+          ". Skipping audio; further audio-device warnings are suppressed.")
+      }
+    }
+
+    private[desktop] def closeAudioResource(resource: AutoCloseable): Unit = {
+      try resource.close()
+      catch { case NonFatal(e) => warnUnavailable("cleanup failed: " + e.toString) }
+    }
+
+    // Clip.open consumes the stream synchronously. The wrapper's byte array stays
+    // reusable, but each disposable stream and each failed clip must be closed.
+    private[desktop] def tryOpenClip(stream: AudioInputStream, candidate: => Option[Clip],
+                                   volume: Option[Float] = None): Option[Clip] = {
+      var acquired: Option[Clip] = None
+      var opened = false
+      try {
+        acquired = candidate
+        acquired match {
+          case Some(clip) =>
+            clip.open(stream)
+            volume.foreach(v => setClipVolume(clip, v))
+            opened = true
+            Some(clip)
+          case None =>
+            warnUnavailable("no clip for " + stream.getFormat)
+            None
+        }
+      } catch {
+        case NonFatal(e) =>
+          warnUnavailable("opening " + stream.getFormat + ": " + e.toString)
+          None
+      } finally {
+        closeAudioResource(stream)
+        if(!opened) acquired.foreach(closeAudioResource)
+      }
+    }
+
+    private[desktop] def tryOpenMusicClip(stream: AudioInputStream, clip: Clip): Option[Clip] = {
+      if(stream.getFrameLength != AudioSystem.NOT_SPECIFIED)
+        tryOpenClip(stream, Some(clip))
+      else {
+        // Some decoders report -1 frames. Recompute before opening the clip.
+        val wrapper = try AudioInputStreamWrapper.fromAudioInputStream(stream)
+        catch {
+          case NonFatal(e) =>
+            closeAudioResource(clip)
+            warnUnavailable("decoding music: " + e.toString)
+            return None
+        } finally closeAudioResource(stream)
+        tryOpenClip(wrapper.newAudioInputStream, Some(clip))
+      }
+    }
   
     // Try to get a clip that can play the AudioFormat. Returns
     // None if there is clip in the AudioSystem, Some(clip) otherwise.
     // The clip is not opened, so it's essentially not using resources
     // yet, when you commit to a particular clip you must open it.
     def tryGetClip(format: AudioFormat): Option[Clip] = try {
-      val info = new DataLine.Info(classOf[Clip], format)
-      val clip = AudioSystem.getLine(info).asInstanceOf[Clip]
-      Some(clip)
+      Some(acquireJavaSoundClip(format))
     } catch {
-      case (_: IllegalArgumentException) => {
-        // The AudioSystem.getLine throws the IllegalArgumentException if there
-        // no support for playing such a format.
-        None
-      }
-      case (_: Exception) => None
-      // TODO we should handle LineUnavailableException, which indicates that no line are
-      //    currently available due to resource constraints, but not that the system cannot
-      //    handle the format. Maybe we can do better than just returning None in that case.
+      // Unsupported formats are expected during probing. Report failures only
+      // when committing to playback, not when a later conversion may succeed.
+      case NonFatal(_) => None
     }
   
     def findPlayableFormat(fromFormat: AudioFormat): Option[Clip] = {
@@ -448,12 +495,14 @@ trait JavaSoundAudioProvider extends AudioProvider {
       def sameSampleRate(f: AudioFormat) = f.getSampleRate == fromFormat.getSampleRate
       def standardSampleSize(f: AudioFormat) = f.getSampleSizeInBits == 16
   
-      useableFormats.find(f => sameEndian(f.getFormat) && sameChannels(f.getFormat) && standardSampleSize(f.getFormat) && sameSampleRate(f.getFormat))
+      val selected = useableFormats.find(f => sameEndian(f.getFormat) && sameChannels(f.getFormat) && standardSampleSize(f.getFormat) && sameSampleRate(f.getFormat))
       .orElse(useableFormats.find(f => sameEndian(f.getFormat) && sameChannels(f.getFormat) && standardSampleSize(f.getFormat)))
       .orElse(useableFormats.find(f => sameEndian(f.getFormat) && standardSampleSize(f.getFormat)))
       .orElse(useableFormats.find(f => sameEndian(f.getFormat)))
       //.orElse(useableFormats.headOption) It seems like using a different endian encoding just gonna
       // make a horrible sound, so let's stop there.
+      useableFormats.filterNot(c => selected.exists(_ eq c)).foreach(closeAudioResource)
+      selected
     }
   
     // Wrap an AudioInputStream by storing the static array of bytes and the format.
@@ -607,7 +656,12 @@ trait JavaSoundAudioProvider extends AudioProvider {
   
         findPlayableFormat(audioStream.getFormat).map(clip => {
           logger.debug("Using format for conversion: " + clip.getFormat)
-          val convertedStream = AudioSystem.getAudioInputStream(clip.getFormat, audioStream)
+          val convertedStream = try AudioSystem.getAudioInputStream(clip.getFormat, audioStream)
+          catch {
+            case NonFatal(e) =>
+              closeAudioResource(clip)
+              throw e
+          }
           logger.debug("Converted AudioInputStream: format=<%s> frame_length=%d".format(convertedStream.getFormat, convertedStream.getFrameLength))
           (convertedStream, clip)
         })
