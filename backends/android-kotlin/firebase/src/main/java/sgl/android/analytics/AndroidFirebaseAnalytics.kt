@@ -15,12 +15,42 @@ import sgl.analytics.AnalyticsValue
 import sgl.analytics.EventParams
 import com.google.firebase.analytics.FirebaseAnalytics
 
-class AndroidFirebaseAnalytics(private val context: Context) : AbstractAnalytics() {
+class AndroidFirebaseAnalytics(context: Context) : AbstractAnalytics(), FirebaseCollectionControls {
+    private val context = context.applicationContext
+    private val testLab = Settings.System.getString(this.context.contentResolver, "firebase.test.lab") == "true"
+
+    private val controls by lazy {
+        FirebaseControlDelegate(object : FirebaseControlClient {
+            override fun collection(enabled: Boolean) = firebaseAnalytics.setAnalyticsCollectionEnabled(enabled)
+            override fun consent(choices: Map<String, ConsentChoice>) {
+                firebaseAnalytics.setConsent(choices.mapKeys {
+                    FirebaseAnalytics.ConsentType.valueOf(it.key)
+                }.mapValues { FirebaseAnalytics.ConsentStatus.valueOf(it.value.name) })
+            }
+        }, testLab)
+    }
+
+    override fun setAnalyticsCollectionEnabled(enabled: Boolean) = controls.setAnalyticsCollectionEnabled(enabled)
+    override fun setConsent(consent: FirebaseConsent) = controls.setConsent(consent)
+
+    /** No automatic diagnostic logging. The caller must recheck its collection/consent policy. */
+    fun logInstallAttributionDiagnostic(result: InstallAttributionResult, allowed: () -> Boolean) {
+        emitInstallAttributionDiagnostic(result, { !testLab && allowed() }) { name, fields ->
+            val bundle = Bundle()
+            fields.forEach { (key, value) ->
+                when (value) {
+                    is String -> bundle.putString(key, value)
+                    is Long -> bundle.putLong(key, value)
+                }
+            }
+            firebaseAnalytics.logEvent(name, bundle)
+        }
+    }
     
-    private val firebaseAnalytics: FirebaseAnalytics = FirebaseAnalytics.getInstance(context)
+    private val firebaseAnalytics: FirebaseAnalytics = FirebaseAnalytics.getInstance(this.context)
 
     init {
-        if (Settings.System.getString(context.contentResolver, "firebase.test.lab") == "true") {
+        if (testLab) {
             firebaseAnalytics.setAnalyticsCollectionEnabled(false)
         }
     }

@@ -1,131 +1,185 @@
 package sgl.android.ads
 
 import android.app.Activity
+import android.app.Application
+import android.os.Bundle
 import android.content.Context
+import com.google.android.gms.ads.AdError
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.FullScreenContentCallback
 import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
-import com.google.android.gms.ads.rewarded.RewardItem
 import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
+import sgl.ads.AdObserver
 import sgl.ads.AdsProvider
+import sgl.ads.ObservableAds
 import scala.Function1
 import scala.runtime.BoxedUnit
 
-/**
- * Android AdMob implementation of SGL's Ads controller.
- *
- * This class is intentionally packaged in the optional :sgl-android-admob
- * module so games that do not opt into ads do not carry the Google Mobile Ads
- * SDK in their APK/AAB.
- */
+/** Optional AdMob backend. No analytics events are logged by this controller. */
 class AndroidAdMobAds(
     context: Context,
     private val alwaysPreload: Boolean = true,
     private val interstitialAdUnitId: String = TEST_INTERSTITIAL_AD_UNIT_ID,
     private val rewardedAdUnitId: String = TEST_REWARDED_AD_UNIT_ID,
-) : AdsProvider.Ads {
+) : AdsProvider.Ads, ObservableAds {
+    private val activity = context as? Activity ?: error("AndroidAdMobAds requires an Activity context")
+    @Volatile private var observer: AdObserver? = null
+    @Volatile private var interstitial: InterstitialAd? = null
+    @Volatile private var rewarded: RewardedAd? = null
+    private var interstitialLoading = false
+    private var rewardedLoading = false
+    private var interstitialShowing = false
+    private var rewardedShowing = false
+    @Volatile private var destroyed = false
+    private val lifecycleCallbacks = object : Application.ActivityLifecycleCallbacks {
+        override fun onActivityDestroyed(owner: Activity) { if (owner === activity) destroy() }
+        override fun onActivityCreated(owner: Activity, state: Bundle?) {}
+        override fun onActivityStarted(owner: Activity) {}
+        override fun onActivityResumed(owner: Activity) {}
+        override fun onActivityPaused(owner: Activity) {}
+        override fun onActivityStopped(owner: Activity) {}
+        override fun onActivitySaveInstanceState(owner: Activity, state: Bundle) {}
+    }
 
-    private val activity: Activity = context as? Activity
-        ?: error("AndroidAdMobAds requires an Activity context")
+    override fun setAdObserver(observer: AdObserver) { this.observer = observer }
 
     init {
-        initialize(activity) {
-            if (alwaysPreload) {
-                loadInterstitial()
-                loadRewarded()
+        activity.application.registerActivityLifecycleCallbacks(lifecycleCallbacks)
+        activity.runOnUiThread {
+            MobileAds.initialize(activity.applicationContext) {
+                activity.runOnUiThread {
+                    if (alwaysPreload && !destroyed && !activity.isDestroyed) {
+                        loadInterstitial()
+                        loadRewarded()
+                    }
+                }
             }
         }
     }
 
-    override fun loadInterstitial() {
-        if (isInterstitialLoading || interstitialAd != null) return
-        isInterstitialLoading = true
+    /** Automatic on Activity destruction; may also be called earlier by the owner. */
+    @Synchronized fun destroy() {
+        if (destroyed) return
+        destroyed = true
+        activity.application.unregisterActivityLifecycleCallbacks(lifecycleCallbacks)
+        observer = null
+        interstitial = null
+        rewarded = null
+    }
+
+    @Synchronized override fun loadInterstitial() {
+        if (destroyed || interstitialLoading || interstitialShowing || interstitial != null) return
+        interstitialLoading = true
         activity.runOnUiThread {
-            InterstitialAd.load(
-                activity,
-                interstitialAdUnitId,
-                AdRequest.Builder().build(),
+            if (destroyed || activity.isDestroyed) return@runOnUiThread
+            observer?.onRequest("interstitial", interstitialAdUnitId)
+            InterstitialAd.load(activity, interstitialAdUnitId, AdRequest.Builder().build(),
                 object : InterstitialAdLoadCallback() {
                     override fun onAdLoaded(ad: InterstitialAd) {
-                        isInterstitialLoading = false
-                        interstitialAd = ad
-                        ad.fullScreenContentCallback = object : FullScreenContentCallback() {
-                            override fun onAdDismissedFullScreenContent() {
-                                interstitialAd = null
-                                if (alwaysPreload) loadInterstitial()
+                        synchronized(this@AndroidAdMobAds) {
+                            interstitialLoading = false
+                            if (destroyed || activity.isDestroyed) return
+                            val lifecycle = AdLifecycle({ observer }, "interstitial", interstitialAdUnitId)
+                            ad.setOnPaidEventListener {
+                                lifecycle.paid(it.valueMicros, it.currencyCode, it.precisionType,
+                                    ad.responseInfo.loadedAdapterResponseInfo?.adSourceName ?: "AdMob")
                             }
-
-                            override fun onAdFailedToShowFullScreenContent(adError: com.google.android.gms.ads.AdError) {
-                                interstitialAd = null
-                                if (alwaysPreload) loadInterstitial()
+                            ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+                                override fun onAdImpression() = lifecycle.impression()
+                                override fun onAdDismissedFullScreenContent() {
+                                    if (lifecycle.close(beforeNotify = { interstitialFinished() })) {
+                                        if (alwaysPreload) loadInterstitial()
+                                    }
+                                }
+                                override fun onAdFailedToShowFullScreenContent(error: AdError) {
+                                    if (lifecycle.close(error.code) { interstitialFinished() }) {
+                                        if (alwaysPreload) loadInterstitial()
+                                    }
+                                }
                             }
+                            interstitial = ad
                         }
+                        observer?.onLoaded("interstitial", interstitialAdUnitId)
                     }
-
                     override fun onAdFailedToLoad(error: LoadAdError) {
-                        isInterstitialLoading = false
-                        interstitialAd = null
+                        synchronized(this@AndroidAdMobAds) { interstitialLoading = false }
+                        observer?.onLoadFailed("interstitial", interstitialAdUnitId, error.code)
                     }
-                },
-            )
+                })
         }
     }
 
-    override fun isInterstitialLoaded(): Boolean = interstitialAd != null
-
-    override fun showInterstitial(): Boolean {
-        val ad = interstitialAd ?: return false
-        interstitialAd = null
-        activity.runOnUiThread { ad.show(activity) }
+    @Synchronized private fun interstitialFinished() {
+        interstitialShowing = false
+    }
+    override fun isInterstitialLoaded(): Boolean = interstitial != null
+    @Synchronized override fun showInterstitial(): Boolean {
+        val ad = interstitial ?: return false
+        if (destroyed || activity.isDestroyed) return false
+        interstitial = null
+        interstitialShowing = true
+        activity.runOnUiThread { if (!destroyed && !activity.isDestroyed) ad.show(activity) }
         return true
     }
 
-    override fun loadRewarded() {
-        if (isRewardedLoading || rewardedAd != null) return
-        isRewardedLoading = true
+    @Synchronized override fun loadRewarded() {
+        if (destroyed || rewardedLoading || rewardedShowing || rewarded != null) return
+        rewardedLoading = true
         activity.runOnUiThread {
-            RewardedAd.load(
-                activity,
-                rewardedAdUnitId,
-                AdRequest.Builder().build(),
+            if (destroyed || activity.isDestroyed) return@runOnUiThread
+            observer?.onRequest("rewarded", rewardedAdUnitId)
+            RewardedAd.load(activity, rewardedAdUnitId, AdRequest.Builder().build(),
                 object : RewardedAdLoadCallback() {
                     override fun onAdLoaded(ad: RewardedAd) {
-                        isRewardedLoading = false
-                        rewardedAd = ad
+                        synchronized(this@AndroidAdMobAds) {
+                            rewardedLoading = false
+                            if (destroyed || activity.isDestroyed) return
+                            rewarded = ad
+                        }
+                        observer?.onLoaded("rewarded", rewardedAdUnitId)
                     }
-
                     override fun onAdFailedToLoad(error: LoadAdError) {
-                        isRewardedLoading = false
-                        rewardedAd = null
+                        synchronized(this@AndroidAdMobAds) { rewardedLoading = false }
+                        observer?.onLoadFailed("rewarded", rewardedAdUnitId, error.code)
                     }
-                },
-            )
+                })
         }
     }
 
-    override fun isRewardedLoaded(): Boolean = rewardedAd != null
-
-    override fun showRewarded(onClosed: Function1<Any, BoxedUnit>): Boolean {
-        val ad = rewardedAd ?: return false
-        rewardedAd = null
+    override fun isRewardedLoaded(): Boolean = rewarded != null
+    @Synchronized override fun showRewarded(onClosed: Function1<Any, BoxedUnit>): Boolean {
+        val ad = rewarded ?: return false
+        if (destroyed || activity.isDestroyed) return false
+        rewarded = null
+        rewardedShowing = true
         activity.runOnUiThread {
-            var earned = false
-            ad.fullScreenContentCallback = object : FullScreenContentCallback() {
-                override fun onAdDismissedFullScreenContent() {
-                    onClosed.apply(earned)
-                    if (alwaysPreload) loadRewarded()
-                }
-
-                override fun onAdFailedToShowFullScreenContent(adError: com.google.android.gms.ads.AdError) {
-                    onClosed.apply(false)
-                    if (alwaysPreload) loadRewarded()
-                }
+            if (destroyed || activity.isDestroyed) {
+                onClosed.apply(false)
+                return@runOnUiThread
             }
-            ad.show(activity) { _: RewardItem -> earned = true }
+            var earned = false
+            val lifecycle = AdLifecycle({ observer }, "rewarded", rewardedAdUnitId)
+            ad.setOnPaidEventListener {
+                lifecycle.paid(it.valueMicros, it.currencyCode, it.precisionType,
+                    ad.responseInfo.loadedAdapterResponseInfo?.adSourceName ?: "AdMob")
+            }
+            fun finish(error: Int? = null) {
+                if (!lifecycle.close(error) {
+                    synchronized(this@AndroidAdMobAds) { rewardedShowing = false }
+                }) return
+                onClosed.apply(error == null && earned)
+                if (alwaysPreload) loadRewarded()
+            }
+            ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+                override fun onAdImpression() = lifecycle.impression()
+                override fun onAdDismissedFullScreenContent() = finish()
+                override fun onAdFailedToShowFullScreenContent(error: AdError) = finish(error.code)
+            }
+            ad.show(activity) { earned = true }
         }
         return true
     }
@@ -135,69 +189,18 @@ class AndroidAdMobAds(
         const val TEST_INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-3940256099942544/1033173712"
         const val TEST_REWARDED_AD_UNIT_ID = "ca-app-pub-3940256099942544/5224354917"
 
-        @Volatile
-        private var initialized = false
-
-        @Volatile
-        private var initializing = false
-
-        private val pendingInitializationCallbacks = mutableListOf<() -> Unit>()
-
-        @Volatile
-        private var interstitialAd: InterstitialAd? = null
-
-        @Volatile
-        private var isInterstitialLoading = false
-
-        @Volatile
-        private var rewardedAd: RewardedAd? = null
-
-        @Volatile
-        private var isRewardedLoading = false
-
         fun fromResources(context: Context): AndroidAdMobAds {
             val resources = context.resources
             val packageName = context.packageName
-            fun stringResource(name: String, defaultValue: String): String {
+            fun stringResource(name: String, default: String): String {
                 val id = resources.getIdentifier(name, "string", packageName)
-                return if (id == 0) defaultValue else resources.getString(id)
+                return if (id == 0) default else resources.getString(id)
             }
-            fun boolResource(name: String, defaultValue: Boolean): Boolean {
-                val id = resources.getIdentifier(name, "bool", packageName)
-                return if (id == 0) defaultValue else resources.getBoolean(id)
-            }
-
-            return AndroidAdMobAds(
-                context = context,
-                alwaysPreload = boolResource("sgl_admob_always_preload", true),
-                interstitialAdUnitId = stringResource("sgl_admob_interstitial_ad_unit_id", TEST_INTERSTITIAL_AD_UNIT_ID),
-                rewardedAdUnitId = stringResource("sgl_admob_rewarded_ad_unit_id", TEST_REWARDED_AD_UNIT_ID),
-            )
-        }
-
-        private fun initialize(activity: Activity, onInitialized: () -> Unit) {
-            synchronized(this) {
-                if (initialized) {
-                    onInitialized()
-                    return
-                }
-                pendingInitializationCallbacks += onInitialized
-                if (initializing) return
-                initializing = true
-            }
-
-            activity.runOnUiThread {
-                MobileAds.initialize(activity) {
-                    val callbacks = synchronized(this) {
-                        initialized = true
-                        initializing = false
-                        pendingInitializationCallbacks.toList().also {
-                            pendingInitializationCallbacks.clear()
-                        }
-                    }
-                    callbacks.forEach { it() }
-                }
-            }
+            val preloadId = resources.getIdentifier("sgl_admob_always_preload", "bool", packageName)
+            return AndroidAdMobAds(context,
+                if (preloadId == 0) true else resources.getBoolean(preloadId),
+                stringResource("sgl_admob_interstitial_ad_unit_id", TEST_INTERSTITIAL_AD_UNIT_ID),
+                stringResource("sgl_admob_rewarded_ad_unit_id", TEST_REWARDED_AD_UNIT_ID))
         }
     }
 }

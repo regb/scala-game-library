@@ -65,7 +65,7 @@ The current implementation provides the following backends:
     Mac, and Linux.
   * *Android*. The Android backend is implemented as a Kotlin/Android library
     under `backends/android-kotlin/`, with Bazel helpers that generate Gradle Android
-    app projects for games.
+    app projects for games. See the [Firebase consent, attribution diagnostics and ad revenue guide](doc/firebase-attribution.md) for optional integrations.
   * *Web* with Scalajs. The web backend is implemented with scalajs
     and uses the HTML5 canvas for graphics, the HTML5 audio tag for audio, and
     other standard web features.
