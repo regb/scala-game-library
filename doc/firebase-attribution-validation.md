@@ -72,6 +72,25 @@ The original working trees and pins were not modified. Rat Trap's analytics/repo
 
 Trying the host library directory instead caused a host/Nix GLIBC version mismatch before Java startup. No source workaround was made for these environment failures.
 
+## Consumer-review follow-up: guard the native getter
+
+Rat Trap's review identified that the successful service-setup callback read `client.installReferrer` before rechecking the read policy. The existing tests established post-read suppression, but did not prevent that payload access.
+
+The follow-up is based on upstream `c963e6c112e6ee834435c6a091f5d5626820d00c`, preserving desktop audio commit `3cd584e`. `PlayClient` now receives a live read guard. The capture worker publishes immutable snapshots of the coalesced policy predicates; the native callback evaluates their current choices immediately before invoking the payload getter. At least one permitted request authorizes the read. Each revoked request still receives only `WITHHELD`. The connection's generation must also remain current, preventing a timed-out callback from reading under a retry's permission. Duplicate setup callbacks cannot invoke the getter twice.
+
+An injectable `PlayReferrerConnection` wraps the actual native getter rather than an already-read payload. Nine new tests exercise the production `PlayClient` setup callback through this boundary, including:
+
+- Revocation while connecting: zero getter calls, `WITHHELD`, no cache and one connection close.
+- A later coalesced request remains allowed: one getter call, successful sanitized capture for that request, and withholding for the revoked request.
+- All coalesced requests revoked; late callbacks from timed-out attempts; native getter errors and bounded retries; error responses without payload access; revocation during an in-flight read; duplicate setup callbacks.
+- A blocked native getter does not block the capture worker's timeout or allow late delivery.
+
+Temporarily bypassing the pre-getter guard made `revokingWhileConnectingPreventsNativeGetterAccess` fail because the getter was invoked. The guard was restored and the full test suite rerun successfully.
+
+Follow-up validation passed both prescribed Buildifier checks, `bazel build //...`, Firebase lint, all 44 Kotlin tests across Android/Firebase/AdMob, and the generated Firebase-only debug APK build. Of those tests, 24 cover Firebase/referrer behavior. `bazel test //...` again passed 11 of 13 targets; the same two OpenGL targets failed on unavailable `libEGL.so.1`. Desktop audio tests passed with the preserved upstream changes.
+
+This follow-up does not change public setup, consent defaults, manifest permissions, diagnostic opt-in behavior, storage format, retry budget or callback delivery threads. No consumer files, pins, cloud settings, ads or diagnostic enablement were changed. Real Play/device verification remains outstanding. The fix is prepared as a local commit for review, not a new release or consumer deployment.
+
 ## Production checks still required
 
 Use a real Play install to verify native referrer status, client/server timestamps, original install version, and behavior after an upgrade. Sideload results cannot establish Play attribution. Verify denied/unknown consent before Firebase auto-initialization, each consent dimension's updates and persistence across process death, collection toggles, cached-data withholding after revocation, reinstall/data-reset behavior, and Activity recreation on devices.

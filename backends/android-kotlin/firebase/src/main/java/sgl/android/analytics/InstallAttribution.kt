@@ -97,7 +97,8 @@ internal fun parseReferrer(native: NativeReferrer): InstallAttributionResult {
 }
 
 internal interface ReferrerClient {
-    fun start(callback: (AttributionStatus, NativeReferrer?) -> Unit)
+    /** Recheck mayRead on the native callback thread immediately before accessing the payload. */
+    fun start(mayRead: () -> Boolean, callback: (AttributionStatus, NativeReferrer?) -> Unit)
     fun close()
 }
 internal interface ReferrerStore {
@@ -109,7 +110,7 @@ internal interface ReferrerScheduler {
     fun delay(milliseconds: Long, action: () -> Unit)
 }
 
-/** All state, policy checks, and native results run on a single serialized scheduler. */
+/** Capture state and results run on one serialized scheduler; the native read guard uses a published policy snapshot. */
 internal class ReferrerCapture(
     private val client: () -> ReferrerClient,
     private val store: ReferrerStore,
@@ -118,12 +119,15 @@ internal class ReferrerCapture(
     private data class Request(val allowed: () -> Boolean, val callback: (InstallAttributionResult) -> Unit)
     private val requests = mutableListOf<Request>()
     private var running = false
-    private var generation = 0
+    @Volatile private var generation = 0
+    // Immutable snapshots let the native callback evaluate current choices without racing the worker's request list.
+    @Volatile private var readPolicies: List<() -> Boolean> = emptyList()
 
     fun retrieve(allowed: () -> Boolean, callback: (InstallAttributionResult) -> Unit) = scheduler.execute {
         if (!allowed()) callback(InstallAttributionResult(AttributionStatus.WITHHELD))
         else {
             requests += Request(allowed, callback)
+            readPolicies = requests.map { it.allowed }
             if (!running) {
                 running = true
                 store.result?.let { finish(it) } ?: attempt()
@@ -133,6 +137,7 @@ internal class ReferrerCapture(
 
     private fun finish(result: InstallAttributionResult) {
         running = false
+        readPolicies = emptyList()
         val pending = requests.toList()
         requests.clear()
         pending.forEach {
@@ -161,7 +166,10 @@ internal class ReferrerCapture(
         scheduler.delay(10000) { complete(AttributionStatus.TIMEOUT, null) }
         try {
             connection = client()
-            connection.start { status, native -> scheduler.execute { complete(status, native) } }
+            connection.start(
+                mayRead = { readPolicies.any { it() } && token == generation },
+                callback = { status, native -> scheduler.execute { complete(status, native) } },
+            )
         } catch (_: Exception) {
             complete(AttributionStatus.INTERNAL_ERROR, null)
         }

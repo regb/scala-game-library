@@ -89,7 +89,7 @@ referrer.retrieve(
 
 `consentStore` represents your own thread-safe policy, not a supplied SGL object. A conservative opt-in policy requires explicit permission for diagnostics, analytics collection enabled, and all four consent dimensions granted. Read and upload policies must account for consent to access the native referrer payload, which can contain advertising identifiers before sanitization. Do not replace either policy with a hardcoded `true`. Both predicates must be fast and must not throw. If consent is unknown or denied, withhold diagnostics. Revocation must affect the predicates immediately.
 
-SGL checks the read policy before starting, retrying, caching or delivering a result and again before the main-thread callback. The upload predicate is checked at event submission, with an additional Test Lab guard. There is no automatic upload and no inferred consent from SDK availability. Native analytics collection controls still apply independently.
+SGL checks the read policy before starting, immediately before accessing the native payload getter after service setup, before retrying, caching or delivering a result, and again before the main-thread callback. The getter is skipped if every coalesced request has been revoked. If at least one current request remains allowed, capture can proceed, but revoked requests still receive only a withheld result. Revocation cannot cancel a synchronous native getter that has already started; post-read checks still withhold caching and delivery when no request remains allowed. The upload predicate is checked at event submission, with an additional Test Lab guard. There is no automatic upload and no inferred consent from SDK availability. Native analytics collection controls still apply independently.
 
 ### Result fields and provenance
 
@@ -105,7 +105,7 @@ The optional `install_attribution_diagnostic` event has at most 14 whitelisted p
 
 ### Execution, caching and limits
 
-A process-wide instance uses application context only. Native work, cache IO and retry state run on a serialized worker. Callbacks always dispatch to the Android main thread, even for cached and withheld results. Policy predicates can run on both threads. Avoid Activity captures in predicates and use lifecycle-aware or weak references in callbacks.
+A process-wide instance uses application context only. Native work, cache IO and retry state run on a serialized worker. Callbacks always dispatch to the Android main thread, even for cached and withheld results. Policy predicates can run on the worker, native service callback and main threads. Avoid Activity captures in predicates and use lifecycle-aware or weak references in callbacks.
 
 Concurrent requests share one capture. The native service connection is closed after completion, failure or timeout. A connection attempt times out after ten seconds. Transient service errors, disconnects, timeouts and internal errors retry with one- and two-second delays, at most three attempts per installation. Unsupported and developer errors return immediately. Later explicit requests still share that persisted three-attempt budget. A late or duplicate native callback cannot complete a capture twice.
 

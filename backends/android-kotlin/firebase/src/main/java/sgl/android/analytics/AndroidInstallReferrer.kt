@@ -11,6 +11,7 @@ import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Process-wide, opt-in capture, independent of Firebase's own automatic attribution.
@@ -35,7 +36,8 @@ class AndroidInstallReferrer private constructor(context: Context) {
 
     /**
      * Policy must be thread-safe and checked against current collection AND consent choices.
-     * It is rechecked before retrieval, retries, cache delivery and UI callback delivery.
+     * It is rechecked before retrieval, the native payload getter, retries, cache delivery and UI delivery.
+     * The native getter proceeds only if at least one coalesced request is still allowed.
      * Callback always runs on the main thread, including withheld/error/cached results.
      * Do not capture an Activity in policy; callbacks should tolerate a destroyed screen.
      */
@@ -68,11 +70,21 @@ internal fun deliverAttributionResult(
     }
 }
 
-private class PlayClient(context: Context) : ReferrerClient {
-    private val client = InstallReferrerClient.newBuilder(context.applicationContext).build()
-    override fun start(callback: (AttributionStatus, NativeReferrer?) -> Unit) {
-        client.startConnection(object : InstallReferrerStateListener {
+/** Injectable boundary around the real native payload getter, not an already-read result. */
+internal interface PlayReferrerConnection {
+    fun start(listener: InstallReferrerStateListener)
+    fun read(): NativeReferrer
+    fun close()
+}
+
+internal class PlayClient(private val connection: PlayReferrerConnection) : ReferrerClient {
+    constructor(context: Context) : this(AndroidPlayReferrerConnection(context))
+
+    override fun start(mayRead: () -> Boolean, callback: (AttributionStatus, NativeReferrer?) -> Unit) {
+        val finished = AtomicBoolean(false)
+        connection.start(object : InstallReferrerStateListener {
             override fun onInstallReferrerSetupFinished(responseCode: Int) {
+                if (!finished.compareAndSet(false, true)) return
                 val status = when (responseCode) {
                     InstallReferrerClient.InstallReferrerResponse.OK -> AttributionStatus.SUCCESS
                     InstallReferrerClient.InstallReferrerResponse.FEATURE_NOT_SUPPORTED -> AttributionStatus.UNSUPPORTED
@@ -82,18 +94,29 @@ private class PlayClient(context: Context) : ReferrerClient {
                     else -> AttributionStatus.INTERNAL_ERROR
                 }
                 try {
-                    val details = if (status == AttributionStatus.SUCCESS) client.installReferrer else null
-                    callback(status, details?.let {
-                        NativeReferrer(it.installReferrer, it.referrerClickTimestampSeconds,
-                            it.installBeginTimestampSeconds, it.referrerClickTimestampServerSeconds,
-                            it.installBeginTimestampServerSeconds, it.installVersion, System.currentTimeMillis() / 1000)
-                    })
+                    if (status != AttributionStatus.SUCCESS) callback(status, null)
+                    else if (!mayRead()) callback(AttributionStatus.WITHHELD, null)
+                    else callback(AttributionStatus.SUCCESS, connection.read())
                 } catch (_: Exception) {
                     callback(AttributionStatus.INTERNAL_ERROR, null)
                 }
             }
-            override fun onInstallReferrerServiceDisconnected() = callback(AttributionStatus.DISCONNECTED, null)
+            override fun onInstallReferrerServiceDisconnected() {
+                if (finished.compareAndSet(false, true)) callback(AttributionStatus.DISCONNECTED, null)
+            }
         })
+    }
+    override fun close() = connection.close()
+}
+
+private class AndroidPlayReferrerConnection(context: Context) : PlayReferrerConnection {
+    private val client = InstallReferrerClient.newBuilder(context.applicationContext).build()
+    override fun start(listener: InstallReferrerStateListener) = client.startConnection(listener)
+    override fun read(): NativeReferrer {
+        val details = client.installReferrer
+        return NativeReferrer(details.installReferrer, details.referrerClickTimestampSeconds,
+            details.installBeginTimestampSeconds, details.referrerClickTimestampServerSeconds,
+            details.installBeginTimestampServerSeconds, details.installVersion, System.currentTimeMillis() / 1000)
     }
     override fun close() = client.endConnection()
 }

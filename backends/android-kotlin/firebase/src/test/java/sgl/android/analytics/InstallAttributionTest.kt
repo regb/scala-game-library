@@ -30,7 +30,7 @@ class InstallAttributionTest {
     private class Client : ReferrerClient {
         lateinit var callback: (AttributionStatus, NativeReferrer?) -> Unit
         var closes = 0
-        override fun start(callback: (AttributionStatus, NativeReferrer?) -> Unit) { this.callback = callback }
+        override fun start(mayRead: () -> Boolean, callback: (AttributionStatus, NativeReferrer?) -> Unit) { this.callback = callback }
         override fun close() { closes++ }
     }
 
@@ -151,7 +151,7 @@ class InstallAttributionTest {
             var closes = 0
             var calls = 0
             val capture = ReferrerCapture({ object : ReferrerClient {
-                override fun start(callback: (AttributionStatus, NativeReferrer?) -> Unit) {
+                override fun start(mayRead: () -> Boolean, callback: (AttributionStatus, NativeReferrer?) -> Unit) {
                     calls++
                     if (throws) error("native error containing sensitive details")
                 }
