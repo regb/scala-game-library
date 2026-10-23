@@ -4,7 +4,7 @@
         android:allowBackup="false"
         android:label="@LABEL@"
 @APPLICATION_ICON@        android:supportsRtl="true">
-@ADMOB_APPLICATION_ID_METADATA@@PLAY_GAMES_METADATA@        <activity
+@FIREBASE_METADATA@@ADMOB_APPLICATION_ID_METADATA@@PLAY_GAMES_METADATA@        <activity
             android:name=".MainActivity"
             android:configChanges="keyboardHidden|orientation|screenSize"
             android:exported="true"

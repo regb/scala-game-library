@@ -59,6 +59,8 @@ public final class AndroidTypedAssetsManifestTest {
         String resourceKeep = Files.readString(project.resolve("app/src/main/res/raw/sgl_keep.xml"));
         requireText(resourceKeep, "tools:keep=\"@drawable/*\"");
         String androidManifest = Files.readString(project.resolve("app/src/main/AndroidManifest.xml"));
+        rejectText(androidManifest, "firebase_analytics_collection_enabled");
+        rejectText(androidManifest, "google_analytics_default_allow_");
         requireText(androidManifest, "android:theme=\"@android:style/Theme.Material.NoActionBar\"");
         if (androidManifest.contains("Fullscreen")) {
             throw new AssertionError("System-bar visibility must be controlled by the selected mode");

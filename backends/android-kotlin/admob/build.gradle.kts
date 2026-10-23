@@ -31,6 +31,7 @@ kotlin {
 dependencies {
     api(project(":sgl-android"))
     implementation(libs.play.services.ads)
+    testImplementation("junit:junit:4.13.2")
 
     constraints {
         api(libs.androidx.activity) {

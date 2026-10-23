@@ -76,6 +76,20 @@ def _android_runner_impl(ctx):
     admob_enabled = bool(ctx.attr.admob_application_id)
     play_games_enabled = bool(ctx.attr.play_games_project_id)
 
+    firebase_metadata = []
+    for attribute, metadata in [
+        ("firebase_analytics_collection_enabled", "firebase_analytics_collection_enabled"),
+        ("firebase_analytics_storage", "google_analytics_default_allow_analytics_storage"),
+        ("firebase_ad_storage", "google_analytics_default_allow_ad_storage"),
+        ("firebase_ad_user_data", "google_analytics_default_allow_ad_user_data"),
+        ("firebase_ad_personalization", "google_analytics_default_allow_ad_personalization_signals"),
+    ]:
+        value = getattr(ctx.attr, attribute)
+        if value:
+            if not firebase_enabled:
+                fail("%s requires google_services_json" % attribute)
+            firebase_metadata.append('        <meta-data android:name="%s" android:value="%s" />\n' % (metadata, value))
+
     optional_modules = []
     optional_dependencies = []
     optional_imports = []
@@ -102,6 +116,7 @@ def _android_runner_impl(ctx):
         optional_res_values.append("        resValue(\"string\", \"play_games_project_id\", \"%s\")" % ctx.attr.play_games_project_id)
 
     substitutions = {
+        "@FIREBASE_METADATA@": "".join(firebase_metadata),
         "@PACKAGE@": ctx.attr.package,
         "@LABEL@": ctx.attr.label,
         "@APPLICATION_ICON@": application_icon,
@@ -224,6 +239,11 @@ _android_runner = rule(
         "assets": attr.label_list(providers = [SglAssetsInfo]),
         "android_resources_dir": attr.string(default = ""),
         "google_services_json": attr.string(default = ""),
+        "firebase_analytics_collection_enabled": attr.string(default = "", values = ["", "true", "false"]),
+        "firebase_analytics_storage": attr.string(default = "", values = ["", "true", "false"]),
+        "firebase_ad_storage": attr.string(default = "", values = ["", "true", "false"]),
+        "firebase_ad_user_data": attr.string(default = "", values = ["", "true", "false"]),
+        "firebase_ad_personalization": attr.string(default = "", values = ["", "true", "false"]),
         "admob_application_id": attr.string(default = ""),
         "admob_interstitial_ad_unit_id": attr.string(default = "ca-app-pub-3940256099942544/1033173712"),
         "admob_rewarded_ad_unit_id": attr.string(default = "ca-app-pub-3940256099942544/5224354917"),
@@ -270,7 +290,12 @@ def sgl_android_app(
         admob_rewarded_ad_unit_id = "ca-app-pub-3940256099942544/5224354917",
         admob_always_preload = True,
         play_games_project_id = "",
-        launcher_icon = ""):
+        launcher_icon = "",
+        firebase_analytics_collection_enabled = "",
+        firebase_analytics_storage = "",
+        firebase_ad_storage = "",
+        firebase_ad_user_data = "",
+        firebase_ad_personalization = ""):
     for suffix, task, launch, gradle_env in [
         ("debug", ":app:assembleDebug", False, ""),
         ("release", ":app:assembleRelease", False, ""),
@@ -298,6 +323,11 @@ def sgl_android_app(
             assets = assets,
             android_resources_dir = android_resources_dir,
             google_services_json = google_services_json,
+            firebase_analytics_collection_enabled = firebase_analytics_collection_enabled,
+            firebase_analytics_storage = firebase_analytics_storage,
+            firebase_ad_storage = firebase_ad_storage,
+            firebase_ad_user_data = firebase_ad_user_data,
+            firebase_ad_personalization = firebase_ad_personalization,
             admob_application_id = admob_application_id,
             admob_interstitial_ad_unit_id = admob_interstitial_ad_unit_id,
             admob_rewarded_ad_unit_id = admob_rewarded_ad_unit_id,
