@@ -39,6 +39,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes clang libegl1-mesa-dev libgl1-mesa-dri libglu1-mesa-dev libsdl2-dev libsdl2-image-dev
 
+      # rules_jvm_external 7.0 enforces fail_if_repin_required only as root.
+      - name: Validate SGL Maven lockfile
+        run: bazel query @maven//:all
+
+      - name: Check standalone consumer dependencies
+        run: tools/check-consumer-deps
+
       - name: Build
         run: bazel build //...
 

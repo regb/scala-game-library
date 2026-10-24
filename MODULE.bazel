@@ -42,7 +42,10 @@ scala_deps.scala()
 scala_deps.scalatest()
 
 maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
+
+# Keep SGL's graph and lock independent of consuming games and build tools.
 maven.install(
+    name = "sgl_maven",
     artifacts = [
         "com.googlecode.soundlibs:vorbisspi:1.0.3-2",
         "net.liftweb:lift-json_2.13:3.4.3",
@@ -95,12 +98,15 @@ maven.install(
         "org.lwjgl:lwjgl-openal::natives-macos-arm64:3.3.6",
         "org.lwjgl:lwjgl-stb::natives-macos-arm64:3.3.6",
     ],
-    known_contributing_modules = ["protobuf"],
+    fail_if_repin_required = True,
+    lock_file = "//third_party:maven_install.json",
     repositories = [
         "https://repo1.maven.org/maven2",
     ],
 )
-use_repo(maven, "maven")
+
+# Preserve SGL-local labels without exporting a shared resolution namespace.
+use_repo(maven, maven = "sgl_maven")
 
 #register_toolchains("//:my_toolchain")
 

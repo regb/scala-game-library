@@ -145,6 +145,10 @@ cross platform. A more advanced standalone Bazel example can be found in
 [Scalavator](https://github.com/regb/scalavator), which builds against SGL
 through `MODULE.bazel`.
 
+SGL owns its Maven dependency lockfile. Games only need to pin SGL, select the
+supported Scala version, and declare any game-specific libraries. See
+[Bazel dependency setup and updates](doc/dependency-resolution.md).
+
 ## Understanding the Versioning
 
 SGL is still in pre-release. But eventually tagged releases will be made

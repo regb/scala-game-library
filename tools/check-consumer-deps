@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Smoke-test SGL as a non-root module, without game-owned platform dependencies.
+set -euo pipefail
+
+root="$(cd "$(dirname "$0")/.." && pwd)"
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+cp "$root/.bazelversion" "$tmp/.bazelversion"
+
+python3 - "$root" "$tmp" <<'PY'
+import json
+import pathlib
+import sys
+
+root, tmp = sys.argv[1:]
+pathlib.Path(tmp, "MODULE.bazel").write_text('''module(name = "sgl_consumer_smoke")
+bazel_dep(name = "sgl.bzl", version = "0.0.0", repo_name = "sgl")
+local_path_override(module_name = "sgl.bzl", path = %s)
+bazel_dep(name = "rules_scala", version = "7.2.6")
+scala_config = use_extension("@rules_scala//scala/extensions:config.bzl", "scala_config")
+scala_config.settings(scala_version = "3.3.8")
+''' % json.dumps(root))
+pathlib.Path(tmp, "BUILD.bazel").write_text('''load("@sgl//bazel/sgl:defs.bzl", "sgl_core_library", "sgl_desktop_awt_app", "sgl_html5_app")
+sgl_core_library(name = "core", srcs = ["Game.scala"])
+sgl_desktop_awt_app(name = "desktop", deps = [":core"], package = "smoke", main_class = "Main", core_abstract_class = "smoke.Game", use_screen2d = False)
+sgl_html5_app(name = "html5", deps = [":core"], package = "smoke", main_class = "Main", core_abstract_class = "smoke.Game", use_screen2d = False)
+''')
+pathlib.Path(tmp, "Game.scala").write_text('''package smoke
+trait Game extends sgl.Application {
+  override def frame(dt: Double): Unit = ()
+}
+''')
+PY
+
+cd "$tmp"
+bazel --batch build "$@" //:desktop //:html5
+# Repeated builds must not need to refetch repositories.
+bazel --batch build "$@" --nofetch //:desktop //:html5
