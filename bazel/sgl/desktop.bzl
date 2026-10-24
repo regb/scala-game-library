@@ -128,7 +128,8 @@ def sgl_desktop_awt_app(
         simulated_safe_area_insets = [],
         use_extension_tiled = False,
         use_screen2d = True,
-        extra_mixins = []):
+        extra_mixins = [],
+        runtime_jdk = Label("@rules_java//toolchains:remotejdk_17")):
     full_deps = deps + [
         Label("//core:sgl-core"),
         Label("//backends/jvm-shared:jvm-shared"),
@@ -165,4 +166,7 @@ def sgl_desktop_awt_app(
         deps = full_deps,
         scalacopts = SGL_SCALACOPTS,
         main_class = package + ".desktop." + main_class,
+        # Do not inherit an arbitrary local JDK's native JavaSound stack.
+        # The runtime is fetched and checksummed by rules_java, not by games.
+        runtime_jdk = runtime_jdk,
     )

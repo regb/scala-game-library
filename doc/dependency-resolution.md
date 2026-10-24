@@ -35,6 +35,28 @@ standard module configuration is sufficient for Maven ownership. A future
 SGL-only consumer module would need upstream Scala configuration support or a
 separately validated custom toolchain, not just a wrapper macro.
 
+## Desktop Java runtime
+
+`sgl_desktop_awt_app` uses the platform-appropriate
+`@rules_java//toolchains:remotejdk_17` runtime by default. SGL's rules_java
+version determines its downloaded archive and checksum. Games do not need a
+local Java path, `JAVABIN`, or a `--java_runtime_version` flag for launching.
+This selects the application runtime, not the compiler or Android/HTML5 tools.
+
+The previous implicit local-JDK selection was not sufficient runtime isolation.
+On the validation machine the Nix JDK decoded Vorbis correctly but failed to
+open a second simultaneous JavaSound clip. WinSmash loads two music clips and
+therefore stayed on its loading screen. The rules_java-provided runtime opens
+both clips and WinSmash starts its music and game loop with its ordinary Bazel
+target. This is an audio runtime/native-stack difference, not a missing Maven
+codec. A single successful decode or clip open is not a playback smoke test.
+
+Applications deliberately using another supported Java runtime can pass its
+`JavaRuntimeInfo`-providing label as `runtime_jdk` to `sgl_desktop_awt_app`.
+For example, `@rules_java//toolchains:current_java_runtime` restores selection
+through Bazel's runtime configuration. That explicit override is covered by
+the consumer smoke test; it is not required for normal use.
+
 ## Repository ownership
 
 SGL uses the distinctly named `sgl_maven` install and imports it locally as
@@ -91,8 +113,9 @@ coverage, download URLs and SHA-256 changes. Investigate changed bytes at
 unchanged coordinates. Commit declarations and lockfile together.
 
 CI explicitly validates the lock as SGL root and builds a temporary consumer's
-desktop and HTML5 applications with no Maven configuration. It repeats those
-consumer builds with `--nofetch`.
+desktop and HTML5 applications with no Maven configuration. It checks the
+default desktop runtime and an explicit override, then repeats the consumer
+builds with `--nofetch`.
 
 In rules_jvm_external 7.0, non-root lockfiles work, but
 `fail_if_repin_required` is propagated only from root install tags. Consumer
