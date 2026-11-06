@@ -57,6 +57,7 @@ export default defineConfig({
           label: 'Tools',
           items: [
             { label: 'Examples', slug: 'docs/examples' },
+            { label: 'Live configuration', slug: 'docs/live-configuration' },
             { label: 'Migration', slug: 'docs/migration' },
           ],
         },

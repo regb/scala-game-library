@@ -1,0 +1,121 @@
+---
+title: Live configuration
+description: Opt-in development values and desktop properties-file reloads.
+---
+
+Live configuration lets a running game change tuning values without recompiling.
+It is optional. Neither `core` nor the default modules depend on it.
+
+## Registry
+
+Add `//modules/live-config` to a development library's dependencies. The registry
+has no backend or transport dependency.
+
+```scala
+import sgl.dev.{ConfigCodec, LiveConfig}
+
+val config = new LiveConfig
+val speed = config.register("movement.speed", 100.0, ConfigCodec.double,
+  (value: Double) => value >= 0 && value <= 2000)
+val unsubscribe = speed.onChange(value => println(s"Speed changed to $value"))
+
+val pixelsPerSecond = speed.get
+speed.set(150.0) // Either[String, Unit]
+config.update(Map("movement.speed" -> "200")) // Either[Vector[String], Unit]
+speed.reset()
+unsubscribe()
+```
+
+Names must be nonempty and unique. Defaults must pass validation. Built-in codecs
+support strings, integers, finite doubles, and the lowercase booleans `true` and
+`false`. Implement `ConfigCodec[A]` for other types. Codecs and validators should
+be pure, must not mutate the registry, and should report invalid input rather
+than throw.
+
+An update validates every supplied key before changing anything. Unknown names,
+parse errors, or validation failures reject the whole patch. Missing keys retain
+their current values. Removing a key from a file does not reset it. Use `reset()`
+explicitly to restore a default.
+
+All values in a successful patch are committed before callbacks run. Callbacks
+run only for changed values, not when subscribing or setting an equal value.
+They can read other values but cannot register or update values recursively.
+Listeners run in subscription order for each value; patch keys are processed in
+sorted order. Listener changes take effect on the next notification of that
+value. Unsubscribe is safe to call more than once.
+
+## Desktop properties adapter
+
+Add `//modules/live-config-jvm` separately for the JVM-only adapter:
+
+```scala
+import java.nio.file.Paths
+import sgl.dev.PropertiesConfig
+
+val adapter = new PropertiesConfig(config, Paths.get("/absolute/path/tuning.properties"))
+// Call from your game's update method, for example every 250 ms:
+adapter.poll() // Either[Vector[String], Boolean]
+// Call when the development session ends:
+adapter.close()
+```
+
+The file uses Java properties syntax, read as UTF-8:
+
+```properties
+movement.speed=350
+```
+
+`poll()` performs synchronous local disk I/O. It does not create a thread or use
+the SGL scheduler. Register, poll, read, set, and unsubscribe on the same game
+thread. Choose a polling interval suitable for your game; avoid large files or
+network-mounted paths. File contents are compared, so edits with identical
+modification timestamps are still detected.
+
+A successful poll returns `Right(true)` for new file content and `Right(false)`
+for unchanged content. Unchanged files are not reapplied, even if code has since
+changed a value. Missing or unreadable files, malformed properties, and invalid
+patches return errors without changing values. Later polls retry failed content.
+Save files by atomic replacement to avoid reading a partial edit that happens to
+be valid. Duplicate properties use the last occurrence, as in Java properties.
+
+Callbacks are application code. If one throws, the exception propagates, all
+values remain committed, and remaining notifications are skipped. The registry
+can still be used afterwards. A poll interrupted this way does not cache the file
+as successfully applied. Keep callbacks short and non-throwing.
+
+The registry owns no resources. Keep it scoped to your game or development
+session and unsubscribe listeners when their consumers are disposed. The file
+adapter retains no open file handle between polls. `close()` is idempotent and
+prevents further polling.
+
+## Try the example
+
+From the repository root:
+
+```bash
+cp examples/live-config/tuning.properties /tmp/sgl-tuning.properties
+SGL_LIVE_CONFIG_FILE=/tmp/sgl-tuning.properties bazel run //examples/live-config:desktop-dev
+```
+
+Edit `movement.speed` in `/tmp/sgl-tuning.properties` while the red circle moves.
+The next poll updates its speed and prints the new value. Zero pauses movement.
+
+The release variant uses a fixed speed and has no dependency on either module:
+
+```bash
+bazel build //examples/live-config:desktop-release
+bazel query 'deps(//examples/live-config:desktop-release)' | grep '//modules/live-config'
+```
+
+The query should produce no matches. Use the same split in your own build:
+release game code defines ordinary defaults or overridable accessors, while a
+separate development library supplies the registry and adapter. Disabling a
+runtime flag is not enough to exclude dependencies from release artifacts.
+
+## Safety and platform scope
+
+This version opens no network listeners, serves no HTTP endpoints, and writes no
+configuration files. Only point it at a local file you trust. Keep secrets out of
+tuning files and do not include the adapter or development module in shipped
+builds. Browser and mobile transports are not provided; they can use the typed
+registry without depending on the JVM adapter.
