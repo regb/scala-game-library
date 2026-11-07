@@ -3,6 +3,7 @@ package sgl
 import sgl.assets.{DrawableAsset, FontAsset}
 import sgl.util.Loader
 
+import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 /** Implements the Canvas API with the portable [[OpenGLProvider]] API.
@@ -14,6 +15,11 @@ import scala.collection.mutable.ArrayBuffer
   */
 trait OpenGLCanvasProvider extends CanvasProvider with Application {
   this: OpenGLProvider with WindowProvider with SystemProvider =>
+
+  /** Supplies generated portable glyph atlases for a packaged font asset.
+    * Backends use the built-in Noto Sans faces when no provider recognizes the asset.
+    */
+  protected def openGLCanvasFontFaces(asset: FontAsset): Option[(PortableFont.Face, PortableFont.Face)] = None
 
   object OpenGLCanvasGraphics extends Graphics {
     final class OpenGLBitmap(private[OpenGLCanvasProvider] val image: OpenGL.TextureImage) extends AbstractBitmap {
@@ -37,18 +43,29 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
     override def loadImage(asset: DrawableAsset): Loader[Bitmap] =
       OpenGL.loadTextureImage2D(asset).map(new OpenGLBitmap(_))
 
-    final case class OpenGLFont(family: String, style: Font.Style, size: Int) extends AbstractFont {
+    final case class OpenGLFont(
+        family: String,
+        style: Font.Style,
+        size: Int,
+        regularFace: PortableFont.Face = PortableFontData.Regular,
+        boldFace: PortableFont.Face = PortableFontData.Bold
+    ) extends AbstractFont {
       require(size > 0, "Font size must be positive")
       override def withSize(newSize: Int): Font = copy(size = newSize)
       override def withStyle(newStyle: Font.Style): Font = copy(style = newStyle)
       override def isBold: Boolean = style == Font.Bold || style == Font.BoldItalic
       override def isItalic: Boolean = style == Font.Italic || style == Font.BoldItalic
+      private[OpenGLCanvasProvider] def face: PortableFont.Face = if(isBold) boldFace else regularFace
     }
     override type Font = OpenGLFont
 
     object OpenGLFontCompanion extends FontCompanion {
       override def create(family: String, style: Style, size: Int): Font = OpenGLFont(family, style, size)
-      override def load(asset: FontAsset): Loader[Font] = Loader.successful(Default)
+      override def load(asset: FontAsset): Loader[Font] = Loader.successful(
+        openGLCanvasFontFaces(asset)
+          .map { case (regular, bold) => OpenGLFont(asset.resourceName, Normal, 14, regular, bold) }
+          .getOrElse(Default)
+      )
       override val Default: Font = OpenGLFont("Noto Sans", Normal, 14)
       override val DefaultBold: Font = OpenGLFont("Noto Sans", Bold, 14)
       override val Monospace: Font = OpenGLFont("Noto Sans", Normal, 14)
@@ -87,7 +104,7 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
         override val overflowed: Boolean
     ) extends AbstractTextLayout {
       override val lineCount: Int = lines.length
-      private val face = PortableFont.face(paint.font.isBold)
+      private val face = paint.font.face
       private val fontScale = PortableFont.scale(paint.font.size)
       override val lineHeight: Int = scala.math.ceil(face.lineHeight * fontScale).toInt
       override val ascent: Int = scala.math.ceil(face.ascent * fontScale).toInt
@@ -228,9 +245,9 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
       }
 
       private def drawGlyphs(value: String, x: Float, baselineY: Float, paint: Paint): Unit = {
-        val face = PortableFont.face(paint.font.isBold)
+        val face = paint.font.face
         val scale = PortableFont.scale(paint.font.size)
-        useTexture(Some(fontTexture(face, paint.font.isBold)))
+        useTexture(Some(fontTexture(face)))
         var cursorX = x
         PortableFont.foreachCodePoint(value) { codePoint =>
           val glyph = face.glyph(codePoint)
@@ -296,7 +313,7 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
     private[OpenGLCanvasProvider] val canvas = new OpenGLCanvas
 
     private def measure(value: String, font: Font): Float =
-      PortableFont.measure(value, PortableFont.face(font.isBold), font.size)
+      PortableFont.measure(value, font.face, font.size)
   }
   override val Graphics: OpenGLCanvasGraphics.type = OpenGLCanvasGraphics
 
@@ -312,8 +329,7 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
   private var vertexArray: OpenGL.VertexArray = _
   private var vertexBuffer: OpenGL.Buffer = _
   private var whiteTexture: OpenGL.Texture = _
-  private var regularFontTexture: Option[OpenGL.Texture] = None
-  private var boldFontTexture: Option[OpenGL.Texture] = None
+  private val fontTextures = mutable.Map.empty[PortableFont.Face, OpenGL.Texture]
 
   final override def withFrameCanvas[A](f: Graphics.Canvas => A): A = {
     if(active) throw new IllegalStateException("Canvas frame is already active")
@@ -357,10 +373,8 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
     OpenGL.deleteBuffer(vertexBuffer)
     OpenGL.deleteVertexArray(vertexArray)
     OpenGL.deleteTexture(whiteTexture)
-    regularFontTexture.foreach(OpenGL.deleteTexture)
-    boldFontTexture.foreach(OpenGL.deleteTexture)
-    regularFontTexture = None
-    boldFontTexture = None
+    fontTextures.values.foreach(OpenGL.deleteTexture)
+    fontTextures.clear()
     OpenGL.deleteProgram(program)
     initialized = false
   }
@@ -442,17 +456,13 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
     OpenGL.vertexAttribPointer(location, size, OpenGL.FloatType, normalized = false, stride, offset)
   }
 
-  private def fontTexture(face: PortableFont.Face, bold: Boolean): OpenGL.Texture = {
-    val current = if(bold) boldFontTexture else regularFontTexture
-    current.getOrElse {
-      val texture = OpenGL.createTextureImage2D(face.atlasWidth, face.atlasHeight, face.rgba).texture
-      OpenGL.bindTexture(OpenGL.Texture2D, texture)
-      OpenGL.texParameteri(OpenGL.Texture2D, OpenGL.TextureMinFilter, OpenGL.Linear)
-      OpenGL.texParameteri(OpenGL.Texture2D, OpenGL.TextureMagFilter, OpenGL.Linear)
-      if(bold) boldFontTexture = Some(texture) else regularFontTexture = Some(texture)
-      texture
-    }
-  }
+  private def fontTexture(face: PortableFont.Face): OpenGL.Texture = fontTextures.getOrElseUpdate(face, {
+    val texture = OpenGL.createTextureImage2D(face.atlasWidth, face.atlasHeight, face.rgba).texture
+    OpenGL.bindTexture(OpenGL.Texture2D, texture)
+    OpenGL.texParameteri(OpenGL.Texture2D, OpenGL.TextureMinFilter, OpenGL.Linear)
+    OpenGL.texParameteri(OpenGL.Texture2D, OpenGL.TextureMagFilter, OpenGL.Linear)
+    texture
+  })
 
   private def useTexture(texture: Option[OpenGL.Texture]): Unit = {
     if(texture != batchTexture) {

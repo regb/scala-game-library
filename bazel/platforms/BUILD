@@ -47,3 +47,13 @@ platform(
     ],
     visibility = ["//visibility:public"],
 )
+
+platform(
+    name = "scala_native_macos_arm64",
+    constraint_values = [
+        ":compiler_native",
+        "@platforms//cpu:arm64",
+        "@platforms//os:macos",
+    ],
+    visibility = ["//visibility:public"],
+)

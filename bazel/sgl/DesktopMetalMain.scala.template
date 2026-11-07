@@ -1,0 +1,8 @@
+package {{PACKAGE}}.desktop
+
+object {{MAIN_CLASS}} extends _root_.sgl.metal.MetalApp {{SCREEN2D_MIXIN}} with {{CORE_ABSTRACT_CLASS}}{{TILED_MIXINS}}{{EXTRA_MIXINS}} {
+  override val TargetFps: Option[Int] = {{TARGET_FPS}}
+  override val frameDimension: (Int, Int) = ({{FRAME_WIDTH}}, {{FRAME_HEIGHT}})
+  override val windowTitle: String = "{{WINDOW_TITLE}}"
+  {{RESOURCE_ROOT}}
+}

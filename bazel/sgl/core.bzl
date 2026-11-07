@@ -5,10 +5,12 @@ def sgl_core_library(
         name,
         srcs,
         assets = [],
+        assets_strip_prefix = "assets",
         package = None,
         deps = [],
         use_extension_tiled = False,
-        include_default_modules = False):
+        include_default_modules = False,
+        visibility = None):
     full_deps = deps + [
         Label("//core:sgl-core"),
     ]
@@ -38,5 +40,6 @@ def sgl_core_library(
         deps = full_deps,
         exports = full_deps,
         resources = resources,
-        resource_strip_prefix = (native.package_name() + "/assets").strip("/") if assets else "",
+        resource_strip_prefix = (native.package_name() + "/" + assets_strip_prefix).strip("/") if assets else "",
+        visibility = visibility,
     )

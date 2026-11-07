@@ -1,5 +1,5 @@
 load("//bazel/sgl:assets.bzl", "sgl_drawable_assets", "sgl_texture_atlas")
-load("//bazel/sgl:defs.bzl", "sgl_core_library", "sgl_desktop_lwjgl_app", "sgl_desktop_native_app", "sgl_html5_opengl_app")
+load("//bazel/sgl:defs.bzl", "sgl_core_library", "sgl_desktop_lwjgl_app", "sgl_desktop_metal_app", "sgl_desktop_native_app", "sgl_html5_opengl_app")
 
 sgl_drawable_assets(
     name = "sprites",
@@ -34,6 +34,20 @@ sgl_desktop_lwjgl_app(
     main_class = "Main",
     package = "sgl.examples.hello.atlas",
     window_title = "SGL Hello Atlas",
+    deps = [":core"],
+)
+
+sgl_desktop_metal_app(
+    name = "desktop-metal",
+    assets = [":sprite_atlas"],
+    assets_strip_prefix = "examples/hello-atlas/assets",
+    core_abstract_class = "sgl.examples.hello.atlas.core.AbstractApp",
+    extra_mixins = ["sgl.examples.hello.atlas.core.GeneratedAssetsProvider"],
+    frame_height = 400,
+    frame_width = 800,
+    main_class = "Main",
+    package = "sgl.examples.hello.atlas",
+    window_title = "SGL Hello Atlas Metal",
     deps = [":core"],
 )
 

@@ -14,9 +14,17 @@ we do not provide a configuration for Android export.
 You can try out the HTML5 version in your browser:
 [https://regb.github.io/scala-game-library/snake/](https://regb.github.io/scala-game-library/snake/)
 
-To run the JVM implementation:
+To run the JVM AWT implementation:
 
     bazel run :desktop-awt
+
+To run the JVM LWJGL implementation:
+
+    bazel run :desktop-lwjgl
+
+To run the Scala Native Metal implementation on macOS:
+
+    bazel run :desktop-metal
 
 To run the ScalaNative build:
 

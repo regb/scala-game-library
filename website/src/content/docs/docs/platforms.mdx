@@ -13,6 +13,7 @@ of them. Each backend has a Bazel rule that generates the entry point, as descri
 | --- | --- | --- | --- | --- |
 | Desktop AWT | `sgl_desktop_awt_app` | Canvas (Java2D) | JavaSound | File (`file_save`) or memory |
 | Desktop LWJGL | `sgl_desktop_lwjgl_app` | OpenGL 3.3 core, plus Canvas through `OpenGLCanvasProvider` | OpenAL | File (`file_save`) or memory |
+| Desktop Metal | `sgl_desktop_metal_app` | Metal, plus Canvas and the bundled OpenGL subset | AVFoundation | Not included |
 | HTML5 Canvas | `sgl_html5_app` | Canvas 2D context | HTML5 audio | `localStorage` |
 | HTML5 WebGL | `sgl_html5_opengl_app` | WebGL 2, plus Canvas through `OpenGLCanvasProvider` | HTML5 audio | Not included |
 | Scala Native | `sgl_desktop_native_app` | SDL2 with OpenGL ES 3. `NativeApp` for Canvas, `NativeOpenGLApp` for OpenGL. | SDL2 audio | Not included |
@@ -21,6 +22,7 @@ of them. Each backend has a Bazel rule that generates the entry point, as descri
 
 ```bash
 bazel run //examples/hello-canvas:desktop-awt
+bazel run //examples/hello-canvas:desktop-metal
 bazel run //examples/hello-scalagl:desktop-lwjgl
 bazel run //examples/hello-scalagl:html5            # http://localhost:8080
 bazel run //engines/gameobject/examples/asteroids:desktop-native
@@ -32,6 +34,29 @@ bazel run //examples/snake:android-run              # installs and launches on a
 Use **AWT** for Canvas games during development. It has no native dependencies, and Bazel runs it
 on a downloaded JDK 17. Use **LWJGL** for OpenGL games and the GameObject engine. Both can simulate
 a mobile safe area: set `simulated_safe_area_insets` on `sgl_desktop_awt_app`.
+
+## Apple Metal
+
+The macOS Scala Native backend runs the batched Canvas renderer through fixed Metal pipelines. It supports solid geometry, transforms, clipping, bitmap textures, alpha blending, the portable glyph atlas, framebuffer capture, AVFoundation audio, input events, and the OpenGL subset used by the bundled ScalaGL and GameObject examples.
+
+```bash
+bazel run //examples/snake:desktop-metal
+bazel run //examples/hello-canvas:desktop-metal
+```
+
+Metal targets compile an Objective-C bridge and link AppKit, Metal, and QuartzCore. They require macOS and are tagged `manual`, so wildcard builds on other platforms do not select them. The bundled Snake, Hello Canvas, Hello ScalaGL, Hello Atlas, Screen2D Board, Menu and Platformer, and GameObject Asteroids and Solar System examples have Metal targets.
+
+### Experimental iOS foundation
+
+Scala Native can emit arm64 static archives for iOS devices and the iOS Simulator. A Swift-owned UIKit/`MTKView` shell supplies the drawable and forwards resize, safe-area, lifecycle, stable touch identifiers, and audio-session changes through a narrow C ABI. Snake runs through the shared Canvas Metal renderer in the iOS Simulator; packaging the remaining examples is ongoing work.
+
+```bash
+bazel build //examples/ios-static-library:snake_ios_simulator
+bazel build //examples/ios-static-library:snake_ios_device
+bazel test //examples/ios-static-library:snake_swift_link_smoke_test
+bazel test //examples/ios-static-library:ios_snake_runtime_test
+examples/ios-static-library/build_simulator_app.sh /tmp/SGLIOSSnake.app
+```
 
 ## Web
 
@@ -47,8 +72,8 @@ Useful options:
   can be embedded in a page with other inputs.
 - `pack_assets = True` (Canvas rule) bundles every asset into one binary pack.
 
-<Aside type="note" title="iOS">
-There is no native iOS backend yet. A web build can be packaged as an iOS app with
+<Aside type="note" title="iOS packaging">
+The native Metal shell is experimental. A web build can still be packaged as an iOS app with
 [Cordova](https://cordova.apache.org/). `backends/html5/cordova` has the integration, and
 [Fish Escape](https://apps.apple.com/us/app/fish-escape-lite/id1515164224) shipped this way.
 </Aside>
