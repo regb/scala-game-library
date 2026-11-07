@@ -7,12 +7,14 @@ Supported backend families include:
 
 - Desktop JVM with AWT Canvas
 - Desktop JVM with LWJGL/OpenGL/OpenAL
+- Desktop Metal Canvas via Scala Native on macOS
 - HTML5 Canvas and WebGL via Scala.js
 - Desktop native via Scala Native and SDL2
 - Android through the proxy backend / Android Kotlin integration
 
 ```bash
 bazel build //examples/hello-canvas:desktop-awt
+bazel build //examples/hello-canvas:desktop-metal
 bazel build //examples/hello-scalagl:html5
 bazel build //engines/gameobject/examples/asteroids:desktop-native
 ```
@@ -96,6 +98,34 @@ The Scala Native Canvas runner now uses this renderer instead of its former fixe
 ```bash
 bazel run //examples/hello-canvas:desktop-lwjgl
 bazel run //examples/hello-canvas:html5-opengl
+```
+
+## Metal-backed Canvas
+
+The macOS Scala Native backend runs the same batched Canvas renderer through fixed Metal pipelines. It supports solid geometry, transforms, clipping, bitmap textures, alpha blending, the portable glyph atlas, framebuffer capture, AVFoundation audio, input events, and the OpenGL subset used by the bundled ScalaGL and GameObject examples.
+
+```bash
+bazel run //examples/snake:desktop-metal
+bazel run //examples/hello-canvas:desktop-metal
+```
+
+Metal targets compile an Objective-C bridge and link AppKit, Metal, and QuartzCore. They require macOS and are tagged `manual`, so wildcard builds on other platforms do not select them.
+
+The backend forwards keyboard, pointer, scroll, resize, pause, and resume events; implements `FrameCaptureProvider`; and provides indexed buffers, depth state, uniforms, textured 3D geometry, and the OpenGL subset used by the bundled ScalaGL and GameObject examples. Tiled JSON imports are host-portable, so the Screen2D Platformer can build on macOS.
+
+The bundled Snake, Hello Canvas, Hello ScalaGL, Screen2D Board, Menu and Platformer, and GameObject Asteroids and Solar System examples render through Metal.
+
+### Experimental iOS foundation
+
+The Scala Native build can emit arm64 static archives for both iOS devices and the iOS Simulator. A Swift-owned UIKit/`MTKView` shell supplies the drawable and forwards resize, safe-area, lifecycle, and stable touch identifiers through a narrow C ABI. UIKit lifecycle changes also activate and deactivate the iOS audio session. The Snake example runs through the SGL Canvas Metal renderer in the iOS Simulator; packaging and validating the remaining examples is ongoing work.
+
+```bash
+bazel build //examples/ios-static-library:snake_ios_simulator
+bazel build //examples/ios-static-library:snake_ios_device
+bazel test //examples/ios-static-library:swift_link_smoke_test
+bazel test //examples/ios-static-library:snake_swift_link_smoke_test
+bazel test //examples/ios-static-library:ios_snake_runtime_test
+examples/ios-static-library/build_simulator_app.sh /tmp/SGLIOSSnake.app
 ```
 
 ## Frame capture
