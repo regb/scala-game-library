@@ -14,7 +14,10 @@ object ScalaNativeLinker {
     val mainClass = args(1)
     val workDir = Paths.get(args(2))
     val output = Paths.get(args(3))
-    val linkopts = args.drop(4).toSeq
+    val linkopts = args.drop(4).toSeq.map { option =>
+      val path = Paths.get(option)
+      if (Files.exists(path)) path.toAbsolutePath.toString else option
+    }
 
     Files.createDirectories(workDir)
     Files.createDirectories(output.getParent)

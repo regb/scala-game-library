@@ -59,10 +59,10 @@ lot of time deploying to your target platforms, such as mobile or console.
 
 The current implementation provides the following backends:
 
-  * *Desktop* with JVM and AWT. This is mostly convenient during development,
-    but can also serve as a final release if you are able to distribute your
-    game to people that have a JVM. It will be cross-platform across Windows,
-    Mac, and Linux.
+  * *Desktop* with JVM and AWT or LWJGL, plus a Scala Native Metal Canvas
+    backend on macOS. The JVM backends are cross-platform across Windows, Mac,
+    and Linux. The Metal backend compiles games to native arm64 executables and
+    shares its rendering bridge with the experimental native iOS backend.
   * *Android*. The Android backend is implemented as a Kotlin/Android library
     under `backends/android-kotlin/`, with Bazel helpers that generate Gradle Android
     app projects for games. See the [Firebase consent, attribution diagnostics and ad revenue guide](doc/firebase-attribution.md) for optional integrations.
@@ -73,11 +73,13 @@ The current implementation provides the following backends:
     is able to generate a native executable that can then be run on the target
     platform without a JVM.  The support for native is not complete yet, but
     the current implementation is a proof of concept. Further extensions to
-    this backend should enable SGL to eventually target iOS and various
+    this backend should enable SGL to target additional native platforms and
     consoles.
-  * *iOS* while we do not yet support iOS natively, it is possible to use the
-    web backend combined with a tool like Cordova, to make an iOS app. This
-    has been proven with [this game](https://apps.apple.com/us/app/fish-escape-lite/id1515164224).
+  * *iOS* has an experimental Scala Native static-library backend with a
+    Swift-owned UIKit/MetalKit shell. The Snake example runs through the shared
+    SGL Canvas Metal renderer on arm64 iOS Simulator and device builds. The web
+    backend combined with a tool like Cordova remains an alternative and has
+    been proven with [this game](https://apps.apple.com/us/app/fish-escape-lite/id1515164224).
 
 ## Alternatives
 

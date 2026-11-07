@@ -1,4 +1,4 @@
-load("//bazel/sgl:defs.bzl", "sgl_core_library", "sgl_desktop_lwjgl_app", "sgl_desktop_native_app", "sgl_html5_opengl_app")
+load("//bazel/sgl:defs.bzl", "sgl_core_library", "sgl_desktop_lwjgl_app", "sgl_desktop_metal_app", "sgl_desktop_native_app", "sgl_html5_opengl_app")
 
 sgl_core_library(
     name = "core",
@@ -16,6 +16,20 @@ sgl_desktop_lwjgl_app(
     package = "sgl.examples.gameobject.asteroids",
     window_title = "SGL GameObject Asteroids",
     deps = [":core"],
+)
+
+sgl_desktop_metal_app(
+    name = "desktop-metal",
+    core_abstract_class = "sgl.examples.gameobject.asteroids.core.AbstractApp",
+    frame_height = 600,
+    frame_width = 800,
+    main_class = "Main",
+    package = "sgl.examples.gameobject.asteroids",
+    window_title = "SGL GameObject Asteroids Metal",
+    deps = [
+        ":core",
+        "//engines:sgl-gameobject",
+    ],
 )
 
 sgl_html5_opengl_app(

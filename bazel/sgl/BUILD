@@ -7,6 +7,7 @@ exports_files(
         "Html5OpenGLMain.scala.template",
         "DesktopAWTMain.scala.template",
         "DesktopLwjglMain.scala.template",
+        "DesktopMetalMain.scala.template",
         "DesktopNativeMain.scala.template",
     ],
     visibility = ["//visibility:private"],

@@ -1,20 +1,47 @@
 load("@rules_java//java:java_test.bzl", "java_test")
-load("//bazel/sgl:defs.bzl", "sgl_android_app", "sgl_core_library", "sgl_desktop_awt_app", "sgl_desktop_native_app", "sgl_html5_app")
+load("//bazel/sgl:defs.bzl", "sgl_android_app", "sgl_core_library", "sgl_desktop_awt_app", "sgl_desktop_lwjgl_app", "sgl_desktop_metal_app", "sgl_desktop_native_app", "sgl_html5_app")
 
 sgl_core_library(
     name = "core",
     srcs = ["App.scala"],
     include_default_modules = False,
+    visibility = ["//examples/ios-static-library:__pkg__"],
 )
 
 sgl_desktop_awt_app(
     name = "desktop-awt",
     core_abstract_class = "sgl.examples.snake.core.AbstractApp",
+    extra_mixins = ["_root_.sgl.desktop.SaveScreenshotFromProperty"],
     frame_height = 600,
     frame_width = 600,
     main_class = "Main",
     package = "sgl.examples.snake",
     use_screen2d = False,
+    deps = [":core"],
+)
+
+sgl_desktop_lwjgl_app(
+    name = "desktop-lwjgl",
+    core_abstract_class = "sgl.examples.snake.core.AbstractApp",
+    extra_mixins = [
+        "_root_.sgl.OpenGLCanvasProvider",
+        "_root_.sgl.desktop.SaveScreenshotFromProperty",
+    ],
+    frame_height = 600,
+    frame_width = 600,
+    main_class = "Main",
+    package = "sgl.examples.snake",
+    deps = [":core"],
+)
+
+sgl_desktop_metal_app(
+    name = "desktop-metal",
+    core_abstract_class = "sgl.examples.snake.core.AbstractApp",
+    frame_height = 600,
+    frame_width = 600,
+    main_class = "Main",
+    package = "sgl.examples.snake",
+    window_title = "SGL Snake Metal",
     deps = [":core"],
 )
 

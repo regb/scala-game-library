@@ -1,5 +1,5 @@
 load("//bazel/sgl:assets.bzl", "sgl_audio_assets", "sgl_drawable_assets")
-load("//bazel/sgl:defs.bzl", "sgl_core_library", "sgl_desktop_awt_app", "sgl_desktop_lwjgl_app", "sgl_desktop_native_app", "sgl_html5_app", "sgl_html5_opengl_app")
+load("//bazel/sgl:defs.bzl", "sgl_core_library", "sgl_desktop_awt_app", "sgl_desktop_lwjgl_app", "sgl_desktop_metal_app", "sgl_desktop_native_app", "sgl_html5_app", "sgl_html5_opengl_app")
 
 sgl_drawable_assets(
     name = "drawables",
@@ -54,11 +54,29 @@ sgl_desktop_lwjgl_app(
     extra_mixins = [
         "sgl.examples.hello.canvas.core.GeneratedAssetsProvider",
         "_root_.sgl.OpenGLCanvasProvider",
+        "_root_.sgl.desktop.SaveScreenshotFromProperty",
     ],
     frame_height = 800,
     frame_width = 800,
     main_class = "Main",
     package = "sgl.examples.hello.canvas",
+    deps = [":core"],
+)
+
+sgl_desktop_metal_app(
+    name = "desktop-metal",
+    assets = [
+        ":audio",
+        ":drawables",
+    ],
+    assets_strip_prefix = "examples/hello-canvas/assets",
+    core_abstract_class = "sgl.examples.hello.canvas.core.AbstractApp",
+    extra_mixins = ["sgl.examples.hello.canvas.core.GeneratedAssetsProvider"],
+    frame_height = 800,
+    frame_width = 800,
+    main_class = "Main",
+    package = "sgl.examples.hello.canvas",
+    window_title = "SGL Hello Canvas Metal",
     deps = [":core"],
 )
 

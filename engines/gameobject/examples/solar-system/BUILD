@@ -1,5 +1,5 @@
 load("//bazel/sgl:assets.bzl", "sgl_audio_assets", "sgl_raw_image_assets")
-load("//bazel/sgl:defs.bzl", "sgl_core_library", "sgl_desktop_lwjgl_app", "sgl_desktop_native_app", "sgl_html5_opengl_app")
+load("//bazel/sgl:defs.bzl", "sgl_core_library", "sgl_desktop_lwjgl_app", "sgl_desktop_metal_app", "sgl_desktop_native_app", "sgl_html5_opengl_app")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -39,6 +39,26 @@ sgl_desktop_lwjgl_app(
     main_class = "Main",
     package = "sgl.examples.gameobject.solar",
     window_title = "SGL Solar System GO",
+    deps = [
+        ":core",
+        "//engines:sgl-gameobject",
+    ],
+)
+
+sgl_desktop_metal_app(
+    name = "desktop-metal",
+    assets = [
+        ":images",
+        ":audio",
+    ],
+    assets_strip_prefix = "engines/gameobject/examples/solar-system/assets",
+    core_abstract_class = "sgl.examples.gameobject.solar.core.AbstractApp",
+    extra_mixins = ["sgl.examples.gameobject.solar.core.GeneratedAssetsProvider"],
+    frame_height = 700,
+    frame_width = 1000,
+    main_class = "Main",
+    package = "sgl.examples.gameobject.solar",
+    window_title = "SGL Solar System GO Metal",
     deps = [
         ":core",
         "//engines:sgl-gameobject",

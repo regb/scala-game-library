@@ -1,4 +1,4 @@
-load("//bazel/sgl:defs.bzl", "sgl_core_library", "sgl_desktop_awt_app", "sgl_desktop_native_app", "sgl_html5_app")
+load("//bazel/sgl:defs.bzl", "sgl_core_library", "sgl_desktop_awt_app", "sgl_desktop_metal_app", "sgl_desktop_native_app", "sgl_html5_app")
 
 sgl_core_library(
     name = "core",
@@ -14,6 +14,18 @@ sgl_desktop_awt_app(
     frame_width = 400,
     main_class = "Main",
     package = "sgl.examples.screen2d.menu",
+    deps = [":core"],
+)
+
+sgl_desktop_metal_app(
+    name = "desktop-metal",
+    core_abstract_class = "sgl.examples.screen2d.menu.core.AbstractApp",
+    frame_height = 600,
+    frame_width = 400,
+    main_class = "Main",
+    package = "sgl.examples.screen2d.menu",
+    use_screen2d = True,
+    window_title = "SGL Screen2D Menu Metal",
     deps = [":core"],
 )
 

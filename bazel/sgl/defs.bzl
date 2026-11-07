@@ -3,6 +3,7 @@ load(":core.bzl", _sgl_core_library = "sgl_core_library")
 load(":desktop.bzl", _sgl_desktop_awt_app = "sgl_desktop_awt_app")
 load(":html5.bzl", _sgl_html5_app = "sgl_html5_app", _sgl_html5_opengl_app = "sgl_html5_opengl_app")
 load(":lwjgl.bzl", _sgl_desktop_lwjgl_app = "sgl_desktop_lwjgl_app")
+load(":metal.bzl", _sgl_desktop_metal_app = "sgl_desktop_metal_app")
 load(":native.bzl", _sgl_desktop_native_app = "sgl_desktop_native_app")
 
 sgl_core_library = _sgl_core_library
@@ -11,6 +12,7 @@ sgl_html5_app = _sgl_html5_app
 sgl_html5_opengl_app = _sgl_html5_opengl_app
 sgl_desktop_native_app = _sgl_desktop_native_app
 sgl_desktop_lwjgl_app = _sgl_desktop_lwjgl_app
+sgl_desktop_metal_app = _sgl_desktop_metal_app
 sgl_android_app = _sgl_android_app
 
 # Provider for sgl_assets rule
