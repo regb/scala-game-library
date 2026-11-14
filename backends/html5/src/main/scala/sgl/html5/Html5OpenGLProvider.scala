@@ -3,7 +3,7 @@ package html5
 
 import org.scalajs.dom
 import dom.{HTMLImageElement, WebGLRenderingContext}
-import sgl.assets.{DrawableAsset, RawImageAsset}
+import sgl.assets.{DrawableAsset, RawImageAsset, TextureFilter}
 import sgl.util.{DefaultLoader, Loader}
 import dom.html
 
@@ -160,18 +160,22 @@ trait Html5OpenGLProvider extends OpenGLProvider {
 
     override def loadTextureImage2D(asset: DrawableAsset): Loader[TextureImage] = {
       val variant = asset.bestVariantForDpi(Window.logicalPpi)
-      loadTexture2DResource(variant.resourceName)
+      loadTexture2DResource(variant.resourceName, TextureFilter.Nearest, generateMipmaps = true)
     }
 
     override def loadTextureImage2D(asset: RawImageAsset): Loader[TextureImage] =
-      loadTexture2DResource(asset.resourceName)
+      loadTexture2DResource(asset.resourceName, TextureFilter.Nearest, generateMipmaps = true)
 
-    private def loadTexture2DResource(resourceName: String): Loader[TextureImage] = {
+    override private[sgl] lazy val maxTextureSize: Int =
+      webgl.getParameter(WebGLRenderingContext.MAX_TEXTURE_SIZE).asInstanceOf[Int]
+
+    override private[sgl] def loadTexture2DResource(resourceName: String, filter: TextureFilter, generateMipmaps: Boolean): Loader[TextureImage] = {
       val promise = new DefaultLoader[TextureImage]
       val texture = genTexture()
       bindTexture(Texture2D, texture)
-      texParameteri(Texture2D, TextureMinFilter, Nearest)
-      texParameteri(Texture2D, TextureMagFilter, Nearest)
+      val sampling = if(filter == TextureFilter.Linear) Linear else Nearest
+      texParameteri(Texture2D, TextureMinFilter, sampling)
+      texParameteri(Texture2D, TextureMagFilter, sampling)
       texParameteri(Texture2D, TextureWrapS, ClampToEdge)
       texParameteri(Texture2D, TextureWrapT, ClampToEdge)
       val pixel = new js.typedarray.Uint8Array(js.Array[Short](255, 255, 255, 255))
@@ -181,7 +185,7 @@ trait Html5OpenGLProvider extends OpenGLProvider {
       img.onload = (_: dom.Event) => {
         bindTexture(Texture2D, texture)
         webgl.texImage2D(Texture2D, 0, WebGLRenderingContext.RGBA, WebGLRenderingContext.RGBA, WebGLRenderingContext.UNSIGNED_BYTE, img)
-        webgl.generateMipmap(Texture2D)
+        if(generateMipmaps) webgl.generateMipmap(Texture2D)
         promise.success(new TextureImage(texture, img.naturalWidth, img.naturalHeight))
       }
       img.addEventListener("error", (_: dom.Event) => {

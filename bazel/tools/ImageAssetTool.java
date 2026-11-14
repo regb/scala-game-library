@@ -26,6 +26,9 @@ public final class ImageAssetTool {
             case "extrude":
                 extrude(args);
                 break;
+            case "atlas":
+                TextureAtlasTool.run(args);
+                break;
             default:
                 usage();
         }
@@ -139,7 +142,8 @@ public final class ImageAssetTool {
     private static void usage() {
         throw new IllegalArgumentException(
             "Usage: copy <input> <output> | resize <input> <percent> <output> | " +
-            "extrude <input> <output> <tileWidth> <tileHeight> <columns> <tileCount> <margin> <spacing> <extrusion> <transparent>"
+            "extrude <input> <output> <tileWidth> <tileHeight> <columns> <tileCount> <margin> <spacing> <extrusion> <transparent> | " +
+            "atlas <config>"
         );
     }
 }

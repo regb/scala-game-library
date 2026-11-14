@@ -291,6 +291,136 @@ def sgl_drawable_assets(name, srcs = None, strip_prefix = "", source_density = N
             **kwargs
         )
 
+def _zero_pad(value, width):
+    text = str(value)
+    return "0" * (width - len(text)) + text
+
+def _atlas_resource_prefix(label):
+    # Escape the canonical label injectively into one URL-safe path component.
+    # Target names alone are not unique across packages or repositories.
+    identity = str(label).replace("~", "~t").replace("/", "~s").replace(":", "~c").replace("@", "~a")
+    return "atlas/" + identity
+
+def _sgl_texture_atlas_impl(ctx):
+    if ctx.attr.max_texture_size <= 0:
+        fail("max_texture_size must be positive")
+    if ctx.attr.extrusion < 0 or ctx.attr.padding < 0:
+        fail("extrusion and padding must not be negative")
+    if ctx.attr.max_pages <= 0:
+        fail("max_pages must be positive")
+
+    manifests = []
+    files = []
+    drawables = []
+    raw_images = []
+    binaries = []
+    texts = []
+    audio = []
+    fonts = []
+    densities = {}
+    drawable_sources = {}
+    page_resource_prefix = _atlas_resource_prefix(ctx.label)
+    config_lines = [
+        "name\t" + ctx.attr.name,
+        "max_texture_size\t" + str(ctx.attr.max_texture_size),
+        "extrusion\t" + str(ctx.attr.extrusion),
+        "padding\t" + str(ctx.attr.padding),
+        "max_pages\t" + str(ctx.attr.max_pages),
+        "filter\t" + ctx.attr.filter,
+        "page_resource_prefix\t" + page_resource_prefix,
+    ]
+    for name in ctx.attr.exclude:
+        _validate_manifest_field(name, "exclude")
+        config_lines.append("exclude\t" + name)
+
+    for group in ctx.attr.assets:
+        info = group[SglAssetsInfo]
+        group_manifests = info.manifests.to_list()
+        manifests += group_manifests
+        files += [f for f in info.files.to_list() if f not in group_manifests]
+        drawables += info.drawables.to_list()
+        raw_images += info.raw_images.to_list()
+        binaries += info.binaries.to_list()
+        texts += info.texts.to_list()
+        audio += info.audio.to_list()
+        fonts += info.fonts.to_list()
+        for f in info.drawables.to_list():
+            marker_index = f.path.rfind("/drawable-")
+            if marker_index < 0:
+                fail("Typed drawable output has no drawable density directory: %s" % f.path)
+            relative_path = f.path[marker_index + 1:]
+            density = relative_path.split("/", 1)[0][len("drawable-"):]
+            if density not in _DENSITY_SCALE:
+                fail("Typed drawable output has an unknown density directory: %s" % f.path)
+            if relative_path in drawable_sources:
+                fail("Drawables %s and %s both provide %s" % (drawable_sources[relative_path], f.path, relative_path))
+            drawable_sources[relative_path] = f.path
+            densities[density] = True
+            config_lines.append("drawable\t%s\t%s" % (relative_path, f.path))
+
+    for manifest in manifests:
+        config_lines.append("manifest\t" + manifest.path)
+
+    pages = []
+    for density in _DENSITIES:
+        if density not in densities:
+            continue
+        for index in range(ctx.attr.max_pages):
+            page = ctx.actions.declare_file("%s/%s/%s/page-%s.png" % (ctx.attr.output_prefix, page_resource_prefix, density, _zero_pad(index, 3)))
+            pages.append(page)
+            config_lines.append("page\t%s\t%d\t%s" % (density, index, page.path))
+
+    manifest = ctx.actions.declare_file(ctx.attr.output_prefix + "/" + ctx.attr.name + "_assets_manifest.json")
+    config_lines.append("output_manifest\t" + manifest.path)
+    config = ctx.actions.declare_file(ctx.attr.name + "_atlas_config.tsv")
+    ctx.actions.write(config, "\n".join(config_lines) + "\n")
+
+    ctx.actions.run(
+        executable = ctx.executable._image_tool,
+        inputs = [config] + manifests + drawables,
+        outputs = pages + [manifest],
+        arguments = ["atlas", config.path],
+        mnemonic = "SglTextureAtlas",
+        progress_message = "Packing texture atlas %{label}",
+    )
+
+    all_files = depset(files + pages + [manifest])
+    return [
+        DefaultInfo(files = all_files),
+        SglAssetsInfo(
+            files = all_files,
+            # Atlas pages are not drawables: Android packages drawables as native
+            # resources and only uses the standalone files.
+            drawables = depset(drawables),
+            raw_images = depset(raw_images),
+            binaries = depset(binaries),
+            texts = depset(texts),
+            audio = depset(audio),
+            fonts = depset(fonts),
+            manifests = depset([manifest]),
+        ),
+    ]
+
+sgl_texture_atlas = rule(
+    implementation = _sgl_texture_atlas_impl,
+    attrs = {
+        "assets": attr.label_list(providers = [SglAssetsInfo], mandatory = True, doc = "Asset groups whose drawables are packed. Other asset categories pass through unchanged."),
+        "max_texture_size": attr.int(default = 2048, doc = "Maximum width and height of one atlas page, in pixels."),
+        "extrusion": attr.int(default = 1, doc = "Pixels of repeated edge around each image, so that linear filtering does not sample neighbours."),
+        "padding": attr.int(default = 1, doc = "Transparent pixels between extruded images and along the page border."),
+        "max_pages": attr.int(default = 1, doc = "Pages declared per density. Packing fails if more are needed; unused pages are 1x1 placeholders."),
+        "filter": attr.string(default = "nearest", values = ["nearest", "linear"], doc = "Sampling filter used for the atlas pages."),
+        "exclude": attr.string_list(doc = "Drawable asset names to keep standalone, such as large or non-PNG images."),
+        "output_prefix": attr.string(default = "assets"),
+        "_image_tool": attr.label(default = "//bazel/tools:image_asset_tool", executable = True, cfg = "exec"),
+    },
+    doc = """Packs drawables into texture-atlas pages for OpenGL renderers.
+
+Pass this target to sgl_core_library instead of the wrapped asset groups. The
+standalone drawables are still packaged, so platforms and renderers without
+atlas support keep working unchanged.""",
+)
+
 def _manifest_json(drawables, raw_images, binaries, texts, audio, fonts = []):
     # lines are name|path for raw/binary/text/audio and name|uri|path(|density=path;...) for drawables.
     parts = ["{\"drawables\":["]
@@ -362,14 +492,19 @@ def ident(s):
   for p in parts[1:]: n += p[0].upper()+p[1:]
   if n[0].isdigit(): n='asset'+n
   return n+'_' if n in scala_keywords else n
+# Scala lexes `type_:` as one identifier, so escaped names need a space before the colon.
+def member(n): return n+' ' if n.endswith('_') else n
 def q(s): return '"'+s.replace('\\\\','\\\\\\\\').replace('"','\\\\"')+'"'
 def path_expr(path):
   e='ResourcesRoot'
   for p in [x for x in path.split('/') if x]: e += ' / '+q(p)
   return e
 drawables=[]; raw=[]; binary=[]; texts=[]; audio=[]; fonts=[]
+ATLAS_VERSION=1
 for mp in manifest_paths:
   data=json.load(open(mp))
+  if data.get('atlasVersion', ATLAS_VERSION) != ATLAS_VERSION:
+    raise ValueError(f'Unsupported texture atlas manifest version in {{mp}}: {{data["atlasVersion"]!r}}')
   drawables += data.get('drawables', [])
   raw += data.get('rawImages', [])
   binary += data.get('binaries', [])
@@ -397,36 +532,45 @@ fonts=validate_unique('font', fonts)
 dm=[]; dv=[]; duc=[]
 for d in drawables:
   i=ident(d['name'])
-  dm.append('    def %s: DrawableAsset' % i)
+  dm.append('    def %s: DrawableAsset' % member(i))
   variants=d.get('variants', [dict(density='mdpi', path=d['path'])])
-  variant_expr='Vector(' + ', '.join([q(v['density']) + ' -> ' + q(v['path']) for v in variants]) + ')'
-  dv.append('      override val %s: DrawableAsset = AssetFactory.drawable(%s)' % (i, variant_expr))
+  if any('atlas' in v for v in variants):
+    def variant_call(v):
+      a=v.get('atlas')
+      if a is None: return 'AssetFactory.variant(%s, %s)' % (q(v['density']), q(v['path']))
+      return 'AssetFactory.atlasVariant(%s, %s, %s, %d, %d, %d, %d, %d, %d, %s)' % (
+        q(v['density']), q(v['path']), q(a['path']), a['pageWidth'], a['pageHeight'], a['x'], a['y'], a['width'], a['height'], q(a['filter']))
+    variant_expr='Vector(' + ', '.join([variant_call(v) for v in variants]) + ')'
+    dv.append('      override val %s: DrawableAsset = AssetFactory.drawableVariants(%s)' % (member(i), variant_expr))
+  else:
+    variant_expr='Vector(' + ', '.join([q(v['density']) + ' -> ' + q(v['path']) for v in variants]) + ')'
+    dv.append('      override val %s: DrawableAsset = AssetFactory.drawable(%s)' % (member(i), variant_expr))
   duc.append('    case %s => Assets.drawable.%s' % (q(d['uri']), i))
 rm=[]; rv=[]
 for r in raw:
   i=ident(r['name'])
-  rm.append('    def %s: RawImageAsset' % i)
-  rv.append('      override val %s: RawImageAsset = AssetFactory.rawImage(%s)' % (i, q(r['path'])))
+  rm.append('    def %s: RawImageAsset' % member(i))
+  rv.append('      override val %s: RawImageAsset = AssetFactory.rawImage(%s)' % (member(i), q(r['path'])))
 bm=[]; bv=[]
 for b in binary:
   i=ident(b['name'])
-  bm.append('    def %s: BinaryAsset' % i)
-  bv.append('      override val %s: BinaryAsset = AssetFactory.binary(%s)' % (i, q(b['path'])))
+  bm.append('    def %s: BinaryAsset' % member(i))
+  bv.append('      override val %s: BinaryAsset = AssetFactory.binary(%s)' % (member(i), q(b['path'])))
 tm=[]; tv=[]
 for t in texts:
   i=ident(t['name'])
-  tm.append('    def %s: TextAsset' % i)
-  tv.append('      override val %s: TextAsset = AssetFactory.text(%s)' % (i, q(t['path'])))
+  tm.append('    def %s: TextAsset' % member(i))
+  tv.append('      override val %s: TextAsset = AssetFactory.text(%s)' % (member(i), q(t['path'])))
 am=[]; av=[]
 for a in audio:
   i=ident(a['name'])
-  am.append('    def %s: AudioAsset' % i)
-  av.append('      override val %s: AudioAsset = AssetFactory.audio(%s)' % (i, q(a['path'])))
+  am.append('    def %s: AudioAsset' % member(i))
+  av.append('      override val %s: AudioAsset = AssetFactory.audio(%s)' % (member(i), q(a['path'])))
 fm=[]; fv=[]
 for f in fonts:
   i=ident(f['name'])
-  fm.append('    def %s: FontAsset' % i)
-  fv.append('      override val %s: FontAsset = AssetFactory.font(%s)' % (i, q(f['path'])))
+  fm.append('    def %s: FontAsset' % member(i))
+  fv.append('      override val %s: FontAsset = AssetFactory.font(%s)' % (member(i), q(f['path'])))
 gen_package = 'sgl.generated.' + re.sub(r'[^0-9A-Za-z]+', '_', package).strip('_')
 content = f'''package {{package}} {{{{
 

@@ -1,6 +1,6 @@
 package sgl
 
-import sgl.assets.{DrawableAsset, RawImageAsset}
+import sgl.assets.{DrawableAsset, RawImageAsset, TextureFilter}
 import sgl.util.Loader
 
 /** Provides a small, portable OpenGL ES 3.0 / WebGL 2 style rendering API.
@@ -150,6 +150,18 @@ trait OpenGLProvider {
     def loadTextureImage2D(asset: RawImageAsset): Loader[TextureImage]
     final def loadTexture2D(asset: DrawableAsset): Loader[Texture] = loadTextureImage2D(asset).map(_.texture)
     final def loadTexture2D(asset: RawImageAsset): Loader[Texture] = loadTextureImage2D(asset).map(_.texture)
+
+    /** Loads one physical image resource, such as a texture-atlas page.
+      *
+      * Unlike [[loadTexture2D]], the caller picks the resource and the sampling
+      * policy. Engine renderers use this to share one uploaded atlas page
+      * between several drawables. Atlas pages must not generate mipmaps, since
+      * whole-page mipmaps blend neighbouring regions.
+      */
+    private[sgl] def loadTexture2DResource(resourceName: String, filter: TextureFilter, generateMipmaps: Boolean): Loader[TextureImage]
+
+    /** The largest texture width or height the current context accepts. */
+    private[sgl] def maxTextureSize: Int
 
     def drawArrays(mode: DrawMode, first: Int, count: Int): Unit
     def drawElements(mode: DrawMode, count: Int, dataType: DataType, offset: Long): Unit

@@ -25,8 +25,44 @@ final class DrawableAsset private[sgl] (private[sgl] val variants: Vector[Drawab
 }
 
 object DrawableAsset {
-  final case class Variant private[sgl] (private[sgl] val density: String, private[sgl] val resourceName: String)
+  final case class Variant private[sgl] (
+      private[sgl] val density: String,
+      private[sgl] val resourceName: String,
+      private[sgl] val atlas: Option[AtlasRegion] = None
+  )
 }
+
+/** Sampling filter that a texture is meant to be uploaded with. */
+private[sgl] sealed trait TextureFilter
+private[sgl] object TextureFilter {
+  case object Nearest extends TextureFilter
+  case object Linear extends TextureFilter
+
+  def fromName(name: String): TextureFilter = name match {
+    case "nearest" => Nearest
+    case "linear" => Linear
+    case other => throw new IllegalArgumentException(s"Unknown texture filter $other")
+  }
+}
+
+/** Location of a drawable variant inside a build-time texture atlas page.
+  *
+  * Coordinates are integer pixels from the top-left corner of the page and
+  * describe the original image content, excluding extrusion and padding. The
+  * variant's standalone resource stays available, so renderers that do not
+  * support atlases (or devices whose maximum texture size is smaller than the
+  * page) can keep using it.
+  */
+private[sgl] final case class AtlasRegion(
+    pagePath: String,
+    pageWidth: Int,
+    pageHeight: Int,
+    x: Int,
+    y: Int,
+    width: Int,
+    height: Int,
+    filter: TextureFilter
+)
 
 final class TextAsset private[sgl] (private[sgl] val resourceName: String) {
   override def equals(other: Any): Boolean = other match { case a: TextAsset => resourceName == a.resourceName; case _ => false }
@@ -68,6 +104,21 @@ private[sgl] object AssetFactory {
   def drawable(variants: Vector[(String, String)]): DrawableAsset =
     new DrawableAsset(variants.map { case (density, resourceName) => DrawableAsset.Variant(density, resourceName) })
   def drawable(resourceName: String): DrawableAsset = drawable(Vector("mdpi" -> resourceName))
+  def drawableVariants(variants: Vector[DrawableAsset.Variant]): DrawableAsset = new DrawableAsset(variants)
+  def variant(density: String, resourceName: String): DrawableAsset.Variant = DrawableAsset.Variant(density, resourceName)
+  def atlasVariant(
+      density: String,
+      resourceName: String,
+      pagePath: String,
+      pageWidth: Int,
+      pageHeight: Int,
+      x: Int,
+      y: Int,
+      width: Int,
+      height: Int,
+      filter: String
+  ): DrawableAsset.Variant =
+    DrawableAsset.Variant(density, resourceName, Some(AtlasRegion(pagePath, pageWidth, pageHeight, x, y, width, height, TextureFilter.fromName(filter))))
   def text(resourceName: String): TextAsset = new TextAsset(resourceName)
   def audio(resourceName: String): AudioAsset = new AudioAsset(resourceName)
   def rawImage(resourceName: String): RawImageAsset = new RawImageAsset(resourceName)

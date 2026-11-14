@@ -1,7 +1,7 @@
 package sgl.lwjgl
 
 import sgl.{DesktopSystemProvider, OpenGLProvider}
-import sgl.assets.{DrawableAsset, RawImageAsset}
+import sgl.assets.{DrawableAsset, RawImageAsset, TextureFilter}
 import sgl.util.{DefaultLoader, Loader}
 
 import org.lwjgl.BufferUtils
@@ -148,20 +148,22 @@ trait LwjglOpenGLProvider extends OpenGLProvider {
 
     override def loadTextureImage2D(asset: DrawableAsset): Loader[TextureImage] = {
       val variant = asset.bestVariantForDpi(Window.logicalPpi)
-      loadTexture2DFromResourceName(variant.resourceName)
+      loadTexture2DResource(variant.resourceName, TextureFilter.Nearest, generateMipmaps = true)
     }
 
     override def loadTextureImage2D(asset: RawImageAsset): Loader[TextureImage] =
-      loadTexture2DFromResourceName(asset.resourceName)
+      loadTexture2DResource(asset.resourceName, TextureFilter.Nearest, generateMipmaps = true)
 
-    private def loadTexture2DFromResourceName(resourceName: String): Loader[TextureImage] = {
+    override private[sgl] lazy val maxTextureSize: Int = GL11C.glGetInteger(GL11C.GL_MAX_TEXTURE_SIZE)
+
+    override private[sgl] def loadTexture2DResource(resourceName: String, filter: TextureFilter, generateMipmaps: Boolean): Loader[TextureImage] = {
       val promise = new DefaultLoader[TextureImage]
       Future {
         val decoded = decodeTexture(resourceName)
         try {
           runOnOpenGLThread {
             try {
-              val texture = uploadTexture(decoded)
+              val texture = uploadTexture(decoded, filter, generateMipmaps)
               promise.success(new TextureImage(texture, decoded.width, decoded.height))
             } catch {
               case t: Throwable => promise.failure(t)
@@ -198,15 +200,16 @@ trait LwjglOpenGLProvider extends OpenGLProvider {
       } finally stack.pop()
     }
 
-    private def uploadTexture(decoded: DecodedTexture): Texture = {
+    private def uploadTexture(decoded: DecodedTexture, filter: TextureFilter, generateMipmaps: Boolean): Texture = {
       val texture = genTexture()
       bindTexture(Texture2D, texture)
-      texParameteri(Texture2D, TextureMinFilter, Nearest)
-      texParameteri(Texture2D, TextureMagFilter, Nearest)
+      val sampling = if(filter == TextureFilter.Linear) Linear else Nearest
+      texParameteri(Texture2D, TextureMinFilter, sampling)
+      texParameteri(Texture2D, TextureMagFilter, sampling)
       texParameteri(Texture2D, TextureWrapS, ClampToEdge)
       texParameteri(Texture2D, TextureWrapT, ClampToEdge)
       GL11C.glTexImage2D(Texture2D, 0, GL11C.GL_RGBA, decoded.width, decoded.height, 0, GL11C.GL_RGBA, GL11C.GL_UNSIGNED_BYTE, decoded.pixels)
-      GL30C.glGenerateMipmap(Texture2D)
+      if(generateMipmaps) GL30C.glGenerateMipmap(Texture2D)
       texture
     }
 

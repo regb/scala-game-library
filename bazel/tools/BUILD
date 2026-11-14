@@ -3,7 +3,10 @@ load("@rules_java//java:java_test.bzl", "java_test")
 
 java_binary(
     name = "image_asset_tool",
-    srcs = ["ImageAssetTool.java"],
+    srcs = [
+        "ImageAssetTool.java",
+        "TextureAtlasTool.java",
+    ],
     main_class = "sgl.bazel.tools.ImageAssetTool",
     visibility = ["//visibility:public"],
 )
@@ -13,6 +16,7 @@ java_test(
     srcs = [
         "ImageAssetTool.java",
         "ImageAssetToolTest.java",
+        "TextureAtlasTool.java",
     ],
     main_class = "sgl.bazel.tools.ImageAssetToolTest",
     use_testrunner = False,

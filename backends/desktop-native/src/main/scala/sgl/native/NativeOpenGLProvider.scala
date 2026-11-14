@@ -2,7 +2,7 @@ package sgl
 package native
 
 import _root_.sgl.OpenGLProvider
-import _root_.sgl.assets.{DrawableAsset, RawImageAsset}
+import _root_.sgl.assets.{DrawableAsset, RawImageAsset, TextureFilter}
 import _root_.sgl.util.{DefaultLoader, Loader}
 
 import scalanative.unsafe._
@@ -64,6 +64,7 @@ private[native] object GLES3 {
   def glTexParameteri(target: UInt, pname: UInt, param: CInt): Unit = extern
   def glTexImage2D(target: UInt, level: CInt, internalFormat: CInt, width: CInt, height: CInt, border: CInt, format: UInt, dataType: UInt, pixels: Ptr[Byte]): Unit = extern
   def glGenerateMipmap(target: UInt): Unit = extern
+  def glGetIntegerv(pname: UInt, params: Ptr[CInt]): Unit = extern
 
   def glDrawArrays(mode: UInt, first: CInt, count: CInt): Unit = extern
   def glDrawElements(mode: UInt, count: CInt, dataType: UInt, indicesOffset: CSize): Unit = extern
@@ -317,13 +318,19 @@ trait NativeOpenGLProvider extends OpenGLProvider {
 
     override def loadTextureImage2D(asset: DrawableAsset): Loader[TextureImage] = {
       val variant = asset.bestVariantForDpi(Window.logicalPpi)
-      loadTexture2DResource(variant.resourceName)
+      loadTexture2DResource(variant.resourceName, TextureFilter.Nearest, generateMipmaps = true)
     }
 
     override def loadTextureImage2D(asset: RawImageAsset): Loader[TextureImage] =
-      loadTexture2DResource(asset.resourceName)
+      loadTexture2DResource(asset.resourceName, TextureFilter.Nearest, generateMipmaps = true)
 
-    private def loadTexture2DResource(resourceName: String): Loader[TextureImage] = {
+    override private[sgl] lazy val maxTextureSize: Int = {
+      val value = stackalloc[CInt]()
+      GLES3.glGetIntegerv(0x0D33.toUInt, value)
+      !value
+    }
+
+    override private[sgl] def loadTexture2DResource(resourceName: String, filter: TextureFilter, generateMipmaps: Boolean): Loader[TextureImage] = {
       val promise = new DefaultLoader[TextureImage]
       val thread = new Thread(new Runnable {
         override def run(): Unit = {
@@ -332,7 +339,7 @@ trait NativeOpenGLProvider extends OpenGLProvider {
             try {
               runOnOpenGLThread {
                 try {
-                  val texture = uploadTextureSurface(surface)
+                  val texture = uploadTextureSurface(surface, filter, generateMipmaps)
                   promise.success(new TextureImage(texture, surface.w, surface.h))
                 } catch {
                   case t: Throwable => promise.failure(t)
@@ -362,16 +369,17 @@ trait NativeOpenGLProvider extends OpenGLProvider {
       surface
     }
 
-    private def uploadTextureSurface(surface: Ptr[SDL_Surface]): Texture = {
+    private def uploadTextureSurface(surface: Ptr[SDL_Surface], filter: TextureFilter, generateMipmaps: Boolean): Texture = {
       val texture = genTexture()
       bindTexture(Texture2D, texture)
-      texParameteri(Texture2D, TextureMinFilter, Nearest)
-      texParameteri(Texture2D, TextureMagFilter, Nearest)
+      val sampling = if(filter == TextureFilter.Linear) Linear else Nearest
+      texParameteri(Texture2D, TextureMinFilter, sampling)
+      texParameteri(Texture2D, TextureMagFilter, sampling)
       texParameteri(Texture2D, TextureWrapS, ClampToEdge)
       texParameteri(Texture2D, TextureWrapT, ClampToEdge)
       val format = if(surface.format.BytesPerPixel == 4.toUByte) 0x1908 else 0x1907
       GLES3.glTexImage2D(Texture2D.toUInt, 0, format, surface.w, surface.h, 0, format.toUInt, 0x1401.toUInt, surface.pixels)
-      GLES3.glGenerateMipmap(Texture2D.toUInt)
+      if(generateMipmaps) GLES3.glGenerateMipmap(Texture2D.toUInt)
       texture
     }
 

@@ -110,6 +110,46 @@ An image present in both directories gets mdpi and xhdpi variants. An image pres
 
 Use the original `srcs`, `source_density`, and `target_densities` form when SGL should resize one source into every requested target density.
 
+## Texture atlases
+
+`sgl_texture_atlas` packs drawables into shared texture pages at build time, so the GameObject OpenGL renderer can draw many small images from one GPU texture. Game code does not change: it keeps using `Assets.drawable.coin`, and the renderer finds the image's region on its page.
+
+```python
+load("//bazel/sgl:assets.bzl", "sgl_drawable_assets", "sgl_texture_atlas")
+
+sgl_drawable_assets(
+    name = "sprites",
+    srcs = glob(["assets/sprites/*.png"]),
+    strip_prefix = "my/game/assets/sprites",
+    source_density = "xhdpi",
+    target_densities = ["mdpi", "xhdpi"],
+)
+
+sgl_texture_atlas(
+    name = "sprite_atlas",
+    assets = [":sprites"],
+    max_texture_size = 2048,
+)
+
+sgl_core_library(
+    name = "core",
+    srcs = ["App.scala"],
+    assets = [":sprite_atlas"],  # instead of ":sprites"
+    package = "my.game.core",
+)
+```
+
+Pass the atlas target **instead of** the asset groups it wraps, also in `sgl_html5_opengl_app` and `sgl_desktop_native_app`. Passing both declares every drawable twice, which the generator rejects. Asset kinds other than drawables, such as the map texts of a `sgl_tiled_import`, pass through unchanged, so a Tiled import can be wrapped directly.
+
+- Each density is packed separately, with deterministic shelf packing and no rotation or trimming. Only PNG drawables are packed.
+- `extrusion` (default 1) repeats each image's edge pixels around it, and `padding` (default 1) adds transparent space between images. Use `filter = "linear"` for smoothly scaled art; tilesets then also need `tile_extrude` in `sgl_tiled_import`, because the atlas only protects the outer edge of the whole tileset image.
+- `max_pages` (default 1) is the number of pages declared per density. The build fails if packing needs more, and unused pages are 1x1 placeholders.
+- `exclude` keeps named drawables standalone. Use it for large images, non-PNG files, and Tiled image layers that repeat. Images that do not fit on a page fail the build with a message naming them.
+
+Standalone copies of every drawable are still packaged. Canvas renderers, Android, and direct `OpenGL.loadTexture2D` callers keep using them, and the OpenGL renderer falls back to them when a page exceeds the device's maximum texture size. Atlas pages are uploaded without mipmaps.
+
+The renderer draws consecutive sprites and tiles that share a page in one draw call. It never reorders draws across z order, so batching only helps when images drawn one after another live on the same page.
+
 ## Backend packaging
 
 JVM desktop apps read packaged classpath resources from the core target. HTML5 and Scala Native apps also need the asset targets in their app rule so the files are copied beside the generated app:
