@@ -63,12 +63,69 @@ class JavaSoundAudioProviderSuite extends AnyFunSuite {
     val warnings = ArrayBuffer.empty[String]
     var nextClip: () => Clip = () => throw new LineUnavailableException("fake acquisition failure")
     override protected def acquireJavaSoundClip(f: AudioFormat): Clip = nextClip()
+    var nextLine: () => SourceDataLine = () => throw new LineUnavailableException("fake line acquisition failure")
+    override protected def acquireJavaSoundSourceLine(f: AudioFormat): SourceDataLine = nextLine()
     override val logger: Logger = new Logger {
       override def logLevel: Logger.LogLevel = Logger.Warning
       override protected def log(level: Logger.LogLevel, tag: Logger.Tag, msg: String): Unit = {
         warnings += msg
       }
     }
+  }
+
+  /** A line that, like a direct ALSA device, blocks writes while stopped. It
+    * records stops, flushes or closes that land during a write: those are what
+    * wedged Clip-based music.
+    */
+  private class FakeLine {
+    private val monitor = new Object
+    @volatile var opened = false
+    @volatile var running = false
+    @volatile var inWrite = false
+    @volatile var closes = 0
+    @volatile var overlaps = 0
+    val offsets = new java.util.concurrent.ConcurrentLinkedQueue[Integer]
+    val gain = new FloatControl(FloatControl.Type.MASTER_GAIN, -80f, 0f, 0.1f, 0, 0f, "dB") {}
+    private def interrupting(): Unit = if(inWrite) overlaps += 1
+    val line: SourceDataLine = Proxy.newProxyInstance(classOf[SourceDataLine].getClassLoader, Array(classOf[SourceDataLine]),
+      new InvocationHandler {
+        override def invoke(proxy: Any, method: Method, args: Array[AnyRef]): AnyRef = method.getName match {
+          case "open" => opened = true; null
+          case "close" => interrupting(); closes += 1; opened = false; running = false; null
+          case "start" => monitor.synchronized { running = true; monitor.notifyAll() }; null
+          case "stop" => interrupting(); running = false; null
+          case "flush" => interrupting(); null
+          case "write" =>
+            inWrite = true
+            try {
+              offsets.add(args(1).asInstanceOf[Integer])
+              // Block while stopped (bounded so a broken player fails the test, not hangs it).
+              monitor.synchronized { if(!running) monitor.wait(2000) }
+              Thread.sleep(2)
+              args(2)
+            } finally inWrite = false
+          case "isOpen" => Boolean.box(opened)
+          case "isRunning" | "isActive" => Boolean.box(running)
+          case "getFormat" => format
+          case "isControlSupported" => Boolean.box(true)
+          case "getControl" => gain
+          case "toString" => "FakeLine"
+          case other => throw new UnsupportedOperationException(other)
+        }
+      }).asInstanceOf[SourceDataLine]
+  }
+
+  private def eventually(what: String)(cond: => Boolean): Unit = {
+    val deadline = System.currentTimeMillis() + 3000
+    while(!cond && System.currentTimeMillis() < deadline) Thread.sleep(5)
+    assert(cond, what)
+  }
+
+  // Each call must return promptly: the game loop calls these.
+  private def promptly(what: String)(body: => Unit): Unit = {
+    val start = System.nanoTime()
+    body
+    assert((System.nanoTime() - start)/1000000 < 200, what + " blocked the caller")
   }
 
   private class TrackedStream(length: Long = 2) extends AudioInputStream(
@@ -141,17 +198,6 @@ class JavaSoundAudioProviderSuite extends AnyFunSuite {
     assert(stream.closes == 1 && backend.warnings.size == 1)
   }
 
-  test("music decoding failure releases its candidate and source stream") {
-    val backend = new Backend
-    val fake = new FakeClip
-    val stream = new TrackedStream(AudioSystem.NOT_SPECIFIED) {
-      override def read(bytes: Array[Byte]): Int = throw new java.io.IOException("fake decode failure")
-    }
-    assert(backend.JavaSoundHelpers.tryOpenMusicClip(stream, fake.clip).isEmpty)
-    assert(stream.closes == 1 && fake.closes == 1)
-    assert(backend.warnings.size == 1)
-  }
-
   test("volume setup failure releases the opened clip") {
     val backend = new Backend
     val fake = new FakeClip
@@ -159,18 +205,6 @@ class JavaSoundAudioProviderSuite extends AnyFunSuite {
     val stream = new TrackedStream
     assert(backend.JavaSoundHelpers.tryOpenClip(stream, Some(fake.clip), Some(0.5f)).isEmpty)
     assert(fake.closes == 1 && stream.closes == 1)
-  }
-
-  test("music open failures close resources with known and unknown frame lengths") {
-    val backend = new Backend
-    for(length <- Seq(2L, AudioSystem.NOT_SPECIFIED.toLong)) {
-      val fake = new FakeClip
-      fake.failOpen = true
-      val stream = new TrackedStream(length)
-      assert(backend.JavaSoundHelpers.tryOpenMusicClip(stream, fake.clip).isEmpty)
-      assert(fake.closes == 1 && stream.closes == 1)
-    }
-    assert(backend.warnings.size == 1)
   }
 
   test("sound looping, pause, resume, endLoop and disposal retain a working clip") {
@@ -191,25 +225,80 @@ class JavaSoundAudioProviderSuite extends AnyFunSuite {
     assert(fake.closes == 1)
   }
 
-  test("music opens successfully and retains playback controls") {
+  test("music stop and play never block the caller or interrupt a write, and honor pause/stop positions") {
     val backend = new Backend
-    for(length <- Seq(2L, AudioSystem.NOT_SPECIFIED.toLong)) {
-      val fake = new FakeClip
-      val stream = new TrackedStream(length)
-      val opened = backend.JavaSoundHelpers.tryOpenMusicClip(stream, fake.clip).get
-      assert(stream.closes == 1 && fake.closes == 0)
-      val music = new backend.Audio.Music(opened)
-      music.setVolume(0.5f)
-      music.setLooping(true)
-      music.play()
-      assert(fake.loops.head == Clip.LOOP_CONTINUOUSLY)
-      music.pause()
-      assert(!fake.running && fake.opened)
-      music.play()
-      music.setLooping(false)
-      assert(fake.loops.head == 0)
-      music.dispose()
-      assert(fake.closes == 1)
+    val fake = new FakeLine
+    backend.nextLine = () => fake.line
+    // One second of audio, so playback spans many ~50ms writes.
+    val music = new backend.Audio.Music(format, new Array[Byte](44100*4))
+    music.setLooping(true)
+    promptly("play")(music.play())
+    eventually("music starts writing")(fake.offsets.size >= 3)
+
+    for(_ <- 0 until 25) {
+      promptly("stop")(music.stop())
+      promptly("play")(music.play())
+      Thread.sleep(3)
     }
+    eventually("music keeps writing after stop/play")(fake.running && fake.offsets.size >= 30)
+
+    // Stop rewinds: the next write starts at the beginning.
+    promptly("stop")(music.stop())
+    eventually("line is released while stopped")(!fake.opened)
+    fake.offsets.clear()
+    promptly("play")(music.play())
+    eventually("plays again")(!fake.offsets.isEmpty)
+    assert(fake.offsets.peek() == 0)
+
+    // Pause keeps the position: resuming continues past the beginning.
+    eventually("advances")(fake.offsets.size >= 4)
+    promptly("pause")(music.pause())
+    eventually("line stops while paused")(!fake.running)
+    fake.offsets.clear()
+    promptly("resume")(music.play())
+    eventually("resumes")(!fake.offsets.isEmpty)
+    assert(fake.offsets.peek() > 0)
+
+    promptly("volume")(music.setVolume(0f))
+    eventually("volume applied on the player thread")(fake.gain.getValue == fake.gain.getMinimum)
+
+    promptly("dispose")(music.dispose())
+    eventually("dispose closes the line")(!fake.opened)
+    assert(fake.overlaps == 0, "the line was stopped, flushed or closed during a write")
+    assert(backend.warnings.isEmpty, backend.warnings.mkString("; "))
+  }
+
+  test("music line failure warns once, stops, and recovers on the next play") {
+    val backend = new Backend
+    val music = new backend.Audio.Music(format, new Array[Byte](44100*4))
+    music.play()
+    eventually("failure is reported")(backend.warnings.size == 1)
+    assert(backend.warnings.head.contains("fake line acquisition failure"))
+    val fake = new FakeLine
+    backend.nextLine = () => fake.line
+    eventually("player thread has exited")(scala.util.Try(music.play()).isSuccess && !fake.offsets.isEmpty)
+    music.dispose()
+    eventually("dispose closes the line")(!fake.opened)
+    assert(backend.warnings.size == 1)
+  }
+
+  test("non-looping music plays once, releases the device, and applies a preset volume") {
+    val backend = new Backend
+    val fake = new FakeLine
+    backend.nextLine = () => fake.line
+    // 0.2s of audio: a few writes, then the end.
+    val music = new backend.Audio.Music(format, new Array[Byte](8820*4))
+    music.setVolume(0.5f)
+    music.play()
+    eventually("plays to the end and releases the line")(fake.closes == 1 && !fake.opened)
+    assert(fake.offsets.peek() == 0 && fake.offsets.size >= 3)
+    assert(scala.math.abs(fake.gain.getValue - 20f*scala.math.log10(0.5).toFloat) < 0.2f)
+    // A completed music behaves like a stopped one: play starts over.
+    fake.offsets.clear()
+    music.play()
+    eventually("plays again from the start")(!fake.offsets.isEmpty)
+    assert(fake.offsets.peek() == 0)
+    music.dispose()
+    assert(fake.overlaps == 0)
   }
 }

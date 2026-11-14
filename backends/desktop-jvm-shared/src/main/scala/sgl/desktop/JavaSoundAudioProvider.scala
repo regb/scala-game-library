@@ -47,6 +47,12 @@ trait JavaSoundAudioProvider extends AudioProvider {
     AudioSystem.getLine(info).asInstanceOf[Clip]
   }
 
+  // Override only the device lookup in tests; no real mixer is needed.
+  protected def acquireJavaSoundSourceLine(format: javax.sound.sampled.AudioFormat): javax.sound.sampled.SourceDataLine = {
+    val info = new javax.sound.sampled.DataLine.Info(classOf[javax.sound.sampled.SourceDataLine], format)
+    AudioSystem.getLine(info).asInstanceOf[javax.sound.sampled.SourceDataLine]
+  }
+
   import JavaSoundHelpers._
   
   private implicit val LogTag: JavaSoundAudioProvider.this.Logger.Tag = Logger.Tag("sgl-java-sound-audio")
@@ -296,42 +302,144 @@ trait JavaSoundAudioProvider extends AudioProvider {
       new Sound(wrapper, 0)
     }
   
-    class Music(clip: Clip) extends AbstractMusic {
-      private var isPlaying = false
-      private var shouldLoop = false
+    /** Music streamed through a SourceDataLine owned by a single player thread.
+      *
+      * A Clip cannot be stopped safely: on some devices (direct ALSA without
+      * software mixing, for example) the clip's writer thread can stay inside
+      * a native write after stop(), still holding the line's native lock, so
+      * every later setFramePosition/start/loop blocks forever. Called from the
+      * game loop, that froze the game on a music stop then play.
+      *
+      * Here the public methods only update state under a lock and wake the
+      * player thread. Only the player thread touches the line, and it stops,
+      * flushes or closes it between writes, never during one.
+      */
+    class Music(format: javax.sound.sampled.AudioFormat, data: Array[Byte]) extends AbstractMusic {
+      private val frameSize = format.getFrameSize max 1
+      // About 50ms per write keeps pause and stop responsive.
+      private val chunkBytes = {
+        val raw = (format.getFrameRate * frameSize / 20f).toInt
+        (raw - raw % frameSize) max frameSize
+      }
 
-      override def play(): Unit = {
-        isPlaying = true
-        clip.setFramePosition(0)
-        if(shouldLoop)
-          clip.loop(Clip.LOOP_CONTINUOUSLY)
-        else
-          clip.start()
-        logger.debug("Started Java Sound music clip: running=%s active=%s frameLength=%d".format(clip.isRunning, clip.isActive, clip.getFrameLength))
+      private sealed trait State
+      private case object Stopped extends State
+      private case object Playing extends State
+      private case object Paused extends State
+      private case object Disposed extends State
+
+      private val lock = new Object
+      private var state: State = Stopped
+      private var position = 0 // in bytes, always frame-aligned
+      // Bumped on stop so that a write in flight does not advance a rewound position.
+      private var generation = 0
+      private var shouldLoop = false
+      private var volume = 1f
+      private var volumeDirty = false
+      private var thread: Thread = null
+
+      private def wake(): Unit = lock.notifyAll()
+
+      override def play(): Unit = lock.synchronized {
+        if(state == Stopped || state == Paused) {
+          state = Playing
+          if(thread == null) {
+            thread = new Thread(() => run(), "sgl-music-player")
+            thread.setDaemon(true)
+            thread.start()
+          }
+          wake()
+        }
       }
-      override def pause(): Unit = {
-        isPlaying = false
-        clip.stop()
+      override def pause(): Unit = lock.synchronized {
+        if(state == Playing) { state = Paused; wake() }
       }
-      override def stop(): Unit = {
-        isPlaying = false
-        clip.stop()
+      override def stop(): Unit = lock.synchronized {
+        if(state != Disposed) {
+          state = Stopped
+          position = 0
+          generation += 1
+          wake()
+        }
       }
-  
-      override def setVolume(volume: Float): Unit = setClipVolume(clip, volume)
-      override def setLooping(isLooping: Boolean): Unit = {
+      override def setVolume(volume: Float): Unit = lock.synchronized {
+        this.volume = volume
+        volumeDirty = true
+      }
+      override def setLooping(isLooping: Boolean): Unit = lock.synchronized {
         shouldLoop = isLooping
-        if(isPlaying && isLooping)
-          clip.loop(Clip.LOOP_CONTINUOUSLY)
-        else if(isPlaying && !isLooping)
-          clip.loop(0)
       }
-  
-      override def dispose(): Unit = {
-        if(isPlaying)
-          clip.stop()
-        if(clip.isOpen)
-          clip.close()
+      override def dispose(): Unit = lock.synchronized {
+        state = Disposed
+        wake()
+      }
+
+      // What the player thread should do next, decided under the lock.
+      private sealed trait Step
+      private case object Exit extends Step
+      private case object Idle extends Step
+      private case object Rest extends Step
+      private case class Write(offset: Int, length: Int, generation: Int, volume: Option[Float]) extends Step
+
+      private def nextStep(): Step = lock.synchronized {
+        state match {
+          case Disposed => Exit
+          case Stopped => Rest
+          case Paused => Idle
+          case Playing =>
+            if(position >= data.length) {
+              if(shouldLoop && data.nonEmpty) position = 0
+              else { state = Stopped; position = 0; generation += 1 }
+            }
+            if(state != Playing) Rest
+            else {
+              val v = if(volumeDirty) { volumeDirty = false; Some(volume) } else None
+              Write(position, chunkBytes min (data.length - position), generation, v)
+            }
+        }
+      }
+
+      private def run(): Unit = {
+        var line: javax.sound.sampled.SourceDataLine = null
+        var running = false
+        def halt(close: Boolean): Unit = if(line != null) {
+          if(running) { line.stop(); line.flush(); running = false }
+          if(close) { line.close(); line = null }
+        }
+        try {
+          var done = false
+          while(!done) nextStep() match {
+            case Exit =>
+              done = true
+            case Idle =>
+              halt(close = false) // keep the line, and the position, to resume
+              lock.synchronized { while(state == Paused) lock.wait() }
+            case Rest =>
+              halt(close = true) // release the device while stopped
+              lock.synchronized { while(state == Stopped) lock.wait() }
+            case Write(offset, length, gen, newVolume) =>
+              if(line == null) {
+                line = acquireJavaSoundSourceLine(format)
+                line.open(format)
+                lock.synchronized { volumeDirty = false }
+                setLineVolume(line, lock.synchronized(volume))
+              }
+              newVolume.foreach(v => setLineVolume(line, v))
+              if(!running) { line.start(); running = true }
+              // The device is running for the whole write: only this thread stops it.
+              val written = line.write(data, offset, length)
+              lock.synchronized {
+                if(generation == gen && state == Playing) position = offset + written
+              }
+          }
+        } catch {
+          case NonFatal(e) =>
+            logger.warning("Music playback stopped after an audio error: " + e)
+            lock.synchronized { if(state != Disposed) { state = Stopped; position = 0 } }
+        } finally {
+          try halt(close = true) catch { case NonFatal(_) => () }
+          lock.synchronized { thread = null }
+        }
       }
     }
     // AWT backend always uses the first option.
@@ -339,13 +447,16 @@ trait JavaSoundAudioProvider extends AudioProvider {
       logger.info("Loading music resource: " + asset.resourceName)
       val resourceAudioStream = loadAudioInputStream(asset)
       try {
-        val (convertedAudioStream, clip) = convertToBestStream(resourceAudioStream).getOrElse{
+        val (convertedAudioStream, probeClip) = convertToBestStream(resourceAudioStream).getOrElse{
           throw new ResourceFormatUnsupportedException(PartsResourcePath(asset.resourceName.split('/').toVector))
         }
-        val opened = tryOpenMusicClip(convertedAudioStream, clip).getOrElse{
-          throw new javax.sound.sampled.LineUnavailableException("Unable to open music clip for " + asset.resourceName)
-        }
-        new Music(opened)
+        // The clip only served to pick a playable format; music streams through its own line.
+        closeAudioResource(probeClip)
+        val decoded = try AudioInputStreamWrapper.fromAudioInputStream(convertedAudioStream)
+                      finally closeAudioResource(convertedAudioStream)
+        if(decoded.data.isEmpty)
+          throw new ResourceFormatUnsupportedException(PartsResourcePath(asset.resourceName.split('/').toVector))
+        new Music(convertedAudioStream.getFormat, decoded.data)
       } finally closeAudioResource(resourceAudioStream)
     }
 
@@ -449,22 +560,6 @@ trait JavaSoundAudioProvider extends AudioProvider {
       }
     }
 
-    private[desktop] def tryOpenMusicClip(stream: AudioInputStream, clip: Clip): Option[Clip] = {
-      if(stream.getFrameLength != AudioSystem.NOT_SPECIFIED)
-        tryOpenClip(stream, Some(clip))
-      else {
-        // Some decoders report -1 frames. Recompute before opening the clip.
-        val wrapper = try AudioInputStreamWrapper.fromAudioInputStream(stream)
-        catch {
-          case NonFatal(e) =>
-            closeAudioResource(clip)
-            warnUnavailable("decoding music: " + e.toString)
-            return None
-        } finally closeAudioResource(stream)
-        tryOpenClip(wrapper.newAudioInputStream, Some(clip))
-      }
-    }
-  
     // Try to get a clip that can play the AudioFormat. Returns
     // None if there is clip in the AudioSystem, Some(clip) otherwise.
     // The clip is not opened, so it's essentially not using resources
@@ -668,7 +763,9 @@ trait JavaSoundAudioProvider extends AudioProvider {
       }
     }
 
-    def setClipVolume(clip: Clip, volume: Float): Unit = {
+    def setClipVolume(clip: Clip, volume: Float): Unit = setLineVolume(clip, volume)
+
+    def setLineVolume(clip: javax.sound.sampled.Line, volume: Float): Unit = {
       // volume is a float between 0 and 1, and is meant to be a linear
       // modification of the normal sound (see official AudioProvider API
       // documentation for setVolume. The idea is that we will never need to
