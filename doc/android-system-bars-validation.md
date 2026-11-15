@@ -7,7 +7,7 @@ The backend keeps API 26 support. Android 15 and later use enforced edge-to-edge
 - `bazel build //...` passed.
 - Buildifier checks passed.
 - `bazel test //...` passed 10 of 12 targets, including core and Android project-generation tests. The two headless OpenGL targets failed because LWJGL could not locate `libEGL.so.1` in the test environment.
-- Android backend `:sgl-android:testDebugUnitTest` passed 15 Robolectric cases on API 26, 28, 29, 30, 34, and 35. Coverage includes compatibility setup, cutout policy, contrast control, restoring visible bars after immersive mode, both modern reveal behaviors, older target SDKs on Android 15, and combining stable bar insets with cutout and gesture insets.
+- Android backend `:sgl-android:testDebugUnitTest` passed 15 Robolectric cases on API 26, 28, 29, 30, 34, and 35. Coverage includes compatibility setup, cutout policy, contrast control, restoring visible bars after immersive mode, both modern reveal behaviors, older target SDKs on Android 15, and combining stable bar insets with cutout insets (system gesture zones are not part of the safe area: taps work there).
 - Android backend `:sgl-android:lintDebug` passed. The backend has other existing lint warnings.
 - `bazel run //examples/snake:android-debug` assembled a debug APK.
 - `bazel run //examples/snake:android-release` assembled a minified unsigned release APK. Its manifest reports minimum SDK 26 and target SDK 37.

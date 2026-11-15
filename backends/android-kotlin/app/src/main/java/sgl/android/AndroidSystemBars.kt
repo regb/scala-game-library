@@ -12,14 +12,18 @@ import androidx.annotation.RequiresApi
 internal object AndroidSystemBars {
     fun calculateSafeAreaInsets(windowInsets: WindowInsets): sgl.Insets {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Content must stay clear of what covers the screen: system bars and display cutouts.
+            // System gesture zones (the back-swipe strips on both sides, 30dp or more) are not
+            // covered and taps work there, so they are not part of the safe area: including
+            // them took ~15% of the width on gesture-navigation phones. Games that place
+            // draggable content near the edges should query gesture insets themselves.
             val bars = windowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars())
             val cutout = windowInsets.getInsets(WindowInsets.Type.displayCutout())
-            val gestures = windowInsets.getInsets(WindowInsets.Type.systemGestures())
             return sgl.Insets(
-                maxOf(bars.left, cutout.left, gestures.left),
-                maxOf(bars.top, cutout.top, gestures.top),
-                maxOf(bars.right, cutout.right, gestures.right),
-                maxOf(bars.bottom, cutout.bottom, gestures.bottom),
+                maxOf(bars.left, cutout.left),
+                maxOf(bars.top, cutout.top),
+                maxOf(bars.right, cutout.right),
+                maxOf(bars.bottom, cutout.bottom),
             )
         }
 
@@ -41,13 +45,6 @@ internal object AndroidSystemBars {
                 right = maxOf(right, cutout.safeInsetRight)
                 bottom = maxOf(bottom, cutout.safeInsetBottom)
             }
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val gestures = windowInsets.systemGestureInsets
-            left = maxOf(left, gestures.left)
-            top = maxOf(top, gestures.top)
-            right = maxOf(right, gestures.right)
-            bottom = maxOf(bottom, gestures.bottom)
         }
         return sgl.Insets(left, top, right, bottom)
     }

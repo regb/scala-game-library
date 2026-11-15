@@ -142,7 +142,7 @@ class AndroidSystemBarsTest {
 
     @Config(sdk = [30, 34, 35])
     @Test
-    fun safeInsetsReserveHiddenBarsAndCombineCutoutsAndGestures() {
+    fun safeInsetsReserveHiddenBarsAndCutoutsButNotGestureZones() {
         val insets = WindowInsets.Builder()
             .setInsetsIgnoringVisibility(WindowInsets.Type.systemBars(), Insets.of(0, 24, 0, 48))
             .setVisible(WindowInsets.Type.systemBars(), false)
@@ -153,9 +153,10 @@ class AndroidSystemBarsTest {
             .build()
 
         val safeArea = AndroidSystemBars.calculateSafeAreaInsets(insets)
+        // Bars (even hidden) and cutouts are reserved; gesture zones are not (taps work there).
         assertEquals(40, safeArea.left())
         assertEquals(32, safeArea.top())
-        assertEquals(20, safeArea.right())
-        assertEquals(64, safeArea.bottom())
+        assertEquals(0, safeArea.right())
+        assertEquals(48, safeArea.bottom())
     }
 }
