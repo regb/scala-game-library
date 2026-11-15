@@ -51,6 +51,7 @@ class AndroidPlayGamesLeaderboards(context: Context) : AbstractLeaderboards() {
 
     private fun updateSignedIn(authenticated: Boolean, onResult: ((Boolean) -> Unit)?) {
         signedIn = authenticated
+        Log.i(TAG, "signed in: $authenticated")
         if (!authenticated) {
             onResult?.invoke(false)
             return
@@ -75,7 +76,16 @@ class AndroidPlayGamesLeaderboards(context: Context) : AbstractLeaderboards() {
     }
 
     override fun submitScore(leaderboardId: String, score: Long) {
-        if (signedIn) PlayGames.getLeaderboardsClient(activity).submitScore(leaderboardId, score)
+        if (!signedIn) {
+            Log.i(TAG, "submit skipped (not signed in): $leaderboardId")
+            return
+        }
+        // The immediate variant reports what Play recorded (or why it failed), for the logs.
+        PlayGames.getLeaderboardsClient(activity).submitScoreImmediate(leaderboardId, score)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) Log.i(TAG, "submitted $score to $leaderboardId: ${task.result}")
+                else Log.w(TAG, "submit to $leaderboardId failed: ${task.exception}")
+            }
     }
 
     override fun loadPlayerScore(
@@ -91,7 +101,8 @@ class AndroidPlayGamesLeaderboards(context: Context) : AbstractLeaderboards() {
             .loadCurrentPlayerLeaderboardScore(leaderboardId, timeSpan(span), LeaderboardVariant.COLLECTION_PUBLIC)
             .addOnCompleteListener { task ->
                 val score = if (task.isSuccessful) task.result.get() else null
-                if (!task.isSuccessful) Log.w(TAG, "player score failed: ${task.exception?.javaClass?.simpleName}")
+                if (!task.isSuccessful) Log.w(TAG, "player score failed: ${task.exception}")
+                else Log.i(TAG, "player score on $leaderboardId: ${score?.rawScore ?: "none"}, rank ${score?.rank ?: "-"} (stale: ${task.result.isStale})")
                 onResult.apply(if (score == null) Option.empty() else Option.apply(entry(score, isPlayer = true)))
             }
     }
@@ -110,7 +121,7 @@ class AndroidPlayGamesLeaderboards(context: Context) : AbstractLeaderboards() {
             .loadTopScores(leaderboardId, timeSpan(span), LeaderboardVariant.COLLECTION_PUBLIC, maxResults.coerceIn(1, 25))
             .addOnCompleteListener { task ->
                 if (!task.isSuccessful) {
-                    Log.w(TAG, "top scores failed: ${task.exception?.javaClass?.simpleName}")
+                    Log.w(TAG, "top scores failed: ${task.exception}")
                     onResult.apply(Left("request failed"))
                     return@addOnCompleteListener
                 }
@@ -125,6 +136,7 @@ class AndroidPlayGamesLeaderboards(context: Context) : AbstractLeaderboards() {
                 } finally {
                     scores.release()
                 }
+                Log.i(TAG, "top scores on $leaderboardId: ${rows.size} rows (stale: ${task.result.isStale})")
                 onResult.apply(Right(scala.jdk.javaapi.CollectionConverters.asScala(rows).toList()))
             }
     }
