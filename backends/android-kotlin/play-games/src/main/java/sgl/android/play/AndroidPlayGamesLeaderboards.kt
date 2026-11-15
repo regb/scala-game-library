@@ -29,7 +29,13 @@ import sgl.leaderboards.LeaderboardSpan
  * The game's manifest needs the `com.google.android.gms.games.APP_ID`
  * metadata, which sgl_android_app adds when `play_games_project_id` is set.
  */
-class AndroidPlayGamesLeaderboards(context: Context) : AbstractLeaderboards() {
+class AndroidPlayGamesLeaderboards(
+    context: Context,
+    /** Start Play Games (and its automatic sign-in) right away. False: wait for [connect] or
+     * [signIn], for games that ask the player first; also set play_games_auto_start = False on
+     * sgl_android_app so the SDK does not start itself at launch. */
+    connectAtStart: Boolean = true,
+) : AbstractLeaderboards() {
     private val activity: Activity = context as? Activity
         ?: error("AndroidPlayGamesLeaderboards requires an Activity context")
 
@@ -38,7 +44,16 @@ class AndroidPlayGamesLeaderboards(context: Context) : AbstractLeaderboards() {
     @Volatile
     private var playerId: String? = null
 
+    @Volatile
+    private var connected: Boolean = false
+
     init {
+        if (connectAtStart) connect()
+    }
+
+    override fun connect() {
+        if (connected) return
+        connected = true
         PlayGamesSdk.initialize(activity)
         refresh(null)
     }
@@ -68,6 +83,10 @@ class AndroidPlayGamesLeaderboards(context: Context) : AbstractLeaderboards() {
     override fun isSignedIn(): Boolean = signedIn
 
     override fun signIn(onResult: Function1<Any, BoxedUnit>) {
+        if (!connected) {
+            connected = true
+            PlayGamesSdk.initialize(activity)
+        }
         activity.runOnUiThread {
             PlayGames.getGamesSignInClient(activity).signIn().addOnCompleteListener { task ->
                 updateSignedIn(task.isSuccessful && task.result.isAuthenticated) { ok -> onResult.apply(ok) }

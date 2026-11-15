@@ -113,6 +113,10 @@ def _android_runner_impl(ctx):
 
     admob_application_id_metadata = "        <meta-data\n            android:name=\"com.google.android.gms.ads.APPLICATION_ID\"\n            android:value=\"%s\" />\n" % ctx.attr.admob_application_id if admob_enabled else ""
     play_games_metadata = "        <meta-data\n            android:name=\"com.google.android.gms.games.APP_ID\"\n            android:value=\"@string/play_games_project_id\" />\n" if play_games_enabled else ""
+    if play_games_enabled and not ctx.attr.play_games_auto_start:
+        # The Play Games SDK starts itself (and signs players in) at launch through this provider;
+        # removing it leaves the start to the game (AndroidPlayGamesLeaderboards.connect).
+        play_games_metadata += "        <provider\n            android:name=\"com.google.android.gms.games.provider.PlayGamesInitProvider\"\n            android:authorities=\"${applicationId}.playgamesinitprovider\"\n            tools:node=\"remove\" />\n"
     if play_games_enabled:
         optional_res_values.append("        resValue(\"string\", \"play_games_project_id\", \"%s\")" % ctx.attr.play_games_project_id)
 
@@ -250,6 +254,8 @@ _android_runner = rule(
         "admob_rewarded_ad_unit_id": attr.string(default = "ca-app-pub-3940256099942544/5224354917"),
         "admob_always_preload": attr.bool(default = True),
         "play_games_project_id": attr.string(default = ""),
+        # False: Play Games does not start (nor sign in) at launch; the game connects later.
+        "play_games_auto_start": attr.bool(default = True),
         "launcher_icon": attr.string(default = ""),
         "project_name": attr.string(mandatory = True),
         "gradle_task": attr.string(mandatory = True),
@@ -291,6 +297,7 @@ def sgl_android_app(
         admob_rewarded_ad_unit_id = "ca-app-pub-3940256099942544/5224354917",
         admob_always_preload = True,
         play_games_project_id = "",
+        play_games_auto_start = True,
         launcher_icon = "",
         firebase_analytics_collection_enabled = "",
         firebase_analytics_storage = "",
@@ -334,6 +341,7 @@ def sgl_android_app(
             admob_rewarded_ad_unit_id = admob_rewarded_ad_unit_id,
             admob_always_preload = admob_always_preload,
             play_games_project_id = play_games_project_id,
+            play_games_auto_start = play_games_auto_start,
             launcher_icon = launcher_icon,
             project_name = name,
             gradle_task = task,

@@ -23,6 +23,11 @@ abstract class AbstractLeaderboards {
   /** Whether the player is signed in to the service. */
   def isSignedIn: Boolean
 
+  /** Starts the service, signing in silently a player who already agreed to it. Services that
+    * start on their own ignore it; games that ask before using the service (for example before
+    * sharing a first score) call it at launch only once the player has agreed. */
+  def connect(): Unit = ()
+
   /** Asks the player to sign in (may show the service's UI). Calls back
     * with the new signed-in state. Only call it from an explicit player
     * action: services usually sign players in automatically at start. */
