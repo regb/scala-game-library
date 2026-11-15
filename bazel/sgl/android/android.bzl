@@ -109,6 +109,7 @@ def _android_runner_impl(ctx):
         optional_modules.append("include(\":sgl-android-play-games\")\nproject(\":sgl-android-play-games\").projectDir = file(\"%s/backends/android-kotlin/play-games\")" % project_sgl_android_root)
         optional_dependencies.append("    implementation(project(\":sgl-android-play-games\"))")
         optional_imports.append("import sgl.android.play.AndroidPlayGamesServices\n")
+        optional_imports.append("import sgl.android.play.AndroidPlayGamesLeaderboards\n")
 
     admob_application_id_metadata = "        <meta-data\n            android:name=\"com.google.android.gms.ads.APPLICATION_ID\"\n            android:value=\"%s\" />\n" % ctx.attr.admob_application_id if admob_enabled else ""
     play_games_metadata = "        <meta-data\n            android:name=\"com.google.android.gms.games.APP_ID\"\n            android:value=\"@string/play_games_project_id\" />\n" if play_games_enabled else ""
