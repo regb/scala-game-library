@@ -48,6 +48,9 @@ android {
 
     buildTypes {
         release {
+            // Native debug symbols in the bundle, so Play can symbolicate native crashes and
+            // ANRs (only for libraries that still ship them; players do not download them).
+            ndk { debugSymbolLevel = "SYMBOL_TABLE" }
             if (hasUploadSigning) {
                 signingConfig = signingConfigs.getByName("release")
             }
