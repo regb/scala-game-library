@@ -25,6 +25,8 @@ def _html5_asset_pack_impl(ctx):
     ctx.actions.run_shell(
         inputs = ctx.files.srcs + [inputs_manifest],
         outputs = [pack, manifest],
+        # python3 comes from PATH (e.g. --action_env=PATH on NixOS runners, where it is not in /bin).
+        use_default_shell_env = True,
         command = """
 python3 - <<'PY'
 import json

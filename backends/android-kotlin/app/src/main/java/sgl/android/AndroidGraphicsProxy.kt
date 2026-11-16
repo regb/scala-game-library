@@ -12,6 +12,9 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import android.os.Build
 import android.text.Layout
+import android.util.DisplayMetrics
+import android.util.TypedValue
+import android.view.WindowManager
 import android.text.StaticLayout
 import android.text.TextPaint
 
@@ -57,21 +60,50 @@ class AndroidGraphicsProxy(val context: Context): GraphicsProxy {
         // AndroidBitmapProxy.forCanvas.
         opts.inPreferredConfig = Bitmap.Config.HARDWARE
 
-        // inScaled should default to true, but let's just make it explicit anyway to avoid any surprise,
-        // and because it helps with documenting our intent here.
+        // Android scales a drawable from its density folder to the screen density: an mdpi image
+        // is decoded 2.625 times larger on a 420 dpi phone. That is the size the game sees and lays
+        // out with (width/height below). Past the screen size the upscale adds no detail, only
+        // memory: a 1080x1920 mdpi background became 2835x5040 (57 MB) on a 1080x2400 screen. Such
+        // images are decoded only as large as the screen's long side (never below their own pixel
+        // size, so no detail is lost) and drawn with source rectangles mapped to the smaller
+        // bitmap; the remaining upscale happens, filtered, at draw time.
+        val targetDensity = context.resources.displayMetrics.densityDpi
+        val resourceDensity = TypedValue().also { context.resources.getValue(drawableId, it, true) }.density
+            .let { if (it == TypedValue.DENSITY_DEFAULT) DisplayMetrics.DENSITY_DEFAULT else it }
         opts.inScaled = true
-        // Similarly, the inTargetDensity defaults to the screen densityDpi, but again we want to be
-        // explicit here as it simplifies reasoning about what SGL does, instead of needing to dive
-        // into Android code source to figure out the default.
-        opts.inTargetDensity = context.resources.displayMetrics.densityDpi
-        // A last note on opts.inDensity, this one is set to the density of the bitmap loaded, so
-        // we should leave it at 0 (the default), which means we do not want to override this,
-        // we instead let Android figure out what was the density (probably based on which drawable-X folder
-        // the resource came from).
+        opts.inTargetDensity = targetDensity
+        var logicalSize: Pair<Int, Int>? = null
+        // Paint filters bitmaps by default from API 28; earlier, keep the decode-time upscale.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
+                resourceDensity > 0 && resourceDensity != TypedValue.DENSITY_NONE && targetDensity > resourceDensity) {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true; inScaled = false }
+            BitmapFactory.decodeResource(context.resources, drawableId, bounds)
+            val scale = targetDensity.toFloat() / resourceDensity
+            val logicalWidth = (bounds.outWidth * scale + 0.5f).toInt()
+            val logicalHeight = (bounds.outHeight * scale + 0.5f).toInt()
+            val screenLongSide = screenLongSide()
+            val rawLongSide = maxOf(bounds.outWidth, bounds.outHeight)
+            if (rawLongSide > 0 && maxOf(logicalWidth, logicalHeight) > screenLongSide) {
+                val needed = maxOf(1f, screenLongSide.toFloat() / rawLongSide)
+                opts.inDensity = resourceDensity
+                opts.inTargetDensity = minOf(targetDensity, Math.ceil((resourceDensity * needed).toDouble()).toInt())
+                logicalSize = Pair(logicalWidth, logicalHeight)
+            }
+        }
 
         val bitmap = BitmapFactory.decodeResource(context.resources, drawableId, opts)
         totalBytes += bitmap.byteCount
-        AndroidBitmapProxy(bitmap)
+        if (logicalSize == null) AndroidBitmapProxy(bitmap)
+        else AndroidBitmapProxy(bitmap, logicalSize.first, logicalSize.second)
+    }
+
+    private fun screenLongSide(): Int {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val bounds = context.getSystemService(WindowManager::class.java).maximumWindowMetrics.bounds
+            return maxOf(bounds.width(), bounds.height())
+        }
+        val metrics = context.resources.displayMetrics
+        return maxOf(metrics.widthPixels, metrics.heightPixels)
     }
 
     override fun fontCompanionProxy(): FontCompanionProxy {
@@ -91,7 +123,22 @@ class AndroidGraphicsProxy(val context: Context): GraphicsProxy {
     }
 }
 
-class AndroidBitmapProxy(val bitmap: Bitmap): BitmapProxy {
+/**
+ * [width] and [height] are the size the game sees (density-scaled), which can be larger than the
+ * decoded [bitmap] (see AndroidGraphicsProxy.loadImage); [src] maps game coordinates to it.
+ */
+class AndroidBitmapProxy(val bitmap: Bitmap, private val logicalWidth: Int, private val logicalHeight: Int): BitmapProxy {
+    constructor(bitmap: Bitmap) : this(bitmap, bitmap.width, bitmap.height)
+
+    private val scaleX = bitmap.width.toFloat() / logicalWidth
+    private val scaleY = bitmap.height.toFloat() / logicalHeight
+
+    /** The source rectangle in [bitmap] pixels for a region in game coordinates. */
+    fun src(sx: Int, sy: Int, sw: Int, sh: Int): Rect =
+        if (logicalWidth == bitmap.width && logicalHeight == bitmap.height) Rect(sx, sy, sx + sw, sy + sh)
+        else Rect(Math.round(sx * scaleX), Math.round(sy * scaleY),
+                  Math.round((sx + sw) * scaleX), Math.round((sy + sh) * scaleY))
+
     // A software copy of a HARDWARE bitmap, made on first use by a software canvas (frame capture).
     private var softwareCopy: Bitmap? = null
 
@@ -102,11 +149,11 @@ class AndroidBitmapProxy(val bitmap: Bitmap): BitmapProxy {
     }
 
     override fun height(): Int {
-        return bitmap.height
+        return logicalHeight
     }
 
     override fun width(): Int {
-        return bitmap.width
+        return logicalWidth
     }
 
     override fun release() {
@@ -309,7 +356,7 @@ class AndroidCanvasProxy(val canvas: Canvas): CanvasProxy {
         // Save and restore alpha to avoid allocating a fresh bitmap paint here.
         val prevAlpha = bitmapPaint.alpha
         bitmapPaint.setAlpha((alpha*255).toInt())
-        val src = Rect(sx, sy, sx+sw, sy+sh)
+        val src = bitmap.src(sx, sy, sw, sh)
         val dst = RectF(dx, dy, dx+dw, dy+dh)
         canvas.drawBitmap(bitmap.forCanvas(canvas), src, dst, bitmapPaint)
         bitmapPaint.setAlpha(prevAlpha)
