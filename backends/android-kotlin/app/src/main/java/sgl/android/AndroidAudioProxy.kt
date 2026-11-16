@@ -13,6 +13,8 @@ import sgl.util.DefaultLoader
 import sgl.util.Loader
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 class AndroidAudioProxy(private val context: Context) : AudioProxy {
     
@@ -313,6 +315,31 @@ class AndroidMusicProxy(
         object Released : State()
     }
 
+    companion object {
+        /** Releases players off the main thread: MediaPlayer.release() is a Binder call into the
+         * audio server that can stall for seconds on some devices, and looping music releases a
+         * player at every loop (an ANR seen in the wild, Android 12 on a Vivo 1907). */
+        private val releaser: ExecutorService = Executors.newSingleThreadExecutor { r ->
+            Thread(r, "sgl-music-release").apply { isDaemon = true }
+        }
+
+        /** Stops (when [stop]) and releases [mp] in the background. The caller drops its reference
+         * first; callbacks from the old player are ignored as it is no longer main or backup. */
+        internal fun releaseInBackground(mp: MediaPlayer?, stop: Boolean = false) {
+            if (mp == null) return
+            releaser.execute {
+                try {
+                    if (stop) mp.stop()
+                } catch (_: IllegalStateException) {
+                }
+                try {
+                    mp.release()
+                } catch (_: RuntimeException) {
+                }
+            }
+        }
+    }
+
     private val musicLock = Object()
     private var state: State = State.Idle
     private var shouldLoop = false
@@ -398,7 +425,7 @@ class AndroidMusicProxy(
                     backupPlayerPrepared = false
                     backupPlayer?.prepareAsync()
                 } else {
-                    backupPlayer?.release()
+                    releaseInBackground(backupPlayer)
                     backupPlayer = null
                     backupPlayerPrepared = false
                 }
@@ -409,11 +436,11 @@ class AndroidMusicProxy(
     override fun dispose() {
         synchronized(musicLock) {
             if (mainPlayerPrepared && mainPlayer != null) {
-                mainPlayer?.release()
+                releaseInBackground(mainPlayer)
                 mainPlayer = null
             }
             if (backupPlayerPrepared && backupPlayer != null) {
-                backupPlayer?.release()
+                releaseInBackground(backupPlayer)
                 backupPlayer = null
             }
             state = State.Released
@@ -427,7 +454,7 @@ class AndroidMusicProxy(
         synchronized(musicLock) {
             if (mp == mainPlayer) {
                 if (state is State.Released) {
-                    mp.release()
+                    releaseInBackground(mp)
                     mainPlayer = null
                     return
                 }
@@ -442,7 +469,7 @@ class AndroidMusicProxy(
 
             if (mp == backupPlayer) {
                 if (state is State.Released) {
-                    mp.release()
+                    releaseInBackground(mp)
                     backupPlayer = null
                     return
                 }
@@ -516,8 +543,7 @@ class AndroidMusicProxy(
     }
 
     private fun swapAndPrepare() {
-        mainPlayer?.stop()
-        mainPlayer?.release()
+        releaseInBackground(mainPlayer, stop = true)
         mainPlayer = backupPlayer
         mainPlayerPrepared = backupPlayerPrepared
 
@@ -546,13 +572,10 @@ class AndroidMusicProxy(
 
     private fun freezeOnPauseLocked() {
         mainPlayer?.let { player ->
-            if (state is State.Playing) {
-                player.stop()
-            }
-            player.release()
+            releaseInBackground(player, stop = state is State.Playing)
             mainPlayer = null
         }
-        backupPlayer?.release()
+        releaseInBackground(backupPlayer)
         backupPlayer = null
     }
 
@@ -575,9 +598,9 @@ class AndroidMusicProxy(
 
     fun onDestroy() {
         synchronized(musicLock) {
-            mainPlayer?.release()
+            releaseInBackground(mainPlayer)
             mainPlayer = null
-            backupPlayer?.release()
+            releaseInBackground(backupPlayer)
             backupPlayer = null
         }
     }
