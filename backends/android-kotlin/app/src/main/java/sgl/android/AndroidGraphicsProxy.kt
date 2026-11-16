@@ -50,7 +50,12 @@ class AndroidGraphicsProxy(val context: Context): GraphicsProxy {
         }
 
         val opts = BitmapFactory.Options()
-        opts.inPreferredConfig = Bitmap.Config.ARGB_8888
+        // HARDWARE bitmaps live in GPU memory: uploaded once here instead of at every frame. With
+        // plain ARGB_8888 bitmaps, the SurfaceView hardware canvas re-uploaded every bitmap drawn,
+        // every frame (about 100 MB per frame for a level's backgrounds on a Pixel 8, heating
+        // the phone). They are immutable and cannot be drawn by a software canvas; see
+        // AndroidBitmapProxy.forCanvas.
+        opts.inPreferredConfig = Bitmap.Config.HARDWARE
 
         // inScaled should default to true, but let's just make it explicit anyway to avoid any surprise,
         // and because it helps with documenting our intent here.
@@ -87,6 +92,15 @@ class AndroidGraphicsProxy(val context: Context): GraphicsProxy {
 }
 
 class AndroidBitmapProxy(val bitmap: Bitmap): BitmapProxy {
+    // A software copy of a HARDWARE bitmap, made on first use by a software canvas (frame capture).
+    private var softwareCopy: Bitmap? = null
+
+    /** The bitmap to draw on [canvas]: software canvases cannot draw HARDWARE bitmaps. */
+    fun forCanvas(canvas: Canvas): Bitmap {
+        if (canvas.isHardwareAccelerated || bitmap.config != Bitmap.Config.HARDWARE) return bitmap
+        return softwareCopy ?: bitmap.copy(Bitmap.Config.ARGB_8888, false).also { softwareCopy = it }
+    }
+
     override fun height(): Int {
         return bitmap.height
     }
@@ -97,6 +111,8 @@ class AndroidBitmapProxy(val bitmap: Bitmap): BitmapProxy {
 
     override fun release() {
         bitmap.recycle()
+        softwareCopy?.recycle()
+        softwareCopy = null
     }
 
 }
@@ -295,7 +311,7 @@ class AndroidCanvasProxy(val canvas: Canvas): CanvasProxy {
         bitmapPaint.setAlpha((alpha*255).toInt())
         val src = Rect(sx, sy, sx+sw, sy+sh)
         val dst = RectF(dx, dy, dx+dw, dy+dh)
-        canvas.drawBitmap(bitmap.bitmap, src, dst, bitmapPaint)
+        canvas.drawBitmap(bitmap.forCanvas(canvas), src, dst, bitmapPaint)
         bitmapPaint.setAlpha(prevAlpha)
     }
 
