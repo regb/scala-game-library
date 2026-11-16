@@ -52,10 +52,23 @@ class AndroidPlayGamesLeaderboards(
     }
 
     override fun connect() {
-        if (connected) return
-        connected = true
-        PlayGamesSdk.initialize(activity)
-        refresh(null)
+        if (!connected) {
+            connected = true
+            PlayGamesSdk.initialize(activity)
+            refresh(null)
+        } else if (!signedIn) {
+            // Called again while signed out (the sign-in at start failed, e.g. offline): check
+            // again, then ask Play Games to sign in the player, who already agreed to it.
+            activity.runOnUiThread {
+                val client = PlayGames.getGamesSignInClient(activity)
+                client.isAuthenticated.addOnCompleteListener { task ->
+                    if (task.isSuccessful && task.result.isAuthenticated) updateSignedIn(true, null)
+                    else client.signIn().addOnCompleteListener { t ->
+                        updateSignedIn(t.isSuccessful && t.result.isAuthenticated, null)
+                    }
+                }
+            }
+        }
     }
 
     private fun refresh(onResult: ((Boolean) -> Unit)?) {

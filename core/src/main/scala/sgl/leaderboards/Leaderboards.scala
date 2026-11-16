@@ -25,7 +25,9 @@ abstract class AbstractLeaderboards {
 
   /** Starts the service, signing in silently a player who already agreed to it. Services that
     * start on their own ignore it; games that ask before using the service (for example before
-    * sharing a first score) call it at launch only once the player has agreed. */
+    * sharing a first score) call it at launch only once the player has agreed. Calling it again
+    * while signed out retries (the first attempt may have failed offline); it may show the
+    * service's sign-in UI. */
   def connect(): Unit = ()
 
   /** Asks the player to sign in (may show the service's UI). Calls back
