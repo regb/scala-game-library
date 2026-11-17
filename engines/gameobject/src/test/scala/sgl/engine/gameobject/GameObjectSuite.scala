@@ -9,6 +9,7 @@ import sgl.engine.gameobject.render3d.{AssetId, MaterialAsset, MeshAsset, MeshDa
 import sgl.engine.gameobject.runtime.{Engine, GameBuilder, GameContext, Scene}
 import sgl.engine.gameobject.schedule.{Schedule, Stage, System}
 import sgl.engine.gameobject.spatial2d._
+import sgl.engine.gameobject.typed.TypedObject
 import sgl.math.Vec2
 
 class GameObjectSuite extends AnyFunSuite {
@@ -194,6 +195,71 @@ class GameObjectSuite extends AnyFunSuite {
     marker.destroy()
     assert(!crate.isAlive && !obj.isAlive && !obj.gameObject.isAlive)
     assert(world.objects.map(_.name) === Vector("other"))
+  }
+
+  final class Hull(obj: TypedObject[Spatial2D], val radius: Float) extends Component {
+    override val owner: GameObject = obj.gameObject
+    val spatial: Spatial2D = obj.spatial
+  }
+  object Hull {
+    given ComponentKey[Hull] = ComponentKey[Hull]("test.Hull")
+  }
+
+  final class Shell(obj: TypedObject[Hull]) extends Component {
+    override val owner: GameObject = obj.gameObject
+    val hull: Hull = obj.get[Hull]
+  }
+  object Shell {
+    given ComponentKey[Shell] = ComponentKey[Shell]("test.Shell")
+  }
+
+  test("a typed object grows with each attach and hands components their siblings") {
+    val world = new World
+    val obj: TypedObject[Spatial2D & Hull & Shell & Marker] = world.createObject2D("shell").typed
+      .attach(new Hull(_, 4f))
+      .attach(new Shell(_))
+      .attachPlain(new Marker(_))
+
+    assert(obj.get[Shell].hull eq obj.get[Hull])
+    assert(obj.get[Hull].spatial eq obj.spatial)
+    assert(obj.get[Marker].owner eq obj.gameObject)
+
+    val lessKnown: TypedObject[Hull] = obj
+    assert(lessKnown.get[Hull].radius === 4f)
+
+    obj.destroy()
+    assert(!obj.isAlive)
+  }
+
+  test("mis-composed typed objects do not compile") {
+    import scala.compiletime.testing.{Error, typeCheckErrors}
+    val world = new World
+
+    val missingSibling: List[Error] = typeCheckErrors("""world.createObject2D("o").typed.attach(new Shell(_))""")
+    val wrongOrder: List[Error] = typeCheckErrors("""world.createObject2D("o").typed.attach(new Shell(_)).attach(new Hull(_, 1f))""")
+    val noSpatial: List[Error] = typeCheckErrors("""TypedObject(world.createObject("o")).attach(new Hull(_, 1f))""")
+    val duplicate: List[Error] = typeCheckErrors("""world.createObject2D("o").typed.attach(new Hull(_, 1f)).attach(new Hull(_, 2f))""")
+    val absentGet: List[Error] = typeCheckErrors("""world.createObject2D("o").typed.get[Hull]""")
+    val other = world.createObject2D("other").typed.attach(new Hull(_, 1f))
+    val foreignSibling: List[Error] = typeCheckErrors("""world.createObject2D("o").typed.attach(_ => new Shell(other))""")
+
+    Seq("missingSibling" -> missingSibling, "wrongOrder" -> wrongOrder, "noSpatial" -> noSpatial,
+        "duplicate" -> duplicate, "absentGet" -> absentGet, "foreignSibling" -> foreignSibling).foreach { case (name, errors) =>
+      info(name + ": " + errors.map(_.message.replace('\n', ' ')).mkString(" | "))
+    }
+
+    assert(missingSibling.nonEmpty)
+    assert(wrongOrder.nonEmpty)
+    assert(noSpatial.nonEmpty)
+    assert(duplicate.exists(_.message.contains("already has a")))
+    assert(absentGet.exists(_.message.contains("not known to have a")))
+
+    // A component built from another object's handle type-checks, but it is
+    // owned by that other object, which attach rejects.
+    assert(foreignSibling.isEmpty)
+    intercept[CompositionError] {
+      world.createObject2D("o").typed.attach(_ => new Shell(other))
+    }
   }
 
   test("Transform2D composes parent rotation and scale") {

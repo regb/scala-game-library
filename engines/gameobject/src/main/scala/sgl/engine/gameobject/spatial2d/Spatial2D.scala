@@ -4,6 +4,7 @@ import scala.collection.mutable
 
 import sgl.engine.gameobject.{Component, ComponentKey, CompositionError, GameObject, HasGameObject, Scope, World}
 import sgl.engine.gameobject.runtime.GameContext
+import sgl.engine.gameobject.typed.TypedObject
 import sgl.math.Vec2
 
 // The 2D spatial layer. Everything here is written against the public API of
@@ -117,6 +118,9 @@ final class GameObject2D private[spatial2d] (val gameObject: GameObject, val spa
   def attach2D[A <: Component](factory: GameObject2D => A)(using key: ComponentKey[A]): A =
     gameObject.attach(_ => factory(this))
 
+  /** This object as a [[TypedObject]] that starts out knowing its spatial. */
+  def typed: TypedObject[Spatial2D] = TypedObject.unchecked[Spatial2D](gameObject)
+
   def setParent(parent: GameObject2D): Unit = spatial.setParent(parent.spatial)
 
   override def toString: String = gameObject.toString
@@ -126,6 +130,10 @@ object GameObject2D {
   given HasGameObject[GameObject2D] with {
     def gameObjectOf(value: GameObject2D): GameObject = value.gameObject
   }
+}
+
+extension (obj: TypedObject[Spatial2D]) {
+  def spatial: Spatial2D = obj.get[Spatial2D]
 }
 
 extension (world: World) {
