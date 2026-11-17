@@ -185,10 +185,7 @@ final class YRotation(
     obj: GameObject3D,
     val speedRadiansPerSecond: Float,
     val phase: Float = 0f
-) extends Component {
-  override val owner: GameObject = obj.gameObject
-  val spatial: Spatial3D = obj.spatial
-}
+) extends TypedComponent(obj)
 
 
 object YRotationSystem extends EngineSystem {

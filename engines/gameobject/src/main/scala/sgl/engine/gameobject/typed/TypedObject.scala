@@ -25,8 +25,7 @@ import sgl.engine.gameobject.runtime.GameContext
   * A component with no such need takes a `TypedObject[Any]`.
   *
   * {{{
-  * final class Bullet(obj: TypedObject[Collider]) extends Component {
-  *   override val owner: GameObject = obj.gameObject
+  * final class Bullet(obj: TypedObject[Collider]) extends TypedComponent(obj) {
   *   val collider: Collider = obj.get[Collider]
   * }
   * }}}
@@ -87,6 +86,18 @@ object TypedObject {
   given HasGameObject[TypedObject[Any]] with {
     def gameObjectOf(value: TypedObject[Any]): GameObject = value.gameObject
   }
+}
+
+/** A component built from a typed object.
+  *
+  * It keeps the object it was given: `owner` is derived from it, and anything
+  * the object is known to have stays reachable through `obj` with the same
+  * compile-time guarantee, from the component itself or from a system holding
+  * it (`player.obj.get[Velocity]`). Layers add shortcuts on top, such as
+  * `spatial` for any component whose object has one.
+  */
+trait TypedComponent[+Has](val obj: TypedObject[Has]) extends Component {
+  final def owner: GameObject = obj.gameObject
 }
 
 extension (world: World) {

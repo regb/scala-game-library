@@ -1,8 +1,7 @@
 package sgl.engine.gameobject.render2d
 
-import sgl.engine.gameobject.{Component, GameObject}
 import sgl.engine.gameobject.spatial2d.{GameObject2D, Spatial2D}
-import sgl.engine.gameobject.typed.TypedObject
+import sgl.engine.gameobject.typed.{TypedComponent, TypedObject}
 import sgl.assets.{DrawableAsset, RawImageAsset}
 
 sealed trait TextureSource
@@ -26,9 +25,7 @@ final class Camera2D(
     var viewportSize: Vec2,
     var active: Boolean = true,
     var priority: Int = 0
-) extends Component {
-  override val owner: GameObject = obj.gameObject
-}
+) extends TypedComponent(obj)
 
 
 sealed trait SpriteVisual
@@ -44,8 +41,7 @@ final class SpriteRenderer(
     var width: Float,
     var height: Float,
     var z: Float = 0f
-) extends Component {
-  override val owner: GameObject = obj.gameObject
+) extends TypedComponent(obj) {
   val spatial: Spatial2D = obj.spatial
 }
 
@@ -67,8 +63,7 @@ final class Tilemap(
     obj: GameObject2D,
     var quads: Vector[TileQuad],
     var z: Float = 0f
-) extends Component {
-  override val owner: GameObject = obj.gameObject
+) extends TypedComponent(obj) {
   val spatial: Spatial2D = obj.spatial
 }
 
@@ -82,9 +77,7 @@ final class TextOverlay(
     var scale: Float = 5f,
     var background: (Float, Float, Float, Float) = (0f, 0f, 0f, 0.78f),
     var color: (Float, Float, Float, Float) = (1f, 1f, 1f, 1f)
-) extends Component {
-  override val owner: GameObject = obj.gameObject
-}
+) extends TypedComponent(obj)
 
 
 final class CircleMaskTransition(
@@ -94,7 +87,5 @@ final class CircleMaskTransition(
     var color: (Float, Float, Float, Float) = (0f, 0f, 0f, 1f),
     var segments: Int = 96,
     var visible: Boolean = true
-) extends Component {
-  override val owner: GameObject = obj.gameObject
-}
+) extends TypedComponent(obj)
 

@@ -7,6 +7,7 @@ import sgl.engine.gameobject.capability._
 import sgl.engine.gameobject.render2d._
 import sgl.engine.gameobject.runtime._
 import sgl.engine.gameobject.spatial2d._
+import sgl.engine.gameobject.typed._
 import sgl.headless.opengl.HeadlessOpenGLApp
 import sgl.math.Vec2
 import sgl.util.NoLoggingProvider
@@ -195,8 +196,7 @@ trait HardCodedMovementGame extends OpenGLGameObjectApp {
   }
 }
 
-final class MoveRight(obj: GameObject2D) extends Component with Updatable {
-  override val owner: GameObject = obj.gameObject
+final class MoveRight(obj: GameObject2D) extends TypedComponent(obj) with Updatable {
   private val spatial = obj.spatial
 
   override def update(context: GameContext)(using Scope): Unit = {

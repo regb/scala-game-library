@@ -39,8 +39,7 @@ trait AbstractApp extends OpenGLGameObjectApp with DefaultRandomProvider {
 //  - What is not a property of the object is checked at attach time: every
 //    Updatable needs UpdateCapabilitiesModule.
 
-final class Velocity(obj: TypedObject[Spatial2D], var value: Vec2) extends Component with Updatable {
-  override val owner: GameObject = obj.gameObject
+final class Velocity(obj: TypedObject[Spatial2D], var value: Vec2) extends TypedComponent(obj) with Updatable {
   private val spatial = obj.spatial
 
   override def update(context: GameContext)(using Scope): Unit = {
@@ -68,8 +67,7 @@ final class Lifetime(override val owner: GameObject, var seconds: Double) extend
   }
 }
 
-final class Collider(obj: TypedObject[Spatial2D], var radius: Float) extends Component {
-  override val owner: GameObject = obj.gameObject
+final class Collider(obj: TypedObject[Spatial2D], var radius: Float) extends TypedComponent(obj) {
   private val spatial = obj.spatial
 
   def overlaps(other: Collider): Boolean = {
@@ -79,8 +77,7 @@ final class Collider(obj: TypedObject[Spatial2D], var radius: Float) extends Com
   }
 }
 
-final class Player(obj: TypedObject[Spatial2D & Velocity & Collider]) extends Component with Updatable {
-  override val owner: GameObject = obj.gameObject
+final class Player(obj: TypedObject[Spatial2D & Velocity & Collider]) extends TypedComponent(obj) with Updatable {
   val collider: Collider = obj.get[Collider]
   private val spatial = obj.spatial
   private val velocity = obj.get[Velocity]
@@ -120,13 +117,11 @@ object Player {
   def direction(rotation: Float): Vec2 = Vec2(scala.math.sin(rotation).toFloat, -scala.math.cos(rotation).toFloat)
 }
 
-final class Asteroid(obj: TypedObject[Collider]) extends Component {
-  override val owner: GameObject = obj.gameObject
+final class Asteroid(obj: TypedObject[Collider]) extends TypedComponent(obj) {
   val collider: Collider = obj.get[Collider]
 }
 
-final class Bullet(obj: TypedObject[Collider]) extends Component {
-  override val owner: GameObject = obj.gameObject
+final class Bullet(obj: TypedObject[Collider]) extends TypedComponent(obj) {
   val collider: Collider = obj.get[Collider]
 }
 
@@ -134,8 +129,7 @@ final case class AsteroidRandom(random: sgl.util.RandomProvider#Random)
 
 final class ScoreState(override val owner: GameObject, var score: Int = 0, var highScore: Int = 0) extends Component
 
-final class ScoreHud(obj: TypedObject[TextOverlay]) extends Component with Updatable {
-  override val owner: GameObject = obj.gameObject
+final class ScoreHud(obj: TypedObject[TextOverlay]) extends TypedComponent(obj) with Updatable {
   private val overlay = obj.get[TextOverlay]
 
   override def update(context: GameContext)(using Scope): Unit = {

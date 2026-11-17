@@ -3,7 +3,7 @@ package sgl.engine.gameobject.spatial2d
 import sgl.engine.gameobject.{Component, GameObject, Scope, World}
 import sgl.engine.gameobject.hierarchy.Hierarchy
 import sgl.engine.gameobject.runtime.GameContext
-import sgl.engine.gameobject.typed.TypedObject
+import sgl.engine.gameobject.typed.{TypedComponent, TypedObject}
 import sgl.math.Vec2
 
 // The 2D spatial layer. Everything here is written against the public API of
@@ -72,6 +72,13 @@ object Spatial2D {
       obj.spatial.setParent(parent.spatial)
       obj
     }
+  }
+
+  // The same reads for a component built from such an object.
+  extension [Has <: Spatial2D](component: TypedComponent[Has]) {
+    def spatial: Spatial2D = component.obj.spatial
+    def local: Transform2D = component.obj.spatial.local
+    def global: Transform2D = component.obj.spatial.global
   }
 }
 

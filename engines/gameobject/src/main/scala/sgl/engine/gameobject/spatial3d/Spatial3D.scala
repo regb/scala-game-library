@@ -3,7 +3,7 @@ package sgl.engine.gameobject.spatial3d
 import sgl.engine.gameobject.{Component, GameObject, Scope, World}
 import sgl.engine.gameobject.hierarchy.Hierarchy
 import sgl.engine.gameobject.runtime.GameContext
-import sgl.engine.gameobject.typed.TypedObject
+import sgl.engine.gameobject.typed.{TypedComponent, TypedObject}
 import sgl.math.{Mat4, Quaternion, Vec3}
 
 // The 3D spatial layer, written against the public API of the core package.
@@ -47,6 +47,13 @@ object Spatial3D {
       obj.spatial.setParent(parent.spatial)
       obj
     }
+  }
+
+  // The same reads for a component built from such an object.
+  extension [Has <: Spatial3D](component: TypedComponent[Has]) {
+    def spatial: Spatial3D = component.obj.spatial
+    def local: Transform3D = component.obj.spatial.local
+    def globalMatrix: Mat4 = component.obj.spatial.globalMatrix
   }
 }
 

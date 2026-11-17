@@ -8,7 +8,7 @@ import sgl.engine.gameobject.render3d.{AssetId, MaterialAsset, MeshAsset, MeshDa
 import sgl.engine.gameobject.runtime.{Engine, GameBuilder, GameContext, Scene}
 import sgl.engine.gameobject.schedule.{Schedule, Stage, System}
 import sgl.engine.gameobject.spatial2d._
-import sgl.engine.gameobject.typed.TypedObject
+import sgl.engine.gameobject.typed.{TypedComponent, TypedObject}
 import sgl.math.Vec2
 
 class GameObjectSuite extends AnyFunSuite {
@@ -242,13 +242,11 @@ class GameObjectSuite extends AnyFunSuite {
     assert(world.objects.map(_.name) === Vector("other"))
   }
 
-  final class Hull(obj: TypedObject[Spatial2D], val radius: Float) extends Component {
-    override val owner: GameObject = obj.gameObject
+  final class Hull(obj: TypedObject[Spatial2D], val radius: Float) extends TypedComponent(obj) {
     val spatial: Spatial2D = obj.spatial
   }
 
-  final class Shell(obj: TypedObject[Hull]) extends Component {
-    override val owner: GameObject = obj.gameObject
+  final class Shell(obj: TypedObject[Hull]) extends TypedComponent(obj) {
     val hull: Hull = obj.get[Hull]
   }
 
