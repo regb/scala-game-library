@@ -4,7 +4,6 @@ import org.scalatest.funsuite.AnyFunSuite
 
 import sgl.assets.{DrawableAsset, RawImageAsset}
 import sgl.engine.gameobject.capability.{FixedUpdatable, Updatable, UpdateCapabilitiesModule}
-import sgl.engine.gameobject.render2d.{SpriteRenderer, SpriteVisual}
 import sgl.engine.gameobject.render3d.{AssetId, MaterialAsset, MeshAsset, MeshData, Renderer, TextureAsset}
 import sgl.engine.gameobject.runtime.{Engine, GameBuilder, GameContext, Scene}
 import sgl.engine.gameobject.schedule.{Schedule, Stage, System}
@@ -24,9 +23,9 @@ class GameObjectSuite extends AnyFunSuite {
     given ComponentKey[NeedsMarker] = ComponentKey[NeedsMarker]("test.NeedsMarker").requires[Marker]
   }
 
-  final class NeedsSprite(override val owner: GameObject) extends Component
-  object NeedsSprite {
-    given ComponentKey[NeedsSprite] = ComponentKey[NeedsSprite]("test.NeedsSprite").requires[SpriteRenderer]
+  final class NeedsChain(override val owner: GameObject) extends Component
+  object NeedsChain {
+    given ComponentKey[NeedsChain] = ComponentKey[NeedsChain]("test.NeedsChain").requires[NeedsMarker]
   }
 
   final case class Gravity(value: Float)
@@ -45,14 +44,6 @@ class GameObjectSuite extends AnyFunSuite {
   }
   object Ticks {
     given ComponentKey[Ticks] = ComponentKey[Ticks]("test.Ticks")
-  }
-
-  final class Follows2D(obj: GameObject2D) extends Component {
-    override val owner: GameObject = obj.gameObject
-    def position: Vec2 = obj.spatial.local.position
-  }
-  object Follows2D {
-    given ComponentKey[Follows2D] = ComponentKey[Follows2D]("test.Follows2D")
   }
 
   test("a component is rejected until the components it requires are attached") {
@@ -74,19 +65,17 @@ class GameObjectSuite extends AnyFunSuite {
 
   test("component requirements are transitive through attach order") {
     val world = new World
-    val sprite = SpriteVisual.Triangle((1f, 1f, 1f, 1f))
+    val obj = world.createObject("object")
 
-    val plain = world.createObject("plain")
     intercept[CompositionError] {
-      plain.attach(new SpriteRenderer(_, sprite, 1f, 1f))
+      obj.attach(new NeedsChain(_))
     }
+    obj.attach(new Marker(_))
     intercept[CompositionError] {
-      plain.attach(new NeedsSprite(_))
+      obj.attach(new NeedsChain(_))
     }
-
-    val spatial = world.createObject2D("spatial")
-    spatial.attach(new SpriteRenderer(_, sprite, 1f, 1f))
-    spatial.attach(new NeedsSprite(_))
+    obj.attach(new NeedsMarker(_))
+    obj.attach(new NeedsChain(_))
   }
 
   test("a component is rejected when a context value its key requires is missing") {
@@ -112,17 +101,6 @@ class GameObjectSuite extends AnyFunSuite {
       .install(UpdateCapabilitiesModule)
       .build(new TestEngine(new RecordingRenderer))
     configured.world.createObject("object").attach(new Ticks(_))
-  }
-
-  test("attach2D hands the spatial owner to the component") {
-    val world = new World
-    val obj = world.createObject2D("object", Transform2D(position = Vec2(3f, 4f)))
-
-    val follower = obj.attach2D(new Follows2D(_))
-
-    assert(follower.owner eq obj.gameObject)
-    assert(follower.position === Vec2(3f, 4f))
-    assert(obj.component[Follows2D] === Some(follower))
   }
 
   final class Registered(override val owner: GameObject, log: scala.collection.mutable.Buffer[String]) extends Component {
@@ -178,7 +156,7 @@ class GameObjectSuite extends AnyFunSuite {
   test("components, wrappers, and game classes can be used as their game object") {
     val world = new World
     val obj = world.createObject2D("crate")
-    val marker = obj.attach(new Marker(_))
+    val marker = obj.attachPlain(new Marker(_)).get[Marker]
     val crate = new Crate(obj, marker)
 
     assert(marker.require[Spatial2D] eq obj.spatial)
@@ -215,7 +193,7 @@ class GameObjectSuite extends AnyFunSuite {
 
   test("a typed object grows with each attach and hands components their siblings") {
     val world = new World
-    val obj: TypedObject[Spatial2D & Hull & Shell & Marker] = world.createObject2D("shell").typed
+    val obj: TypedObject[Spatial2D & Hull & Shell & Marker] = world.createObject2D("shell")
       .attach(new Hull(_, 4f))
       .attach(new Shell(_))
       .attachPlain(new Marker(_))
@@ -231,17 +209,37 @@ class GameObjectSuite extends AnyFunSuite {
     assert(!obj.isAlive)
   }
 
+  test("2D and 3D objects share the typed object operations without clashing") {
+    import sgl.engine.gameobject.spatial3d._
+    val world = new World
+
+    val root3D: GameObject3D = world.createObject3D("root3D")
+    val leaf3D = world.child3DOf(root3D, "leaf3D")(identity)
+    val root2D: GameObject2D = world.createObject2D("root2D")
+    val leaf2D = world.child2DOf(root2D, "leaf2D")(identity)
+
+    assert(leaf3D.parent === Some(root3D.spatial))
+    assert(leaf2D.parent === Some(root2D.spatial))
+    assert(root3D.children === Vector(leaf3D.spatial))
+
+    root3D.destroySubtree()
+    assert(world.objects.map(_.name) === Vector("root2D", "leaf2D"))
+    leaf2D.clearParent()
+    root2D.destroySubtree()
+    assert(world.objects.map(_.name) === Vector("leaf2D"))
+  }
+
   test("mis-composed typed objects do not compile") {
     import scala.compiletime.testing.{Error, typeCheckErrors}
     val world = new World
 
-    val missingSibling: List[Error] = typeCheckErrors("""world.createObject2D("o").typed.attach(new Shell(_))""")
-    val wrongOrder: List[Error] = typeCheckErrors("""world.createObject2D("o").typed.attach(new Shell(_)).attach(new Hull(_, 1f))""")
+    val missingSibling: List[Error] = typeCheckErrors("""world.createObject2D("o").attach(new Shell(_))""")
+    val wrongOrder: List[Error] = typeCheckErrors("""world.createObject2D("o").attach(new Shell(_)).attach(new Hull(_, 1f))""")
     val noSpatial: List[Error] = typeCheckErrors("""TypedObject(world.createObject("o")).attach(new Hull(_, 1f))""")
-    val duplicate: List[Error] = typeCheckErrors("""world.createObject2D("o").typed.attach(new Hull(_, 1f)).attach(new Hull(_, 2f))""")
-    val absentGet: List[Error] = typeCheckErrors("""world.createObject2D("o").typed.get[Hull]""")
-    val other = world.createObject2D("other").typed.attach(new Hull(_, 1f))
-    val foreignSibling: List[Error] = typeCheckErrors("""world.createObject2D("o").typed.attach(_ => new Shell(other))""")
+    val duplicate: List[Error] = typeCheckErrors("""world.createObject2D("o").attach(new Hull(_, 1f)).attach(new Hull(_, 2f))""")
+    val absentGet: List[Error] = typeCheckErrors("""world.createObject2D("o").get[Hull]""")
+    val other = world.createObject2D("other").attach(new Hull(_, 1f))
+    val foreignSibling: List[Error] = typeCheckErrors("""world.createObject2D("o").attach(_ => new Shell(other))""")
 
     Seq("missingSibling" -> missingSibling, "wrongOrder" -> wrongOrder, "noSpatial" -> noSpatial,
         "duplicate" -> duplicate, "absentGet" -> absentGet, "foreignSibling" -> foreignSibling).foreach { case (name, errors) =>
@@ -258,7 +256,7 @@ class GameObjectSuite extends AnyFunSuite {
     // owned by that other object, which attach rejects.
     assert(foreignSibling.isEmpty)
     intercept[CompositionError] {
-      world.createObject2D("o").typed.attach(_ => new Shell(other))
+      world.createObject2D("o").attach(_ => new Shell(other))
     }
   }
 

@@ -2,8 +2,9 @@ package sgl.engine.gameobject.spatial3d
 
 import scala.collection.mutable
 
-import sgl.engine.gameobject.{Component, ComponentKey, CompositionError, GameObject, HasGameObject, Scope, World}
+import sgl.engine.gameobject.{Component, ComponentKey, CompositionError, GameObject, Scope, World}
 import sgl.engine.gameobject.runtime.GameContext
+import sgl.engine.gameobject.typed.TypedObject
 import sgl.math.{Mat4, Quaternion, Vec3}
 
 // The 3D spatial layer, written against the public API of the core package.
@@ -74,40 +75,30 @@ final class Spatial3D private[spatial3d] (override val owner: GameObject, var lo
 
 object Spatial3D {
   given ComponentKey[Spatial3D] = ComponentKey[Spatial3D]("sgl.engine.gameobject.spatial3d.Spatial3D")
-}
 
-/** A game object statically known to have a [[Spatial3D]].
-  *
-  * The generic object operations (`attach`, `component`, `require`, `destroy`,
-  * `isAlive`) come from its [[HasGameObject]] instance.
-  */
-final class GameObject3D private[spatial3d] (val gameObject: GameObject, val spatial: Spatial3D) {
-  export gameObject.{id, name}
-  export spatial.{children, clearParent, destroySubtree, globalMatrix, local, parent}
-
-  /** Attaches a component that can only live on a 3D object. A component whose
-    * constructor takes a [[GameObject3D]] gets its spatial without any lookup,
-    * and cannot be built for an object that has none.
-    */
-  def attach3D[A <: Component](factory: GameObject3D => A)(using key: ComponentKey[A]): A =
-    gameObject.attach(_ => factory(this))
-
-  def setParent(parent: GameObject3D): Unit = spatial.setParent(parent.spatial)
-
-  override def toString: String = gameObject.toString
-}
-
-object GameObject3D {
-  given HasGameObject[GameObject3D] with {
-    def gameObjectOf(value: GameObject3D): GameObject = value.gameObject
+  // Spatial operations for any object known to have a Spatial3D. Being in this
+  // companion, they are found without an import wherever such an object is used.
+  extension (obj: TypedObject[Spatial3D]) {
+    def spatial: Spatial3D = obj.get[Spatial3D]
+    def local: Transform3D = obj.spatial.local
+    def globalMatrix: Mat4 = obj.spatial.globalMatrix
+    def parent: Option[Spatial3D] = obj.spatial.parent
+    def children: Vector[Spatial3D] = obj.spatial.children
+    def setParent(parent: TypedObject[Spatial3D]): Unit = obj.spatial.setParent(parent.spatial)
+    def clearParent(): Unit = obj.spatial.clearParent()
+    def destroySubtree(): Unit = obj.spatial.destroySubtree()
   }
 }
 
+/** A game object statically known to have a [[Spatial3D]]. It is a
+  * [[TypedObject]] like any other: `attach` grows its type, and a component
+  * that needs a spatial asks for a `GameObject3D` in its constructor.
+  */
+type GameObject3D = TypedObject[Spatial3D]
+
 extension (world: World) {
   def createObject3D(name: String, transform: Transform3D = Transform3D.Identity)(using scope: Scope = world.globalScope): GameObject3D = {
-    val obj = world.createObject(name)
-    val spatial = obj.attach(new Spatial3D(_, transform))
-    new GameObject3D(obj, spatial)
+    TypedObject(world.createObject(name)).attachPlain(new Spatial3D(_, transform))
   }
 
   def gameObject3D[A](name: String, transform: Transform3D = Transform3D.Identity)(build: GameObject3D => A)(using scope: Scope = world.globalScope): A =

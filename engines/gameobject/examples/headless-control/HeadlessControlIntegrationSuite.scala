@@ -196,10 +196,12 @@ trait HardCodedMovementGame extends OpenGLGameObjectApp {
   }
 }
 
-final class MoveRight(override val owner: GameObject) extends Component with Updatable {
+final class MoveRight(obj: GameObject2D) extends Component with Updatable {
+  override val owner: GameObject = obj.gameObject
+  private val spatial = obj.spatial
+
   override def update(context: GameContext)(using Scope): Unit = {
     if(Input.isKeyPressed(Input.Keys.Right)) {
-      val spatial = owner.require[Spatial2D]
       spatial.local = spatial.local.copy(position = spatial.local.position + Vec2(16f, 0f))
     }
   }

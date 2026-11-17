@@ -120,12 +120,12 @@ object Player {
   def fireBullet(context: GameContext, ship: Spatial2D): Unit = {
     val dir = direction(ship.local.rotation)
     val pos = ship.local.position + dir * 24f
-    context.createObject2D("Bullet", Transform2D(position = pos, rotation = ship.local.rotation)).typed
+    context.createObject2D("Bullet", Transform2D(position = pos, rotation = ship.local.rotation))
       .attach(new Collider(_, 4f))
       .attach(new Bullet(_))
       .attach(new Velocity(_, dir * 420f))
       .attachPlain(new Lifetime(_, 1.2))
-      .attachPlain(new SpriteRenderer(_, SpriteVisual.Circle((1f, 0.92f, 0.47f, 1f), segments = 10), 7f, 7f))
+      .attach(new SpriteRenderer(_, SpriteVisual.Circle((1f, 0.92f, 0.47f, 1f), segments = 10), 7f, 7f))
   }
 
   def direction(rotation: Float): Vec2 = Vec2(scala.math.sin(rotation).toFloat, -scala.math.cos(rotation).toFloat)
@@ -177,8 +177,8 @@ object ScoreStartupSystem extends System {
     context.gameObject("Score") { score =>
       score.attach(new ScoreState(_))
     }
-    TypedObject(context.createObject("ScoreHud"))
-      .attachPlain(new TextOverlay(_, Vector.empty, x = 18f, y = 18f, scale = 3f))
+    context.typedObject("ScoreHud")
+      .attach(new TextOverlay(_, Vector.empty, x = 18f, y = 18f, scale = 3f))
       .attach(new ScoreHud(_))
   }
 }
@@ -189,11 +189,11 @@ object AsteroidsScene extends Scene {
       camera.attach(new Camera2D(_, Vec2(800f, 600f), priority = 10))
     }
 
-    context.createObject2D("Ship", Transform2D(position = Vec2(0f, 0f))).typed
+    context.createObject2D("Ship", Transform2D(position = Vec2(0f, 0f)))
       .attach(new Velocity(_, Vec2(0f, 0f)))
       .attach(new Collider(_, 14f))
       .attach(new Player(_))
-      .attachPlain(new SpriteRenderer(_, SpriteVisual.Triangle((0.86f, 0.94f, 1f, 1f)), 28f, 34f))
+      .attach(new SpriteRenderer(_, SpriteVisual.Triangle((0.86f, 0.94f, 1f, 1f)), 28f, 34f))
 
     for(i <- 0 until 8) AsteroidSpawner.spawn(context.world, i)
   }
@@ -210,11 +210,11 @@ object AsteroidSpawner {
     val vel = Vec2(scala.math.cos(velAngle).toFloat * speed, scala.math.sin(velAngle).toFloat * speed)
     val size = 34f + rng.nextFloat().toFloat * 28f
 
-    world.createObject2D(s"Asteroid-$i", Transform2D(position = pos)).typed
+    world.createObject2D(s"Asteroid-$i", Transform2D(position = pos))
       .attach(new Collider(_, size / 2f))
       .attach(new Asteroid(_))
       .attach(new Velocity(_, vel))
-      .attachPlain(new SpriteRenderer(_, SpriteVisual.Circle((0.60f, 0.60f, 0.60f, 1f)), size, size))
+      .attach(new SpriteRenderer(_, SpriteVisual.Circle((0.60f, 0.60f, 0.60f, 1f)), size, size))
   }
 }
 

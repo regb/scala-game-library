@@ -1,7 +1,8 @@
 package sgl.engine.gameobject.render2d
 
-import sgl.engine.gameobject.{Component, ComponentKey}
-import sgl.engine.gameobject.spatial2d.Spatial2D
+import sgl.engine.gameobject.{Component, ComponentKey, GameObject}
+import sgl.engine.gameobject.spatial2d.{GameObject2D, Spatial2D}
+import sgl.engine.gameobject.typed.TypedObject
 import sgl.assets.{DrawableAsset, RawImageAsset}
 
 sealed trait TextureSource
@@ -21,11 +22,13 @@ object Texture2D {
 import sgl.math.Vec2
 
 final class Camera2D(
-    override val owner: sgl.engine.gameobject.GameObject,
+    obj: TypedObject[Any],
     var viewportSize: Vec2,
     var active: Boolean = true,
     var priority: Int = 0
-) extends Component
+) extends Component {
+  override val owner: GameObject = obj.gameObject
+}
 
 object Camera2D {
   given ComponentKey[Camera2D] = ComponentKey[Camera2D]("sgl.engine.gameobject.render2d.Camera2D")
@@ -39,15 +42,18 @@ object SpriteVisual {
 }
 
 final class SpriteRenderer(
-    override val owner: sgl.engine.gameobject.GameObject,
+    obj: GameObject2D,
     var visual: SpriteVisual,
     var width: Float,
     var height: Float,
     var z: Float = 0f
-) extends Component
+) extends Component {
+  override val owner: GameObject = obj.gameObject
+  val spatial: Spatial2D = obj.spatial
+}
 
 object SpriteRenderer {
-  given ComponentKey[SpriteRenderer] = ComponentKey[SpriteRenderer]("sgl.engine.gameobject.render2d.SpriteRenderer").requires[Spatial2D]
+  given ComponentKey[SpriteRenderer] = ComponentKey[SpriteRenderer]("sgl.engine.gameobject.render2d.SpriteRenderer")
 }
 
 final case class TileQuad(
@@ -64,17 +70,20 @@ final case class TileQuad(
 )
 
 final class Tilemap(
-    override val owner: sgl.engine.gameobject.GameObject,
+    obj: GameObject2D,
     var quads: Vector[TileQuad],
     var z: Float = 0f
-) extends Component
+) extends Component {
+  override val owner: GameObject = obj.gameObject
+  val spatial: Spatial2D = obj.spatial
+}
 
 object Tilemap {
-  given ComponentKey[Tilemap] = ComponentKey[Tilemap]("sgl.engine.gameobject.render2d.Tilemap").requires[Spatial2D]
+  given ComponentKey[Tilemap] = ComponentKey[Tilemap]("sgl.engine.gameobject.render2d.Tilemap")
 }
 
 final class TextOverlay(
-    override val owner: sgl.engine.gameobject.GameObject,
+    obj: TypedObject[Any],
     var lines: Vector[String],
     var visible: Boolean = true,
     var x: Float = 32f,
@@ -82,20 +91,24 @@ final class TextOverlay(
     var scale: Float = 5f,
     var background: (Float, Float, Float, Float) = (0f, 0f, 0f, 0.78f),
     var color: (Float, Float, Float, Float) = (1f, 1f, 1f, 1f)
-) extends Component
+) extends Component {
+  override val owner: GameObject = obj.gameObject
+}
 
 object TextOverlay {
   given ComponentKey[TextOverlay] = ComponentKey[TextOverlay]("sgl.engine.gameobject.render2d.TextOverlay")
 }
 
 final class CircleMaskTransition(
-    override val owner: sgl.engine.gameobject.GameObject,
+    obj: TypedObject[Any],
     var worldCenter: Vec2,
     var radius: Float,
     var color: (Float, Float, Float, Float) = (0f, 0f, 0f, 1f),
     var segments: Int = 96,
     var visible: Boolean = true
-) extends Component
+) extends Component {
+  override val owner: GameObject = obj.gameObject
+}
 
 object CircleMaskTransition {
   given ComponentKey[CircleMaskTransition] = ComponentKey[CircleMaskTransition]("sgl.engine.gameobject.render2d.CircleMaskTransition")

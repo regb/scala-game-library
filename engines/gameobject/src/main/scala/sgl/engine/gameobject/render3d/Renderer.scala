@@ -1,7 +1,9 @@
 package sgl.engine.gameobject.render3d
 
 import sgl.assets.{DrawableAsset, RawImageAsset}
-import sgl.engine.gameobject.{Component, ComponentKey, World}
+import sgl.engine.gameobject.{Component, ComponentKey, GameObject, World}
+import sgl.engine.gameobject.spatial3d.{GameObject3D, Spatial3D}
+import sgl.engine.gameobject.typed.TypedObject
 import sgl.math.Mat4
 
 trait Asset
@@ -15,32 +17,39 @@ final case class AssetId[+A <: Asset](id: Int) extends AnyVal
 final case class MeshData(vertices: Array[Float], indices: Array[Short])
 
 final class Camera3D(
-    override val owner: sgl.engine.gameobject.GameObject,
+    obj: TypedObject[Any],
     var fovRadians: Float,
     var near: Float,
     var far: Float,
     var active: Boolean = true,
     var priority: Int = 0
-) extends Component
+) extends Component {
+  override val owner: GameObject = obj.gameObject
+}
 
 object Camera3D {
   given ComponentKey[Camera3D] = ComponentKey[Camera3D]("sgl.engine.gameobject.render3d.Camera3D")
 }
 
 final class Camera3DView(
-    override val owner: sgl.engine.gameobject.GameObject,
+    obj: TypedObject[Any],
     var view: Mat4
-) extends Component
+) extends Component {
+  override val owner: GameObject = obj.gameObject
+}
 
 object Camera3DView {
   given ComponentKey[Camera3DView] = ComponentKey[Camera3DView]("sgl.engine.gameobject.render3d.Camera3DView")
 }
 
 final class MeshRenderer(
-    override val owner: sgl.engine.gameobject.GameObject,
+    obj: GameObject3D,
     var mesh: AssetId[MeshAsset],
     var material: AssetId[MaterialAsset]
-) extends Component
+) extends Component {
+  override val owner: GameObject = obj.gameObject
+  val spatial: Spatial3D = obj.spatial
+}
 
 object MeshRenderer {
   given ComponentKey[MeshRenderer] = ComponentKey[MeshRenderer]("sgl.engine.gameobject.render3d.MeshRenderer")

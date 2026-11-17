@@ -7,6 +7,7 @@ import sgl.engine.gameobject.render3d._
 import sgl.engine.gameobject.runtime._
 import sgl.engine.gameobject.schedule.{Stage, System as EngineSystem, SystemId}
 import sgl.engine.gameobject.spatial3d._
+import sgl.engine.gameobject.typed._
 import sgl.math.{Mat4, Quaternion, Vec3}
 
 import scala.language.implicitConversions
@@ -91,10 +92,9 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
     )
     moon.spatial.setParent(moonOrbit.spatial)
 
-    context.gameObject("Camera3D") { camera =>
-      camera.attach(new Camera3D(_, 55f.toRadians, near = 0.1f, far = 100f))
-      camera.attach(new Camera3DView(_, cameraController.viewMatrix))
-    }
+    context.typedObject("Camera3D")
+      .attach(new Camera3D(_, 55f.toRadians, near = 0.1f, far = 100f))
+      .attach(new Camera3DView(_, cameraController.viewMatrix))
 
     Audio.loadMusic(Assets.audio.ambience).foreach { music =>
       if(loaded) {
@@ -152,11 +152,10 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
       transform: Transform3D,
       rotationSpeed: Float
   ): RenderedBody = {
-    context.gameObject3D(name, transform) { obj =>
-      val rotation = obj.attach(new YRotation(_, rotationSpeed))
-      val renderer = obj.attach(new MeshRenderer(_, mesh, material))
-      RenderedBody(obj.gameObject, obj.spatial, rotation, renderer)
-    }
+    val obj = context.createObject3D(name, transform)
+      .attach(new YRotation(_, rotationSpeed))
+      .attach(new MeshRenderer(_, mesh, material))
+    RenderedBody(obj.gameObject, obj.spatial, obj.get[YRotation], obj.get[MeshRenderer])
   }
 
   override def dispose(): Unit = {
@@ -185,10 +184,13 @@ final case class RenderedBody(
 )
 
 final class YRotation(
-    override val owner: GameObject,
+    obj: GameObject3D,
     val speedRadiansPerSecond: Float,
     val phase: Float = 0f
-) extends Component
+) extends Component {
+  override val owner: GameObject = obj.gameObject
+  val spatial: Spatial3D = obj.spatial
+}
 
 object YRotation {
   given ComponentKey[YRotation] = ComponentKey[YRotation]("solar-go.YRotation")
@@ -200,11 +202,10 @@ object YRotationSystem extends EngineSystem {
   override def run(context: GameContext)(using Scope): Unit = {
     val t = context.world.context.get[ElapsedTime].seconds.toFloat
     context.world.index[YRotation].foreach { rotation =>
-      rotation.owner.component[Spatial3D].foreach { spatial =>
-        spatial.local = spatial.local.copy(
-          rotation = Quaternion.rotationY(rotation.phase + rotation.speedRadiansPerSecond * t)
-        )
-      }
+      val spatial = rotation.spatial
+      spatial.local = spatial.local.copy(
+        rotation = Quaternion.rotationY(rotation.phase + rotation.speedRadiansPerSecond * t)
+      )
     }
   }
 }

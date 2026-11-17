@@ -2,7 +2,7 @@ package sgl.engine.gameobject.spatial2d
 
 import scala.collection.mutable
 
-import sgl.engine.gameobject.{Component, ComponentKey, CompositionError, GameObject, HasGameObject, Scope, World}
+import sgl.engine.gameobject.{Component, ComponentKey, CompositionError, GameObject, Scope, World}
 import sgl.engine.gameobject.runtime.GameContext
 import sgl.engine.gameobject.typed.TypedObject
 import sgl.math.Vec2
@@ -100,47 +100,31 @@ final class Spatial2D private[spatial2d] (override val owner: GameObject, var lo
 
 object Spatial2D {
   given ComponentKey[Spatial2D] = ComponentKey[Spatial2D]("sgl.engine.gameobject.spatial2d.Spatial2D")
-}
 
-/** A game object statically known to have a [[Spatial2D]].
-  *
-  * The generic object operations (`attach`, `component`, `require`, `destroy`,
-  * `isAlive`) come from its [[HasGameObject]] instance.
-  */
-final class GameObject2D private[spatial2d] (val gameObject: GameObject, val spatial: Spatial2D) {
-  export gameObject.{id, name}
-  export spatial.{children, clearParent, destroySubtree, global, local, parent, transformPoint}
-
-  /** Attaches a component that can only live on a 2D object. A component whose
-    * constructor takes a [[GameObject2D]] gets its spatial without any lookup,
-    * and cannot be built for an object that has none.
-    */
-  def attach2D[A <: Component](factory: GameObject2D => A)(using key: ComponentKey[A]): A =
-    gameObject.attach(_ => factory(this))
-
-  /** This object as a [[TypedObject]] that starts out knowing its spatial. */
-  def typed: TypedObject[Spatial2D] = TypedObject.unchecked[Spatial2D](gameObject)
-
-  def setParent(parent: GameObject2D): Unit = spatial.setParent(parent.spatial)
-
-  override def toString: String = gameObject.toString
-}
-
-object GameObject2D {
-  given HasGameObject[GameObject2D] with {
-    def gameObjectOf(value: GameObject2D): GameObject = value.gameObject
+  // Spatial operations for any object known to have a Spatial2D. Being in this
+  // companion, they are found without an import wherever such an object is used.
+  extension (obj: TypedObject[Spatial2D]) {
+    def spatial: Spatial2D = obj.get[Spatial2D]
+    def local: Transform2D = obj.spatial.local
+    def global: Transform2D = obj.spatial.global
+    def transformPoint(point: Vec2): Vec2 = obj.spatial.transformPoint(point)
+    def parent: Option[Spatial2D] = obj.spatial.parent
+    def children: Vector[Spatial2D] = obj.spatial.children
+    def setParent(parent: TypedObject[Spatial2D]): Unit = obj.spatial.setParent(parent.spatial)
+    def clearParent(): Unit = obj.spatial.clearParent()
+    def destroySubtree(): Unit = obj.spatial.destroySubtree()
   }
 }
 
-extension (obj: TypedObject[Spatial2D]) {
-  def spatial: Spatial2D = obj.get[Spatial2D]
-}
+/** A game object statically known to have a [[Spatial2D]]. It is a
+  * [[TypedObject]] like any other: `attach` grows its type, and a component
+  * that needs a spatial asks for a `GameObject2D` in its constructor.
+  */
+type GameObject2D = TypedObject[Spatial2D]
 
 extension (world: World) {
   def createObject2D(name: String, transform: Transform2D = Transform2D.Identity)(using scope: Scope = world.globalScope): GameObject2D = {
-    val obj = world.createObject(name)
-    val spatial = obj.attach(new Spatial2D(_, transform))
-    new GameObject2D(obj, spatial)
+    TypedObject(world.createObject(name)).attachPlain(new Spatial2D(_, transform))
   }
 
   def gameObject2D[A](name: String, transform: Transform2D = Transform2D.Identity)(build: GameObject2D => A)(using scope: Scope = world.globalScope): A =

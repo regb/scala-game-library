@@ -7,7 +7,6 @@ import sgl.{OpenGLProvider, SystemProvider, WindowProvider}
 import sgl.engine.gameobject.World
 import sgl.engine.gameobject.runtime.ClearColor
 import sgl.engine.gameobject.spatial2d.Spatial2D
-import sgl.engine.gameobject.spatial3d.Spatial3D
 import sgl.assets.{DrawableAsset, RawImageAsset, TextureFilter}
 import sgl.engine.gameobject.render2d.{Camera2D, CircleMaskTransition, SpriteRenderer, SpriteVisual, TextOverlay, Texture2D, TextureSource, TileQuad, Tilemap}
 import sgl.engine.gameobject.render3d._
@@ -199,9 +198,7 @@ final class OpenGLRenderer(
       GL.uniform1i(textureLocation, 0)
 
       world.index[MeshRenderer].foreach { meshRenderer =>
-        meshRenderer.owner.component[Spatial3D].foreach { spatial =>
-          drawRenderable(viewProjection, spatial.globalMatrix, meshRenderer)
-        }
+        drawRenderable(viewProjection, meshRenderer.spatial.globalMatrix, meshRenderer)
       }
 
       GL.unbindVertexArray()
@@ -260,8 +257,8 @@ final class OpenGLRenderer(
       }
     }
 
-    val items = sprites.flatMap(s => s.owner.component[Spatial2D].map(SpriteItem(s, _))) ++
-      tilemaps.flatMap(t => t.owner.component[Spatial2D].map(TilemapItem(t, _)))
+    val items = sprites.map(s => SpriteItem(s, s.spatial)) ++
+      tilemaps.map(t => TilemapItem(t, t.spatial))
     items.sortBy(_.z).foreach(_.draw())
     batch.flush()
 

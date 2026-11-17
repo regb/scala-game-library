@@ -3,7 +3,8 @@ package sgl.engine.gameobject.typed
 import scala.annotation.implicitNotFound
 import scala.util.NotGiven
 
-import sgl.engine.gameobject.{Component, ComponentKey, GameObject, HasGameObject}
+import sgl.engine.gameobject.{Component, ComponentKey, GameObject, HasGameObject, Scope, World}
+import sgl.engine.gameobject.runtime.GameContext
 
 /** A game object whose type records components known to be attached to it.
   *
@@ -19,6 +20,8 @@ import sgl.engine.gameobject.{Component, ComponentKey, GameObject, HasGameObject
   *
   * A component states what it needs through the type of its constructor
   * parameter and reads it with `get`, which cannot fail:
+  *
+  * A component with no such need takes a `TypedObject[Any]`.
   *
   * {{{
   * final class Bullet(obj: TypedObject[Collider]) extends Component {
@@ -36,8 +39,14 @@ import sgl.engine.gameobject.{Component, ComponentKey, GameObject, HasGameObject
   * from a live object.
   */
 final class TypedObject[+Has] private (val gameObject: GameObject) {
+  export gameObject.{id, name}
 
-  /** Attaches a component built from this object, typed with what it has so far. */
+  /** Attaches a component built from this object, typed with what it has so far.
+    *
+    * The result is this object, now known to have a `C`. Used as a statement,
+    * the component is attached all the same; only the chained result carries
+    * the larger type.
+    */
   def attach[C <: Component](factory: TypedObject[Has] => C)(using key: ComponentKey[C], absent: TypedObject.Absent[Has, C]): TypedObject[Has & C] = {
     gameObject.attach(_ => factory(this))
     new TypedObject[Has & C](gameObject)
@@ -60,12 +69,6 @@ object TypedObject {
   /** Starts from an object about which nothing is known. */
   def apply(gameObject: GameObject): TypedObject[Any] = new TypedObject[Any](gameObject)
 
-  /** Asserts what an object has without proof. For layers that attach
-    * components themselves, such as a creation helper returning an object with
-    * its spatial; `get` fails at runtime if the claim is wrong.
-    */
-  def unchecked[Has](gameObject: GameObject): TypedObject[Has] = new TypedObject[Has](gameObject)
-
   @implicitNotFound("This object is not known to have a ${C}: it has ${Has}. Attach a ${C} earlier in the chain")
   final class Present[-Has, C] private[TypedObject] ()
   object Present {
@@ -83,4 +86,16 @@ object TypedObject {
   given HasGameObject[TypedObject[Any]] with {
     def gameObjectOf(value: TypedObject[Any]): GameObject = value.gameObject
   }
+}
+
+extension (world: World) {
+  /** Creates an object to compose as a chain of `attach`. */
+  def typedObject(name: String)(using scope: Scope = world.globalScope): TypedObject[Any] =
+    TypedObject(world.createObject(name))
+}
+
+extension (context: GameContext) {
+  /** Creates an object in the scope of the context, to compose as a chain of `attach`. */
+  def typedObject(name: String): TypedObject[Any] =
+    TypedObject(context.createObject(name))
 }
