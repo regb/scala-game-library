@@ -1,6 +1,6 @@
 package sgl.engine.gameobject.render2d
 
-import sgl.engine.gameobject.{Component, ComponentKey, GameObject}
+import sgl.engine.gameobject.{Component, GameObject}
 import sgl.engine.gameobject.spatial2d.{GameObject2D, Spatial2D}
 import sgl.engine.gameobject.typed.TypedObject
 import sgl.assets.{DrawableAsset, RawImageAsset}
@@ -30,9 +30,6 @@ final class Camera2D(
   override val owner: GameObject = obj.gameObject
 }
 
-object Camera2D {
-  given ComponentKey[Camera2D] = ComponentKey[Camera2D]("sgl.engine.gameobject.render2d.Camera2D")
-}
 
 sealed trait SpriteVisual
 object SpriteVisual {
@@ -52,9 +49,6 @@ final class SpriteRenderer(
   val spatial: Spatial2D = obj.spatial
 }
 
-object SpriteRenderer {
-  given ComponentKey[SpriteRenderer] = ComponentKey[SpriteRenderer]("sgl.engine.gameobject.render2d.SpriteRenderer")
-}
 
 final case class TileQuad(
     texture: Texture2D,
@@ -78,9 +72,6 @@ final class Tilemap(
   val spatial: Spatial2D = obj.spatial
 }
 
-object Tilemap {
-  given ComponentKey[Tilemap] = ComponentKey[Tilemap]("sgl.engine.gameobject.render2d.Tilemap")
-}
 
 final class TextOverlay(
     obj: TypedObject[Any],
@@ -95,9 +86,6 @@ final class TextOverlay(
   override val owner: GameObject = obj.gameObject
 }
 
-object TextOverlay {
-  given ComponentKey[TextOverlay] = ComponentKey[TextOverlay]("sgl.engine.gameobject.render2d.TextOverlay")
-}
 
 final class CircleMaskTransition(
     obj: TypedObject[Any],
@@ -110,6 +98,3 @@ final class CircleMaskTransition(
   override val owner: GameObject = obj.gameObject
 }
 
-object CircleMaskTransition {
-  given ComponentKey[CircleMaskTransition] = ComponentKey[CircleMaskTransition]("sgl.engine.gameobject.render2d.CircleMaskTransition")
-}

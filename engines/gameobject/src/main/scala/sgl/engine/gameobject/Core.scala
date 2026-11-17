@@ -1,6 +1,7 @@
 package sgl.engine.gameobject
 
 import scala.collection.mutable
+import scala.reflect.ClassTag
 
 /** Stable identity for a game object. */
 final case class ObjectId(value: Int) extends AnyVal
@@ -15,6 +16,10 @@ final class CompositionError(message: String) extends RuntimeException(message)
   * Components are ordinary objects with methods and private state. Dynamic lookup
   * is available for assembly and debugging, but game code can keep direct typed
   * references once an object has been built.
+  *
+  * A component is stored and looked up by its class: an object carries at most
+  * one component of each concrete class, and `world.index[Bullet]` lists every
+  * live `Bullet`.
   */
 trait Component {
   def owner: GameObject
@@ -37,9 +42,9 @@ trait Component {
   * present in the world context, typically the module that drives them.
   *
   * The requirement is checked when a component with the capability is
-  * attached, so it is stated once on the trait instead of on the key of every
-  * component implementing it. Overrides must add to `super`, since a component
-  * can mix in several capabilities:
+  * attached, so it is stated once on the trait and holds for every component
+  * implementing it. Overrides must add to `super`, since a component can mix
+  * in several capabilities:
   *
   * {{{
   * trait Updatable extends ContextDependent {
@@ -67,8 +72,8 @@ object Component {
   * used as the object it stands for, so that `bullet.destroy()` or
   * `ship.require[Collider]` work without reaching for the underlying object.
   *
-  * Components and the engine wrappers have instances. A game class gets the
-  * same operations with one given in its companion:
+  * Components and typed objects have instances. A game class gets the same
+  * operations with one given in its companion:
   *
   * {{{
   * final class Ship(val obj: GameObject2D, val hull: Collider)
@@ -90,13 +95,10 @@ trait HasGameObject[-A] {
       obj.world.destroy(obj)
     }
 
-    def attach[C <: Component](factory: GameObject => C)(using key: ComponentKey[C]): C =
-      gameObjectOf(value).attach(factory)
-
-    def component[C <: Component](using key: ComponentKey[C]): Option[C] =
+    def component[C <: Component: ClassTag]: Option[C] =
       gameObjectOf(value).component[C]
 
-    def require[C <: Component](using key: ComponentKey[C]): C =
+    def require[C <: Component: ClassTag]: C =
       gameObjectOf(value).require[C]
   }
 }
@@ -105,55 +107,6 @@ object HasGameObject {
   /** Whether two values stand for the same game object. */
   def sameObject[A, B](a: A, b: B)(using hasA: HasGameObject[A], hasB: HasGameObject[B]): Boolean =
     hasA.gameObjectOf(a) eq hasB.gameObjectOf(b)
-}
-
-/** Runtime key used to store and retrieve one concrete component type.
-  *
-  * The key also carries the composition requirements of the component type.
-  * They are declared once, next to the key, and checked every time a component
-  * of that type is attached:
-  *
-  * {{{
-  * given ComponentKey[Bullet] = ComponentKey[Bullet]("game.Bullet")
-  *   .requires[Collider]
-  *   .requiresContext[Spatial2DModule.type]
-  * }}}
-  *
-  * Declared requirements are meant for dependencies that a system relies on.
-  * When the component itself uses the dependency, prefer taking it as a
-  * constructor parameter, which is checked by the compiler instead.
-  */
-final class ComponentKey[A <: Component](val name: String) {
-  private var requiredComponents = Vector.empty[() => ComponentKey[?]]
-  private var requiredContext = Vector.empty[ContextKey[?]]
-
-  /** Requires a `B` to already be attached to the owner when an `A` is attached.
-    *
-    * The key is resolved lazily, so companion keys can reference each other
-    * without depending on initialization order.
-    */
-  def requires[B <: Component](using key: => ComponentKey[B]): this.type = {
-    requiredComponents :+= (() => key)
-    this
-  }
-
-  /** Requires a `B` in the world context when an `A` is attached. Modules
-    * publish themselves in the context, so this is how a component states
-    * that it only works with a given module installed.
-    */
-  def requiresContext[B](using key: ContextKey[B]): this.type = {
-    requiredContext :+= key
-    this
-  }
-
-  private[gameobject] def componentRequirements: Vector[ComponentKey[?]] = requiredComponents.map(_())
-  private[gameobject] def contextRequirements: Vector[ContextKey[?]] = requiredContext
-
-  override def toString: String = name
-}
-
-object ComponentKey {
-  def apply[A <: Component](name: String): ComponentKey[A] = new ComponentKey[A](name)
 }
 
 /** Runtime key used to index a capability implemented by one or more component types. */
@@ -220,45 +173,45 @@ final class Scope private[gameobject] (val id: ScopeId, val name: String, privat
   override def toString: String = s"Scope(${id.value}, $name)"
 }
 
-private final case class ComponentRecord(key: ComponentKey[?], component: Component)
+private final case class ComponentRecord(key: Class[?], component: Component)
 
 private[gameobject] final class ComponentSet(owner: GameObject, world: World) {
-  private val components = mutable.HashMap.empty[ComponentKey[?], Component]
+  private val components = mutable.HashMap.empty[Class[?], Component]
 
-  def add[A <: Component](component: A)(using key: ComponentKey[A]): A = {
+  def add[A <: Component](component: A)(using tag: ClassTag[A]): A = {
+    val key = tag.runtimeClass
+    def target = s"object ${owner.id.value} (${owner.name})"
+    if(component.getClass ne key) {
+      throw new CompositionError(
+        s"Cannot attach a ${component.getClass.getName} to $target as a ${key.getName}: " +
+          "a component is attached under its own concrete class"
+      )
+    }
     if(component.owner ne owner) {
-      throw new CompositionError(s"Component ${key.name} belongs to a different object than ${owner.id.value}")
+      throw new CompositionError(s"Cannot attach ${key.getName} to $target: it belongs to a different object")
     }
     if(components.contains(key)) {
-      throw new CompositionError(s"Object ${owner.id.value} already has component ${key.name}")
+      throw new CompositionError(s"Cannot attach ${key.getName} to $target: the object already has one")
     }
-    key.componentRequirements.foreach { required =>
-      if(!components.contains(required)) {
-        throw new CompositionError(
-          s"Cannot attach ${key.name} to object ${owner.id.value} (${owner.name}): " +
-            s"it requires ${required.name}, which must be attached first"
-        )
-      }
-    }
-    val capabilityContext = component match {
-      case dependent: ContextDependent => dependent.contextRequirements
-      case _ => Vector.empty
-    }
-    (key.contextRequirements ++ capabilityContext).distinct.foreach { required =>
-      if(!world.context.contains(required)) {
-        throw new CompositionError(
-          s"Cannot attach ${key.name} to object ${owner.id.value} (${owner.name}): " +
-            s"it requires ${required.name} in the world context; is the module providing it installed?"
-        )
-      }
+    component match {
+      case dependent: ContextDependent =>
+        dependent.contextRequirements.distinct.foreach { required =>
+          if(!world.context.contains(required)) {
+            throw new CompositionError(
+              s"Cannot attach ${key.getName} to $target: " +
+                s"it requires ${required.name} in the world context; is the module providing it installed?"
+            )
+          }
+        }
+      case _ =>
     }
     components(key) = component
     world.componentAdded(key, component)
     component
   }
 
-  def get[A <: Component](using key: ComponentKey[A]): Option[A] =
-    components.get(key).map(_.asInstanceOf[A])
+  def get[A <: Component](using tag: ClassTag[A]): Option[A] =
+    components.get(tag.runtimeClass).map(_.asInstanceOf[A])
 
   def all: Iterable[Component] = components.values
 }
@@ -281,21 +234,21 @@ final class GameObject private[gameobject] (
 
   def isAlive: Boolean = aliveValue
 
-  private def addComponent[A <: Component](component: A)(using key: ComponentKey[A]): A = {
-    if(!aliveValue) throw new CompositionError(s"Cannot attach component ${key.name} to destroyed object ${id.value}")
+  private def addComponent[A <: Component: ClassTag](component: A): A = {
+    if(!aliveValue) throw new CompositionError(s"Cannot attach a component to destroyed object ${id.value} ($name)")
     components.add(component)
   }
 
   private[gameobject] def markDestroyed(): Unit = aliveValue = false
 
-  def attach[A <: Component](factory: GameObject => A)(using key: ComponentKey[A]): A =
+  def attach[A <: Component: ClassTag](factory: GameObject => A): A =
     addComponent(factory(this))
 
-  def component[A <: Component](using key: ComponentKey[A]): Option[A] =
+  def component[A <: Component: ClassTag]: Option[A] =
     components.get[A]
 
-  def require[A <: Component](using key: ComponentKey[A]): A =
-    component[A].getOrElse(throw new CompositionError(s"Object ${id.value} is missing component ${key.name}"))
+  def require[A <: Component](using tag: ClassTag[A]): A =
+    component[A].getOrElse(throw new CompositionError(s"Object ${id.value} ($name) is missing component ${tag.runtimeClass.getName}"))
 
   override def toString: String = s"GameObject(${id.value}, $name, scope=${scope.name})"
 }
@@ -312,7 +265,7 @@ final class World {
   private val scopesBuffer = mutable.ArrayBuffer.empty[Scope]
   private val objectsBuffer = mutable.ArrayBuffer.empty[GameObject]
   private val records = mutable.ArrayBuffer.empty[ComponentRecord]
-  private val exactIndexes = mutable.HashMap.empty[ComponentKey[?], ComponentIndex[?]]
+  private val exactIndexes = mutable.HashMap.empty[Class[?], ComponentIndex[?]]
   private val capabilityIndexes = mutable.HashMap.empty[CapabilityKey[?], ComponentIndex[?]]
   private var activeValue = true
 
@@ -342,9 +295,6 @@ final class World {
     objectsBuffer += obj
     obj
   }
-
-  def gameObject[A](name: String)(build: GameObject => A)(using scope: Scope = globalScope): A =
-    build(createObject(name))
 
   def destroy(obj: GameObject): Unit = {
     if(obj.world ne this) throw new CompositionError(s"Object ${obj.id.value} belongs to a different world")
@@ -377,7 +327,8 @@ final class World {
     activeValue = false
   }
 
-  def index[A <: Component](using key: ComponentKey[A]): ComponentIndex[A] = {
+  def index[A <: Component](using tag: ClassTag[A]): ComponentIndex[A] = {
+    val key = tag.runtimeClass
     exactIndexes.getOrElseUpdate(key, {
       val index = new ComponentIndex[A]
       records.foreach { record =>
@@ -395,15 +346,15 @@ final class World {
     }).asInstanceOf[ComponentIndex[A]]
   }
 
-  def single[A <: Component](using key: ComponentKey[A]): Option[A] =
+  def single[A <: Component: ClassTag]: Option[A] =
     index[A].toVector.headOption
 
-  def requireSingle[A <: Component](using key: ComponentKey[A]): A =
-    single[A].getOrElse(throw new CompositionError(s"World is missing singleton component ${key.name}"))
+  def requireSingle[A <: Component](using tag: ClassTag[A]): A =
+    single[A].getOrElse(throw new CompositionError(s"World is missing singleton component ${tag.runtimeClass.getName}"))
 
-  private[gameobject] def componentAdded[A <: Component](key: ComponentKey[A], component: A): Unit = {
+  private[gameobject] def componentAdded(key: Class[?], component: Component): Unit = {
     records += ComponentRecord(key, component)
-    exactIndexes.get(key).foreach(_.asInstanceOf[ComponentIndex[A]].add(component, component))
+    exactIndexes.get(key).foreach(_.asInstanceOf[ComponentIndex[Component]].add(component, component))
     capabilityIndexes.foreach { case (capability, index) =>
       capability.asInstanceOf[CapabilityKey[Any]].select(component).foreach { value =>
         index.asInstanceOf[ComponentIndex[Any]].add(component, value)

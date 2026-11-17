@@ -55,9 +55,6 @@ final class GameContext(
 ) {
   def createObject(name: String): sgl.engine.gameobject.GameObject =
     world.createObject(name)(using scope)
-
-  def gameObject[A](name: String)(build: sgl.engine.gameobject.GameObject => A): A =
-    world.gameObject(name)(build)(using scope)
 }
 
 /** Engine services exposed to systems. */

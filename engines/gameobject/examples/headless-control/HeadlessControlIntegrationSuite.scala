@@ -189,7 +189,6 @@ trait HardCodedMovementGame extends OpenGLGameObjectApp {
   override def configure(builder: GameBuilder): Unit = {
     builder
       .install(UpdateCapabilitiesModule)
-      .install(Spatial2DModule)
       .setContext(ClearColor(0f, 0f, 0f, 1f))
       .setContext(FixedDeltaTime(1.0 / 60.0))
       .setInitialScene(HardCodedMovementScene)
@@ -206,18 +205,12 @@ final class MoveRight(obj: GameObject2D) extends Component with Updatable {
     }
   }
 }
-object MoveRight {
-  given ComponentKey[MoveRight] = ComponentKey[MoveRight]("sgl.examples.gameobject.headlesscontrol.MoveRight")
-}
 
 object HardCodedMovementScene extends Scene {
   override def load(context: GameContext)(using Scope): Unit = {
-    context.gameObject2D("Camera", Transform2D()) { camera =>
-      camera.attach(new Camera2D(_, Vec2(64f, 64f)))
-    }
-    context.gameObject2D("Triangle", Transform2D(position = Vec2(-16f, 0f))) { triangle =>
-      triangle.attach(new MoveRight(_))
-      triangle.attach(new SpriteRenderer(_, SpriteVisual.Triangle((0.2f, 0.8f, 1f, 1f)), 10f, 10f))
-    }
+    context.createObject2D("Camera").attach(new Camera2D(_, Vec2(64f, 64f)))
+    context.createObject2D("Triangle", Transform2D(position = Vec2(-16f, 0f)))
+      .attach(new MoveRight(_))
+      .attach(new SpriteRenderer(_, SpriteVisual.Triangle((0.2f, 0.8f, 1f, 1f)), 10f, 10f))
   }
 }

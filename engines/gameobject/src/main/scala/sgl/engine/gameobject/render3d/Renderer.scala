@@ -1,7 +1,7 @@
 package sgl.engine.gameobject.render3d
 
 import sgl.assets.{DrawableAsset, RawImageAsset}
-import sgl.engine.gameobject.{Component, ComponentKey, GameObject, World}
+import sgl.engine.gameobject.{Component, GameObject, World}
 import sgl.engine.gameobject.spatial3d.{GameObject3D, Spatial3D}
 import sgl.engine.gameobject.typed.TypedObject
 import sgl.math.Mat4
@@ -27,9 +27,6 @@ final class Camera3D(
   override val owner: GameObject = obj.gameObject
 }
 
-object Camera3D {
-  given ComponentKey[Camera3D] = ComponentKey[Camera3D]("sgl.engine.gameobject.render3d.Camera3D")
-}
 
 final class Camera3DView(
     obj: TypedObject[Any],
@@ -38,9 +35,6 @@ final class Camera3DView(
   override val owner: GameObject = obj.gameObject
 }
 
-object Camera3DView {
-  given ComponentKey[Camera3DView] = ComponentKey[Camera3DView]("sgl.engine.gameobject.render3d.Camera3DView")
-}
 
 final class MeshRenderer(
     obj: GameObject3D,
@@ -51,9 +45,6 @@ final class MeshRenderer(
   val spatial: Spatial3D = obj.spatial
 }
 
-object MeshRenderer {
-  given ComponentKey[MeshRenderer] = ComponentKey[MeshRenderer]("sgl.engine.gameobject.render3d.MeshRenderer")
-}
 
 trait Renderer {
   type Texture <: TextureAsset

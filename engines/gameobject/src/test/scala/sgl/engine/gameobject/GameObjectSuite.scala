@@ -14,79 +14,48 @@ import sgl.math.Vec2
 class GameObjectSuite extends AnyFunSuite {
 
   final class Marker(override val owner: GameObject) extends Component
-  object Marker {
-    given ComponentKey[Marker] = ComponentKey[Marker]("test.Marker")
-  }
 
-  final class NeedsMarker(override val owner: GameObject) extends Component
-  object NeedsMarker {
-    given ComponentKey[NeedsMarker] = ComponentKey[NeedsMarker]("test.NeedsMarker").requires[Marker]
-  }
-
-  final class NeedsChain(override val owner: GameObject) extends Component
-  object NeedsChain {
-    given ComponentKey[NeedsChain] = ComponentKey[NeedsChain]("test.NeedsChain").requires[NeedsMarker]
-  }
-
-  final case class Gravity(value: Float)
-  object Gravity {
-    given ContextKey[Gravity] = ContextKey[Gravity]("test.Gravity")
-  }
-
-  final class Falls(override val owner: GameObject) extends Component
-  object Falls {
-    given ComponentKey[Falls] = ComponentKey[Falls]("test.Falls").requiresContext[Gravity]
-  }
+  final class Other(override val owner: GameObject) extends Component
 
   final class Ticks(override val owner: GameObject) extends Component with Updatable with FixedUpdatable {
     override def update(context: GameContext)(using Scope): Unit = ()
     override def fixedUpdate(context: GameContext)(using Scope): Unit = ()
   }
-  object Ticks {
-    given ComponentKey[Ticks] = ComponentKey[Ticks]("test.Ticks")
+
+  test("components are stored and indexed by their class") {
+    val world = new World
+    val first = world.createObject("first")
+    val second = world.createObject("second")
+
+    val marker = first.attach(new Marker(_))
+    val other = first.attach(new Other(_))
+    second.attach(new Marker(_))
+
+    assert(first.component[Marker] === Some(marker))
+    assert(first.require[Other] eq other)
+    assert(second.component[Other].isEmpty)
+    assert(world.index[Marker].size === 2)
+    assert(world.index[Other].toVector === Vector(other))
+
+    val duplicate = intercept[CompositionError] {
+      first.attach(new Marker(_))
+    }
+    assert(duplicate.getMessage.contains("already has one"))
+    val missing = intercept[CompositionError] {
+      second.require[Other]
+    }
+    assert(missing.getMessage.contains("Other"))
   }
 
-  test("a component is rejected until the components it requires are attached") {
+  test("a component must be attached under its own concrete class") {
     val world = new World
     val obj = world.createObject("object")
 
     val error = intercept[CompositionError] {
-      obj.attach(new NeedsMarker(_))
+      obj.attach[Component](new Marker(_))
     }
-    assert(error.getMessage.contains("test.NeedsMarker"))
-    assert(error.getMessage.contains("requires test.Marker"))
-    assert(obj.component[NeedsMarker].isEmpty)
-    assert(world.index[NeedsMarker].size === 0)
-
-    obj.attach(new Marker(_))
-    val attached = obj.attach(new NeedsMarker(_))
-    assert(obj.component[NeedsMarker] === Some(attached))
-  }
-
-  test("component requirements are transitive through attach order") {
-    val world = new World
-    val obj = world.createObject("object")
-
-    intercept[CompositionError] {
-      obj.attach(new NeedsChain(_))
-    }
-    obj.attach(new Marker(_))
-    intercept[CompositionError] {
-      obj.attach(new NeedsChain(_))
-    }
-    obj.attach(new NeedsMarker(_))
-    obj.attach(new NeedsChain(_))
-  }
-
-  test("a component is rejected when a context value its key requires is missing") {
-    val world = new World
-    val error = intercept[CompositionError] {
-      world.createObject("object").attach(new Falls(_))
-    }
-    assert(error.getMessage.contains("test.Gravity"))
-
-    world.context.set(Gravity(9.81f))
-    world.createObject("object").attach(new Falls(_))
+    assert(error.getMessage.contains("concrete class"))
+    assert(obj.component[Marker].isEmpty)
   }
 
   test("a capability brings its module requirement to every component implementing it") {
@@ -94,7 +63,7 @@ class GameObjectSuite extends AnyFunSuite {
     val error = intercept[CompositionError] {
       bare.world.createObject("object").attach(new Ticks(_))
     }
-    assert(error.getMessage.contains("test.Ticks"))
+    assert(error.getMessage.contains("Ticks"))
     assert(error.getMessage.contains("UpdateCapabilitiesModule"))
 
     val configured = new GameBuilder()
@@ -109,9 +78,6 @@ class GameObjectSuite extends AnyFunSuite {
       val indexed = owner.world.index[Registered].size
       log += s"${owner.name} sibling=$sibling indexed=$indexed"
     }
-  }
-  object Registered {
-    given ComponentKey[Registered] = ComponentKey[Registered]("test.Registered")
   }
 
   test("onDestroy runs once, while the component and its siblings are still attached") {
@@ -146,6 +112,24 @@ class GameObjectSuite extends AnyFunSuite {
     assert(world.objects.isEmpty)
   }
 
+  test("global transforms follow the parent chain as soon as it changes") {
+    import sgl.engine.gameobject.spatial3d._
+    val world = new World
+
+    val parent = world.createObject2D("parent", Transform2D(position = Vec2(10f, 0f)))
+    val child = world.createObject2D("child", Transform2D(position = Vec2(1f, 2f))).childOf(parent)
+    assert(child.global.position === Vec2(11f, 2f))
+
+    parent.spatial.local = Transform2D(position = Vec2(-5f, 0f), scale = Vec2(2f, 2f))
+    assert(child.global.position === Vec2(-3f, 4f))
+    child.clearParent()
+    assert(child.global.position === Vec2(1f, 2f))
+
+    val parent3D = world.createObject3D("parent3D", Transform3D(position = sgl.math.Vec3(1f, 2f, 3f)))
+    val child3D = world.createObject3D("child3D").childOf(parent3D)
+    assert(child3D.globalMatrix.values.toSeq === parent3D.spatial.local.matrix.values.toSeq)
+  }
+
   final class Crate(val obj: GameObject2D, val marker: Marker)
   object Crate {
     given HasGameObject[Crate] with {
@@ -166,9 +150,6 @@ class GameObjectSuite extends AnyFunSuite {
     assert(HasGameObject.sameObject(obj, obj.gameObject))
     assert(!HasGameObject.sameObject(crate, world.createObject("other")))
 
-    val needsMarker = crate.attach(new NeedsMarker(_))
-    assert(marker.component[NeedsMarker] === Some(needsMarker))
-
     assert(crate.isAlive)
     marker.destroy()
     assert(!crate.isAlive && !obj.isAlive && !obj.gameObject.isAlive)
@@ -179,16 +160,10 @@ class GameObjectSuite extends AnyFunSuite {
     override val owner: GameObject = obj.gameObject
     val spatial: Spatial2D = obj.spatial
   }
-  object Hull {
-    given ComponentKey[Hull] = ComponentKey[Hull]("test.Hull")
-  }
 
   final class Shell(obj: TypedObject[Hull]) extends Component {
     override val owner: GameObject = obj.gameObject
     val hull: Hull = obj.get[Hull]
-  }
-  object Shell {
-    given ComponentKey[Shell] = ComponentKey[Shell]("test.Shell")
   }
 
   test("a typed object grows with each attach and hands components their siblings") {
@@ -214,9 +189,10 @@ class GameObjectSuite extends AnyFunSuite {
     val world = new World
 
     val root3D: GameObject3D = world.createObject3D("root3D")
-    val leaf3D = world.child3DOf(root3D, "leaf3D")(identity)
+    val leaf3D = world.createObject3D("leaf3D").childOf(root3D)
     val root2D: GameObject2D = world.createObject2D("root2D")
-    val leaf2D = world.child2DOf(root2D, "leaf2D")(identity)
+    val leaf2D = world.createObject2D("leaf2D").attachPlain(new Marker(_)).childOf(root2D)
+    assert(leaf2D.get[Marker].owner eq leaf2D.gameObject)
 
     assert(leaf3D.parent === Some(root3D.spatial))
     assert(leaf2D.parent === Some(root2D.spatial))

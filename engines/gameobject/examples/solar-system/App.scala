@@ -20,7 +20,6 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
 
   override def configure(game: GameBuilder): Unit = {
     game
-      .install(Spatial3DModule)
       .setContext(ClearColor(0.005f, 0.008f, 0.018f, 1.0f))
       .setContext(cameraController)
       .setInitialScene(new SolarSystemScene)
@@ -138,10 +137,9 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
       transform: Transform3D,
       rotationSpeed: Float = 0f
   ): SpatialFacade = {
-    context.gameObject3D(name, transform) { obj =>
-      if(rotationSpeed != 0f) obj.attach(new YRotation(_, rotationSpeed))
-      SpatialFacade(obj.gameObject, obj.spatial)
-    }
+    val obj = context.createObject3D(name, transform)
+    if(rotationSpeed != 0f) obj.attach(new YRotation(_, rotationSpeed))
+    SpatialFacade(obj.gameObject, obj.spatial)
   }
 
   private def createBody(
@@ -192,9 +190,6 @@ final class YRotation(
   val spatial: Spatial3D = obj.spatial
 }
 
-object YRotation {
-  given ComponentKey[YRotation] = ComponentKey[YRotation]("solar-go.YRotation")
-}
 
 object YRotationSystem extends EngineSystem {
   override val id: SystemId = SystemId("solar-go.y-rotation")

@@ -1,9 +1,10 @@
 package sgl.engine.gameobject.typed
 
 import scala.annotation.implicitNotFound
+import scala.reflect.ClassTag
 import scala.util.NotGiven
 
-import sgl.engine.gameobject.{Component, ComponentKey, GameObject, HasGameObject, Scope, World}
+import sgl.engine.gameobject.{Component, GameObject, HasGameObject, Scope, World}
 import sgl.engine.gameobject.runtime.GameContext
 
 /** A game object whose type records components known to be attached to it.
@@ -47,19 +48,19 @@ final class TypedObject[+Has] private (val gameObject: GameObject) {
     * the component is attached all the same; only the chained result carries
     * the larger type.
     */
-  def attach[C <: Component](factory: TypedObject[Has] => C)(using key: ComponentKey[C], absent: TypedObject.Absent[Has, C]): TypedObject[Has & C] = {
+  def attach[C <: Component](factory: TypedObject[Has] => C)(using tag: ClassTag[C], absent: TypedObject.Absent[Has, C]): TypedObject[Has & C] = {
     gameObject.attach(_ => factory(this))
     new TypedObject[Has & C](gameObject)
   }
 
   /** Attaches a component that takes a plain [[GameObject]] owner. */
-  def attachPlain[C <: Component](factory: GameObject => C)(using key: ComponentKey[C], absent: TypedObject.Absent[Has, C]): TypedObject[Has & C] = {
+  def attachPlain[C <: Component](factory: GameObject => C)(using tag: ClassTag[C], absent: TypedObject.Absent[Has, C]): TypedObject[Has & C] = {
     gameObject.attach(factory)
     new TypedObject[Has & C](gameObject)
   }
 
   /** The component of type `C`, which the type of this object guarantees. */
-  def get[C <: Component](using present: TypedObject.Present[Has, C], key: ComponentKey[C]): C =
+  def get[C <: Component](using present: TypedObject.Present[Has, C], tag: ClassTag[C]): C =
     gameObject.require[C]
 
   override def toString: String = gameObject.toString

@@ -17,7 +17,6 @@ trait AbstractApp extends OpenGLGameObjectApp with DefaultRandomProvider {
   override def configure(builder: GameBuilder): Unit = {
     builder
       .install(UpdateCapabilitiesModule)
-      .install(Spatial2DModule)
       .setContext(ClearColor(0.02f, 0.02f, 0.05f, 1f))
       .setContext(FixedDeltaTime(1.0 / 60.0))
       .setContext(AsteroidRandom(Random.fromSeed(0)))
@@ -37,8 +36,8 @@ trait AbstractApp extends OpenGLGameObjectApp with DefaultRandomProvider {
 //    does not compile.
 //  - Bullet, Asteroid, and Player are the domain objects that systems iterate
 //    over: a system reads `bullet.collider` and calls `bullet.destroy()`.
-//  - What is not a property of the object is checked at attach time: Collider
-//    needs Spatial2DModule, and every Updatable needs UpdateCapabilitiesModule.
+//  - What is not a property of the object is checked at attach time: every
+//    Updatable needs UpdateCapabilitiesModule.
 
 final class Velocity(obj: TypedObject[Spatial2D], var value: Vec2) extends Component with Updatable {
   override val owner: GameObject = obj.gameObject
@@ -54,7 +53,6 @@ object Velocity {
   private val HalfWidth = 400f
   private val HalfHeight = 300f
 
-  given ComponentKey[Velocity] = ComponentKey[Velocity]("sgl.examples.gameobject.asteroids.Velocity")
 
   def wrap(p: Vec2): Vec2 = {
     val x = if(p.x < -HalfWidth) HalfWidth else if(p.x > HalfWidth) -HalfWidth else p.x
@@ -69,9 +67,6 @@ final class Lifetime(override val owner: GameObject, var seconds: Double) extend
     if(seconds <= 0.0) this.destroy()
   }
 }
-object Lifetime {
-  given ComponentKey[Lifetime] = ComponentKey[Lifetime]("sgl.examples.gameobject.asteroids.Lifetime")
-}
 
 final class Collider(obj: TypedObject[Spatial2D], var radius: Float) extends Component {
   override val owner: GameObject = obj.gameObject
@@ -82,11 +77,6 @@ final class Collider(obj: TypedObject[Spatial2D], var radius: Float) extends Com
     val reach = radius + other.radius
     d.x * d.x + d.y * d.y <= reach * reach
   }
-}
-object Collider {
-  // Overlap tests read global transforms, which only Spatial2DModule refreshes.
-  given ComponentKey[Collider] = ComponentKey[Collider]("sgl.examples.gameobject.asteroids.Collider")
-    .requiresContext[Spatial2DModule.type]
 }
 
 final class Player(obj: TypedObject[Spatial2D & Velocity & Collider]) extends Component with Updatable {
@@ -115,7 +105,6 @@ final class Player(obj: TypedObject[Spatial2D & Velocity & Collider]) extends Co
   }
 }
 object Player {
-  given ComponentKey[Player] = ComponentKey[Player]("sgl.examples.gameobject.asteroids.Player")
 
   def fireBullet(context: GameContext, ship: Spatial2D): Unit = {
     val dir = direction(ship.local.rotation)
@@ -135,16 +124,10 @@ final class Asteroid(obj: TypedObject[Collider]) extends Component {
   override val owner: GameObject = obj.gameObject
   val collider: Collider = obj.get[Collider]
 }
-object Asteroid {
-  given ComponentKey[Asteroid] = ComponentKey[Asteroid]("sgl.examples.gameobject.asteroids.Asteroid")
-}
 
 final class Bullet(obj: TypedObject[Collider]) extends Component {
   override val owner: GameObject = obj.gameObject
   val collider: Collider = obj.get[Collider]
-}
-object Bullet {
-  given ComponentKey[Bullet] = ComponentKey[Bullet]("sgl.examples.gameobject.asteroids.Bullet")
 }
 
 final case class AsteroidRandom(random: sgl.util.RandomProvider#Random)
@@ -153,9 +136,6 @@ object AsteroidRandom {
 }
 
 final class ScoreState(override val owner: GameObject, var score: Int = 0, var highScore: Int = 0) extends Component
-object ScoreState {
-  given ComponentKey[ScoreState] = ComponentKey[ScoreState]("sgl.examples.gameobject.asteroids.ScoreState")
-}
 
 final class ScoreHud(obj: TypedObject[TextOverlay]) extends Component with Updatable {
   override val owner: GameObject = obj.gameObject
@@ -166,17 +146,12 @@ final class ScoreHud(obj: TypedObject[TextOverlay]) extends Component with Updat
     overlay.lines = Vector(s"Score ${score.score}", s"High ${score.highScore}")
   }
 }
-object ScoreHud {
-  given ComponentKey[ScoreHud] = ComponentKey[ScoreHud]("sgl.examples.gameobject.asteroids.ScoreHud")
-}
 
 object ScoreStartupSystem extends System {
   override val id: SystemId = SystemId("sgl.examples.gameobject.asteroids.score-startup")
 
   override def run(context: GameContext)(using Scope): Unit = {
-    context.gameObject("Score") { score =>
-      score.attach(new ScoreState(_))
-    }
+    context.typedObject("Score").attachPlain(new ScoreState(_))
     context.typedObject("ScoreHud")
       .attach(new TextOverlay(_, Vector.empty, x = 18f, y = 18f, scale = 3f))
       .attach(new ScoreHud(_))
@@ -185,9 +160,7 @@ object ScoreStartupSystem extends System {
 
 object AsteroidsScene extends Scene {
   override def load(context: GameContext)(using Scope): Unit = {
-    context.gameObject2D("Camera", Transform2D()) { camera =>
-      camera.attach(new Camera2D(_, Vec2(800f, 600f), priority = 10))
-    }
+    context.createObject2D("Camera").attach(new Camera2D(_, Vec2(800f, 600f), priority = 10))
 
     context.createObject2D("Ship", Transform2D(position = Vec2(0f, 0f)))
       .attach(new Velocity(_, Vec2(0f, 0f)))
