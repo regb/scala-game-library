@@ -1,6 +1,6 @@
 package sgl.engine.gameobject.capability
 
-import sgl.engine.gameobject.{CapabilityKey, Component, ContextDependent, ContextKey, Scope}
+import sgl.engine.gameobject.{CapabilityKey, Component, ContextDependent, Scope}
 import sgl.engine.gameobject.runtime.{GameBuilder, GameContext, GameModule}
 import sgl.engine.gameobject.schedule.{Stage, System, SystemId}
 
@@ -16,8 +16,8 @@ import sgl.engine.gameobject.schedule.{Stage, System, SystemId}
 trait Updatable extends ContextDependent {
   def update(context: GameContext)(using Scope): Unit
 
-  override def contextRequirements: Vector[ContextKey[?]] =
-    super.contextRequirements :+ summon[ContextKey[UpdateCapabilitiesModule.type]]
+  override def contextRequirements: Vector[Class[?]] =
+    super.contextRequirements :+ ContextDependent.on[UpdateCapabilitiesModule.type]
 }
 
 object Updatable {
@@ -38,8 +38,8 @@ object UpdateComponentsSystem extends System {
 trait FixedUpdatable extends ContextDependent {
   def fixedUpdate(context: GameContext)(using Scope): Unit
 
-  override def contextRequirements: Vector[ContextKey[?]] =
-    super.contextRequirements :+ summon[ContextKey[UpdateCapabilitiesModule.type]]
+  override def contextRequirements: Vector[Class[?]] =
+    super.contextRequirements :+ ContextDependent.on[UpdateCapabilitiesModule.type]
 }
 
 object FixedUpdatable {
@@ -60,8 +60,6 @@ object FixedUpdateComponentsSystem extends System {
   * itself in the world context, which is what those capabilities require.
   */
 object UpdateCapabilitiesModule extends GameModule {
-  given ContextKey[UpdateCapabilitiesModule.type] =
-    ContextKey[UpdateCapabilitiesModule.type]("sgl.engine.gameobject.capability.UpdateCapabilitiesModule")
 
   override def install(builder: GameBuilder): Unit = {
     builder

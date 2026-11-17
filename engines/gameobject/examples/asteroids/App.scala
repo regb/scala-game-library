@@ -131,9 +131,6 @@ final class Bullet(obj: TypedObject[Collider]) extends Component {
 }
 
 final case class AsteroidRandom(random: sgl.util.RandomProvider#Random)
-object AsteroidRandom {
-  given ContextKey[AsteroidRandom] = ContextKey[AsteroidRandom]("sgl.examples.gameobject.asteroids.AsteroidRandom")
-}
 
 final class ScoreState(override val owner: GameObject, var score: Int = 0, var highScore: Int = 0) extends Component
 

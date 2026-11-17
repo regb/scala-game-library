@@ -86,6 +86,48 @@ class GameObjectSuite extends AnyFunSuite {
     assert(!scoped.isAlive && global.isAlive)
   }
 
+  final case class Gravity(value: Float)
+  trait Clock { def now: Double }
+
+  test("context values are stored by the class they are set as") {
+    val world = new World
+    assert(world.context.getOption[Gravity].isEmpty)
+    assert(!world.context.contains[Gravity])
+    intercept[NoSuchElementException] {
+      world.context.get[Gravity]
+    }
+
+    world.context.set(Gravity(9.81f))
+    world.context.set(Gravity(1.62f))
+    assert(world.context.get[Gravity] === Gravity(1.62f))
+
+    val fixed = new Clock { def now: Double = 42.0 }
+    world.context.set[Clock](fixed)
+    assert(world.context.get[Clock] eq fixed)
+  }
+
+  test("single rejects a world with more than one such component") {
+    val world = new World
+    import world.given
+    assert(world.single[Marker].isEmpty)
+    intercept[CompositionError] {
+      world.requireSingle[Marker]
+    }
+
+    val first = world.createObject("first")
+    val marker = first.attach(new Marker(_))
+    assert(world.requireSingle[Marker] eq marker)
+
+    world.createObject("second").attach(new Marker(_))
+    val error = intercept[CompositionError] {
+      world.single[Marker]
+    }
+    assert(error.getMessage.contains("found 2"))
+
+    first.destroy()
+    assert(world.single[Marker].map(_.owner.name) === Some("second"))
+  }
+
   test("a component must be attached under its own concrete class") {
     val world = new World
     import world.given

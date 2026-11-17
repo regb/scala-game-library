@@ -48,13 +48,18 @@ trait Component {
   *
   * {{{
   * trait Updatable extends ContextDependent {
-  *   override def contextRequirements: Vector[ContextKey[?]] =
-  *     super.contextRequirements :+ summon[ContextKey[UpdateCapabilitiesModule.type]]
+  *   override def contextRequirements: Vector[Class[?]] =
+  *     super.contextRequirements :+ ContextDependent.on[UpdateCapabilitiesModule.type]
   * }
   * }}}
   */
 trait ContextDependent {
-  def contextRequirements: Vector[ContextKey[?]] = Vector.empty
+  def contextRequirements: Vector[Class[?]] = Vector.empty
+}
+
+object ContextDependent {
+  /** The class a value of type `A` is stored under in a [[Context]]. */
+  def on[A](using tag: ClassTag[A]): Class[?] = tag.runtimeClass
 }
 
 object Component {
@@ -143,32 +148,31 @@ final class ComponentIndex[A] private[gameobject] () {
   def size: Int = entries.size
 }
 
-final class ContextKey[A](val name: String) {
-  override def toString: String = name
-}
-
-object ContextKey {
-  def apply[A](name: String): ContextKey[A] = new ContextKey[A](name)
-}
-
 /** Typed world-local context values.
   *
   * This is intentionally named Context rather than Resource: these values are
   * scoped globals for a World/Scene, not assets such as textures or meshes.
+  *
+  * A value is stored under the class of the type it is set as, so there is one
+  * value per class and `get[DeltaTime]` needs no key. Type arguments are not
+  * part of that class: wrap a `List[Int]` in a class of its own rather than
+  * storing it directly.
   */
 final class Context private[gameobject] () {
-  private val values = mutable.HashMap.empty[ContextKey[?], Any]
+  private val values = mutable.HashMap.empty[Class[?], Any]
 
-  def set[A](value: A)(using key: ContextKey[A]): Unit =
-    values(key) = value
+  def set[A](value: A)(using tag: ClassTag[A]): Unit =
+    values(tag.runtimeClass) = value
 
-  def get[A](using key: ContextKey[A]): A =
-    getOption[A].getOrElse(throw new NoSuchElementException(s"Missing context value ${key.name}"))
+  def get[A](using tag: ClassTag[A]): A =
+    getOption[A].getOrElse(throw new NoSuchElementException(s"Missing context value ${tag.runtimeClass.getName}"))
 
-  def getOption[A](using key: ContextKey[A]): Option[A] =
-    values.get(key).map(_.asInstanceOf[A])
+  def getOption[A](using tag: ClassTag[A]): Option[A] =
+    values.get(tag.runtimeClass).map(_.asInstanceOf[A])
 
-  private[gameobject] def contains(key: ContextKey[?]): Boolean = values.contains(key)
+  def contains[A](using tag: ClassTag[A]): Boolean = contains(tag.runtimeClass)
+
+  private[gameobject] def contains(key: Class[?]): Boolean = values.contains(key)
 }
 
 /** Lifetime of a group of objects: destroying a scope destroys what was
@@ -217,7 +221,7 @@ private[gameobject] final class ComponentSet(owner: GameObject, world: World) {
           if(!world.context.contains(required)) {
             throw new CompositionError(
               s"Cannot attach ${key.getName} to $target: " +
-                s"it requires ${required.name} in the world context; is the module providing it installed?"
+                s"it requires ${required.getName} in the world context; is the module providing it installed?"
             )
           }
         }
@@ -367,8 +371,19 @@ final class World {
     }).asInstanceOf[ComponentIndex[A]]
   }
 
-  def single[A <: Component: ClassTag]: Option[A] =
-    index[A].toVector.headOption
+  /** The only `A` in the world, if there is one. More than one is an error:
+    * a lookup that silently picked one would hide a composition mistake.
+    */
+  def single[A <: Component](using tag: ClassTag[A]): Option[A] = {
+    val found = index[A].toVector
+    if(found.size > 1) {
+      throw new CompositionError(
+        s"Expected at most one ${tag.runtimeClass.getName} in the world, found ${found.size} " +
+          s"(on ${found.map(c => s"${c.owner.id.value} (${c.owner.name})").mkString(", ")})"
+      )
+    }
+    found.headOption
+  }
 
   def requireSingle[A <: Component](using tag: ClassTag[A]): A =
     single[A].getOrElse(throw new CompositionError(s"World is missing singleton component ${tag.runtimeClass.getName}"))

@@ -245,9 +245,6 @@ final class OrbitCameraController {
     scala.math.max(min, scala.math.min(max, value)).toFloat
 }
 
-object OrbitCameraController {
-  given ContextKey[OrbitCameraController] = ContextKey[OrbitCameraController]("solar-go.OrbitCameraController")
-}
 
 object OrbitCameraSystem extends EngineSystem {
   override val id: SystemId = SystemId("solar-go.orbit-camera")

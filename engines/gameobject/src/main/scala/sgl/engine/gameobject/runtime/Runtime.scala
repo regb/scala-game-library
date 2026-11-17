@@ -1,9 +1,10 @@
 package sgl.engine.gameobject.runtime
 
 import scala.collection.mutable
+import scala.reflect.ClassTag
 
 import sgl.{Application, OpenGLProvider, SystemProvider, WindowProvider}
-import sgl.engine.gameobject.{ContextKey, Scope, World}
+import sgl.engine.gameobject.{Scope, World}
 import sgl.assets.{AssetRuntime, DrawableAsset, RawImageAsset}
 import sgl.engine.gameobject.render2d.Texture2D
 import sgl.engine.gameobject.opengl.OpenGLEngine
@@ -13,24 +14,12 @@ import sgl.util.{Loader, LoggingProvider}
 
 /** Color the renderer clears the frame with. */
 final case class ClearColor(red: Float, green: Float, blue: Float, alpha: Float)
-object ClearColor {
-  given ContextKey[ClearColor] = ContextKey[ClearColor]("sgl.engine.gameobject.runtime.ClearColor")
-}
 
 final case class DeltaTime(seconds: Double)
-object DeltaTime {
-  given ContextKey[DeltaTime] = ContextKey[DeltaTime]("sgl.engine.gameobject.DeltaTime")
-}
 
 final case class FixedDeltaTime(seconds: Double)
-object FixedDeltaTime {
-  given ContextKey[FixedDeltaTime] = ContextKey[FixedDeltaTime]("sgl.engine.gameobject.FixedDeltaTime")
-}
 
 final case class ElapsedTime(seconds: Double)
-object ElapsedTime {
-  given ContextKey[ElapsedTime] = ContextKey[ElapsedTime]("sgl.engine.gameobject.ElapsedTime")
-}
 
 trait GameModule {
   def install(builder: GameBuilder): Unit
@@ -85,7 +74,7 @@ final class GameBuilder {
     this
   }
 
-  def setContext[A](value: A)(using key: ContextKey[A]): this.type = {
+  def setContext[A: ClassTag](value: A): this.type = {
     contextInitializers += (_.context.set(value))
     this
   }
