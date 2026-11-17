@@ -1,0 +1,249 @@
+---
+import { Code, Icon, TabItem, Tabs } from '@astrojs/starlight/components';
+
+const repo = 'https://github.com/regb/scala-game-library';
+
+const platforms = [
+  { icon: 'laptop', name: 'Desktop JVM', body: 'AWT for Canvas games, LWJGL for OpenGL 3.3 and OpenAL.', status: 'Stable' },
+  { icon: 'window', name: 'Web', body: 'Scala.js with the 2D canvas or WebGL 2, and HTML5 audio.', status: 'Stable' },
+  { icon: 'linux', name: 'Native', body: 'Scala Native on SDL2 and OpenGL ES. No JVM at runtime.', status: 'Stable' },
+  { icon: 'mobile-android', name: 'Android', body: 'Kotlin host library; Bazel generates the Gradle project.', status: 'Stable' },
+  { icon: 'apple', name: 'iOS', body: 'No native backend yet. The web build can be packaged with Cordova.', status: 'Experimental', experimental: true },
+] as const;
+
+const features = [
+  {
+    icon: 'puzzle',
+    title: 'Composition, not inheritance trees',
+    body: 'Your game is a trait that names the providers it needs in its self-type. Each backend mixes in the implementations, and the compiler checks the wiring.',
+    href: '/docs/core-concepts/',
+  },
+  {
+    icon: 'document',
+    title: 'Typed, generated assets',
+    body: 'Declare images, audio, fonts, and maps in Bazel. Game code loads Assets.drawable.player instead of a file path, so a typo does not compile.',
+    href: '/docs/assets/',
+  },
+  {
+    icon: 'seti:scala',
+    title: 'Canvas or OpenGL, your call',
+    body: 'A portable 2D Canvas API, a portable OpenGL/WebGL API, and a Canvas renderer implemented on OpenGL that runs the same on every target.',
+    href: '/docs/graphics/',
+  },
+  {
+    icon: 'approve-check',
+    title: 'Composition checked at compile time',
+    body: 'The GameObject engine tracks the components on an object in its type. Attaching a component before what it depends on fails to compile.',
+    href: '/docs/gameobject/',
+  },
+  {
+    icon: 'rocket',
+    title: 'One target per platform',
+    body: 'sgl_desktop_awt_app, sgl_html5_app, sgl_android_app, and other rules generate the entry point for each backend. bazel run starts the game.',
+    href: '/docs/bazel-rules/',
+  },
+  {
+    icon: 'setting',
+    title: 'Tools for development',
+    body: 'A headless OpenGL backend for tests, frame capture on every backend, and opt-in live tuning values that release builds do not depend on.',
+    href: '/docs/testing/',
+  },
+] as const;
+
+const examples = [
+  { tag: 'Core · Canvas', title: 'Hello Canvas', body: 'Typed images and audio, animation, pointer input, and wrapped text.', target: '//examples/hello-canvas:desktop-awt' },
+  { tag: 'Core · OpenGL', title: 'Hello ScalaGL', body: 'Textured cube with shaders and drag-to-orbit camera.', target: '//examples/hello-scalagl:desktop-lwjgl' },
+  { tag: 'GameObject 2D', title: 'Asteroids', body: 'Typed composition, systems, scenes, and the 2D OpenGL renderer.', target: '//engines/gameobject/examples/asteroids:desktop-lwjgl' },
+  { tag: 'GameObject 3D', title: 'Solar System', body: 'Spatial hierarchy, meshes, materials, and an orbit camera.', target: '//engines/gameobject/examples/solar-system:desktop-lwjgl' },
+] as const;
+
+const canvasCode = `trait AbstractApp extends Application with AssetsProvider {
+  this: CanvasProvider with WindowProvider with SystemProvider =>
+
+  private lazy val player = Graphics.loadImage(Assets.drawable.player)
+
+  override def frame(dt: Double): Unit = withFrameCanvas { canvas =>
+    if(player.isLoaded) canvas.drawBitmap(player.value.get.get, 32f, 32f)
+  }
+}`;
+
+const gameObjectCode = `trait AbstractApp extends OpenGLGameObjectApp {
+  override def configure(builder: GameBuilder): Unit =
+    builder
+      .install(UpdateCapabilitiesModule)
+      .setInitialScene(Level)
+}
+
+final class Spin(obj: GameObject2D) extends Component with Updatable {
+  override val owner: GameObject = obj.gameObject
+  private val spatial = obj.spatial
+
+  override def update(context: GameContext)(using Scope): Unit = {
+    val dt = context.world.context.get[DeltaTime].seconds.toFloat
+    spatial.local = spatial.local.copy(rotation = spatial.local.rotation + 2f * dt)
+  }
+}
+
+object Level extends Scene {
+  override def load(context: GameContext)(using Scope): Unit = {
+    context.createObject2D("Camera").attach(new Camera2D(_, Vec2(800f, 600f)))
+    context.createObject2D("Ship")
+      .attach(new Spin(_))
+      .attach(new SpriteRenderer(_, SpriteVisual.Triangle((1f, 1f, 1f, 1f)), 28f, 34f))
+  }
+}`;
+
+const screen2dCode = `trait AbstractApp {
+  this: Screen2DGameApp =>
+
+  override def startingScreen: GameScreen = new TitleScreen
+
+  class TitleScreen extends GameScreen {
+    override def name: String = "title"
+    override def update(dt: Long): Unit = ()  // milliseconds
+    override def render(canvas: Graphics.Canvas): Unit =
+      canvas.drawRect(0, 0, Window.width.toFloat, Window.height.toFloat,
+        Graphics.defaultPaint.withColor(Graphics.Color.Blue))
+  }
+}`;
+
+const quickstartCode = `git clone https://github.com/regb/scala-game-library.git
+cd scala-game-library
+
+# Desktop (JVM)
+bazel run //examples/hello-canvas:desktop-awt
+
+# Web: serves the Scala.js build on http://localhost:8080
+bazel run //examples/hello-canvas:html5
+
+# Android: generates the Gradle project and assembles the APK
+bazel run //examples/snake:android-debug`;
+---
+
+<div class="not-content">
+  <section class="landing-section">
+    <p class="section-eyebrow">Platforms</p>
+    <h2 class="section-title">One codebase. Every target.</h2>
+    <p class="section-lead">
+      SGL is a set of provider APIs with one implementation per platform. Your game depends only
+      on the APIs. Each backend is a Bazel target.
+    </p>
+    <div class="platform-grid">
+      {platforms.map((p) => (
+        <div class="platform">
+          <Icon name={p.icon} size="1.5rem" />
+          <h3>{p.name}</h3>
+          <p>{p.body}</p>
+          <span class:list={['status', { experimental: 'experimental' in p }]}>{p.status}</span>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <section class="landing-section layers">
+    <div>
+      <p class="section-eyebrow">Architecture</p>
+      <h2 class="section-title">Start low-level. Add an engine when you need one.</h2>
+      <p class="section-lead">
+        The core is the same for every game. The engines are optional ways to structure a game on
+        top of it, and you choose at most one.
+      </p>
+      <div class="layer-stack">
+        <div class="layer-split">
+          <div class="layer" style="--layer-color: #ff6b3d">
+            <h3>GameObject</h3>
+            <p>Components, systems, scenes. 2D and 3D on OpenGL.</p>
+          </div>
+          <div class="layer" style="--layer-color: #ffd166">
+            <h3>Screen2D</h3>
+            <p>Screen stack and game loop for Canvas games.</p>
+          </div>
+        </div>
+        <div class="layer">
+          <h3>Core <code>//core:sgl-core</code></h3>
+          <p>Application lifecycle, Canvas, OpenGL, input, audio, typed assets, saves, math.</p>
+        </div>
+        <div class="layer" style="--layer-color: var(--sl-color-gray-4)">
+          <h3>Backends <code>//backends/...</code></h3>
+          <p>AWT, LWJGL, HTML5, Scala Native, Android, headless OpenGL.</p>
+        </div>
+      </div>
+    </div>
+    <div>
+      <Tabs syncKey="landing-layer">
+        <TabItem label="Core Canvas">
+          <Code code={canvasCode} lang="scala" title="App.scala" />
+        </TabItem>
+        <TabItem label="GameObject">
+          <Code code={gameObjectCode} lang="scala" title="App.scala" />
+        </TabItem>
+        <TabItem label="Screen2D">
+          <Code code={screen2dCode} lang="scala" title="App.scala" />
+        </TabItem>
+      </Tabs>
+    </div>
+  </section>
+
+  <section class="landing-section">
+    <p class="section-eyebrow">Why SGL</p>
+    <h2 class="section-title">Designed for Scala.</h2>
+    <p class="section-lead">
+      SGL is written in Scala, for Scala. It uses traits, self-types, givens, and the type system
+      for game structure, and does not wrap a Java object model.
+    </p>
+    <div class="feature-grid">
+      {features.map((f) => (
+        <article class="feature">
+          <span class="feature-icon"><Icon name={f.icon} size="1.25rem" /></span>
+          <h3>{f.title}</h3>
+          <p>{f.body}</p>
+          <a href={f.href}>Learn more →</a>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <section class="landing-section quickstart">
+    <div>
+      <p class="section-eyebrow">Quickstart</p>
+      <h2 class="section-title">Run an example on three platforms.</h2>
+      <ol>
+        <li><strong>Install Bazel</strong>Use Bazelisk. The repository pins its Bazel version, and Bazel downloads Scala and the JDK.</li>
+        <li><strong>Run on desktop</strong>A single <code>bazel run</code> compiles the shared core and the AWT backend, then opens a window.</li>
+        <li><strong>Target the web and Android</strong>Build the same core with the HTML5 or Android rule. The game code does not change.</li>
+      </ol>
+      <div class="hero-actions">
+        <a class="sgl-button secondary" href="/docs/installation/">Installation guide</a>
+      </div>
+    </div>
+    <Code code={quickstartCode} lang="bash" title="Terminal" />
+  </section>
+
+  <section class="landing-section">
+    <p class="section-eyebrow">Examples</p>
+    <h2 class="section-title">Learn from runnable code.</h2>
+    <p class="section-lead">Every example has its own desktop, web, and native targets.</p>
+    <div class="example-grid">
+      {examples.map((e) => (
+        <a class="example" href="/docs/examples/">
+          <span class="tag">{e.tag}</span>
+          <h3>{e.title}</h3>
+          <p>{e.body}</p>
+          <code>{e.target}</code>
+        </a>
+      ))}
+    </div>
+  </section>
+
+  <section class="landing-section cta">
+    <h2 class="section-title">Build something.</h2>
+    <p class="section-lead">
+      SGL is pre-release and changes quickly. Expect breaking changes. Issues, questions, and games
+      built with SGL are welcome.
+    </p>
+    <div class="hero-actions">
+      <a class="sgl-button primary" href="/docs/getting-started/">Get started</a>
+      <a class="sgl-button secondary" href={repo}>Star on GitHub</a>
+    </div>
+  </section>
+</div>

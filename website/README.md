@@ -23,8 +23,13 @@ Cloudflare Pages, Vercel, or any static host. Configure `site` in
 
 ## Structure
 
-- `src/pages/index.astro` — marketing landing page
-- `src/components` — reusable marketing components
-- `src/content/docs` — Starlight MDX documentation
-- `src/styles/custom.css` — shared theme customizations
+- `src/content/docs/index.mdx` — landing page (Starlight splash template)
+- `src/components/Hero.astro` — overrides Starlight's hero on the landing page
+- `src/components/Landing.astro` — landing page sections
+- `src/content/docs/docs` — documentation pages; the sidebar is defined in `astro.config.mjs`
+- `src/styles/custom.css` — theme tokens (light and dark) and landing page styles
 - `public/logo.svg`, `public/favicon.svg` — branding assets
+
+Code samples in the docs should compile against the current API. Load assets in `create()` or a
+`lazy val`, never in a plain `val`, because the generated assets provider is mixed in after the
+game trait.

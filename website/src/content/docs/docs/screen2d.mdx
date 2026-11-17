@@ -1,0 +1,114 @@
+---
+title: Screen2D engine
+description: A Canvas engine built on a stack of game screens, a game loop, and viewports.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Screen2D (`//engines:sgl-screen2d`) is SGL's original engine. It renders through the Canvas API.
+A game is a stack of `GameScreen`s, such as a main menu, a level, and a pause overlay. The
+`Screen2DGameApp` loop updates the top screen and renders the stack.
+
+<Aside type="note" title="Milliseconds">
+Unlike `Application.frame`, Screen2D's `update(dt)` receives a `Long` number of **milliseconds**.
+</Aside>
+
+## Setting up
+
+The backend rules mix in `Screen2DGameApp` when `use_screen2d = True`, which is the default for
+`sgl_desktop_awt_app`, `sgl_html5_app`, and `sgl_desktop_native_app`. The game declares it in its
+self-type and provides a starting screen:
+
+```scala
+trait AbstractApp extends ScreensComponent {
+  this: Screen2DGameApp =>
+
+  override def startingScreen: GameScreen = new MenuScreen
+}
+
+trait ScreensComponent {
+  this: Screen2DGameApp =>
+
+  class MenuScreen extends GameScreen {
+    override def name: String = "menu"
+
+    override def update(dt: Long): Unit = ()
+
+    override def render(canvas: Graphics.Canvas): Unit =
+      canvas.drawRect(0, 0, Window.width.toFloat, Window.height.toFloat,
+        Graphics.defaultPaint.withColor(Graphics.Color.Blue))
+  }
+}
+```
+
+```python title="BUILD"
+sgl_core_library(
+    name = "core",
+    srcs = glob(["core/**/*.scala"]),
+    deps = ["@sgl//engines:sgl-screen2d"],
+    include_default_modules = True,  # scene2d and particles
+)
+```
+
+## The screen stack
+
+```scala
+gameState.pushScreen(new PauseScreen)    // pauses the current screen
+gameState.popScreen()                    // resumes the one below it
+gameState.newScreen(new LevelScreen(2))  // replaces the whole stack
+```
+
+Popping the last screen exits the game. Screens have `pause`, `resume`, and `refresh` hooks.
+`refresh` is called when the window changes. Set `isOpaque = true` on a full-screen screen so the
+screens below it are not rendered.
+
+## Loading
+
+A screen can declare loaders that must finish before it starts. Until then `loadingRender` is
+called instead of `render`, and when they finish `onLoaded` is called:
+
+```scala
+class LevelScreen extends GameScreen {
+  private val tiles = Graphics.loadImage(Assets.drawable.tiles)
+  addPreloading(tiles)
+
+  override def onLoaded(): Unit = { /* tiles.value.get.get is available */ }
+  override def loadingRender(canvas: Graphics.Canvas): Unit = drawSpinner(canvas)
+  // ...
+}
+```
+
+## Fixed time steps
+
+`FixedTimestepGameScreen(fixedDelta)` calls `fixedUpdate` as many times as needed to advance in
+fixed steps. Use it for deterministic simulations. `GameScreenWithTime` tracks the total time
+spent in the screen.
+
+The loop runs at `TargetFps`. The engine default is 30, and the generated desktop entry points
+set 60. `MaxLoopStepDelta` caps the delta after a long pause.
+
+## Viewports
+
+`Viewport` maps a camera rectangle in world units onto the window with a scaling strategy
+(`Stretch`, `Fit`, `Fill`, or `Extend`):
+
+```scala
+val viewport = new Viewport(Window.width, Window.height)
+viewport.setCamera(0, 0, 16f, 10f)              // 16x10 world units
+viewport.scalingStrategy = Viewport.Fit
+
+override def render(canvas: Graphics.Canvas): Unit =
+  viewport.withViewport(canvas) {
+    canvas.drawRect(3f, 4f, 1f, 1f, Graphics.defaultPaint)   // world coordinates
+  }
+
+val (wx, wy) = viewport.screenToWorld(px, py)
+```
+
+## Modules
+
+- `modules/scene2d` (`sgl.scene`) has a scene graph with actions and UI widgets.
+- `modules/particles` has a particle system component.
+
+The `//engines/screen2d/examples` directory has a board viewport demo, a menu demo, and a Tiled
+platformer.

@@ -1,33 +1,140 @@
 ---
 title: Graphics
-description: Canvas, OpenGL, and rendering engines.
+description: The portable Canvas API, the OpenGL API, and the Canvas renderer built on OpenGL.
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
 
-SGL supports low-level Canvas rendering, low-level OpenGL/WebGL rendering, and higher-level engine renderers.
+The core has two rendering APIs. Choose one per game, or let an engine choose for you:
+
+| API | Provider | Backends | Typical use |
+| --- | --- | --- | --- |
+| Canvas | `CanvasProvider` | AWT, HTML5 2D canvas, Android, and every OpenGL backend through `OpenGLCanvasProvider` | 2D games, UI, prototypes |
+| OpenGL | `OpenGLProvider` | LWJGL (OpenGL 3.3), HTML5 (WebGL 2), Scala Native (OpenGL ES 3), headless (EGL) | Custom shaders, 3D, and the GameObject renderer |
+
+## Canvas
+
+Draw inside `withFrameCanvas`. The canvas is only valid during that call.
 
 ```scala
-withFrameCanvas { canvas =>
-  val paint = Graphics.defaultPaint.withColor(Graphics.Color.rgb(255, 80, 120))
-  canvas.drawRect(32, 32, 128, 64, paint)
+override def frame(dt: Double): Unit = withFrameCanvas { canvas =>
+  import Graphics.Color
+
+  canvas.drawRect(0, 0, Window.width.toFloat, Window.height.toFloat,
+    Graphics.defaultPaint.withColor(Color.rgb(20, 24, 40)))
+
+  canvas.withSave {
+    canvas.translate(120f, 80f)
+    canvas.rotate(0.25f)
+    canvas.drawCircle(0f, 0f, 40f, Graphics.defaultPaint.withColor(Color.Red))
+  }
 }
 ```
 
-Images are loaded from typed drawable assets:
-
-```scala
-val bitmapLoader = Graphics.loadImage(Assets.drawable.character)
-```
-
-OpenGL textures use the same typed asset model:
-
-```scala
-val textureLoader = OpenGL.loadTexture2D(Assets.drawable.tiles)
-```
-
-For GameObject 2D, load textures explicitly during scene loading and store loaded `Texture2D` handles in render components such as `SpriteVisual.Texture` or `Tilemap` quads.
-
 <Aside type="caution">
-The Canvas value passed to `withFrameCanvas` is only valid inside the callback. Do not store it.
+Do not keep a reference to the canvas after `withFrameCanvas` returns.
 </Aside>
+
+### Bitmaps and animation
+
+Images are loaded from typed [drawable assets](/docs/assets/). The backend picks the density that
+best matches the screen.
+
+```scala
+val loader: Loader[Graphics.Bitmap] = Graphics.loadImage(Assets.drawable.character)
+
+// once loaded
+val sheet = loader.value.get.get
+val w = sheet.width / 4
+val frames = Array.tabulate(4)(i => Graphics.BitmapRegion(sheet, i * w, 0, w, sheet.height))
+val walk = new Graphics.Animation(200, frames, Graphics.Animation.Loop)  // 200 ms per frame
+
+canvas.drawBitmap(walk.currentFrame(elapsedMillis), x, y)
+```
+
+### Text
+
+`drawString` draws one line on a baseline. `drawTextBox` wraps, aligns, and shrinks text to fit a
+rectangle:
+
+```scala
+canvas.drawTextBox(
+  "Wrapped text keeps blank lines and shrinks to fit.",
+  Graphics.TextBox(20f, 180f, 440f, 110f),
+  Graphics.defaultPaint.withColor(Color.White).withFont(Graphics.Font.SansSerif.withSize(18)),
+  horizontalAlignment = Graphics.Alignments.Center,
+  verticalAlignment = Graphics.VerticalAlignment.Middle,
+  minFontSize = Some(12),
+  maxLines = Some(5),
+)
+```
+
+Load custom fonts from `sgl_font_assets` with `Graphics.Font.load(Assets.font.title)`.
+
+## OpenGL
+
+`OpenGLProvider` exposes an `OpenGL` object modeled on OpenGL ES 3 and WebGL 2: buffers, vertex
+arrays, shaders, programs, uniforms, and textures. Prefix shaders with `OpenGL.ShaderHeader`. It
+contains the correct `#version` line for the current backend.
+
+```scala
+trait AbstractApp extends Application with AssetsProvider {
+  this: OpenGLProvider with SystemProvider =>
+
+  private var texture: Loader[OpenGL.Texture] = _
+
+  override def create(): Unit = {
+    texture = OpenGL.loadTexture2D(Assets.drawable.tiles)
+    val vertex = OpenGL.createShader(OpenGL.VertexShader)
+    OpenGL.shaderSource(vertex, OpenGL.ShaderHeader + vertexSource)
+    OpenGL.compileShader(vertex)
+    // createProgram, attachShader, linkProgram, genVertexArray, bufferDataFloat, ...
+  }
+
+  override def frame(dt: Double): Unit = {
+    OpenGL.clearColor(0.02f, 0.02f, 0.05f, 1f)
+    OpenGL.clear(OpenGL.ColorBufferBit)
+    // draw calls
+  }
+}
+```
+
+`//examples/hello-scalagl` is a complete example with textures, lighting, and an orbit camera.
+
+## Canvas on OpenGL
+
+`OpenGLCanvasProvider` implements the Canvas API with shaders and triangle batches on top of
+`OpenGLProvider`. It supports solid shapes, transforms, clipping, bitmap regions, alpha blending,
+lines, ovals, and text. The same code compiles for desktop OpenGL, WebGL 2, and Scala Native.
+
+Mix it in after the game with `extra_mixins`:
+
+```python
+sgl_desktop_lwjgl_app(
+    name = "desktop-lwjgl",
+    # ...
+    extra_mixins = [
+        "my.game.core.GeneratedAssetsProvider",
+        "_root_.sgl.OpenGLCanvasProvider",
+    ],
+)
+```
+
+Default text uses a bundled Noto Sans glyph atlas (regular and bold) with shared metrics. AWT and
+OpenGL Canvas therefore produce the same advances, baselines, wrapping, and text-box sizes. The
+OpenGL renderer does not render other fonts yet and falls back to Noto Sans for them.
+
+The Scala Native Canvas backend uses this renderer. Hello Canvas has OpenGL-backed targets for the
+JVM and WebGL:
+
+```bash
+bazel run //examples/hello-canvas:desktop-lwjgl
+bazel run //examples/hello-canvas:html5-opengl
+```
+
+## Engine renderers
+
+The [GameObject engine](/docs/gameobject/) has its own OpenGL renderer for sprites, tilemaps,
+text overlays, and 3D meshes. It packs drawables into [texture atlases](/docs/assets/#texture-atlases)
+and batches draws that share a page. The [Screen2D engine](/docs/screen2d/) renders through the
+Canvas API.

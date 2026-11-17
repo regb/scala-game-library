@@ -34,24 +34,36 @@ sgl_core_library(
 )
 ```
 
-The generated core package contains:
+The core library's package then contains a generated `Assets` trait with one member per file,
+and two providers:
 
 ```scala
-trait AssetsProvider extends sgl.assets.AssetRuntime {
+trait AssetsProvider extends sgl.assets.AssetRuntime { self: SystemProvider =>
   def Assets: Assets
+}
+
+// in the generated subpackage, re-exported as my.game.core.GeneratedAssetsProvider
+trait GeneratedAssetsProvider extends AssetsProvider { self: SystemProvider =>
+  final override val Assets: Assets = new Assets { /* typed handles */ }
 }
 ```
 
-Mix the generated provider into the backend app and use the typed handles in game code:
+The game extends `AssetsProvider`, and each backend rule mixes in `GeneratedAssetsProvider` through
+`extra_mixins`:
 
 ```scala
 trait AbstractApp extends Application with AssetsProvider {
   this: CanvasProvider with AudioProvider with SystemProvider =>
 
-  val image = Graphics.loadImage(Assets.drawable.character)
-  val music = Audio.loadMusic(Assets.audio.music)
+  private lazy val image = Graphics.loadImage(Assets.drawable.character)
+  private lazy val music = Audio.loadMusic(Assets.audio.music)
 }
 ```
+
+<Aside type="caution" title="Do not load assets in a plain val">
+`GeneratedAssetsProvider` is mixed in after your trait, so `Assets` is still `null` while your
+trait's fields are initialized. Load assets in `create()` or later, or use a `lazy val`.
+</Aside>
 
 <Aside type="caution" title="Do not use ResourcePath for app assets">
 Older examples used `ResourcesRoot / "..."` and `MultiDPIResourcesRoot / "..."` directly. New application code should use generated typed assets such as `Assets.drawable.player`, `Assets.audio.theme`, and `Assets.text.level1`.
@@ -139,7 +151,7 @@ sgl_core_library(
 )
 ```
 
-Pass the atlas target **instead of** the asset groups it wraps, also in `sgl_html5_opengl_app` and `sgl_desktop_native_app`. Passing both declares every drawable twice, which the generator rejects. Asset kinds other than drawables, such as the map texts of a `sgl_tiled_import`, pass through unchanged, so a Tiled import can be wrapped directly.
+Pass the atlas target **instead of** the asset groups it wraps, including in `sgl_html5_opengl_app` and `sgl_desktop_native_app`. Passing both declares every drawable twice, which the generator rejects. Asset kinds other than drawables, such as the map texts of a `sgl_tiled_import`, pass through unchanged, so a Tiled import can be wrapped directly.
 
 - Each density is packed separately, with deterministic shelf packing and no rotation or trimming. Only PNG drawables are packed.
 - `extrusion` (default 1) repeats each image's edge pixels around it, and `padding` (default 1) adds transparent space between images. Use `filter = "linear"` for smoothly scaled art; tilesets then also need `tile_extrude` in `sgl_tiled_import`, because the atlas only protects the outer edge of the whole tileset image.
@@ -152,30 +164,27 @@ The renderer draws consecutive sprites and tiles that share a page in one draw c
 
 ## Backend packaging
 
-JVM desktop apps read packaged classpath resources from the core target. HTML5 and Scala Native apps also need the asset targets in their app rule so the files are copied beside the generated app:
+Every backend needs `GeneratedAssetsProvider` in `extra_mixins`. Where the files go depends on
+the backend:
+
+| Backend | How assets are packaged |
+| --- | --- |
+| `sgl_desktop_awt_app` | Classpath resources of the core library. Nothing to add. |
+| `sgl_desktop_lwjgl_app` | Pass the asset targets in `data` |
+| `sgl_html5_app`, `sgl_html5_opengl_app`, `sgl_desktop_native_app` | Pass `assets` and `assets_strip_prefix`, and the files are copied next to the app |
+| `sgl_android_app` | Pass `assets`. Drawables go to `res/drawable-*`, and everything else to `assets/`. |
 
 ```python
 sgl_html5_app(
     name = "html5",
     deps = [":core"],
+    package = "my.game",
+    main_class = "MyGame",
+    core_abstract_class = "my.game.core.AbstractApp",
     assets = [":drawables", ":audio"],
-    assets_strip_prefix = "examples/hello-canvas/assets",
+    assets_strip_prefix = "my/game/assets",
     extra_mixins = ["my.game.core.GeneratedAssetsProvider"],
-)
-
-sgl_desktop_native_app(
-    name = "desktop-native",
-    deps = [":core"],
-    assets = [":drawables", ":audio"],
-    assets_strip_prefix = "examples/hello-canvas/assets",
-    extra_mixins = ["my.game.core.GeneratedAssetsProvider"],
-)
-
-sgl_android_app(
-    name = "android",
-    package = "my.game.android",
-    label = "My Game",
-    assets = [":drawables", ":audio"],
+    use_screen2d = False,
 )
 ```
 
@@ -197,4 +206,7 @@ sgl_tiled_import(
 )
 ```
 
-Game code loads the imported map as typed text, then resolves image URIs through `AssetRuntime` helpers used by the Tiled integrations.
+Game code loads the imported map with `System.loadText(Assets.text.<map>)`. The Tiled
+extensions resolve the rewritten image URIs back to `DrawableAsset`s with `drawableAssetFromUri`.
+`extensions/tiled-gameobject` then builds `Tilemap` and `SpriteRenderer` objects. See
+`//engines/screen2d/examples/platformer` for a complete example.

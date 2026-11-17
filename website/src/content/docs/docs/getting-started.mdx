@@ -1,42 +1,145 @@
 ---
-title: Getting Started
-description: Build your first SGL game.
+title: Your first game
+description: Write a portable game core, then run it on desktop and in the browser.
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+import { Aside, FileTree, Steps } from '@astrojs/starlight/components';
 
-SGL lets you start small with the universal core APIs, then move to an engine when your game needs more structure.
-Core applications are plain Scala traits composed with the providers they need.
+This tutorial builds a small Canvas game: a sprite that you move with the arrow keys. The same core
+library runs on the desktop JVM and in the browser. It assumes a Bazel module set up as described
+in [Installation](/docs/installation/).
 
-```scala
-trait AbstractApp extends Application {
-  this: CanvasProvider with WindowProvider =>
+<FileTree>
+- MODULE.bazel
+- BUILD
+- App.scala
+- assets/
+  - drawable-xhdpi/
+    - player.png
+</FileTree>
 
-  override def frame(dt: Double): Unit =
-    withFrameCanvas { canvas =>
-      val paint = Graphics.defaultPaint.withColor(Graphics.Color.rgb(255, 80, 120))
-      canvas.drawRect(0, 0, Window.width, Window.height, paint)
-    }
-}
-```
+<Steps>
 
-Most real games should also declare typed assets in Bazel and mix the generated provider into the app:
+1. **Write the game core.** The game is a trait. Its self-type lists the providers it uses, and
+   each backend supplies them. `AssetsProvider` is generated from your asset declarations (see the
+   next step).
 
-```scala
-trait AbstractApp extends Application with AssetsProvider {
-  this: CanvasProvider with AudioProvider with WindowProvider =>
+   ```scala title="App.scala"
+   package my.game
+   package core
 
-  val player = Graphics.loadImage(Assets.drawable.player)
-  val music = Audio.loadMusic(Assets.audio.theme)
-}
-```
+   import sgl._
+   import sgl.util.Loader
 
-<Aside type="tip" title="Pick one architecture">
-Use core Canvas/OpenGL directly, or choose Screen2D or GameObject as your primary engine. Core is universal; engines are explicit app architectures layered on top.
+   trait AbstractApp extends Application with AssetsProvider {
+     this: CanvasProvider with WindowProvider with SystemProvider =>
+
+     import Graphics.{Bitmap, Color}
+
+     private var playerLoader: Loader[Bitmap] = _
+     private var x = 100f
+     private var y = 100f
+
+     override def create(): Unit = {
+       playerLoader = Graphics.loadImage(Assets.drawable.player)
+     }
+
+     override def frame(dt: Double): Unit = {
+       val speed = 220f * dt.toFloat
+       if(Input.isKeyPressed(Input.Keys.Left)) x -= speed
+       if(Input.isKeyPressed(Input.Keys.Right)) x += speed
+       if(Input.isKeyPressed(Input.Keys.Up)) y -= speed
+       if(Input.isKeyPressed(Input.Keys.Down)) y += speed
+
+       withFrameCanvas { canvas =>
+         canvas.drawRect(0, 0, Window.width.toFloat, Window.height.toFloat,
+           Graphics.defaultPaint.withColor(Color.rgb(20, 24, 40)))
+         if(playerLoader.isLoaded) canvas.drawBitmap(playerLoader.value.get.get, x, y)
+       }
+     }
+   }
+   ```
+
+   `frame` is called once per frame with the elapsed time in **seconds**. Loading is
+   asynchronous on every platform, so `loadImage` returns a `Loader`, and the image is drawn
+   once it has loaded.
+
+2. **Declare assets and the core library.** `sgl_core_library` compiles the game and generates an
+   `Assets` object with one typed handle per file.
+
+   ```python title="BUILD"
+   load("@sgl//bazel/sgl:assets.bzl", "sgl_drawable_assets")
+   load("@sgl//bazel/sgl:defs.bzl", "sgl_core_library", "sgl_desktop_awt_app", "sgl_html5_app")
+
+   sgl_drawable_assets(
+       name = "drawables",
+       srcs = glob(["assets/drawable-xhdpi/*.png"]),
+       strip_prefix = "assets/drawable-xhdpi",
+       source_density = "xhdpi",
+       target_densities = ["mdpi", "xhdpi"],
+   )
+
+   sgl_core_library(
+       name = "core",
+       srcs = ["App.scala"],
+       assets = [":drawables"],
+       package = "my.game.core",
+   )
+   ```
+
+   `assets/drawable-xhdpi/player.png` becomes `Assets.drawable.player`. If the file is renamed,
+   code that uses the old name no longer compiles.
+
+3. **Add a desktop target and run it.** Each backend rule generates a `Main` object that mixes the
+   backend's providers with your `AbstractApp` and the generated assets provider.
+
+   ```python title="BUILD"
+   sgl_desktop_awt_app(
+       name = "desktop",
+       deps = [":core"],
+       package = "my.game",
+       main_class = "Main",
+       core_abstract_class = "my.game.core.AbstractApp",
+       extra_mixins = ["my.game.core.GeneratedAssetsProvider"],
+       use_screen2d = False,
+   )
+   ```
+
+   ```bash
+   bazel run //:desktop
+   ```
+
+4. **Add a web target.** The same core compiles with Scala.js. HTML5 apps also copy the asset
+   files next to the generated page.
+
+   ```python title="BUILD"
+   sgl_html5_app(
+       name = "html5",
+       deps = [":core"],
+       package = "my.game",
+       main_class = "MyGame",
+       core_abstract_class = "my.game.core.AbstractApp",
+       assets = [":drawables"],
+       assets_strip_prefix = "assets",
+       extra_mixins = ["my.game.core.GeneratedAssetsProvider"],
+       use_screen2d = False,
+   )
+   ```
+
+   ```bash
+   bazel run //:html5   # serves the game on http://localhost:8080
+   ```
+
+</Steps>
+
+<Aside type="tip" title="use_screen2d = False">
+Several app rules default to `use_screen2d = True` for older games, which mixes in the Screen2D
+engine. Core and GameObject games turn it off.
 </Aside>
 
-Run an existing example to see the generated Bazel app setup:
+## Next steps
 
-```bash
-bazel run //examples/hello-canvas:desktop-awt
-```
+- [Architecture](/docs/core-concepts/) explains providers, self-types, and mixin order.
+- [Input](/docs/input/) covers event-driven input with an `InputProcessor`.
+- [Choosing an engine](/docs/engines/) shows how to structure a larger game.
+- [Platforms](/docs/platforms/) lists the other backends, including LWJGL, Scala Native, and Android.

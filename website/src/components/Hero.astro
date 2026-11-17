@@ -1,27 +1,52 @@
 ---
+// Replaces Starlight's hero on splash pages (the landing page only).
+import { Code } from '@astrojs/starlight/components';
+
+const hero = Astro.locals.starlightRoute.entry.data.hero;
+
 const code = `trait AbstractApp extends Application {
   this: CanvasProvider with WindowProvider =>
 
-  override def frame(dt: Double): Unit =
+  import Graphics.Color
+  private var x = 0f
+  private def paint(c: Color) = Graphics.defaultPaint.withColor(c)
+
+  override def frame(dt: Double): Unit = {
+    if(Input.isKeyPressed(Input.Keys.Right))
+      x += 240f * dt.toFloat
+
     withFrameCanvas { canvas =>
-      canvas.drawRect(
-        0, 0, Window.width, Window.height,
-        Graphics.defaultPaint.withColor(Graphics.Color.rgb(20, 24, 40))
-      )
+      val (w, h) = (Window.width.toFloat, Window.height.toFloat)
+      canvas.drawRect(0, 0, w, h, paint(Color.Black))
+      canvas.drawCircle(x, h / 2, 24f, paint(Color.Red))
     }
+  }
 }`;
 ---
-<section class="hero-layout" style="display:grid;grid-template-columns:1.05fr .95fr;gap:2rem;align-items:center;padding:5rem 0 3rem;">
+
+<section class="sgl-hero not-content">
   <div>
-    <p style="color:var(--sl-color-accent);font-weight:800;letter-spacing:.08em;text-transform:uppercase;">Scala Game Library</p>
-    <h1 style="font-size:clamp(2.6rem,7vw,5.6rem);line-height:.95;margin:.2rem 0 1rem;">Build fast, portable games in Scala.</h1>
-    <p style="font-size:1.25rem;color:var(--sl-color-gray-2);max-width:48rem;">A Scala-first game framework for building fast, portable games across desktop, web, native, and mobile-oriented targets.</p>
-    <div class="button-row" style="margin-top:1.5rem;">
-      <a class="btn primary" href="/docs/getting-started/">Get started</a>
-      <a class="btn secondary" href="https://github.com/regb/scala-game-library">View on GitHub</a>
+    <a class="hero-pill" href="/docs/">
+      <strong>Pre-release</strong> Scala 3 · Bazel · open source
+    </a>
+    <h1>
+      Write your game once.<br />
+      <span class="gradient-text">Ship it everywhere.</span>
+    </h1>
+    <p class="tagline">{hero?.tagline}</p>
+    <div class="hero-actions">
+      <a class="sgl-button primary" href="/docs/getting-started/">Build your first game →</a>
+      <a class="sgl-button secondary" href="/docs/">Read the docs</a>
     </div>
+    <div class="hero-command"><span>$</span> bazel run //examples/hello-canvas:desktop-awt</div>
   </div>
   <div class="hero-code">
-    <pre><code class="language-scala">{code}</code></pre>
+    <Code code={code} lang="scala" title="App.scala" />
+    <div class="hero-targets">
+      <span>Desktop JVM</span>
+      <span>Web (Scala.js)</span>
+      <span>Scala Native</span>
+      <span>Android</span>
+    </div>
   </div>
 </section>

@@ -1,14 +1,92 @@
 ---
 title: Input
-description: Keyboard, pointer, and input processors.
+description: Poll keyboard, mouse, and touch state, or handle events with an InputProcessor.
 ---
 
-Poll keys directly or register an input processor.
+import { Aside } from '@astrojs/starlight/components';
+
+`sgl.Input` is a global object that every backend feeds with platform events. You can poll its
+state, receive events through an `InputProcessor`, or do both.
+
+## Polling state
+
+The core derives state from the event stream, so a game can query it each frame:
 
 ```scala
-if Input.isKeyPressed(Input.Keys.Space) then fire()
+if(Input.isKeyPressed(Input.Keys.Space)) fire()
 
+if(Input.isPointerPressed) {            // mouse button or first touch
+  aimAt(Input.mouseX, Input.mouseY)
+}
+
+if(Input.isTouched(1)) twoFingerGesture(Input.touchX(1), Input.touchY(1))
+```
+
+## Handling events
+
+Events happen once, for example a key going down or a pointer being released. Register an
+`InputProcessor` and return `true` from a callback when the game handles the event:
+
+```scala
 Input.setInputProcessor(new InputProcessor {
-  override def keyDown(key: Input.Keys.Key): Boolean = true
+  override def keyDown(key: Input.Keys.Key): Boolean = key match {
+    case Input.Keys.P => togglePause(); true
+    case _ => false
+  }
+
+  override def mouseScrolled(amount: Int): Boolean = { zoom(amount); true }
 })
 ```
+
+Keys cover the letters `A` to `Z`, `Num0` to `Num9`, `Space`, the arrow keys, and the gamepad
+buttons `ButtonStart` and `ButtonSelect`.
+
+The callbacks are `keyDown`, `keyUp`, `mouseMoved`, `mouseDown`, `mouseUp`, `mouseScrolled`,
+`touchDown`, `touchMoved`, `touchUp`, and `systemAction`. You can replace the processor at any
+time, for example when the game switches screens.
+
+<Aside type="note" title="Threading">
+Events are always delivered on the game thread and outside `frame`, so callbacks can update game
+state directly. Platforms deliver them at different points between frames, but always in order.
+</Aside>
+
+### Mouse and touch as pointers
+
+Mix in `PointerInputProcessor` to handle mouse and touch with one set of callbacks. This is what
+most cross-platform games use:
+
+```scala
+Input.setInputProcessor(new InputProcessor with PointerInputProcessor {
+  override def pointerDown(x: Int, y: Int, pointer: Int, button: Input.MouseButtons.MouseButton): Boolean = {
+    select(x, y)
+    true
+  }
+})
+```
+
+### Combining processors
+
+`CombinedInputProcessor(first, second)` sends each event to `second` only when `first` returns
+`false`. Use it to put a UI layer in front of gameplay input.
+
+## System actions
+
+The operating system can send semantic actions that are not keys. Currently there is one:
+`InputActions.Back`, which is Android's back gesture. Declare the actions that the game handles
+when you register the processor. Android's predictive back has to know in advance whether the game
+handles the gesture.
+
+```scala
+Input.setInputProcessor(processor, Set(InputActions.Back))
+
+// in the processor
+override def systemAction(action: InputActions.Action): Boolean = action match {
+  case InputActions.Back => closeMenu(); true
+}
+```
+
+## Headless control
+
+The [headless OpenGL backend](/docs/testing/#headless-opengl) has a `Controller` that injects
+keyboard, mouse, touch, scroll, and system-action events. Tests and automation can use it to drive
+a game.

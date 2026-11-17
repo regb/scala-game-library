@@ -1,31 +1,91 @@
 ---
 title: Installation
-description: Install SGL and run examples.
+description: Add SGL to a Bazel module, or clone the repository to run the examples.
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+import { Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
-SGL currently builds with Bazel.
+SGL builds with [Bazel](https://bazel.build/) and Bzlmod. Install
+[Bazelisk](https://github.com/bazelbuild/bazelisk), which downloads the Bazel version pinned by the
+repository. Bazel also downloads Scala, the JDK used to run desktop games, and the
+Scala.js and Scala Native toolchains.
 
-```bash
-git clone https://github.com/regb/scala-game-library.git
-cd scala-game-library
-bazel build //examples/... //engines/... //games/...
-bazel test //core/...
+## Prerequisites
+
+| Target | Requirements |
+| --- | --- |
+| Desktop JVM (AWT, LWJGL) | Bazelisk. Desktop games run on a downloaded JDK 17. |
+| Web (Scala.js) | Bazelisk. Serve the generated files with any static web server. |
+| Native (Scala Native) | A C toolchain, SDL2, SDL2_image, and OpenGL ES headers and libraries. |
+| Android | JDK 17, Android SDK Platform 37, Build Tools 36 or newer, and `ANDROID_HOME`. See [Android](/docs/android/). |
+
+## Try the examples
+
+<Steps>
+
+1. Clone the repository.
+
+   ```bash
+   git clone https://github.com/regb/scala-game-library.git
+   cd scala-game-library
+   ```
+
+2. Run a desktop example.
+
+   ```bash
+   bazel run //examples/hello-canvas:desktop-awt
+   ```
+
+3. Run an OpenGL example.
+
+   ```bash
+   bazel run //examples/hello-scalagl:desktop-lwjgl
+   ```
+
+4. Build and test everything.
+
+   ```bash
+   bazel build //...
+   bazel test //...
+   ```
+
+</Steps>
+
+## Use SGL in your own project
+
+A game is a separate Bazel module that depends on SGL. SGL has not been published to the Bazel
+Central Registry yet, so pin a commit with `git_override`:
+
+```python title="MODULE.bazel"
+bazel_dep(name = "sgl.bzl", version = "0.0.0", repo_name = "sgl")
+git_override(
+    module_name = "sgl.bzl",
+    commit = "<SGL commit>",
+    remote = "https://github.com/regb/scala-game-library.git",
+)
+
+bazel_dep(name = "rules_scala", version = "7.2.6")
+scala_config = use_extension("@rules_scala//scala/extensions:config.bzl", "scala_config")
+scala_config.settings(scala_version = "3.3.8")
 ```
 
-Run a desktop example:
+<Aside type="note" title="Why the Scala settings are repeated">
+rules_scala only reads Scala version settings from the root module. Without these lines your game
+compiles with Scala 2.12.
+</Aside>
 
-```bash
-bazel run //examples/hello-canvas:desktop-awt
+SGL manages its own Maven dependencies (audio, JSON, LWJGL, Scala.js, Scala Native) and their
+lockfile. Your module only declares libraries that the game itself uses. For the details, see
+[`doc/dependency-resolution.md`](https://github.com/regb/scala-game-library/blob/master/doc/dependency-resolution.md).
+
+Rules are then loaded from the `@sgl` repository:
+
+```python title="BUILD"
+load("@sgl//bazel/sgl:defs.bzl", "sgl_core_library", "sgl_desktop_awt_app")
+load("@sgl//bazel/sgl:assets.bzl", "sgl_drawable_assets")
 ```
 
-Run an OpenGL example:
-
-```bash
-bazel run //examples/hello-scalagl:desktop-lwjgl
-```
-
-<Aside type="note">
-The Android Kotlin integration uses the proxy backend and is maintained separately from the main Bazel desktop/web/native example matrix.
+<Aside type="tip">
+[Scalavator](https://github.com/regb/scalavator) is a small, complete game in its own Bazel module.
+It has desktop, HTML5, and Android targets and builds against the current SGL API.
 </Aside>

@@ -1,25 +1,77 @@
 ---
 title: Audio
-description: Music and sound effects.
+description: Short overlapping sounds and long background music.
 ---
 
-Audio is exposed through `AudioProvider` and loaded from typed generated `AudioAsset`s.
+import { Aside } from '@astrojs/starlight/components';
+
+`AudioProvider` exposes `Audio`, which has two kinds of audio. Both are loaded from typed
+`AudioAsset`s, which you declare with `sgl_audio_assets`.
+
+| | `Sound` | `Music` |
+| --- | --- | --- |
+| For | Short effects such as jumps, hits, and clicks | Background tracks |
+| Loading | Fully decoded in memory | May be streamed by the backend |
+| Playback | Several plays can overlap. Each `play()` returns a handle. | One playback at a time, with play, pause, and stop |
+
+## Loading and playing
 
 ```scala
 trait AbstractApp extends Application with AssetsProvider {
-  this: AudioProvider =>
+  this: AudioProvider with SystemProvider =>
 
-  private val soundLoader = Audio.loadSound(Assets.audio.beep)
-  private val musicLoader = Audio.loadMusic(Assets.audio.music)
+  private var beepLoader: Loader[Audio.Sound] = _
+  private var themeLoader: Loader[Audio.Music] = _
 
-  def startAudio(): Unit = {
-    val sound = soundLoader.value.get.get
-    val music = musicLoader.value.get.get
-    music.setLooping(true)
-    music.play()
-    sound.play()
+  override def create(): Unit = {
+    beepLoader = Audio.loadSound(Assets.audio.beep)
+    themeLoader = Audio.loadMusic(Assets.audio.theme)
+
+    themeLoader.foreach { music =>
+      music.setLooping(true)
+      music.setVolume(0.5f)
+      music.play()
+    }
   }
+
+  def onHit(): Unit =
+    if(beepLoader.isLoaded) beepLoader.value.get.get.play()
 }
 ```
 
-Use `Sound` for short, overlapping effects and `Music` for long background tracks. A backend may stream music or buffer it in memory. Dispose sounds, configured sound variants, and music when their owning scene or application ends. Declare files with `sgl_audio_assets` and pass the asset target to `sgl_core_library`.
+`Loader.foreach` runs once, when the music has loaded.
+
+## Sound variants
+
+`withConfig(loop, rate)` creates a variant of a sound with a loop count and playback rate. It is
+an independent `Sound` and must be disposed separately:
+
+```scala
+val beep = beepLoader.value.get.get
+val fastDouble = beep.withConfig(loop = 2, rate = 2f)  // plays three times at double speed
+val alarm = beep.looped                               // loops until stopped
+
+alarm.play().foreach { played =>
+  // later
+  alarm.endLoop(played)   // finish the current iteration, then stop
+}
+```
+
+`play(volume)` returns `Option[PlayedSound]`. Use the handle with `pause`, `resume`, `stop`, or
+`endLoop`.
+
+## Alternative formats
+
+Both loaders accept extra assets with the same audio in other formats. The backend uses the
+format it supports best:
+
+```scala
+Audio.loadMusic(Assets.audio.themeOgg, Assets.audio.themeMp3)
+```
+
+<Aside type="caution" title="Dispose what you load">
+Call `dispose()` on sounds, sound variants, and music when the screen, scene, or application that
+owns them ends.
+</Aside>
+
+To disable audio, mix in `FakeAudioProvider`. Its loaders succeed with silent implementations.

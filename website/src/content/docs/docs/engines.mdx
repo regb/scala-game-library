@@ -1,0 +1,50 @@
+---
+title: Choosing an engine
+description: When to use the core APIs directly, the Screen2D engine, or the GameObject engine.
+---
+
+import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+An engine in SGL is an optional application architecture built on the core. Engines are not
+plugins. A game uses one of them or none.
+
+| | Core only | Screen2D | GameObject |
+| --- | --- | --- | --- |
+| Structure | You write `frame(dt)` yourself | A stack of `GameScreen`s with a fixed-rate game loop | Objects with components, systems in stages, and scenes |
+| Rendering | Canvas or OpenGL, directly | Canvas | OpenGL renderer for 2D sprites, tilemaps, and text, plus 3D meshes |
+| Time step | Seconds (`Double`) | Milliseconds (`Long`) | Seconds in `DeltaTime`, plus a fixed-step stage |
+| Backends | All | Canvas backends: AWT, HTML5, Scala Native, Android | OpenGL backends: LWJGL, HTML5 (WebGL 2), Scala Native, headless. Not Android. |
+| Bazel dependency | `//core:sgl-core` | `//engines:sgl-screen2d` | `//engines:sgl-gameobject` |
+| Good for | Small games, prototypes, custom renderers | Menu-heavy 2D mobile games | Games with many interacting objects, 2D or 3D |
+
+## Core only
+
+The [core APIs](/docs/core-concepts/) are enough for many games. Snake (`//examples/snake`) is a
+complete game in one trait that uses Canvas, `Input`, and `Window.safeArea`. Add structure with
+plain Scala classes when you need it.
+
+## Screen2D
+
+[Screen2D](/docs/screen2d/) is SGL's original engine. It provides a screen stack with
+push, pop, and replace, a fixed-FPS loop, loading screens through `addPreloading`, and a
+`Viewport` for world-to-screen scaling. It works with `modules/scene2d` for UI and
+`modules/particles`.
+
+## GameObject
+
+[GameObject](/docs/gameobject/) is the newer engine. Game objects are identities that carry typed
+components. Systems run in ordered stages, and scenes populate the world. A component can state in
+its constructor type which other components its object must have, and the compiler checks it.
+The engine includes an OpenGL renderer for 2D and 3D, and the Tiled integration in
+`extensions/tiled-gameobject` produces tilemap components.
+
+<Aside type="note" title="Physics">
+SGL does not include a physics engine. `sgl.math.Collisions` has shape intersection tests for
+`Circle`, `Rect`, and `Polygon`. To integrate a physics library, write systems or
+components that copy its state into `Spatial2D` or `Spatial3D`.
+</Aside>
+
+<CardGrid>
+  <LinkCard title="GameObject engine" href="/docs/gameobject/" description="Components, systems, scenes, typed composition, and rendering." />
+  <LinkCard title="Screen2D engine" href="/docs/screen2d/" description="Screens, the game loop, and viewports." />
+</CardGrid>

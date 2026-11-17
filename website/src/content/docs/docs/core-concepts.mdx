@@ -1,49 +1,126 @@
 ---
-title: Core Concepts
-description: Application lifecycle, providers, modules, and engines.
+title: Architecture
+description: Providers, self-types, the application lifecycle, generated entry points, and loaders.
 ---
 
-SGL is organized around provider traits and static composition.
+import { Aside } from '@astrojs/starlight/components';
 
-- **Core**: universal APIs such as application lifecycle, input, audio, typed assets, Canvas, OpenGL, and math.
-- **Engines**: primary app architectures: `screen2d` and `gameobject`.
-- **Modules and extensions**: reusable libraries such as scene2d, particles, and Tiled integrations.
-- **Backends**: AWT, LWJGL, HTML5, Scala Native, Android, and other platform implementations.
+SGL games are composed statically with Scala traits. The game declares the platform services it
+needs. A backend supplies them, and Bazel generates the object that combines the two.
+
+## Layers
+
+| Layer | Bazel targets | Contents |
+| --- | --- | --- |
+| Core | `//core:sgl-core` | `Application`, provider traits, `Input`, typed assets, `Loader`, saves, `sgl.math` |
+| Engines | `//engines:sgl-gameobject`, `//engines:sgl-screen2d` | Optional game architectures. Use at most one. |
+| Modules and extensions | `//modules:*`, `//extensions:*` | scene2d, particles, live configuration, Tiled |
+| Backends | `//backends/*` | AWT, LWJGL, HTML5, Scala Native, Android, headless OpenGL |
+
+Game code depends only on the core, plus an engine or module if it uses one. It never depends on a
+backend.
+
+## The application lifecycle
+
+Every game implements `sgl.Application`. The backend owns the main loop, polls events, and calls
+these hooks:
 
 ```scala
 trait Application {
   def create(): Unit = {}
-  def frame(dt: Double): Unit
+  def frame(dt: Double): Unit           // dt is in seconds on every backend
   def resize(width: Int, height: Int): Unit = {}
+  def pause(): Unit = {}
+  def resume(): Unit = {}
   def dispose(): Unit = {}
 }
 ```
 
-`frame` receives the elapsed time since the previous frame in seconds on every backend. Providers describe platform capabilities. A backend-generated main class supplies concrete providers, while your game declares what it needs through self-types or inheritance.
+`create` runs once the providers are initialized. `frame` both updates and renders. `pause` and
+`resume` follow the platform's lifecycle, for example when an Android app goes to the background.
+
+## Providers and self-types
+
+A provider is a trait that exposes one platform service as an inner object:
+
+| Provider | Exposes |
+| --- | --- |
+| `CanvasProvider` | `Graphics`: bitmaps, paints, fonts, text, and `withFrameCanvas` |
+| `OpenGLProvider` | `OpenGL`: an OpenGL ES 3 / WebGL 2 style API |
+| `WindowProvider` | `Window`: size, pixel density, and the safe area |
+| `AudioProvider` | `Audio`: sounds and music |
+| `SystemProvider` | `System`: text and binary asset loading, time, `exit`, opening URLs |
+| `SchedulerProvider` | `Scheduler`: cooperative `ChunkedTask` background work |
+| `LoggingProvider` | `logger` with tagged log levels |
+| `SaveComponent` | `Save`: a typed key-value store for progress and settings |
+
+Input is different: `sgl.Input` is a global object that every backend feeds.
+
+The game states its requirements in a self-type. Nothing is resolved at runtime, and a backend
+that is missing a provider fails to compile:
 
 ```scala
 trait AbstractApp extends Application with AssetsProvider {
-  this: CanvasProvider with AudioProvider with WindowProvider =>
+  this: CanvasProvider with AudioProvider with WindowProvider with SystemProvider =>
 
   override def frame(dt: Double): Unit =
     withFrameCanvas { canvas =>
-      canvas.drawRect(0, 0, Window.width, Window.height, Graphics.defaultPaint)
+      canvas.drawRect(0, 0, Window.width.toFloat, Window.height.toFloat, Graphics.defaultPaint)
     }
 }
 ```
 
-## GameObject 2D
+`CanvasGameApp` and `OpenGLGameApp` bundle the most common providers if you prefer inheritance to
+listing them.
 
-The GameObject engine is component/system based and includes an OpenGL-backed 2D renderer. Spatial state is a normal component:
+## Generated entry points
+
+Each backend rule generates the platform entry point. For `sgl_desktop_awt_app` it looks roughly
+like this:
 
 ```scala
-context.gameObject2D("Player", Transform2D(position = Vec2(64f, 64f))) { obj =>
-  obj.attach(new SpriteRenderer(_, SpriteVisual.Texture(playerTexture), 32f, 32f))
-
-  obj.component[Spatial2D].foreach { spatial =>
-    spatial.local = spatial.local.copy(position = spatial.local.position + Vec2(1f, 0f))
-  }
-}
+object Main extends sgl.awt.AWTApp
+  with my.game.core.AbstractApp
+  with sgl.DesktopSystemProvider
+  // logging, JSON, metrics, ads, analytics, and save mixins
+  with my.game.core.GeneratedAssetsProvider   // from extra_mixins
 ```
 
-Use scene/system helpers such as `context.gameObject2D` / `context.createObject2D` for scoped 2D objects and `context.gameObject3D` / `context.createObject3D` for 3D objects. Lower-level `World` creation methods require an active `Scope`. For points and rendered geometry in hierarchies with non-uniform scale, use `Spatial2D.transformPoint`; it preserves affine shear that cannot be represented by the decomposed `global` TRS value.
+Use `extra_mixins` to add traits such as the generated assets provider or
+`sgl.OpenGLCanvasProvider`.
+
+<Aside type="caution" title="Initialization order">
+Scala initializes traits in linearization order. The main backend trait comes before your game,
+but `System` and the mixins from `extra_mixins`, including `Assets`, come after it. They are still
+`null` while your trait's fields are initialized. Load assets in `create()` or later, or use a
+`lazy val`, and do not load them in a plain `val`.
+
+```scala
+private lazy val player = Graphics.loadImage(Assets.drawable.player)  // fine
+private val player = Graphics.loadImage(Assets.drawable.player)       // NullPointerException
+```
+</Aside>
+
+<Aside type="caution" title="Android wiring">
+The Android backend instantiates the game from Kotlin through a proxy platform. Provide a wiring
+function in shared code. See [Android](/docs/android/).
+</Aside>
+
+## Loaders
+
+Loading is asynchronous, because browsers cannot block on I/O. Functions that load assets return
+`sgl.util.Loader[A]`, a lightweight future:
+
+```scala
+val image: Loader[Graphics.Bitmap] = Graphics.loadImage(Assets.drawable.player)
+val level: Loader[Array[String]] = System.loadText(Assets.text.level1)
+
+image.isLoaded                      // poll from the frame loop
+image.value                         // Option[Try[Bitmap]]
+image.onLoad(result => ...)         // or register a callback
+image.zip(level).map { case (bitmap, lines) => ... }
+Loader.combine(Seq(a, b, c))        // wait for several loaders of one type
+```
+
+Most games start loading in `create` and poll `isLoaded` from `frame`. Screen2D screens can
+declare loaders with `addPreloading`, and the screen is not updated until they complete.

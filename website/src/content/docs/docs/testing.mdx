@@ -1,0 +1,67 @@
+---
+title: Testing and headless
+description: Capture rendered frames, and run games without a display on the headless OpenGL backend.
+---
+
+## Frame capture
+
+Every application backend implements `FrameCaptureProvider`. A request completes after the next
+frame that starts after the request. It returns tightly packed RGBA8 pixels, starting from the top
+left:
+
+```scala
+captureNextFrame().foreach { frame =>
+  println(s"captured ${frame.width}x${frame.height}")
+}
+```
+
+The core API returns pixels and does not choose a file format or storage. On the desktop JVM,
+`DesktopFrameIO.writePng(frame, path)` encodes a capture as PNG.
+
+The AWT and LWJGL examples include an opt-in screenshot mixin, which captures after 30 warm-up
+frames:
+
+```bash
+SGL_SCREENSHOT_PATH=/tmp/frame.png bazel run //examples/hello-canvas:desktop-awt
+SGL_SCREENSHOT_PATH=/tmp/frame.png bazel run //examples/hello-scalagl:desktop-lwjgl
+```
+
+Set `SGL_SCREENSHOT_DELAY_FRAMES` to change the number of warm-up frames.
+
+## Headless OpenGL
+
+`//backends/headless-opengl:sgl-headless-opengl` renders to a Mesa surfaceless EGL pbuffer. It
+needs no X11, no Wayland, and no GPU. Mix `HeadlessOpenGLApp` into an application, then step the
+game and send it input yourself:
+
+```scala
+app.start()
+try {
+  app.Controller.keyDown(Input.Keys.Right)
+  app.step(1.0 / 60.0)
+  app.Controller.keyUp(Input.Keys.Right)
+  app.step(1.0 / 60.0)
+  val frame = app.captureNextFrame()
+  app.step(1.0 / 60.0)          // the capture completes during this frame
+} finally app.stop()
+```
+
+`Controller` accepts keyboard, mouse, touch, scroll, and system-action events from any thread.
+`step` dispatches queued events on the OpenGL thread, then advances the game by one frame.
+
+On Linux, set `EGL_PLATFORM=surfaceless` and `LIBGL_ALWAYS_SOFTWARE=1` to force Mesa's software
+renderer. The backend's own Bazel test also clears `DISPLAY` and `WAYLAND_DISPLAY`, and checks that
+the OpenGL renderer is llvmpipe.
+
+`//engines/gameobject/examples/headless-control` drives a GameObject game this way in an
+integration test.
+
+## Unit tests
+
+Engine and core logic can be tested without a backend. The GameObject engine's own tests in
+`engines/gameobject/src/test` build worlds, attach components, and run schedules directly. Run all
+tests with:
+
+```bash
+bazel test //...
+```

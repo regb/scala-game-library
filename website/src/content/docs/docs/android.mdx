@@ -1,0 +1,134 @@
+---
+title: Android
+description: Wire a game into the Kotlin backend, build APKs and bundles, and configure system bars and Play services.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+The Android backend is a Kotlin library in `backends/android-kotlin`. `sgl_android_app` generates a
+Gradle project that contains your compiled core, the backend, and a `MainActivity`, and then runs
+Gradle on it.
+
+## Requirements
+
+- JDK 17, Android SDK Platform 37.0, and SDK Build Tools 36.0.0 or newer.
+- `ANDROID_HOME` set to the SDK directory.
+- The generated projects use AGP 9.2.1, Gradle 9.4.1, and Gradle Play Publisher 4.1.1. Apps target
+  API 37 and require API 26 (Android 8) or newer.
+
+<Aside type="caution" title="Built-in Kotlin">
+AGP provides Kotlin itself. Do not apply `org.jetbrains.kotlin.android`, and do not disable
+`android.builtInKotlin` or `android.newDsl`. Set Kotlin JVM targets with `kotlin.compilerOptions`,
+not `android.kotlinOptions`.
+</Aside>
+
+## Wiring the game
+
+Android creates the game from Kotlin through a proxy platform. Provide a wiring function in the
+shared core. It ensures that provider-backed fields are initialized after the platform proxy:
+
+```scala
+object Wiring {
+  def wire(platform: PlatformProxy): ProxiedGameApp =
+    new WiredProxyPlatform(platform) with AbstractApp
+}
+```
+
+To save progress, also mix in `ProxySaveProvider` and define a stable `SaveName`, which is stored in
+SharedPreferences.
+
+<Steps>
+
+1. Declare the app. Set `wiring_expression` when the Android package differs from the core
+   package.
+
+   ```python
+   sgl_android_app(
+       name = "android",
+       label = "My Game",
+       package = "com.example.mygame",
+       core = ":core",
+       assets = [":drawables", ":audio"],
+       wiring_expression = "my.game.core.Wiring.wire(platformProxy)",
+   )
+   ```
+
+2. Build or run one of the generated targets:
+
+   | Target | Gradle task |
+   | --- | --- |
+   | `:android-debug` | `assembleDebug` |
+   | `:android-release` | `assembleRelease` |
+   | `:android-bundle` | `bundleRelease` (AAB) |
+   | `:android-install` | `installDebug` |
+   | `:android-run` | `installDebug`, then launch |
+   | `:android-publish-internal` | Upload the bundle to the internal Play track |
+
+   ```bash
+   bazel run //examples/snake:android-debug
+   ```
+
+</Steps>
+
+Run the backend's own tests with Gradle:
+
+```bash
+backends/android-kotlin/gradlew -p backends/android-kotlin :sgl-android:testDebugUnitTest
+```
+
+## Release builds
+
+Release builds enable R8 optimization and obfuscation. `shrink_resources` defaults to `True`, and
+AGP 9 uses optimized resource shrinking. A project that sets `shrink_resources = False` has to opt
+in again explicitly after testing its release build.
+
+SGL resolves drawable names at runtime, so the generated `res/raw/sgl_keep.xml` keeps every
+drawable name and density variant. Other resource types can be shrunk. Fonts, audio, levels, and
+other files under `assets/` are not Android resources and are never shrunk. Test asset loading and
+the Back gesture in a release build before you update the SGL commit or enable resource shrinking.
+
+## System bars
+
+Apps use immersive fullscreen by default. The status and navigation bars are hidden, and a swipe
+from the edge shows them temporarily.
+
+```python
+sgl_android_app(
+    name = "android",
+    system_bars_mode = "immersive",              # "immersive", "safe-area", or "edge-to-edge"
+    system_bars_behavior = "transient-by-swipe", # or "default"
+    navigation_bar_contrast_enforced = False,
+    # ...
+)
+```
+
+| Mode | Bars | Game surface | `Window.safeArea` |
+| --- | --- | --- | --- |
+| `immersive` | Hidden | Full display | Insets that controls should avoid |
+| `edge-to-edge` | Visible | Full display, under the bars | Insets that controls should avoid |
+| `safe-area` | Visible | Inside bars, cutouts, and gesture areas | Zero |
+
+In the full-surface modes, draw backgrounds across the whole window and keep controls inside
+`Window.safeArea`. The insets include the bars even while they are hidden, so controls do not move
+when the bars appear.
+
+On Android 15 and later, apps targeting API 35 or newer always draw edge-to-edge, without calling
+the deprecated window APIs. Older devices use a compatibility implementation for their version.
+Do not opt out of edge-to-edge in a custom theme. Android 11 and later allow drawing into cutouts
+on every edge. Android 9 and 10 allow short-edge cutouts and may letterbox long-edge ones.
+
+<Aside type="note" title="Play Console warnings">
+The compatibility code still contains deprecated calls, and so may your dependencies. Play may
+therefore still report a deprecated-API warning, even though modern devices do not use those
+calls. Play only re-checks an app when you upload a new release.
+</Aside>
+
+## Play services and ads
+
+`sgl_android_app` has optional integrations for Google Play Games leaderboards
+(`play_games_project_id`), AdMob (`admob_application_id` and ad unit IDs), and Firebase analytics
+and consent (`google_services_json` and the `firebase_*` attributes). The setup guides are in the
+repository:
+
+- [Leaderboards](https://github.com/regb/scala-game-library/blob/master/doc/leaderboards.md)
+- [Firebase consent, attribution, and ad revenue](https://github.com/regb/scala-game-library/blob/master/doc/firebase-attribution.md)

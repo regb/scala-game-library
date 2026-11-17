@@ -1,8 +1,49 @@
 ---
-title: Documentation
-description: Learn SGL, a Scala-first game framework.
+title: Introduction
+description: What SGL is, how it is organized, and where to start.
 ---
 
-Welcome to the Scala Game Library documentation.
+import { Aside, Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
-Start with [Getting Started](/docs/getting-started/) or jump into the core concepts.
+The Scala Game Library (SGL) is a library for writing cross-platform games in Scala. You write the
+game against portable APIs for the application lifecycle, rendering, input, audio, assets, and
+saves. You then build it with a Bazel rule for each platform you want to ship on.
+
+SGL is similar to [libGDX](https://libgdx.com/), but it is written in Scala and designed for Scala,
+and it targets each platform natively through Scala.js and Scala Native. It provides control at the
+level of [SDL](https://www.libsdl.org/), with Scala APIs on top.
+
+<Aside type="caution" title="Pre-release">
+SGL has not had a release yet and its APIs change often. Use it if you are willing to follow the
+repository and adapt to breaking changes.
+</Aside>
+
+## How SGL is organized
+
+<CardGrid>
+  <Card title="Core" icon="puzzle">
+    Provider traits such as `CanvasProvider`, `OpenGLProvider`, `AudioProvider`, and
+    `WindowProvider`, plus `Input`, typed assets, saves, and `sgl.math`. Every game uses the core.
+  </Card>
+  <Card title="Engines" icon="rocket">
+    Optional ways to structure a game. **GameObject** uses components, systems, and scenes on
+    OpenGL. **Screen2D** uses a Canvas screen stack.
+  </Card>
+  <Card title="Modules and extensions" icon="add-document">
+    Reusable libraries: Tiled map import, scene2d UI, particles, and live configuration for
+    development.
+  </Card>
+  <Card title="Backends" icon="laptop">
+    Implementations of the providers for AWT, LWJGL, HTML5, Scala Native, Android, and headless
+    OpenGL. Bazel rules generate the entry point for each one.
+  </Card>
+</CardGrid>
+
+## Where to go next
+
+<CardGrid>
+  <LinkCard title="Installation" description="Add SGL to your Bazel module, or clone the repository to run the examples." href="/docs/installation/" />
+  <LinkCard title="Your first game" description="Write a game core and run it on desktop and in the browser." href="/docs/getting-started/" />
+  <LinkCard title="Architecture" description="Providers, self-types, the application lifecycle, and loaders." href="/docs/core-concepts/" />
+  <LinkCard title="Choosing an engine" description="When to use the core directly, Screen2D, or GameObject." href="/docs/engines/" />
+</CardGrid>

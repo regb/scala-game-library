@@ -1,0 +1,379 @@
+---
+title: GameObject engine
+description: Worlds, objects, components, systems, stages, scenes, and composition checked at compile time.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+The GameObject engine (`//engines:sgl-gameobject`, package `sgl.engine.gameobject`) arranges a
+game as **objects** that carry **components**, **systems** that run in ordered **stages**, and
+**scenes** that populate a **world**. It renders with OpenGL in 2D and 3D.
+
+<Aside type="caution" title="Under active development">
+This engine changes faster than the rest of SGL. `//engines/gameobject/examples/asteroids` is
+always up to date and is the best reference.
+</Aside>
+
+## The application
+
+Extend `OpenGLGameObjectApp` and configure the game in `configure`. The engine owns `create`,
+`frame`, `resize`, and `dispose`.
+
+```scala
+import sgl.engine.gameobject._
+import sgl.engine.gameobject.capability._
+import sgl.engine.gameobject.render2d._
+import sgl.engine.gameobject.runtime._
+import sgl.engine.gameobject.schedule._
+import sgl.engine.gameobject.spatial2d._
+import sgl.engine.gameobject.typed._
+
+trait AbstractApp extends OpenGLGameObjectApp {
+  override def configure(builder: GameBuilder): Unit =
+    builder
+      .install(UpdateCapabilitiesModule)        // drives Updatable components
+      .setContext(ClearColor(0.02f, 0.02f, 0.05f, 1f))
+      .setContext(FixedDeltaTime(1.0 / 60.0))
+      .addSystem(Stage.PostUpdate, CollisionSystem)
+      .setInitialScene(Level1)
+}
+```
+
+Build it with an OpenGL backend rule such as `sgl_desktop_lwjgl_app`, `sgl_html5_opengl_app`, or
+`sgl_desktop_native_app(backend_app = "NativeOpenGLApp")`. Add `@sgl//engines:sgl-gameobject` to
+the core library's `deps`.
+
+## Concepts
+
+| Concept | What it is |
+| --- | --- |
+| `World` | Holds objects, scopes, component indexes, and the `Context` |
+| `GameObject` | An identity (`id`, `name`) with at most one component of each type |
+| `TypedObject[Has]` | A `GameObject` whose type lists the components it has. `GameObject2D` is `TypedObject[Spatial2D]`. |
+| `Component` | A plain class with an `owner`, stored and indexed by its concrete class |
+| `Context` | Values for the whole world, one per class, such as `DeltaTime`, `ClearColor`, and installed modules |
+| `System` | Code that runs over the world once per stage |
+| `GameModule` | A reusable bundle of systems and context values |
+| `Scene` | Loads a set of objects. Its objects are destroyed when another scene loads. |
+| `Scope` | Groups objects so they are destroyed together. Every object is created in one. |
+
+## Objects and components
+
+Objects are built as **typed objects**. A `TypedObject[Has]` wraps a `GameObject`, and its type
+records the components that are known to be attached. Each `attach` returns the same object with a
+larger type, so an object is composed as a chain:
+
+```scala
+context.typedObject("Enemy")               // TypedObject[Any]
+  .attach(new Health(_, points = 3))       // TypedObject[Health]
+  .attach(new EnemyBrain(_))               // TypedObject[Health & EnemyBrain]
+```
+
+`GameObject2D` and `GameObject3D` are aliases of `TypedObject[Spatial2D]` and
+`TypedObject[Spatial3D]`. `context.createObject2D` returns an object that already has its spatial.
+There is one kind of composed object and one `attach`.
+
+A component is an ordinary class with methods and private state. It takes the typed object as its
+constructor parameter and sets `owner` from it:
+
+```scala
+final class Health(obj: TypedObject[Any], var points: Int) extends Component {
+  override val owner: GameObject = obj.gameObject
+}
+```
+
+Components are stored and indexed by their class, so no key or registration is needed. An object
+carries at most one component of each class, and a component is attached under its own concrete
+class: attaching a subclass instance as its parent type throws a `CompositionError`.
+
+`TypedObject[Any]` means that the component works on any object. Components written with a plain
+`owner: GameObject` parameter, such as `new Lifetime(_, 1.2)`, are attached with `attachPlain`.
+
+Override `onDestroy()` to release what a component holds on other objects. It is called while the
+owner and its siblings are still attached.
+
+## Composition checked by the compiler
+
+A component that needs other components on its object asks for them in the type of its constructor
+parameter, and reads them with `get`, which cannot fail:
+
+```scala
+final class Collider(obj: GameObject2D, var radius: Float) extends Component {
+  override val owner: GameObject = obj.gameObject
+  private val spatial = obj.spatial
+
+  def overlaps(other: Collider): Boolean = {
+    val d = spatial.global.position - other.spatial.global.position
+    val reach = radius + other.radius
+    d.x * d.x + d.y * d.y <= reach * reach
+  }
+}
+
+final class Bullet(obj: TypedObject[Collider]) extends Component {
+  override val owner: GameObject = obj.gameObject
+  val collider: Collider = obj.get[Collider]
+}
+
+final class Player(obj: TypedObject[Spatial2D & Velocity & Collider]) extends Component with Updatable {
+  override val owner: GameObject = obj.gameObject
+  private val velocity = obj.get[Velocity]
+  // ...
+}
+```
+
+```scala
+context.createObject2D("Bullet", Transform2D(position = pos))   // GameObject2D
+  .attach(new Collider(_, 4f))                                   // & Collider
+  .attach(new Bullet(_))                                         // & Bullet
+  .attach(new SpriteRenderer(_, SpriteVisual.Circle((1f, 0.9f, 0.5f, 1f)), 7f, 7f))
+```
+
+The compiler rejects these mistakes:
+
+- Attaching `Bullet` before `Collider`: *"This object is not known to have a Collider"*.
+- Attaching a `SpriteRenderer` or a `Collider` to an object without a `Spatial2D`.
+- Attaching a second `Collider`: *"This object already has a Collider"*.
+
+A component built from another object's handle has the wrong owner and is rejected when it is
+attached. `TypedObject` holds only the `GameObject` and adds no runtime state. Its type stays
+accurate because components are never detached from a live object.
+
+The engine's own components follow the same rule. `SpriteRenderer` and `Tilemap` take a
+`GameObject2D`, and `MeshRenderer` takes a `GameObject3D`. `Camera2D`, `Camera3D`, `TextOverlay`,
+and `CircleMaskTransition` take a `TypedObject[Any]`.
+
+### Dynamic lookup
+
+Systems and debugging code can still look components up at runtime:
+
+```scala
+obj.component[Health]        // Option[Health]
+obj.require[Health]          // Health, or a CompositionError
+obj.destroy()
+```
+
+### Requirements on the world
+
+Some requirements are not properties of the object but of the world, typically a module that must
+be installed for the component to do anything. A trait states them once by mixing in
+`ContextDependent`, and they are checked whenever a component with that trait is attached:
+
+```scala
+trait Updatable extends ContextDependent {
+  def update(context: GameContext)(using Scope): Unit
+
+  override def contextRequirements: Vector[Class[?]] =
+    super.contextRequirements :+ ContextDependent.on[UpdateCapabilitiesModule.type]
+}
+```
+
+This is how every `Updatable` requires `UpdateCapabilitiesModule`, so you cannot attach one that
+would never be updated. Overrides add to `super`, because a component can mix in several such
+traits.
+
+### Domain objects
+
+A typed object can be passed around as a domain object. Systems usually iterate over a component
+that holds what they need:
+
+```scala
+context.world.index[Bullet].foreach { bullet =>
+  if(bullet.collider.overlaps(target)) bullet.destroy()
+}
+```
+
+`foreach` and `iterator` on an index never return a component whose object was destroyed, even one
+destroyed earlier in the same traversal. Components attached during a traversal appear in the next
+one. `toVector` is a plain snapshot, so code that keeps it checks `isAlive` itself.
+
+`destroy()`, `isAlive`, `component`, and `require` work on anything with a `HasGameObject` instance:
+`GameObject`, `TypedObject` (including `GameObject2D` and `GameObject3D`), and every component.
+Give your own classes an instance in their companion:
+
+```scala
+final class Ship(val obj: GameObject2D, val hull: Collider)
+object Ship {
+  given HasGameObject[Ship] with {
+    def gameObjectOf(ship: Ship): GameObject = ship.obj.gameObject
+  }
+}
+```
+
+## Systems and stages
+
+A system has a stable `SystemId` and runs once per frame in its stage. Query components through
+the world's indexes:
+
+```scala
+object CollisionSystem extends System {
+  override val id: SystemId = SystemId("game.collision")
+
+  override def run(context: GameContext)(using Scope): Unit = {
+    val asteroids = context.world.index[Asteroid]
+    context.world.index[Bullet].foreach { bullet =>
+      // An asteroid destroyed by one bullet is skipped for the next ones.
+      asteroids.iterator.find(a => bullet.collider.overlaps(a.collider)).foreach { asteroid =>
+        bullet.destroy()
+        asteroid.destroy()
+      }
+    }
+  }
+}
+```
+
+Each frame runs these stages in order. `FixedUpdate` runs zero or more times so that it advances
+in steps of `FixedDeltaTime` (default 1/60 s):
+
+<Steps>
+
+1. `PreUpdate`
+2. `FixedUpdate`, with `DeltaTime` set to the fixed step
+3. `Update`
+4. `PostUpdate`
+5. `PreRender`, then the renderer draws the world
+
+</Steps>
+
+`Startup` runs once before the initial scene loads. Read time from the context:
+`context.world.context.get[DeltaTime].seconds` or `ElapsedTime`. A schedule rejects duplicate
+system IDs.
+
+For small systems, `System("game.spawner") { ... }` creates one from a block that receives a given
+`GameContext`.
+
+### Per-object updates
+
+Behavior that is specific to one object can implement `Updatable` or `FixedUpdatable` instead of
+having a system. Only components that implement these traits are indexed and updated:
+
+```scala
+final class Lifetime(override val owner: GameObject, var seconds: Double) extends Component with Updatable {
+  override def update(context: GameContext)(using Scope): Unit = {
+    seconds -= context.world.context.get[DeltaTime].seconds
+    if(seconds <= 0.0) this.destroy()
+  }
+}
+```
+
+Prefer systems for logic that applies to many objects.
+
+## Context and modules
+
+The `Context` holds values for the whole world. A value is stored under the class it is set as, so
+there is one value per class and no key to declare:
+
+```scala
+final case class Difficulty(level: Int)
+
+builder.setContext(Difficulty(2))
+context.world.context.get[Difficulty]          // or getOption, contains
+```
+
+Type arguments are not part of the class: wrap a `List[Int]` in a class of its own instead of
+storing it directly.
+
+A `GameModule` bundles context values and systems. The built-in `UpdateCapabilitiesModule`
+publishes itself in the context, which is what `Updatable` and `FixedUpdatable` require.
+
+## Scenes and scopes
+
+A scene populates the world. Each loaded scene gets its own scope, and its objects are destroyed
+when another scene loads:
+
+```scala
+object Level1 extends Scene {
+  override def load(context: GameContext)(using Scope): Unit = {
+    context.createObject2D("Camera").attach(new Camera2D(_, Vec2(800f, 600f), priority = 10))
+    // ...
+  }
+
+  override def unload(context: GameContext)(using Scope): Unit = ()
+}
+
+context.runtime.loadScene(GameOver)   // applied after the current frame renders
+```
+
+Creating an object always names its scope. `GameContext` helpers use the current scene's scope.
+`World` methods take a `using Scope` with no default, so a helper called from a scene declares one:
+
+```scala
+def spawnAsteroid(world: World, i: Int)(using Scope): Unit =
+  world.createObject2D(s"Asteroid-$i").attach(...)
+```
+
+Forgetting the `(using Scope)` is a compile error, not an object that silently survives scene
+changes. Outside scenes and systems, pass a scope explicitly or write `import world.given` to use
+the world's global scope, whose objects persist across scenes. Use `world.createScope` and
+`world.destroyScope` for smaller groups.
+
+Find singletons with `world.single[A]` and `world.requireSingle[A]`. Both throw a
+`CompositionError` when the world holds more than one `A`.
+
+## 2D
+
+`spatial2d` adds `Spatial2D` (a local `Transform2D` of position, rotation, and scale, with parent
+and children) and `GameObject2D`. Extensions on `GameObject2D` give direct access to `spatial`,
+`local`, `global`, `parent`, `children`, `setParent`, `clearParent`, `childOf`, `transformPoint`,
+and `destroySubtree`. They are defined in the `Spatial2D` companion, so they need no import.
+`childOf` sets the parent and returns the object, so it fits in a chain:
+
+```scala
+val ship = context.createObject2D("Ship")
+  .attach(new SpriteRenderer(_, SpriteVisual.Triangle((0.9f, 0.9f, 1f, 1f)), 28f, 34f))
+
+context.createObject2D("Thruster", Transform2D(position = Vec2(0f, 20f)))
+  .childOf(ship)
+  .attach(new SpriteRenderer(_, SpriteVisual.Circle((1f, 0.5f, 0.2f, 1f)), 8f, 8f))
+```
+
+`obj.spatial.local` is writable. `obj.global` is computed from the parent chain when it is read, so
+it is never stale and does not depend on system order. For hierarchies with non-uniform scale, use
+`transformPoint`, which keeps affine shear that the decomposed `global` transform cannot represent.
+`destroySubtree()` destroys an object and its descendants, and a destroyed object's children
+become roots.
+
+The parent and child links come from the `Hierarchy` trait, which `Spatial2D` and `Spatial3D` mix
+in. A game can mix it into its own components for any other tree of objects.
+
+Render components:
+
+| Component | Draws |
+| --- | --- |
+| `SpriteRenderer` | `SpriteVisual.Texture`, `Triangle`, or `Circle` at a size and `z` |
+| `Tilemap` | A batch of `TileQuad`s, typically from a Tiled map |
+| `TextOverlay` | Screen-space lines of text with a background |
+| `CircleMaskTransition` | A circular wipe for scene transitions |
+| `Camera2D` | The view. The active camera with the highest `priority` wins. |
+
+Textures are loaded from typed assets through the engine, usually while a scene loads:
+
+```scala
+val texture: Loader[Texture2D] = context.engine.loadDrawableTexture(Assets.drawable.coin)
+texture.foreach { coin =>
+  context.createObject2D("Coin").attach(new SpriteRenderer(_, SpriteVisual.Texture(coin), 32f, 32f))
+}
+```
+
+Drawables packed with [`sgl_texture_atlas`](/docs/assets/#texture-atlases) are drawn from shared
+pages, and consecutive draws on the same page are batched.
+
+## 3D
+
+`spatial3d` has `Spatial3D` (`Transform3D` with a quaternion rotation) and `GameObject3D`, with the
+same extensions as in 2D, where `globalMatrix` replaces `global`.
+`render3d` has `Camera3D`, `Camera3DView`, and `MeshRenderer`. Create meshes, textures, and
+materials through the renderer, and release them when the scene unloads:
+
+```scala
+val renderer = context.engine.renderer
+val sphere = renderer.createMesh(MeshPrimitives.sphere(32, 18))
+val sunMaterial = renderer.createMaterial(renderer.loadTexture2D(Assets.rawImage.sun), emissive = 1f)
+val earthMaterial = renderer.createMaterial(renderer.loadTexture2D(Assets.rawImage.earth), emissive = 0f)
+
+val sun = context.createObject3D("Sun").attach(new MeshRenderer(_, sphere, sunMaterial))
+val earth = context.createObject3D("Earth", Transform3D(position = Vec3(3.2f, 0f, 0f)))
+  .attach(new MeshRenderer(_, sphere, earthMaterial))
+earth.setParent(sun)
+```
+
+`//engines/gameobject/examples/solar-system` is a complete example.

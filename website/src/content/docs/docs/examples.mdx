@@ -1,24 +1,47 @@
 ---
 title: Examples
-description: Browse runnable examples.
+description: Runnable examples for the core APIs, both engines, and every backend.
 ---
 
-Useful examples:
+import { Aside } from '@astrojs/starlight/components';
 
-- `//examples/hello-canvas:desktop-awt` — core Canvas, typed drawables/audio.
-- `//examples/hello-canvas:desktop-lwjgl` — the same Canvas app through the portable OpenGL Canvas renderer.
-- `//examples/hello-canvas:html5` — the Canvas app using the browser 2D context.
-- `//examples/hello-canvas:html5-opengl` — the Canvas app using the portable renderer on WebGL 2.
-- `//examples/hello-scalagl:desktop-lwjgl` — core OpenGL with typed raw images/audio.
-- `//examples/hello-scalagl:html5` — WebGL build of the OpenGL example.
-- `//examples/snake:desktop-awt` — classic screen-style Canvas game.
-- `//engines/screen2d/examples/platformer:desktop-awt` — screen2d plus imported Tiled map assets.
-- `//engines/screen2d/examples/platformer:desktop-native` — native Canvas build of the Tiled platformer.
-- `//engines/gameobject/examples/solar-system:desktop-lwjgl` — GameObject/OpenGL renderer.
-- `//engines/gameobject/examples/asteroids:desktop-lwjgl` — GameObject 2D on OpenGL.
+Every example is a Bazel package with a shared `core` library and one target per backend. Replace
+`desktop-awt` with another target name to run an example on a different platform.
 
-Build all current examples and engines with:
+## Core APIs
+
+| Example | Shows | Targets |
+| --- | --- | --- |
+| `//examples/hello-canvas` | Canvas drawing, typed drawables and audio, animation, pointer input, text boxes | `desktop-awt`, `desktop-lwjgl`, `html5`, `html5-opengl`, `desktop-native` |
+| `//examples/hello-scalagl` | Raw OpenGL: shaders, buffers, textures, orbit camera | `desktop-lwjgl`, `html5`, `desktop-native` |
+| `//examples/snake` | A complete small game with safe-area layout and Android wiring | `desktop-awt`, `desktop-awt-safe-area`, `html5`, `desktop-native`, `android-*` |
+| `//examples/live-config` | Live tuning values in development and none in release | `desktop-dev`, `desktop-release` |
+
+## GameObject engine
+
+| Example | Shows | Targets |
+| --- | --- | --- |
+| `//engines/gameobject/examples/asteroids` | Typed composition, `Updatable`, systems, scenes, `TextOverlay` | `desktop-lwjgl`, `html5`, `desktop-native` |
+| `//examples/hello-atlas` | `sgl_texture_atlas`, sprites and tilemaps from one atlas page | `desktop-lwjgl`, `html5`, `desktop-native` |
+| `//engines/gameobject/examples/solar-system` | 3D: spatial hierarchy, meshes, materials, orbit camera | `desktop-lwjgl`, `html5`, `desktop-native` |
+| `//games/crab-room` | A 3D game with glTF models | `desktop-lwjgl`, `html5`, `desktop-native` |
+| `//engines/gameobject/examples/headless-control` | Driving a game from a test with the headless backend | `headless-control-integration-test` |
+
+## Screen2D engine
+
+| Example | Shows | Targets |
+| --- | --- | --- |
+| `//engines/screen2d/examples/platformer` | Screens with a map imported by `sgl_tiled_import` | `desktop-awt`, `desktop-native` |
+| `//engines/screen2d/examples/board` | `Viewport` scaling and camera movement | `desktop-awt`, `html5` |
+| `//engines/screen2d/examples/menu` | scene2d menus | `desktop-awt`, `html5`, `desktop-native` |
 
 ```bash
-bazel build //examples/... //engines/...
+bazel run //engines/gameobject/examples/asteroids:desktop-lwjgl
+bazel run //engines/gameobject/examples/asteroids:html5    # http://localhost:8080
+bazel build //examples/... //engines/... //games/...
 ```
+
+<Aside type="tip" title="Outside this repository">
+[Scalavator](https://github.com/regb/scalavator) is a complete game in its own Bazel module, with
+desktop, HTML5, and Android targets.
+</Aside>
