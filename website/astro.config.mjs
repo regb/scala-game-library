@@ -4,7 +4,7 @@ import starlight from '@astrojs/starlight';
 const repo = 'https://github.com/regb/scala-game-library';
 
 export default defineConfig({
-  site: 'https://scala-game-library.org',
+  site: 'https://libsgl.com',
   integrations: [
     starlight({
       title: 'SGL',
