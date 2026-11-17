@@ -33,6 +33,25 @@ trait Component {
   private[gameobject] final def notifyDestroyed(): Unit = onDestroy()
 }
 
+/** Mixed into a capability trait whose components only work when something is
+  * present in the world context, typically the module that drives them.
+  *
+  * The requirement is checked when a component with the capability is
+  * attached, so it is stated once on the trait instead of on the key of every
+  * component implementing it. Overrides must add to `super`, since a component
+  * can mix in several capabilities:
+  *
+  * {{{
+  * trait Updatable extends ContextDependent {
+  *   override def contextRequirements: Vector[ContextKey[?]] =
+  *     super.contextRequirements :+ summon[ContextKey[UpdateCapabilitiesModule.type]]
+  * }
+  * }}}
+  */
+trait ContextDependent {
+  def contextRequirements: Vector[ContextKey[?]] = Vector.empty
+}
+
 object Component {
   /** Every component stands for the object that owns it. */
   given HasGameObject[Component] with {
@@ -97,7 +116,7 @@ object HasGameObject {
   * {{{
   * given ComponentKey[Bullet] = ComponentKey[Bullet]("game.Bullet")
   *   .requires[Collider]
-  *   .requiresContext[UpdateCapabilitiesModule.type]
+  *   .requiresContext[Spatial2DModule.type]
   * }}}
   *
   * Declared requirements are meant for dependencies that a system relies on.
@@ -221,7 +240,11 @@ private[gameobject] final class ComponentSet(owner: GameObject, world: World) {
         )
       }
     }
-    key.contextRequirements.foreach { required =>
+    val capabilityContext = component match {
+      case dependent: ContextDependent => dependent.contextRequirements
+      case _ => Vector.empty
+    }
+    (key.contextRequirements ++ capabilityContext).distinct.foreach { required =>
       if(!world.context.contains(required)) {
         throw new CompositionError(
           s"Cannot attach ${key.name} to object ${owner.id.value} (${owner.name}): " +

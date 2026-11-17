@@ -36,15 +36,17 @@ trait AbstractApp extends OpenGLGameObjectApp with DefaultRandomProvider {
 //    Bullet without a Collider does not compile.
 //  - A component stands for its game object: `bullet.destroy()` and
 //    `hud.require[TextOverlay]` work on the component itself.
-//  - What cannot be a constructor parameter is declared on the ComponentKey
-//    and checked at attach time: the modules a component only works with.
+//  - What cannot be a constructor parameter is checked at attach time. A
+//    requirement is declared on the ComponentKey (ScoreHud needs a TextOverlay,
+//    Collider needs Spatial2DModule), or comes with a capability: every
+//    Updatable needs UpdateCapabilitiesModule.
 
-final class Velocity(body: GameObject2D, var value: Vec2) extends Component with Updatable {
-  override val owner: GameObject = body.gameObject
+final class Velocity(obj: GameObject2D, var value: Vec2) extends Component with Updatable {
+  override val owner: GameObject = obj.gameObject
 
   override def update(context: GameContext)(using Scope): Unit = {
     val dt = context.world.context.get[DeltaTime].seconds.toFloat
-    val spatial = body.spatial
+    val spatial = obj.spatial
     val p = spatial.local.position + value * dt
     spatial.local = spatial.local.copy(position = Velocity.wrap(p))
   }
@@ -54,7 +56,6 @@ object Velocity {
   private val HalfHeight = 300f
 
   given ComponentKey[Velocity] = ComponentKey[Velocity]("sgl.examples.gameobject.asteroids.Velocity")
-    .requiresContext[UpdateCapabilitiesModule.type]
 
   def wrap(p: Vec2): Vec2 = {
     val x = if(p.x < -HalfWidth) HalfWidth else if(p.x > HalfWidth) -HalfWidth else p.x
@@ -71,14 +72,13 @@ final class Lifetime(override val owner: GameObject, var seconds: Double) extend
 }
 object Lifetime {
   given ComponentKey[Lifetime] = ComponentKey[Lifetime]("sgl.examples.gameobject.asteroids.Lifetime")
-    .requiresContext[UpdateCapabilitiesModule.type]
 }
 
-final class Collider(private val body: GameObject2D, var radius: Float) extends Component {
-  override val owner: GameObject = body.gameObject
+final class Collider(private val obj: GameObject2D, var radius: Float) extends Component {
+  override val owner: GameObject = obj.gameObject
 
   def overlaps(other: Collider): Boolean = {
-    val d = body.global.position - other.body.global.position
+    val d = obj.global.position - other.obj.global.position
     val reach = radius + other.radius
     d.x * d.x + d.y * d.y <= reach * reach
   }
@@ -89,13 +89,13 @@ object Collider {
     .requiresContext[Spatial2DModule.type]
 }
 
-final class Player(body: GameObject2D, velocity: Velocity, val collider: Collider) extends Component with Updatable {
-  override val owner: GameObject = body.gameObject
+final class Player(obj: GameObject2D, velocity: Velocity, val collider: Collider) extends Component with Updatable {
+  override val owner: GameObject = obj.gameObject
   private var fireCooldown = 0f
 
   override def update(context: GameContext)(using Scope): Unit = {
     val dt = context.world.context.get[DeltaTime].seconds.toFloat
-    val spatial = body.spatial
+    val spatial = obj.spatial
 
     if(Input.isKeyPressed(Input.Keys.Left)) spatial.local = spatial.local.copy(rotation = spatial.local.rotation - 4.5f * dt)
     if(Input.isKeyPressed(Input.Keys.Right)) spatial.local = spatial.local.copy(rotation = spatial.local.rotation + 4.5f * dt)
@@ -114,7 +114,6 @@ final class Player(body: GameObject2D, velocity: Velocity, val collider: Collide
 }
 object Player {
   given ComponentKey[Player] = ComponentKey[Player]("sgl.examples.gameobject.asteroids.Player")
-    .requiresContext[UpdateCapabilitiesModule.type]
 
   def fireBullet(context: GameContext, ship: Spatial2D): Unit = {
     val dir = direction(ship.local.rotation)
@@ -161,7 +160,6 @@ final class ScoreHud(override val owner: GameObject) extends Component with Upda
 object ScoreHud {
   given ComponentKey[ScoreHud] = ComponentKey[ScoreHud]("sgl.examples.gameobject.asteroids.ScoreHud")
     .requires[TextOverlay]
-    .requiresContext[UpdateCapabilitiesModule.type]
 }
 
 object ScoreStartupSystem extends System {

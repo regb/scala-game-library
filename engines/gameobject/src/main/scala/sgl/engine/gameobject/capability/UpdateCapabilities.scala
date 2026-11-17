@@ -1,6 +1,6 @@
 package sgl.engine.gameobject.capability
 
-import sgl.engine.gameobject.{CapabilityKey, Component, ContextKey, Scope}
+import sgl.engine.gameobject.{CapabilityKey, Component, ContextDependent, ContextKey, Scope}
 import sgl.engine.gameobject.runtime.{GameBuilder, GameContext, GameModule}
 import sgl.engine.gameobject.schedule.{Stage, System, SystemId}
 
@@ -9,9 +9,15 @@ import sgl.engine.gameobject.schedule.{Stage, System, SystemId}
   * Generic mechanics should still prefer centralized systems over per-component
   * callbacks. This capability exists for behavior that is genuinely local to one
   * object, and only components implementing it enter the index.
+  *
+  * Attaching such a component requires [[UpdateCapabilitiesModule]], without
+  * which `update` would never be called.
   */
-trait Updatable {
+trait Updatable extends ContextDependent {
   def update(context: GameContext)(using Scope): Unit
+
+  override def contextRequirements: Vector[ContextKey[?]] =
+    super.contextRequirements :+ summon[ContextKey[UpdateCapabilitiesModule.type]]
 }
 
 object Updatable {
@@ -34,8 +40,12 @@ object UpdateComponentsSystem extends System {
     }
 }
 
-trait FixedUpdatable {
+/** Fixed-step counterpart of [[Updatable]], with the same module requirement. */
+trait FixedUpdatable extends ContextDependent {
   def fixedUpdate(context: GameContext)(using Scope): Unit
+
+  override def contextRequirements: Vector[ContextKey[?]] =
+    super.contextRequirements :+ summon[ContextKey[UpdateCapabilitiesModule.type]]
 }
 
 object FixedUpdatable {
@@ -59,8 +69,7 @@ object FixedUpdateComponentsSystem extends System {
 }
 
 /** Drives [[Updatable]] and [[FixedUpdatable]] components. The module publishes
-  * itself in the world context, so components relying on these callbacks can
-  * declare `requiresContext[UpdateCapabilitiesModule.type]`.
+  * itself in the world context, which is what those capabilities require.
   */
 object UpdateCapabilitiesModule extends GameModule {
   given ContextKey[UpdateCapabilitiesModule.type] =

@@ -3,7 +3,7 @@ package sgl.engine.gameobject
 import org.scalatest.funsuite.AnyFunSuite
 
 import sgl.assets.{DrawableAsset, RawImageAsset}
-import sgl.engine.gameobject.capability.UpdateCapabilitiesModule
+import sgl.engine.gameobject.capability.{FixedUpdatable, Updatable, UpdateCapabilitiesModule}
 import sgl.engine.gameobject.render2d.{SpriteRenderer, SpriteVisual}
 import sgl.engine.gameobject.render3d.{AssetId, MaterialAsset, MeshAsset, MeshData, Renderer, TextureAsset}
 import sgl.engine.gameobject.runtime.{Engine, GameBuilder, GameContext, Scene}
@@ -28,15 +28,27 @@ class GameObjectSuite extends AnyFunSuite {
     given ComponentKey[NeedsSprite] = ComponentKey[NeedsSprite]("test.NeedsSprite").requires[SpriteRenderer]
   }
 
-  final class NeedsUpdates(override val owner: GameObject) extends Component
-  object NeedsUpdates {
-    given ComponentKey[NeedsUpdates] =
-      ComponentKey[NeedsUpdates]("test.NeedsUpdates").requiresContext[UpdateCapabilitiesModule.type]
+  final case class Gravity(value: Float)
+  object Gravity {
+    given ContextKey[Gravity] = ContextKey[Gravity]("test.Gravity")
   }
 
-  final class Follows2D(body: GameObject2D) extends Component {
-    override val owner: GameObject = body.gameObject
-    def position: Vec2 = body.spatial.local.position
+  final class Falls(override val owner: GameObject) extends Component
+  object Falls {
+    given ComponentKey[Falls] = ComponentKey[Falls]("test.Falls").requiresContext[Gravity]
+  }
+
+  final class Ticks(override val owner: GameObject) extends Component with Updatable with FixedUpdatable {
+    override def update(context: GameContext)(using Scope): Unit = ()
+    override def fixedUpdate(context: GameContext)(using Scope): Unit = ()
+  }
+  object Ticks {
+    given ComponentKey[Ticks] = ComponentKey[Ticks]("test.Ticks")
+  }
+
+  final class Follows2D(obj: GameObject2D) extends Component {
+    override val owner: GameObject = obj.gameObject
+    def position: Vec2 = obj.spatial.local.position
   }
   object Follows2D {
     given ComponentKey[Follows2D] = ComponentKey[Follows2D]("test.Follows2D")
@@ -76,17 +88,29 @@ class GameObjectSuite extends AnyFunSuite {
     spatial.attach(new NeedsSprite(_))
   }
 
-  test("a component is rejected when the module it requires is not installed") {
+  test("a component is rejected when a context value its key requires is missing") {
+    val world = new World
+    val error = intercept[CompositionError] {
+      world.createObject("object").attach(new Falls(_))
+    }
+    assert(error.getMessage.contains("test.Gravity"))
+
+    world.context.set(Gravity(9.81f))
+    world.createObject("object").attach(new Falls(_))
+  }
+
+  test("a capability brings its module requirement to every component implementing it") {
     val bare = new GameBuilder().build(new TestEngine(new RecordingRenderer))
     val error = intercept[CompositionError] {
-      bare.world.createObject("object").attach(new NeedsUpdates(_))
+      bare.world.createObject("object").attach(new Ticks(_))
     }
+    assert(error.getMessage.contains("test.Ticks"))
     assert(error.getMessage.contains("UpdateCapabilitiesModule"))
 
     val configured = new GameBuilder()
       .install(UpdateCapabilitiesModule)
       .build(new TestEngine(new RecordingRenderer))
-    configured.world.createObject("object").attach(new NeedsUpdates(_))
+    configured.world.createObject("object").attach(new Ticks(_))
   }
 
   test("attach2D hands the spatial owner to the component") {
