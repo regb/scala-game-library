@@ -196,10 +196,11 @@ object CollisionSystem extends System {
   private var nextAsteroidId = 1000
 
   override def run(context: GameContext)(using Scope): Unit = {
-    val bullets = context.world.index[Bullet].toVector
-    val asteroids = context.world.index[Asteroid].toVector
-    bullets.foreach { bullet =>
-      asteroids.find(asteroid => bullet.collider.overlaps(asteroid.collider)).foreach { asteroid =>
+    // An asteroid hit by one bullet is gone for the bullets that follow: each
+    // lookup goes through the index, which never returns a destroyed object.
+    val asteroids = context.world.index[Asteroid]
+    context.world.index[Bullet].foreach { bullet =>
+      asteroids.iterator.find(asteroid => bullet.collider.overlaps(asteroid.collider)).foreach { asteroid =>
         bullet.destroy()
         asteroid.destroy()
         val score = context.world.requireSingle[ScoreState]
@@ -211,7 +212,7 @@ object CollisionSystem extends System {
     }
 
     val lost = context.world.index[Player].toVector.exists { player =>
-      asteroids.exists(asteroid => player.collider.overlaps(asteroid.collider))
+      asteroids.iterator.exists(asteroid => player.collider.overlaps(asteroid.collider))
     }
 
     if(lost) {

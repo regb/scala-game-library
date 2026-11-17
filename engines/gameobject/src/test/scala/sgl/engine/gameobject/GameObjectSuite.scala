@@ -47,6 +47,27 @@ class GameObjectSuite extends AnyFunSuite {
     assert(missing.getMessage.contains("Other"))
   }
 
+  test("an index traversal skips objects destroyed along the way and defers new ones") {
+    val world = new World
+    val markers = (0 until 4).map(i => world.createObject("object-" + i).attach(new Marker(_)))
+    val index = world.index[Marker]
+
+    val visited = scala.collection.mutable.ArrayBuffer.empty[String]
+    index.foreach { marker =>
+      visited += marker.owner.name
+      if(marker eq markers(0)) {
+        markers(2).destroy()
+        world.createObject("late").attach(new Marker(_))
+      }
+    }
+    assert(visited.toVector === Vector("object-0", "object-1", "object-3"))
+    assert(index.toVector.map(_.owner.name) === Vector("object-0", "object-1", "object-3", "late"))
+
+    val pending = index.iterator
+    markers(0).destroy()
+    assert(pending.map(_.owner.name).toVector === Vector("object-1", "object-3", "late"))
+  }
+
   test("a component must be attached under its own concrete class") {
     val world = new World
     val obj = world.createObject("object")

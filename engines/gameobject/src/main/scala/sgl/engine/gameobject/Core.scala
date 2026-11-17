@@ -119,7 +119,14 @@ object CapabilityKey {
     new CapabilityKey[A](name, select)
 }
 
-/** A dense, iteration-friendly index of components or component capabilities. */
+/** A dense, iteration-friendly index of components or component capabilities.
+  *
+  * Objects can be created and destroyed while an index is being traversed.
+  * `foreach` and `iterator` never hand out a component whose object has been
+  * destroyed, including one destroyed earlier in the same traversal; components
+  * attached during a traversal are seen by the next one. `toVector` is a plain
+  * snapshot: code holding on to it checks `isAlive` itself.
+  */
 final class ComponentIndex[A] private[gameobject] () {
   private final case class Entry(source: Component, value: A)
   private val entries = mutable.ArrayBuffer.empty[Entry]
@@ -130,8 +137,8 @@ final class ComponentIndex[A] private[gameobject] () {
     if(index >= 0) entries.remove(index)
   }
 
-  def foreach(f: A => Unit): Unit = entries.toVector.foreach(entry => f(entry.value))
-  def iterator: Iterator[A] = entries.toVector.iterator.map(_.value)
+  def foreach(f: A => Unit): Unit = iterator.foreach(f)
+  def iterator: Iterator[A] = entries.toVector.iterator.filter(_.source.owner.isAlive).map(_.value)
   def toVector: Vector[A] = entries.toVector.map(_.value)
   def size: Int = entries.size
 }

@@ -31,13 +31,7 @@ object UpdateComponentsSystem extends System {
   override val id: SystemId = SystemId("sgl.engine.gameobject.capability.update")
 
   override def run(context: GameContext)(using Scope): Unit =
-    context.world.capabilityIndex[Updatable].toVector.foreach { component =>
-      component match {
-        case owned: Component if owned.owner.isAlive => component.update(context)
-        case _: Component => ()
-        case _ => component.update(context)
-      }
-    }
+    context.world.capabilityIndex[Updatable].foreach(_.update(context))
 }
 
 /** Fixed-step counterpart of [[Updatable]], with the same module requirement. */
@@ -59,13 +53,7 @@ object FixedUpdateComponentsSystem extends System {
   override val id: SystemId = SystemId("sgl.engine.gameobject.capability.fixed-update")
 
   override def run(context: GameContext)(using Scope): Unit =
-    context.world.capabilityIndex[FixedUpdatable].toVector.foreach { component =>
-      component match {
-        case owned: Component if owned.owner.isAlive => component.fixedUpdate(context)
-        case _: Component => ()
-        case _ => component.fixedUpdate(context)
-      }
-    }
+    context.world.capabilityIndex[FixedUpdatable].foreach(_.fixedUpdate(context))
 }
 
 /** Drives [[Updatable]] and [[FixedUpdatable]] components. The module publishes
