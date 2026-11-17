@@ -26,13 +26,27 @@ trait AbstractApp extends OpenGLGameObjectApp with DefaultRandomProvider {
   }
 }
 
-final class Velocity(override val owner: GameObject, var value: Vec2) extends Component with Updatable {
+// How this example expresses what its objects are made of:
+//
+//  - A component that uses its owner's spatial takes a GameObject2D and is
+//    attached with attach2D: it cannot be built for a non-spatial object.
+//  - Bullet, Asteroid, and Player are the domain objects that systems iterate
+//    over. They take the components they are made of as constructor
+//    parameters, so a system reads `bullet.collider` with no lookup, and a
+//    Bullet without a Collider does not compile.
+//  - A component stands for its game object: `bullet.destroy()` and
+//    `hud.require[TextOverlay]` work on the component itself.
+//  - What cannot be a constructor parameter is declared on the ComponentKey
+//    and checked at attach time: the modules a component only works with.
+
+final class Velocity(body: GameObject2D, var value: Vec2) extends Component with Updatable {
+  override val owner: GameObject = body.gameObject
+
   override def update(context: GameContext)(using Scope): Unit = {
     val dt = context.world.context.get[DeltaTime].seconds.toFloat
-    owner.component[Spatial2D].foreach { spatial =>
-      val p = spatial.local.position + value * dt
-      spatial.local = spatial.local.copy(position = Velocity.wrap(p))
-    }
+    val spatial = body.spatial
+    val p = spatial.local.position + value * dt
+    spatial.local = spatial.local.copy(position = Velocity.wrap(p))
   }
 }
 object Velocity {
@@ -40,6 +54,7 @@ object Velocity {
   private val HalfHeight = 300f
 
   given ComponentKey[Velocity] = ComponentKey[Velocity]("sgl.examples.gameobject.asteroids.Velocity")
+    .requiresContext[UpdateCapabilitiesModule.type]
 
   def wrap(p: Vec2): Vec2 = {
     val x = if(p.x < -HalfWidth) HalfWidth else if(p.x > HalfWidth) -HalfWidth else p.x
@@ -51,25 +66,36 @@ object Velocity {
 final class Lifetime(override val owner: GameObject, var seconds: Double) extends Component with Updatable {
   override def update(context: GameContext)(using Scope): Unit = {
     seconds -= context.world.context.get[DeltaTime].seconds
-    if(seconds <= 0.0) context.world.destroy(owner)
+    if(seconds <= 0.0) this.destroy()
   }
 }
 object Lifetime {
   given ComponentKey[Lifetime] = ComponentKey[Lifetime]("sgl.examples.gameobject.asteroids.Lifetime")
+    .requiresContext[UpdateCapabilitiesModule.type]
 }
 
-final class Collider(override val owner: GameObject, var radius: Float) extends Component
+final class Collider(private val body: GameObject2D, var radius: Float) extends Component {
+  override val owner: GameObject = body.gameObject
+
+  def overlaps(other: Collider): Boolean = {
+    val d = body.global.position - other.body.global.position
+    val reach = radius + other.radius
+    d.x * d.x + d.y * d.y <= reach * reach
+  }
+}
 object Collider {
+  // Overlap tests read global transforms, which only Spatial2DModule refreshes.
   given ComponentKey[Collider] = ComponentKey[Collider]("sgl.examples.gameobject.asteroids.Collider")
+    .requiresContext[Spatial2DModule.type]
 }
 
-final class Player(override val owner: GameObject) extends Component with Updatable {
+final class Player(body: GameObject2D, velocity: Velocity, val collider: Collider) extends Component with Updatable {
+  override val owner: GameObject = body.gameObject
   private var fireCooldown = 0f
 
   override def update(context: GameContext)(using Scope): Unit = {
     val dt = context.world.context.get[DeltaTime].seconds.toFloat
-    val spatial = owner.require[Spatial2D]
-    val velocity = owner.require[Velocity]
+    val spatial = body.spatial
 
     if(Input.isKeyPressed(Input.Keys.Left)) spatial.local = spatial.local.copy(rotation = spatial.local.rotation - 4.5f * dt)
     if(Input.isKeyPressed(Input.Keys.Right)) spatial.local = spatial.local.copy(rotation = spatial.local.rotation + 4.5f * dt)
@@ -88,15 +114,16 @@ final class Player(override val owner: GameObject) extends Component with Updata
 }
 object Player {
   given ComponentKey[Player] = ComponentKey[Player]("sgl.examples.gameobject.asteroids.Player")
+    .requiresContext[UpdateCapabilitiesModule.type]
 
   def fireBullet(context: GameContext, ship: Spatial2D): Unit = {
     val dir = direction(ship.local.rotation)
     val pos = ship.local.position + dir * 24f
     context.gameObject2D("Bullet", Transform2D(position = pos, rotation = ship.local.rotation)) { bullet =>
-      bullet.attach(new Bullet(_))
-      bullet.attach(new Velocity(_, dir * 420f))
+      val collider = bullet.attach2D(new Collider(_, 4f))
+      bullet.attach(new Bullet(_, collider))
+      bullet.attach2D(new Velocity(_, dir * 420f))
       bullet.attach(new Lifetime(_, 1.2))
-      bullet.attach(new Collider(_, 4f))
       bullet.attach(new SpriteRenderer(_, SpriteVisual.Circle((1f, 0.92f, 0.47f, 1f), segments = 10), 7f, 7f))
     }
   }
@@ -104,12 +131,12 @@ object Player {
   def direction(rotation: Float): Vec2 = Vec2(scala.math.sin(rotation).toFloat, -scala.math.cos(rotation).toFloat)
 }
 
-final class Asteroid(override val owner: GameObject) extends Component
+final class Asteroid(override val owner: GameObject, val collider: Collider) extends Component
 object Asteroid {
   given ComponentKey[Asteroid] = ComponentKey[Asteroid]("sgl.examples.gameobject.asteroids.Asteroid")
 }
 
-final class Bullet(override val owner: GameObject) extends Component
+final class Bullet(override val owner: GameObject, val collider: Collider) extends Component
 object Bullet {
   given ComponentKey[Bullet] = ComponentKey[Bullet]("sgl.examples.gameobject.asteroids.Bullet")
 }
@@ -127,12 +154,14 @@ object ScoreState {
 final class ScoreHud(override val owner: GameObject) extends Component with Updatable {
   override def update(context: GameContext)(using Scope): Unit = {
     val score = context.world.requireSingle[ScoreState]
-    val overlay = owner.require[TextOverlay]
+    val overlay = this.require[TextOverlay]
     overlay.lines = Vector(s"Score ${score.score}", s"High ${score.highScore}")
   }
 }
 object ScoreHud {
   given ComponentKey[ScoreHud] = ComponentKey[ScoreHud]("sgl.examples.gameobject.asteroids.ScoreHud")
+    .requires[TextOverlay]
+    .requiresContext[UpdateCapabilitiesModule.type]
 }
 
 object ScoreStartupSystem extends System {
@@ -143,8 +172,8 @@ object ScoreStartupSystem extends System {
       score.attach(new ScoreState(_))
     }
     context.gameObject("ScoreHud") { hud =>
-      hud.attach(new ScoreHud(_))
       hud.attach(new TextOverlay(_, Vector.empty, x = 18f, y = 18f, scale = 3f))
+      hud.attach(new ScoreHud(_))
     }
   }
 }
@@ -156,9 +185,9 @@ object AsteroidsScene extends Scene {
     }
 
     context.gameObject2D("Ship", Transform2D(position = Vec2(0f, 0f))) { ship =>
-      ship.attach(new Player(_))
-      ship.attach(new Velocity(_, Vec2(0f, 0f)))
-      ship.attach(new Collider(_, 14f))
+      val velocity = ship.attach2D(new Velocity(_, Vec2(0f, 0f)))
+      val collider = ship.attach2D(new Collider(_, 14f))
+      ship.attach2D(new Player(_, velocity, collider))
       ship.attach(new SpriteRenderer(_, SpriteVisual.Triangle((0.86f, 0.94f, 1f, 1f)), 28f, 34f))
     }
 
@@ -178,9 +207,9 @@ object AsteroidSpawner {
     val size = 34f + rng.nextFloat().toFloat * 28f
 
     world.gameObject2D(s"Asteroid-$i", Transform2D(position = pos)) { asteroid =>
-      asteroid.attach(new Asteroid(_))
-      asteroid.attach(new Velocity(_, vel))
-      asteroid.attach(new Collider(_, size / 2f))
+      val collider = asteroid.attach2D(new Collider(_, size / 2f))
+      asteroid.attach(new Asteroid(_, collider))
+      asteroid.attach2D(new Velocity(_, vel))
       asteroid.attach(new SpriteRenderer(_, SpriteVisual.Circle((0.60f, 0.60f, 0.60f, 1f)), size, size))
     }
   }
@@ -194,18 +223,9 @@ object CollisionSystem extends System {
     val bullets = context.world.index[Bullet].toVector
     val asteroids = context.world.index[Asteroid].toVector
     bullets.foreach { bullet =>
-      var consumed = false
-      for {
-        bulletSpatial <- bullet.owner.component[Spatial2D] if !consumed
-        bulletCollider <- bullet.owner.component[Collider]
-        asteroid <- asteroids if !consumed
-        asteroidSpatial <- asteroid.owner.component[Spatial2D]
-        asteroidCollider <- asteroid.owner.component[Collider]
-        if overlaps(bulletSpatial.global.position, bulletCollider.radius, asteroidSpatial.global.position, asteroidCollider.radius)
-      } {
-        consumed = true
-        context.world.destroy(bullet.owner)
-        context.world.destroy(asteroid.owner)
+      asteroids.find(asteroid => bullet.collider.overlaps(asteroid.collider)).foreach { asteroid =>
+        bullet.destroy()
+        asteroid.destroy()
         val score = context.world.requireSingle[ScoreState]
         score.score += 100
         score.highScore = score.highScore max score.score
@@ -215,15 +235,7 @@ object CollisionSystem extends System {
     }
 
     val lost = context.world.index[Player].toVector.exists { player =>
-      (for {
-        playerSpatial <- player.owner.component[Spatial2D]
-        playerCollider <- player.owner.component[Collider]
-      } yield asteroids.exists { asteroid =>
-        (for {
-          asteroidSpatial <- asteroid.owner.component[Spatial2D]
-          asteroidCollider <- asteroid.owner.component[Collider]
-        } yield overlaps(playerSpatial.global.position, playerCollider.radius, asteroidSpatial.global.position, asteroidCollider.radius)).getOrElse(false)
-      }).getOrElse(false)
+      asteroids.exists(asteroid => player.collider.overlaps(asteroid.collider))
     }
 
     if(lost) {
@@ -232,10 +244,5 @@ object CollisionSystem extends System {
       score.score = 0
       context.runtime.loadScene(AsteroidsScene)
     }
-  }
-
-  private def overlaps(a: Vec2, ar: Float, b: Vec2, br: Float): Boolean = {
-    val d = a - b
-    d.x * d.x + d.y * d.y <= (ar + br) * (ar + br)
   }
 }

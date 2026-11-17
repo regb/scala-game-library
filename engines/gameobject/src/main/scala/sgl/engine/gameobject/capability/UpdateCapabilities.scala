@@ -1,6 +1,6 @@
 package sgl.engine.gameobject.capability
 
-import sgl.engine.gameobject.{CapabilityKey, Component, Scope}
+import sgl.engine.gameobject.{CapabilityKey, Component, ContextKey, Scope}
 import sgl.engine.gameobject.runtime.{GameBuilder, GameContext, GameModule}
 import sgl.engine.gameobject.schedule.{Stage, System, SystemId}
 
@@ -58,9 +58,17 @@ object FixedUpdateComponentsSystem extends System {
     }
 }
 
+/** Drives [[Updatable]] and [[FixedUpdatable]] components. The module publishes
+  * itself in the world context, so components relying on these callbacks can
+  * declare `requiresContext[UpdateCapabilitiesModule.type]`.
+  */
 object UpdateCapabilitiesModule extends GameModule {
+  given ContextKey[UpdateCapabilitiesModule.type] =
+    ContextKey[UpdateCapabilitiesModule.type]("sgl.engine.gameobject.capability.UpdateCapabilitiesModule")
+
   override def install(builder: GameBuilder): Unit = {
     builder
+      .setContext[UpdateCapabilitiesModule.type](this)
       .addSystem(Stage.Update, UpdateComponentsSystem)
       .addSystem(Stage.FixedUpdate, FixedUpdateComponentsSystem)
   }

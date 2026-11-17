@@ -7,6 +7,7 @@ import org.scalatest.funsuite.AnyFunSuite
 import sgl.{OpenGLProvider, PartsResourcePathProvider, SystemProvider, WindowProvider}
 import sgl.assets.{AssetFactory, BinaryAsset, DrawableAsset, TextAsset, TextureFilter}
 import sgl.engine.gameobject.opengl.OpenGLRenderer
+import sgl.engine.gameobject.spatial2d._
 import sgl.engine.gameobject.render2d.{SpriteRenderer, SpriteVisual, Texture2D, TileQuad, Tilemap}
 import sgl.util.{DefaultLoader, Loader}
 

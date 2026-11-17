@@ -3,9 +3,12 @@ package sgl.engine.gameobject
 import org.scalatest.funsuite.AnyFunSuite
 
 import sgl.assets.{DrawableAsset, RawImageAsset}
+import sgl.engine.gameobject.capability.UpdateCapabilitiesModule
+import sgl.engine.gameobject.render2d.{SpriteRenderer, SpriteVisual}
 import sgl.engine.gameobject.render3d.{AssetId, MaterialAsset, MeshAsset, MeshData, Renderer, TextureAsset}
 import sgl.engine.gameobject.runtime.{Engine, GameBuilder, GameContext, Scene}
 import sgl.engine.gameobject.schedule.{Schedule, Stage, System}
+import sgl.engine.gameobject.spatial2d._
 import sgl.math.Vec2
 
 class GameObjectSuite extends AnyFunSuite {
@@ -13,6 +16,160 @@ class GameObjectSuite extends AnyFunSuite {
   final class Marker(override val owner: GameObject) extends Component
   object Marker {
     given ComponentKey[Marker] = ComponentKey[Marker]("test.Marker")
+  }
+
+  final class NeedsMarker(override val owner: GameObject) extends Component
+  object NeedsMarker {
+    given ComponentKey[NeedsMarker] = ComponentKey[NeedsMarker]("test.NeedsMarker").requires[Marker]
+  }
+
+  final class NeedsSprite(override val owner: GameObject) extends Component
+  object NeedsSprite {
+    given ComponentKey[NeedsSprite] = ComponentKey[NeedsSprite]("test.NeedsSprite").requires[SpriteRenderer]
+  }
+
+  final class NeedsUpdates(override val owner: GameObject) extends Component
+  object NeedsUpdates {
+    given ComponentKey[NeedsUpdates] =
+      ComponentKey[NeedsUpdates]("test.NeedsUpdates").requiresContext[UpdateCapabilitiesModule.type]
+  }
+
+  final class Follows2D(body: GameObject2D) extends Component {
+    override val owner: GameObject = body.gameObject
+    def position: Vec2 = body.spatial.local.position
+  }
+  object Follows2D {
+    given ComponentKey[Follows2D] = ComponentKey[Follows2D]("test.Follows2D")
+  }
+
+  test("a component is rejected until the components it requires are attached") {
+    val world = new World
+    val obj = world.createObject("object")
+
+    val error = intercept[CompositionError] {
+      obj.attach(new NeedsMarker(_))
+    }
+    assert(error.getMessage.contains("test.NeedsMarker"))
+    assert(error.getMessage.contains("requires test.Marker"))
+    assert(obj.component[NeedsMarker].isEmpty)
+    assert(world.index[NeedsMarker].size === 0)
+
+    obj.attach(new Marker(_))
+    val attached = obj.attach(new NeedsMarker(_))
+    assert(obj.component[NeedsMarker] === Some(attached))
+  }
+
+  test("component requirements are transitive through attach order") {
+    val world = new World
+    val sprite = SpriteVisual.Triangle((1f, 1f, 1f, 1f))
+
+    val plain = world.createObject("plain")
+    intercept[CompositionError] {
+      plain.attach(new SpriteRenderer(_, sprite, 1f, 1f))
+    }
+    intercept[CompositionError] {
+      plain.attach(new NeedsSprite(_))
+    }
+
+    val spatial = world.createObject2D("spatial")
+    spatial.attach(new SpriteRenderer(_, sprite, 1f, 1f))
+    spatial.attach(new NeedsSprite(_))
+  }
+
+  test("a component is rejected when the module it requires is not installed") {
+    val bare = new GameBuilder().build(new TestEngine(new RecordingRenderer))
+    val error = intercept[CompositionError] {
+      bare.world.createObject("object").attach(new NeedsUpdates(_))
+    }
+    assert(error.getMessage.contains("UpdateCapabilitiesModule"))
+
+    val configured = new GameBuilder()
+      .install(UpdateCapabilitiesModule)
+      .build(new TestEngine(new RecordingRenderer))
+    configured.world.createObject("object").attach(new NeedsUpdates(_))
+  }
+
+  test("attach2D hands the spatial owner to the component") {
+    val world = new World
+    val obj = world.createObject2D("object", Transform2D(position = Vec2(3f, 4f)))
+
+    val follower = obj.attach2D(new Follows2D(_))
+
+    assert(follower.owner eq obj.gameObject)
+    assert(follower.position === Vec2(3f, 4f))
+    assert(obj.component[Follows2D] === Some(follower))
+  }
+
+  final class Registered(override val owner: GameObject, log: scala.collection.mutable.Buffer[String]) extends Component {
+    override protected def onDestroy(): Unit = {
+      val sibling = owner.component[Marker].isDefined
+      val indexed = owner.world.index[Registered].size
+      log += s"${owner.name} sibling=$sibling indexed=$indexed"
+    }
+  }
+  object Registered {
+    given ComponentKey[Registered] = ComponentKey[Registered]("test.Registered")
+  }
+
+  test("onDestroy runs once, while the component and its siblings are still attached") {
+    val world = new World
+    val log = scala.collection.mutable.ArrayBuffer.empty[String]
+    val obj = world.createObject("object")
+    obj.attach(new Marker(_))
+    obj.attach(new Registered(_, log))
+
+    world.destroy(obj)
+    world.destroy(obj)
+
+    assert(log.toVector === Vector("object sibling=true indexed=1"))
+    assert(world.index[Registered].size === 0)
+  }
+
+  test("a destroyed spatial leaves its hierarchy and destroySubtree removes descendants") {
+    val world = new World
+    val root = world.createObject2D("root")
+    val middle = world.createObject2D("middle")
+    val leaf = world.createObject2D("leaf")
+    middle.setParent(root)
+    leaf.setParent(middle)
+
+    middle.destroy()
+    assert(!middle.isAlive)
+    assert(root.children.isEmpty)
+    assert(leaf.parent.isEmpty)
+
+    leaf.setParent(root)
+    root.destroySubtree()
+    assert(world.objects.isEmpty)
+  }
+
+  final class Crate(val obj: GameObject2D, val marker: Marker)
+  object Crate {
+    given HasGameObject[Crate] with {
+      def gameObjectOf(crate: Crate): GameObject = crate.obj.gameObject
+    }
+  }
+
+  test("components, wrappers, and game classes can be used as their game object") {
+    val world = new World
+    val obj = world.createObject2D("crate")
+    val marker = obj.attach(new Marker(_))
+    val crate = new Crate(obj, marker)
+
+    assert(marker.require[Spatial2D] eq obj.spatial)
+    assert(obj.component[Marker] === Some(marker))
+    assert(crate.require[Marker] eq marker)
+    assert(HasGameObject.sameObject(crate, marker))
+    assert(HasGameObject.sameObject(obj, obj.gameObject))
+    assert(!HasGameObject.sameObject(crate, world.createObject("other")))
+
+    val needsMarker = crate.attach(new NeedsMarker(_))
+    assert(marker.component[NeedsMarker] === Some(needsMarker))
+
+    assert(crate.isAlive)
+    marker.destroy()
+    assert(!crate.isAlive && !obj.isAlive && !obj.gameObject.isAlive)
+    assert(world.objects.map(_.name) === Vector("other"))
   }
 
   test("Transform2D composes parent rotation and scale") {

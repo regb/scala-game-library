@@ -1,6 +1,6 @@
 package sgl.engine.gameobject.spatial3d
 
-import sgl.engine.gameobject.{Scope, Spatial3D}
+import sgl.engine.gameobject.Scope
 import sgl.math.Mat4
 import sgl.engine.gameobject.runtime.{GameBuilder, GameContext, GameModule}
 import sgl.engine.gameobject.schedule.{Stage, System, SystemId}

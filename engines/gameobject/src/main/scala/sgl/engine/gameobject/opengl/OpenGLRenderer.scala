@@ -4,7 +4,10 @@ import scala.collection.mutable
 import scala.util.{Failure, Success}
 
 import sgl.{OpenGLProvider, SystemProvider, WindowProvider}
-import sgl.engine.gameobject.{ClearColor, Spatial2D, Spatial3D, World}
+import sgl.engine.gameobject.World
+import sgl.engine.gameobject.runtime.ClearColor
+import sgl.engine.gameobject.spatial2d.Spatial2D
+import sgl.engine.gameobject.spatial3d.Spatial3D
 import sgl.assets.{DrawableAsset, RawImageAsset, TextureFilter}
 import sgl.engine.gameobject.render2d.{Camera2D, CircleMaskTransition, SpriteRenderer, SpriteVisual, TextOverlay, Texture2D, TextureSource, TileQuad, Tilemap}
 import sgl.engine.gameobject.render3d._
@@ -237,14 +240,14 @@ final class OpenGLRenderer(
 
     val batch = new Batch2D
     sealed trait Item { def z: Float; def draw(): Unit }
-    final case class SpriteItem(sprite: SpriteRenderer, spatial: sgl.engine.gameobject.Spatial2D) extends Item {
+    final case class SpriteItem(sprite: SpriteRenderer, spatial: Spatial2D) extends Item {
       def z: Float = sprite.z
       def draw(): Unit = {
         val resolved = textureForSprite(sprite)
         batch.add(resolved.map(_.texture), spriteVertices(sprite, spatial, cameraPosition, viewport, resolved.map(_.view)))
       }
     }
-    final case class TilemapItem(tilemap: Tilemap, spatial: sgl.engine.gameobject.Spatial2D) extends Item {
+    final case class TilemapItem(tilemap: Tilemap, spatial: Spatial2D) extends Item {
       def z: Float = tilemap.z
       def draw(): Unit = {
         // Keep painter order, including overlapping translucent quads. Batch2D

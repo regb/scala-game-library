@@ -1,6 +1,7 @@
 package sgl.engine.gameobject.render2d
 
 import sgl.engine.gameobject.{Component, ComponentKey}
+import sgl.engine.gameobject.spatial2d.Spatial2D
 import sgl.assets.{DrawableAsset, RawImageAsset}
 
 sealed trait TextureSource
@@ -46,7 +47,7 @@ final class SpriteRenderer(
 ) extends Component
 
 object SpriteRenderer {
-  given ComponentKey[SpriteRenderer] = ComponentKey[SpriteRenderer]("sgl.engine.gameobject.render2d.SpriteRenderer")
+  given ComponentKey[SpriteRenderer] = ComponentKey[SpriteRenderer]("sgl.engine.gameobject.render2d.SpriteRenderer").requires[Spatial2D]
 }
 
 final case class TileQuad(
@@ -69,7 +70,7 @@ final class Tilemap(
 ) extends Component
 
 object Tilemap {
-  given ComponentKey[Tilemap] = ComponentKey[Tilemap]("sgl.engine.gameobject.render2d.Tilemap")
+  given ComponentKey[Tilemap] = ComponentKey[Tilemap]("sgl.engine.gameobject.render2d.Tilemap").requires[Spatial2D]
 }
 
 final class TextOverlay(

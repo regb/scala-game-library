@@ -1,6 +1,7 @@
 package sgl.tiled.gameobject
 
-import _root_.sgl.engine.gameobject.{GameObject, Scope, Transform2D, World}
+import _root_.sgl.engine.gameobject.{GameObject, Scope, World}
+import _root_.sgl.engine.gameobject.spatial2d._
 import _root_.sgl.assets.DrawableAsset
 import _root_.sgl.engine.gameobject.render2d.{SpriteRenderer, SpriteVisual, Texture2D, Tilemap, TileQuad}
 import _root_.sgl.math.Vec2

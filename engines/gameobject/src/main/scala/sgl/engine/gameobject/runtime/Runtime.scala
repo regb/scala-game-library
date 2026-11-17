@@ -3,13 +3,19 @@ package sgl.engine.gameobject.runtime
 import scala.collection.mutable
 
 import sgl.{Application, OpenGLProvider, SystemProvider, WindowProvider}
-import sgl.engine.gameobject.{ClearColor, ContextKey, Scope, World}
+import sgl.engine.gameobject.{ContextKey, Scope, World}
 import sgl.assets.{AssetRuntime, DrawableAsset, RawImageAsset}
 import sgl.engine.gameobject.render2d.Texture2D
 import sgl.engine.gameobject.opengl.OpenGLEngine
 import sgl.engine.gameobject.render3d.{MaterialAsset, MeshAsset, Renderer, TextureAsset}
 import sgl.engine.gameobject.schedule.{Schedule, Stage, System}
 import sgl.util.{Loader, LoggingProvider}
+
+/** Color the renderer clears the frame with. */
+final case class ClearColor(red: Float, green: Float, blue: Float, alpha: Float)
+object ClearColor {
+  given ContextKey[ClearColor] = ContextKey[ClearColor]("sgl.engine.gameobject.runtime.ClearColor")
+}
 
 final case class DeltaTime(seconds: Double)
 object DeltaTime {
@@ -50,20 +56,8 @@ final class GameContext(
   def createObject(name: String): sgl.engine.gameobject.GameObject =
     world.createObject(name)(using scope)
 
-  def createObject2D(name: String, transform: sgl.engine.gameobject.Transform2D = sgl.engine.gameobject.Transform2D.Identity): sgl.engine.gameobject.GameObject2D =
-    world.createObject2D(name, transform)(using scope)
-
-  def createObject3D(name: String, transform: sgl.engine.gameobject.Transform3D = sgl.engine.gameobject.Transform3D.Identity): sgl.engine.gameobject.GameObject3D =
-    world.createObject3D(name, transform)(using scope)
-
   def gameObject[A](name: String)(build: sgl.engine.gameobject.GameObject => A): A =
     world.gameObject(name)(build)(using scope)
-
-  def gameObject2D[A](name: String, transform: sgl.engine.gameobject.Transform2D = sgl.engine.gameobject.Transform2D.Identity)(build: sgl.engine.gameobject.GameObject2D => A): A =
-    world.gameObject2D(name, transform)(build)(using scope)
-
-  def gameObject3D[A](name: String, transform: sgl.engine.gameobject.Transform3D = sgl.engine.gameobject.Transform3D.Identity)(build: sgl.engine.gameobject.GameObject3D => A): A =
-    world.gameObject3D(name, transform)(build)(using scope)
 }
 
 /** Engine services exposed to systems. */

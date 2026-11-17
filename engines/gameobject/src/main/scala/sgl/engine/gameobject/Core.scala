@@ -2,8 +2,6 @@ package sgl.engine.gameobject
 
 import scala.collection.mutable
 
-import sgl.math.{Mat4, Quaternion, Vec2, Vec3}
-
 /** Stable identity for a game object. */
 final case class ObjectId(value: Int) extends AnyVal
 
@@ -20,10 +18,118 @@ final class CompositionError(message: String) extends RuntimeException(message)
   */
 trait Component {
   def owner: GameObject
+
+  /** Lifecycle hook: called once when the owner is destroyed.
+    *
+    * The component is still attached and indexed at this point, and so are its
+    * siblings. This is the place to release what the component holds on other
+    * objects, such as a link in a hierarchy or a registration in a system.
+    *
+    * Lifecycle hooks are no-op methods on this trait, so that more of them can
+    * be added later without touching existing components.
+    */
+  protected def onDestroy(): Unit = ()
+
+  private[gameobject] final def notifyDestroyed(): Unit = onDestroy()
 }
 
-/** Runtime key used to store and retrieve one concrete component type. */
+object Component {
+  /** Every component stands for the object that owns it. */
+  given HasGameObject[Component] with {
+    def gameObjectOf(value: Component): GameObject = value.owner
+  }
+}
+
+/** Type class for values that stand for one game object.
+  *
+  * The engine works with the single concrete [[GameObject]] class. Game code
+  * usually holds something more specific: a component, a spatial wrapper, or a
+  * domain class of its own. An instance of this type class lets such a value be
+  * used as the object it stands for, so that `bullet.destroy()` or
+  * `ship.require[Collider]` work without reaching for the underlying object.
+  *
+  * Components and the engine wrappers have instances. A game class gets the
+  * same operations with one given in its companion:
+  *
+  * {{{
+  * final class Ship(val obj: GameObject2D, val hull: Collider)
+  * object Ship {
+  *   given HasGameObject[Ship] with {
+  *     def gameObjectOf(ship: Ship): GameObject = ship.obj.gameObject
+  *   }
+  * }
+  * }}}
+  */
+trait HasGameObject[-A] {
+  def gameObjectOf(value: A): GameObject
+
+  extension (value: A) {
+    def isAlive: Boolean = gameObjectOf(value).isAlive
+
+    def destroy(): Unit = {
+      val obj = gameObjectOf(value)
+      obj.world.destroy(obj)
+    }
+
+    def attach[C <: Component](factory: GameObject => C)(using key: ComponentKey[C]): C =
+      gameObjectOf(value).attach(factory)
+
+    def component[C <: Component](using key: ComponentKey[C]): Option[C] =
+      gameObjectOf(value).component[C]
+
+    def require[C <: Component](using key: ComponentKey[C]): C =
+      gameObjectOf(value).require[C]
+  }
+}
+
+object HasGameObject {
+  /** Whether two values stand for the same game object. */
+  def sameObject[A, B](a: A, b: B)(using hasA: HasGameObject[A], hasB: HasGameObject[B]): Boolean =
+    hasA.gameObjectOf(a) eq hasB.gameObjectOf(b)
+}
+
+/** Runtime key used to store and retrieve one concrete component type.
+  *
+  * The key also carries the composition requirements of the component type.
+  * They are declared once, next to the key, and checked every time a component
+  * of that type is attached:
+  *
+  * {{{
+  * given ComponentKey[Bullet] = ComponentKey[Bullet]("game.Bullet")
+  *   .requires[Collider]
+  *   .requiresContext[UpdateCapabilitiesModule.type]
+  * }}}
+  *
+  * Declared requirements are meant for dependencies that a system relies on.
+  * When the component itself uses the dependency, prefer taking it as a
+  * constructor parameter, which is checked by the compiler instead.
+  */
 final class ComponentKey[A <: Component](val name: String) {
+  private var requiredComponents = Vector.empty[() => ComponentKey[?]]
+  private var requiredContext = Vector.empty[ContextKey[?]]
+
+  /** Requires a `B` to already be attached to the owner when an `A` is attached.
+    *
+    * The key is resolved lazily, so companion keys can reference each other
+    * without depending on initialization order.
+    */
+  def requires[B <: Component](using key: => ComponentKey[B]): this.type = {
+    requiredComponents :+= (() => key)
+    this
+  }
+
+  /** Requires a `B` in the world context when an `A` is attached. Modules
+    * publish themselves in the context, so this is how a component states
+    * that it only works with a given module installed.
+    */
+  def requiresContext[B](using key: ContextKey[B]): this.type = {
+    requiredContext :+= key
+    this
+  }
+
+  private[gameobject] def componentRequirements: Vector[ComponentKey[?]] = requiredComponents.map(_())
+  private[gameobject] def contextRequirements: Vector[ContextKey[?]] = requiredContext
+
   override def toString: String = name
 }
 
@@ -82,49 +188,8 @@ final class Context private[gameobject] () {
 
   def getOption[A](using key: ContextKey[A]): Option[A] =
     values.get(key).map(_.asInstanceOf[A])
-}
 
-final case class ClearColor(red: Float, green: Float, blue: Float, alpha: Float)
-object ClearColor {
-  given ContextKey[ClearColor] = ContextKey[ClearColor]("sgl.engine.gameobject.ClearColor")
-}
-
-final case class Transform2D(
-    position: Vec2 = Vec2(0f, 0f),
-    rotation: Float = 0f,
-    scale: Vec2 = Vec2(1f, 1f)
-) {
-  def transformPoint(point: Vec2): Vec2 = {
-    val scaled = Vec2(point.x * scale.x, point.y * scale.y)
-    val cosine = scala.math.cos(rotation).toFloat
-    val sine = scala.math.sin(rotation).toFloat
-    position + Vec2(
-      scaled.x * cosine - scaled.y * sine,
-      scaled.x * sine + scaled.y * cosine
-    )
-  }
-
-  def combine(child: Transform2D): Transform2D = Transform2D(
-    position = transformPoint(child.position),
-    rotation = rotation + child.rotation,
-    scale = Vec2(scale.x * child.scale.x, scale.y * child.scale.y)
-  )
-}
-
-object Transform2D {
-  val Identity: Transform2D = Transform2D()
-}
-
-final case class Transform3D(
-    position: Vec3 = Vec3.Zero,
-    rotation: Quaternion = Quaternion.Identity,
-    scale: Vec3 = Vec3.One
-) {
-  def matrix: Mat4 = Mat4.trs(position, rotation, scale)
-}
-
-object Transform3D {
-  val Identity: Transform3D = Transform3D()
+  private[gameobject] def contains(key: ContextKey[?]): Boolean = values.contains(key)
 }
 
 final class Scope private[gameobject] (val id: ScopeId, val name: String, private[gameobject] val world: World) {
@@ -134,102 +199,6 @@ final class Scope private[gameobject] (val id: ScopeId, val name: String, privat
   private[gameobject] def deactivate(): Unit = activeValue = false
 
   override def toString: String = s"Scope(${id.value}, $name)"
-}
-
-/** Optional 2D spatial capability. Non-spatial game objects do not need one. */
-final class Spatial2D private[gameobject] (override val owner: GameObject, var local: Transform2D) extends Component {
-  private var parentValue: Option[Spatial2D] = None
-  private val childrenBuffer = mutable.ArrayBuffer.empty[Spatial2D]
-
-  private[gameobject] var globalValue: Transform2D = local
-
-  def parent: Option[Spatial2D] = parentValue
-  def children: Vector[Spatial2D] = childrenBuffer.toVector
-
-  /** Decomposed global translation, rotation, and scale. Use [[transformPoint]]
-    * when a hierarchy can introduce affine shear.
-    */
-  def global: Transform2D = globalValue
-
-  /** Transforms a local point through the complete parent chain without losing
-    * affine shear caused by non-uniform parent scale and child rotation.
-    */
-  def transformPoint(point: Vec2): Vec2 =
-    parentValue.map(_.transformPoint(local.transformPoint(point))).getOrElse(local.transformPoint(point))
-
-  def setParent(parent: Spatial2D): Unit = {
-    validateParent(parent.owner, parent.ancestors)
-    clearParent()
-    parentValue = Some(parent)
-    parent.childrenBuffer += this
-  }
-
-  private def ancestors: Iterator[Spatial2D] =
-    Iterator.iterate(Option(this))(_.flatMap(_.parent)).takeWhile(_.nonEmpty).flatten
-
-  private def validateParent(parentOwner: GameObject, ancestors: Iterator[Spatial2D]): Unit = {
-    if(!owner.isAlive || !parentOwner.isAlive) {
-      throw new CompositionError("Destroyed objects cannot participate in a spatial hierarchy")
-    }
-    if(owner.world ne parentOwner.world) {
-      throw new CompositionError("A spatial parent must belong to the same world")
-    }
-    if(ancestors.exists(_ eq this)) {
-      throw new CompositionError("A spatial hierarchy cannot contain a cycle")
-    }
-  }
-
-  def clearParent(): Unit = {
-    parentValue.foreach(_.childrenBuffer -= this)
-    parentValue = None
-  }
-}
-
-object Spatial2D {
-  given ComponentKey[Spatial2D] = ComponentKey[Spatial2D]("sgl.engine.gameobject.Spatial2D")
-}
-
-/** Optional 3D spatial capability. Non-spatial game objects do not need one. */
-final class Spatial3D private[gameobject] (override val owner: GameObject, var local: Transform3D) extends Component {
-  private var parentValue: Option[Spatial3D] = None
-  private val childrenBuffer = mutable.ArrayBuffer.empty[Spatial3D]
-
-  private[gameobject] var globalMatrixValue: Mat4 = local.matrix
-
-  def parent: Option[Spatial3D] = parentValue
-  def children: Vector[Spatial3D] = childrenBuffer.toVector
-  def globalMatrix: Mat4 = globalMatrixValue
-
-  def setParent(parent: Spatial3D): Unit = {
-    validateParent(parent.owner, parent.ancestors)
-    clearParent()
-    parentValue = Some(parent)
-    parent.childrenBuffer += this
-  }
-
-  private def ancestors: Iterator[Spatial3D] =
-    Iterator.iterate(Option(this))(_.flatMap(_.parent)).takeWhile(_.nonEmpty).flatten
-
-  private def validateParent(parentOwner: GameObject, ancestors: Iterator[Spatial3D]): Unit = {
-    if(!owner.isAlive || !parentOwner.isAlive) {
-      throw new CompositionError("Destroyed objects cannot participate in a spatial hierarchy")
-    }
-    if(owner.world ne parentOwner.world) {
-      throw new CompositionError("A spatial parent must belong to the same world")
-    }
-    if(ancestors.exists(_ eq this)) {
-      throw new CompositionError("A spatial hierarchy cannot contain a cycle")
-    }
-  }
-
-  def clearParent(): Unit = {
-    parentValue.foreach(_.childrenBuffer -= this)
-    parentValue = None
-  }
-}
-
-object Spatial3D {
-  given ComponentKey[Spatial3D] = ComponentKey[Spatial3D]("sgl.engine.gameobject.Spatial3D")
 }
 
 private final case class ComponentRecord(key: ComponentKey[?], component: Component)
@@ -244,6 +213,22 @@ private[gameobject] final class ComponentSet(owner: GameObject, world: World) {
     if(components.contains(key)) {
       throw new CompositionError(s"Object ${owner.id.value} already has component ${key.name}")
     }
+    key.componentRequirements.foreach { required =>
+      if(!components.contains(required)) {
+        throw new CompositionError(
+          s"Cannot attach ${key.name} to object ${owner.id.value} (${owner.name}): " +
+            s"it requires ${required.name}, which must be attached first"
+        )
+      }
+    }
+    key.contextRequirements.foreach { required =>
+      if(!world.context.contains(required)) {
+        throw new CompositionError(
+          s"Cannot attach ${key.name} to object ${owner.id.value} (${owner.name}): " +
+            s"it requires ${required.name} in the world context; is the module providing it installed?"
+        )
+      }
+    }
     components(key) = component
     world.componentAdded(key, component)
     component
@@ -255,12 +240,18 @@ private[gameobject] final class ComponentSet(owner: GameObject, world: World) {
   def all: Iterable[Component] = components.values
 }
 
-/** Identity and composition boundary for domain objects. */
+/** Identity and composition boundary for domain objects.
+  *
+  * The core knows nothing about what an object is made of. Spatial objects,
+  * hierarchies, and their creation helpers are layered on top of this public
+  * API in the `spatial2d` and `spatial3d` packages, the same way a game can
+  * layer its own conventions.
+  */
 final class GameObject private[gameobject] (
     val id: ObjectId,
     val name: String,
     val scope: Scope,
-    private[gameobject] val world: World
+    val world: World
 ) {
   private[gameobject] val components = new ComponentSet(this, world)
   private var aliveValue = true
@@ -286,22 +277,10 @@ final class GameObject private[gameobject] (
   override def toString: String = s"GameObject(${id.value}, $name, scope=${scope.name})"
 }
 
-final class GameObject2D private[gameobject] (val gameObject: GameObject, val spatial: Spatial2D) {
-  export gameObject.{attach, component, id, name, require}
-  export spatial.{children, clearParent, global, local, parent, transformPoint}
-
-  def setParent(parent: GameObject2D): Unit = spatial.setParent(parent.spatial)
-
-  override def toString: String = gameObject.toString
-}
-
-final class GameObject3D private[gameobject] (val gameObject: GameObject, val spatial: Spatial3D) {
-  export gameObject.{attach, component, id, name, require}
-  export spatial.{children, clearParent, globalMatrix, local, parent}
-
-  def setParent(parent: GameObject3D): Unit = spatial.setParent(parent.spatial)
-
-  override def toString: String = gameObject.toString
+object GameObject {
+  given HasGameObject[GameObject] with {
+    def gameObjectOf(value: GameObject): GameObject = value
+  }
 }
 
 final class World {
@@ -341,55 +320,17 @@ final class World {
     obj
   }
 
-  def createObject2D(name: String, transform: Transform2D = Transform2D.Identity)(using scope: Scope = globalScope): GameObject2D = {
-    val obj = createObject(name)
-    val spatial = obj.attach(new Spatial2D(_, transform))
-    new GameObject2D(obj, spatial)
-  }
-
-  def createObject3D(name: String, transform: Transform3D = Transform3D.Identity)(using scope: Scope = globalScope): GameObject3D = {
-    val obj = createObject(name)
-    val spatial = obj.attach(new Spatial3D(_, transform))
-    new GameObject3D(obj, spatial)
-  }
-
   def gameObject[A](name: String)(build: GameObject => A)(using scope: Scope = globalScope): A =
     build(createObject(name))
-
-  def gameObject2D[A](name: String, transform: Transform2D = Transform2D.Identity)(build: GameObject2D => A)(using scope: Scope = globalScope): A =
-    build(createObject2D(name, transform))
-
-  def gameObject3D[A](name: String, transform: Transform3D = Transform3D.Identity)(build: GameObject3D => A)(using scope: Scope = globalScope): A =
-    build(createObject3D(name, transform))
-
-  def child2DOf[A](parent: GameObject2D, name: String, transform: Transform2D = Transform2D.Identity)(build: GameObject2D => A)(using scope: Scope = globalScope): A = {
-    val child = createObject2D(name, transform)
-    child.setParent(parent)
-    build(child)
-  }
-
-  def child3DOf[A](parent: GameObject3D, name: String, transform: Transform3D = Transform3D.Identity)(build: GameObject3D => A)(using scope: Scope = globalScope): A = {
-    val child = createObject3D(name, transform)
-    child.setParent(parent)
-    build(child)
-  }
 
   def destroy(obj: GameObject): Unit = {
     if(obj.world ne this) throw new CompositionError(s"Object ${obj.id.value} belongs to a different world")
     if(!obj.isAlive) return
     obj.markDestroyed()
     objectsBuffer -= obj
-    obj.component[Spatial2D].foreach(_.clearParent())
-    obj.component[Spatial2D].foreach { spatial => spatial.children.foreach(_.clearParent()) }
-    obj.component[Spatial3D].foreach(_.clearParent())
-    obj.component[Spatial3D].foreach { spatial => spatial.children.foreach(_.clearParent()) }
-    obj.components.all.foreach(removeComponent)
-  }
-
-  def destroySubtree(obj: GameObject): Unit = {
-    obj.component[Spatial2D].foreach { spatial => spatial.children.foreach(child => destroySubtree(child.owner)) }
-    obj.component[Spatial3D].foreach { spatial => spatial.children.foreach(child => destroySubtree(child.owner)) }
-    destroy(obj)
+    val components = obj.components.all.toVector
+    components.foreach(_.notifyDestroyed())
+    components.foreach(removeComponent)
   }
 
   def destroyScope(scope: Scope): Unit = {

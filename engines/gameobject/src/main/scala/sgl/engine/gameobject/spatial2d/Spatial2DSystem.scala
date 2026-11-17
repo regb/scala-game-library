@@ -1,6 +1,6 @@
 package sgl.engine.gameobject.spatial2d
 
-import sgl.engine.gameobject.{Scope, Spatial2D, Transform2D}
+import sgl.engine.gameobject.{ContextKey, Scope}
 import sgl.engine.gameobject.runtime.{GameBuilder, GameContext, GameModule}
 import sgl.engine.gameobject.schedule.{Stage, System, SystemId}
 
@@ -20,8 +20,16 @@ object Spatial2DSystem extends System {
   }
 }
 
+/** Keeps `Spatial2D.global` up to date. The module publishes itself in the
+  * world context, so components that read global transforms can declare
+  * `requiresContext[Spatial2DModule.type]`.
+  */
 object Spatial2DModule extends GameModule {
+  given ContextKey[Spatial2DModule.type] = ContextKey[Spatial2DModule.type]("sgl.engine.gameobject.spatial2d.Spatial2DModule")
+
   override def install(builder: GameBuilder): Unit = {
-    builder.addSystem(Stage.PostUpdate, Spatial2DSystem)
+    builder
+      .setContext[Spatial2DModule.type](this)
+      .addSystem(Stage.PostUpdate, Spatial2DSystem)
   }
 }
