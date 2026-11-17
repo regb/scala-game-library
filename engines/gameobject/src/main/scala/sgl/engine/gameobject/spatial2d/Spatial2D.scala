@@ -82,7 +82,7 @@ object Spatial2D {
 type GameObject2D = TypedObject[Spatial2D]
 
 extension (world: World) {
-  def createObject2D(name: String, transform: Transform2D = Transform2D.Identity)(using scope: Scope = world.globalScope): GameObject2D =
+  def createObject2D(name: String, transform: Transform2D = Transform2D.Identity)(using scope: Scope): GameObject2D =
     TypedObject(world.createObject(name)).attachPlain(new Spatial2D(_, transform))
 }
 

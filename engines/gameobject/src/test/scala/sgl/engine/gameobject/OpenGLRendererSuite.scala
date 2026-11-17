@@ -138,7 +138,7 @@ class OpenGLRendererSuite extends AnyFunSuite {
   private val standalone = AssetFactory.drawable(Vector("mdpi" -> "drawable-mdpi/hero.png"))
 
   private def sprite(world: World, texture: Texture2D, z: Float, visual: Texture2D => SpriteVisual = SpriteVisual.Texture(_)): Unit = {
-    val obj = world.createObject2D("sprite-" + z)
+    val obj = world.createObject2D("sprite-" + z)(using world.globalScope)
     obj.attach(new SpriteRenderer(_, visual(texture), 10f, 10f, z))
   }
 
@@ -234,6 +234,7 @@ class OpenGLRendererSuite extends AnyFunSuite {
     val app = new FakeGLApp
     val renderer = new OpenGLRenderer(app)
     val world = new World
+    import world.given
     val coinTexture = loadedAfter(app, renderer.loadDrawableTexture(coin))
     val gemTexture = renderer.loadDrawableTexture(gem)
     val obj = world.createObject2D("map")
@@ -256,6 +257,7 @@ class OpenGLRendererSuite extends AnyFunSuite {
     val app = new FakeGLApp
     val renderer = new OpenGLRenderer(app)
     val world = new World
+    import world.given
     val coinLoader = renderer.loadDrawableTexture(coin)
     val heroLoader = renderer.loadDrawableTexture(standalone)
     app.uploads.foreach(_.complete())

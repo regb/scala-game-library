@@ -24,6 +24,7 @@ class GameObjectSuite extends AnyFunSuite {
 
   test("components are stored and indexed by their class") {
     val world = new World
+    import world.given
     val first = world.createObject("first")
     val second = world.createObject("second")
 
@@ -49,6 +50,7 @@ class GameObjectSuite extends AnyFunSuite {
 
   test("an index traversal skips objects destroyed along the way and defers new ones") {
     val world = new World
+    import world.given
     val markers = (0 until 4).map(i => world.createObject("object-" + i).attach(new Marker(_)))
     val index = world.index[Marker]
 
@@ -68,8 +70,25 @@ class GameObjectSuite extends AnyFunSuite {
     assert(pending.map(_.owner.name).toVector === Vector("object-1", "object-3", "late"))
   }
 
+  test("creating an object requires a scope") {
+    import scala.compiletime.testing.{Error, typeCheckErrors}
+    val world = new World
+
+    val noScope: List[Error] = typeCheckErrors("""world.createObject("object")""")
+    val noScope2D: List[Error] = typeCheckErrors("""world.createObject2D("object")""")
+    assert(noScope.exists(_.message.contains("No Scope to create the object in")))
+    assert(noScope2D.exists(_.message.contains("No Scope to create the object in")))
+
+    val scene = world.createScope("scene")
+    val scoped = world.createObject("scoped")(using scene)
+    val global = world.createObject("global")(using world.globalScope)
+    world.destroyScope(scene)
+    assert(!scoped.isAlive && global.isAlive)
+  }
+
   test("a component must be attached under its own concrete class") {
     val world = new World
+    import world.given
     val obj = world.createObject("object")
 
     val error = intercept[CompositionError] {
@@ -82,7 +101,7 @@ class GameObjectSuite extends AnyFunSuite {
   test("a capability brings its module requirement to every component implementing it") {
     val bare = new GameBuilder().build(new TestEngine(new RecordingRenderer))
     val error = intercept[CompositionError] {
-      bare.world.createObject("object").attach(new Ticks(_))
+      bare.world.createObject("object")(using bare.world.globalScope).attach(new Ticks(_))
     }
     assert(error.getMessage.contains("Ticks"))
     assert(error.getMessage.contains("UpdateCapabilitiesModule"))
@@ -90,7 +109,7 @@ class GameObjectSuite extends AnyFunSuite {
     val configured = new GameBuilder()
       .install(UpdateCapabilitiesModule)
       .build(new TestEngine(new RecordingRenderer))
-    configured.world.createObject("object").attach(new Ticks(_))
+    configured.world.createObject("object")(using configured.world.globalScope).attach(new Ticks(_))
   }
 
   final class Registered(override val owner: GameObject, log: scala.collection.mutable.Buffer[String]) extends Component {
@@ -103,6 +122,7 @@ class GameObjectSuite extends AnyFunSuite {
 
   test("onDestroy runs once, while the component and its siblings are still attached") {
     val world = new World
+    import world.given
     val log = scala.collection.mutable.ArrayBuffer.empty[String]
     val obj = world.createObject("object")
     obj.attach(new Marker(_))
@@ -117,6 +137,7 @@ class GameObjectSuite extends AnyFunSuite {
 
   test("a destroyed spatial leaves its hierarchy and destroySubtree removes descendants") {
     val world = new World
+    import world.given
     val root = world.createObject2D("root")
     val middle = world.createObject2D("middle")
     val leaf = world.createObject2D("leaf")
@@ -136,6 +157,7 @@ class GameObjectSuite extends AnyFunSuite {
   test("global transforms follow the parent chain as soon as it changes") {
     import sgl.engine.gameobject.spatial3d._
     val world = new World
+    import world.given
 
     val parent = world.createObject2D("parent", Transform2D(position = Vec2(10f, 0f)))
     val child = world.createObject2D("child", Transform2D(position = Vec2(1f, 2f))).childOf(parent)
@@ -160,6 +182,7 @@ class GameObjectSuite extends AnyFunSuite {
 
   test("components, wrappers, and game classes can be used as their game object") {
     val world = new World
+    import world.given
     val obj = world.createObject2D("crate")
     val marker = obj.attachPlain(new Marker(_)).get[Marker]
     val crate = new Crate(obj, marker)
@@ -189,6 +212,7 @@ class GameObjectSuite extends AnyFunSuite {
 
   test("a typed object grows with each attach and hands components their siblings") {
     val world = new World
+    import world.given
     val obj: TypedObject[Spatial2D & Hull & Shell & Marker] = world.createObject2D("shell")
       .attach(new Hull(_, 4f))
       .attach(new Shell(_))
@@ -208,6 +232,7 @@ class GameObjectSuite extends AnyFunSuite {
   test("2D and 3D objects share the typed object operations without clashing") {
     import sgl.engine.gameobject.spatial3d._
     val world = new World
+    import world.given
 
     val root3D: GameObject3D = world.createObject3D("root3D")
     val leaf3D = world.createObject3D("leaf3D").childOf(root3D)
@@ -229,6 +254,7 @@ class GameObjectSuite extends AnyFunSuite {
   test("mis-composed typed objects do not compile") {
     import scala.compiletime.testing.{Error, typeCheckErrors}
     val world = new World
+    import world.given
 
     val missingSibling: List[Error] = typeCheckErrors("""world.createObject2D("o").attach(new Shell(_))""")
     val wrongOrder: List[Error] = typeCheckErrors("""world.createObject2D("o").attach(new Shell(_)).attach(new Hull(_, 1f))""")
@@ -279,6 +305,7 @@ class GameObjectSuite extends AnyFunSuite {
 
   test("Spatial2D point transforms preserve affine shear through parent chains") {
     val world = new World
+    import world.given
     val parent = world.createObject2D("parent", Transform2D(scale = Vec2(2f, 1f)))
     val child = world.createObject2D("child", Transform2D(rotation = (scala.math.Pi / 2.0).toFloat))
     child.setParent(parent)
@@ -290,6 +317,7 @@ class GameObjectSuite extends AnyFunSuite {
 
   test("spatial parenting rejects cycles and objects from another world") {
     val world = new World
+    import world.given
     val parent = world.createObject2D("parent")
     val child = world.createObject2D("child")
     child.setParent(parent)
@@ -299,7 +327,7 @@ class GameObjectSuite extends AnyFunSuite {
     }
 
     val otherWorld = new World
-    val foreignParent = otherWorld.createObject2D("foreign")
+    val foreignParent = otherWorld.createObject2D("foreign")(using otherWorld.globalScope)
     intercept[CompositionError] {
       child.setParent(foreignParent)
     }
@@ -307,6 +335,7 @@ class GameObjectSuite extends AnyFunSuite {
 
   test("destroyed objects cannot be composed again") {
     val world = new World
+    import world.given
     val obj = world.createObject("object")
     world.destroy(obj)
 
@@ -356,7 +385,7 @@ class GameObjectSuite extends AnyFunSuite {
     runtime.dispose()
     assert(!runtime.world.isActive)
     intercept[CompositionError] {
-      runtime.world.createObject("after-dispose")
+      runtime.world.createObject("after-dispose")(using runtime.world.globalScope)
     }
     intercept[IllegalStateException] {
       runtime.frame(0.0)

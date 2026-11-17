@@ -57,7 +57,7 @@ object Spatial3D {
 type GameObject3D = TypedObject[Spatial3D]
 
 extension (world: World) {
-  def createObject3D(name: String, transform: Transform3D = Transform3D.Identity)(using scope: Scope = world.globalScope): GameObject3D =
+  def createObject3D(name: String, transform: Transform3D = Transform3D.Identity)(using scope: Scope): GameObject3D =
     TypedObject(world.createObject(name)).attachPlain(new Spatial3D(_, transform))
 }
 

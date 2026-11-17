@@ -91,7 +91,7 @@ object TypedObject {
 
 extension (world: World) {
   /** Creates an object to compose as a chain of `attach`. */
-  def typedObject(name: String)(using scope: Scope = world.globalScope): TypedObject[Any] =
+  def typedObject(name: String)(using scope: Scope): TypedObject[Any] =
     TypedObject(world.createObject(name))
 }
 

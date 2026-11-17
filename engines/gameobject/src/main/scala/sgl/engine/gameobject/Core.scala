@@ -171,6 +171,17 @@ final class Context private[gameobject] () {
   private[gameobject] def contains(key: ContextKey[?]): Boolean = values.contains(key)
 }
 
+/** Lifetime of a group of objects: destroying a scope destroys what was
+  * created in it. The runtime gives each scene its own scope.
+  *
+  * Creating an object always names its scope, as a given. A scene or system
+  * receives the current one; code outside of them passes a scope explicitly,
+  * or brings the global scope in with `import world.given`.
+  */
+@scala.annotation.implicitNotFound(
+  "No Scope to create the object in. Scenes and systems are given one: add `(using Scope)` to a helper called from them. " +
+    "Elsewhere pass a scope explicitly, or `import world.given` to use the world's global scope."
+)
 final class Scope private[gameobject] (val id: ScopeId, val name: String, private[gameobject] val world: World) {
   private var activeValue = true
 
@@ -279,6 +290,9 @@ final class World {
   val context: Context = new Context
   val globalScope: Scope = createScope("global")
 
+  /** The global scope as a given, for `import world.given`. Objects created
+    * in it live until they are destroyed or the world is disposed.
+    */
   given Scope = globalScope
 
   def isActive: Boolean = activeValue
@@ -293,7 +307,7 @@ final class World {
 
   def scopes: Vector[Scope] = scopesBuffer.toVector
 
-  def createObject(name: String)(using scope: Scope = globalScope): GameObject = {
+  def createObject(name: String)(using scope: Scope): GameObject = {
     if(!activeValue) throw new CompositionError("Cannot create an object in a disposed world")
     if(scope.world ne this) throw new CompositionError("A scope must belong to the world creating the object")
     if(!scope.isActive) throw new CompositionError(s"Cannot create an object in inactive scope ${scope.name}")
