@@ -24,7 +24,6 @@ Every example is a Bazel package with a shared `core` library and one target per
 | `//engines/gameobject/examples/asteroids` | Typed composition, `Updatable`, systems, scenes, `TextOverlay` | `desktop-lwjgl`, `html5`, `desktop-native` |
 | `//examples/hello-atlas` | `sgl_texture_atlas`, sprites and tilemaps from one atlas page | `desktop-lwjgl`, `html5`, `desktop-native` |
 | `//engines/gameobject/examples/solar-system` | 3D: spatial hierarchy, meshes, materials, orbit camera | `desktop-lwjgl`, `html5`, `desktop-native` |
-| `//games/crab-room` | A 3D game with glTF models | `desktop-lwjgl`, `html5`, `desktop-native` |
 | `//engines/gameobject/examples/headless-control` | Driving a game from a test with the headless backend | `headless-control-integration-test` |
 
 ## Screen2D engine
@@ -38,7 +37,7 @@ Every example is a Bazel package with a shared `core` library and one target per
 ```bash
 bazel run //engines/gameobject/examples/asteroids:desktop-lwjgl
 bazel run //engines/gameobject/examples/asteroids:html5    # http://localhost:8080
-bazel build //examples/... //engines/... //games/...
+bazel build //examples/... //engines/...
 ```
 
 <Aside type="tip" title="Outside this repository">

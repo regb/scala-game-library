@@ -1,0 +1,111 @@
+---
+// Starlight's page footer (edit link, last updated, pagination), followed by
+// a site footer with navigation columns.
+import Default from '@astrojs/starlight/components/Footer.astro';
+import { Icon } from '@astrojs/starlight/components';
+
+import { footerColumns } from '../data/nav';
+import { repo } from '../data/showcase';
+---
+
+<Default />
+
+<footer class="site-footer not-content">
+  <div class="brand">
+    <a href="/" class="brand-name">
+      <img src="/logo.svg" alt="" width="28" height="28" />
+      <span>Scala Game Library</span>
+    </a>
+    <p>Write a game once in Scala. Ship it to desktop, web, native, and Android.</p>
+    <a class="github" href={repo}><Icon name="github" size="1.1rem" /> regb/scala-game-library</a>
+  </div>
+  {footerColumns.map((column) => (
+    <nav aria-label={column.title}>
+      <h2>{column.title}</h2>
+      <ul>
+        {column.links.map(({ label, href }) => <li><a href={href}>{label}</a></li>)}
+      </ul>
+    </nav>
+  ))}
+  <p class="legal">
+    Open source under the <a href={`${repo}/blob/master/LICENSE`}>MIT License</a>.
+  </p>
+</footer>
+
+<style>
+  .site-footer {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    margin-top: 2.5rem;
+    padding-top: 2.5rem;
+    border-top: 1px solid var(--sl-color-hairline);
+    font-size: var(--sl-text-sm);
+  }
+
+  @media (min-width: 50rem) {
+    .site-footer {
+      grid-template-columns: 2fr repeat(3, 1fr);
+    }
+  }
+
+  .brand p {
+    color: var(--sl-color-gray-3);
+    margin: 0.75rem 0;
+    max-width: 22rem;
+  }
+
+  .brand-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-weight: 700;
+    color: var(--sl-color-white);
+    text-decoration: none;
+  }
+
+  .github {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--sl-color-gray-2);
+    text-decoration: none;
+  }
+
+  h2 {
+    font-size: var(--sl-text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--sl-color-gray-3);
+    margin: 0 0 0.75rem;
+  }
+
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  a {
+    color: var(--sl-color-gray-2);
+    text-decoration: none;
+  }
+
+  a:hover {
+    color: var(--sl-color-white);
+  }
+
+  .legal {
+    grid-column: 1 / -1;
+    color: var(--sl-color-gray-3);
+    border-top: 1px solid var(--sl-color-hairline);
+    padding-top: 1.25rem;
+    margin: 0;
+  }
+
+  .legal a {
+    text-decoration: underline;
+  }
+</style>

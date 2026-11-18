@@ -1,7 +1,11 @@
 ---
 import { Code, Icon, TabItem, Tabs } from '@astrojs/starlight/components';
 
-const repo = 'https://github.com/regb/scala-game-library';
+import ShowcaseCard from './ShowcaseCard.astro';
+import { examples, games, repo, studio } from '../data/showcase';
+
+// Every game, then the 3D example, so the row shows both games and the engine.
+const featured = [...games, examples[1]];
 
 const platforms = [
   { icon: 'laptop', name: 'Desktop JVM', body: 'AWT for Canvas games, LWJGL for OpenGL 3.3 and OpenAL.', status: 'Stable' },
@@ -50,13 +54,6 @@ const features = [
   },
 ] as const;
 
-const examples = [
-  { tag: 'Core · Canvas', title: 'Hello Canvas', body: 'Typed images and audio, animation, pointer input, and wrapped text.', target: '//examples/hello-canvas:desktop-awt' },
-  { tag: 'Core · OpenGL', title: 'Hello ScalaGL', body: 'Textured cube with shaders and drag-to-orbit camera.', target: '//examples/hello-scalagl:desktop-lwjgl' },
-  { tag: 'GameObject 2D', title: 'Asteroids', body: 'Typed composition, systems, scenes, and the 2D OpenGL renderer.', target: '//engines/gameobject/examples/asteroids:desktop-lwjgl' },
-  { tag: 'GameObject 3D', title: 'Solar System', body: 'Spatial hierarchy, meshes, materials, and an orbit camera.', target: '//engines/gameobject/examples/solar-system:desktop-lwjgl' },
-] as const;
-
 const canvasCode = `trait AbstractApp extends Application with AssetsProvider {
   this: CanvasProvider with WindowProvider with SystemProvider =>
 
@@ -71,6 +68,7 @@ const gameObjectCode = `trait AbstractApp extends OpenGLGameObjectApp {
   override def configure(builder: GameBuilder): Unit =
     builder
       .install(UpdateCapabilitiesModule)
+      .install(Render2DModule)
       .setInitialScene(Level)
 }
 
@@ -120,6 +118,21 @@ bazel run //examples/snake:android-debug`;
 ---
 
 <div class="not-content">
+  <section class="landing-section">
+    <p class="section-eyebrow">Showcase</p>
+    <h2 class="section-title">Built with SGL.</h2>
+    <p class="section-lead">
+      Published games from <a href={studio.href}>{studio.name}</a>, the open-source Scalavator,
+      and runnable examples from Canvas 2D to OpenGL 3D.
+    </p>
+    <div class="show-grid">
+      {featured.map((entry) => <ShowcaseCard entry={entry} />)}
+    </div>
+    <div class="hero-actions section-more">
+      <a class="sgl-button secondary" href="/showcase/">See the full showcase →</a>
+    </div>
+  </section>
+
   <section class="landing-section">
     <p class="section-eyebrow">Platforms</p>
     <h2 class="section-title">One codebase. Every target.</h2>
@@ -219,18 +232,35 @@ bazel run //examples/snake:android-debug`;
   </section>
 
   <section class="landing-section">
-    <p class="section-eyebrow">Examples</p>
-    <h2 class="section-title">Learn from runnable code.</h2>
-    <p class="section-lead">Every example has its own desktop, web, and native targets.</p>
-    <div class="example-grid">
-      {examples.map((e) => (
-        <a class="example" href="/docs/examples/">
-          <span class="tag">{e.tag}</span>
-          <h3>{e.title}</h3>
-          <p>{e.body}</p>
-          <code>{e.target}</code>
-        </a>
-      ))}
+    <p class="section-eyebrow">Project</p>
+    <h2 class="section-title">Follow along.</h2>
+    <div class="callout-grid">
+      <article class="callout">
+        <span class="callout-icon"><Icon name="rocket" /></span>
+        <h3>What's new</h3>
+        <ul>
+          <li>The GameObject engine checks composition at compile time with <a href="/docs/gameobject/#composition-checked-by-the-compiler">typed objects</a>.</li>
+          <li>Texture atlases packed at build time with <a href="/docs/assets/#texture-atlases"><code>sgl_texture_atlas</code></a>.</li>
+          <li>A headless OpenGL backend to <a href="/docs/testing/">test games</a> without a window.</li>
+          <li>New documentation site at libsgl.com.</li>
+        </ul>
+        <div class="hero-actions">
+          <a class="sgl-button secondary" href="/docs/migration/">Migration notes</a>
+          <a class="sgl-button secondary" href={`${repo}/commits/master`}>All changes</a>
+        </div>
+      </article>
+      <article class="callout">
+        <span class="callout-icon"><Icon name="github" /></span>
+        <h3>Community</h3>
+        <p>
+          SGL is developed in the open on GitHub. Ask questions and report bugs in the issues, send
+          pull requests, and share what you build: games made with SGL are added to the showcase.
+        </p>
+        <div class="hero-actions">
+          <a class="sgl-button secondary" href="/community/">Get involved</a>
+          <a class="sgl-button secondary" href={`${repo}/issues`}>Issues</a>
+        </div>
+      </article>
     </div>
   </section>
 

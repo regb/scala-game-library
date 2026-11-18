@@ -1,0 +1,23 @@
+---
+import { Image } from 'astro:assets';
+
+import type { ShowcaseEntry } from '../data/showcase';
+
+interface Props {
+  entry: ShowcaseEntry;
+  showRun?: boolean;
+}
+
+const { entry, showRun = false } = Astro.props;
+---
+
+<a class="show-card" href={entry.href}>
+  <Image src={entry.image} alt={entry.imageAlt} widths={[480, 800]} sizes="(min-width: 72rem) 22rem, 100vw" />
+  <div class="body">
+    <span class="tag">{entry.tag}</span>
+    <h3>{entry.title}</h3>
+    <p>{entry.body}</p>
+    <div class="meta">{entry.platforms.map((platform) => <span>{platform}</span>)}</div>
+    {showRun && entry.run && <code>bazel run {entry.run}</code>}
+  </div>
+</a>

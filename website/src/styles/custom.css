@@ -78,12 +78,12 @@ h1#_top {
   font-weight: 800;
 }
 
-/* Wider canvas for the splash landing page only. */
-:root[data-has-hero] {
+/* Wider canvas for splash pages (landing, showcase, community), which have no sidebar. */
+:root:not([data-has-sidebar]) {
   --sl-content-width: 72rem;
 }
 
-:root[data-has-hero] .sl-container {
+:root:not([data-has-sidebar]) .sl-container {
   max-width: var(--sl-content-width);
 }
 
@@ -526,32 +526,53 @@ h1#_top {
   }
 }
 
-/* Examples --------------------------------------------------------------- */
+/* Showcase cards ---------------------------------------------------------- */
 
-.example-grid {
+.show-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(16rem, 100%), 1fr));
+  gap: 1.25rem;
 }
 
-.example {
+.show-grid.featured {
+  grid-template-columns: repeat(auto-fill, minmax(min(21rem, 100%), 1fr));
+}
+
+.show-card {
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   border: 1px solid var(--sgl-border);
   border-radius: var(--sgl-radius);
-  padding: 1.2rem;
   background: var(--sgl-surface);
   color: inherit;
   text-decoration: none;
   transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
-.example:hover {
+.show-card:hover {
   border-color: var(--sl-color-accent);
   transform: translateY(-2px);
 }
 
-.example .tag {
+.show-card img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  background: #05060c;
+  border-bottom: 1px solid var(--sgl-border);
+}
+
+.show-card .body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 1rem 1.15rem 1.15rem;
+}
+
+.show-card .tag {
   align-self: flex-start;
   border-radius: 999px;
   padding: 0.1rem 0.55rem;
@@ -561,26 +582,167 @@ h1#_top {
   font-weight: 600;
 }
 
-.example h3 {
-  margin: 0.8rem 0 0.3rem;
+.show-card h3 {
+  margin: 0.7rem 0 0.3rem;
   color: var(--sl-color-white);
   font-size: var(--sl-text-base);
   font-weight: 700;
 }
 
-.example p {
-  margin: 0 0 1rem;
+.show-card p {
+  margin: 0 0 0.9rem;
   color: var(--sl-color-gray-3);
   font-size: var(--sl-text-sm);
   line-height: 1.55;
 }
 
-.example code {
+.show-card .meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
   margin-top: auto;
+}
+
+.show-card .meta span {
+  border: 1px solid var(--sgl-border);
+  border-radius: 0.35rem;
+  padding: 0 0.4rem;
+  color: var(--sl-color-gray-3);
+  font-size: 0.7rem;
+}
+
+.show-card code {
+  display: block;
+  margin-top: 0.75rem;
   color: var(--sl-color-gray-3);
   font-family: var(--sl-font-mono);
   font-size: 0.72rem;
   word-break: break-all;
+}
+
+.section-more {
+  margin-top: 1.5rem;
+}
+
+/* Callouts ---------------------------------------------------------------- */
+
+.callout-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(20rem, 100%), 1fr));
+  gap: 1.25rem;
+}
+
+.callout {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border: 1px solid var(--sgl-border);
+  border-radius: var(--sgl-radius);
+  padding: 1.6rem;
+  background: var(--sgl-surface);
+}
+
+.callout .callout-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.65rem;
+  background: var(--sl-color-accent-low);
+  color: var(--sl-color-accent);
+}
+
+.callout h3 {
+  margin: 0.4rem 0 0;
+  color: var(--sl-color-white);
+  font-size: var(--sl-text-xl);
+  font-weight: 700;
+}
+
+.callout p {
+  margin: 0;
+  color: var(--sl-color-gray-2);
+  line-height: 1.6;
+}
+
+.callout ul {
+  margin: 0;
+  padding-inline-start: 1.1rem;
+  color: var(--sl-color-gray-2);
+  line-height: 1.7;
+}
+
+.callout a:not(.sgl-button),
+.section-more a,
+.section-lead a,
+.page-section > p a {
+  color: var(--sl-color-accent);
+}
+
+.callout .hero-actions {
+  margin-top: auto;
+  padding-top: 0.75rem;
+}
+
+/* Page intro (showcase, community) ---------------------------------------- */
+
+.page-intro {
+  margin: 0 0 2.5rem;
+}
+
+.page-intro .section-lead {
+  margin-bottom: 1.25rem;
+}
+
+.page-section {
+  margin-block: 3.5rem;
+}
+
+.page-section h2 {
+  margin: 0 0 0.5rem;
+  color: var(--sl-color-white);
+  font-size: var(--sl-text-2xl);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.page-section > p {
+  margin: 0 0 1.5rem;
+  max-width: 44rem;
+  color: var(--sl-color-gray-2);
+}
+
+.link-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(18rem, 100%), 1fr));
+  gap: 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.link-list a {
+  display: block;
+  height: 100%;
+  border: 1px solid var(--sgl-border);
+  border-radius: 0.6rem;
+  padding: 0.8rem 1rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.link-list a:hover {
+  border-color: var(--sl-color-accent);
+}
+
+.link-list strong {
+  display: block;
+  color: var(--sl-color-white);
+  font-size: var(--sl-text-sm);
+}
+
+.link-list span {
+  color: var(--sl-color-gray-3);
+  font-size: var(--sl-text-xs);
 }
 
 /* Call to action --------------------------------------------------------- */

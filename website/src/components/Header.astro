@@ -1,0 +1,137 @@
+---
+// Starlight's header with top-level site navigation next to the title.
+import LanguageSelect from '@astrojs/starlight/components/LanguageSelect.astro';
+import Search from '@astrojs/starlight/components/Search.astro';
+import SiteTitle from '@astrojs/starlight/components/SiteTitle.astro';
+import SocialIcons from '@astrojs/starlight/components/SocialIcons.astro';
+import ThemeSelect from '@astrojs/starlight/components/ThemeSelect.astro';
+
+import { navLinks } from '../data/nav';
+
+const path = Astro.url.pathname;
+const isCurrent = (href: string) =>
+  href === '/docs/' ? path.startsWith('/docs/') : path.startsWith(href);
+---
+
+<div class="header">
+  <div class="title-wrapper sl-flex">
+    <SiteTitle />
+    <nav class="top-nav print:hidden" aria-label="Site">
+      {navLinks.map(({ label, href }) => (
+        <a href={href} aria-current={isCurrent(href) ? 'page' : undefined}>{label}</a>
+      ))}
+    </nav>
+  </div>
+  <div class="sl-flex print:hidden"><Search /></div>
+  <div class="sl-hidden md:sl-flex print:hidden right-group">
+    <div class="sl-flex social-icons"><SocialIcons /></div>
+    <ThemeSelect />
+    <LanguageSelect />
+  </div>
+</div>
+
+<style>
+  .header {
+    display: flex;
+    gap: var(--sl-nav-gap);
+    justify-content: space-between;
+    align-items: center;
+    height: 100%;
+  }
+
+  .title-wrapper {
+    overflow: clip;
+    padding: 0.25rem;
+    margin: -0.25rem;
+    min-width: 0;
+    align-items: center;
+    gap: 1.75rem;
+  }
+
+  /* Docs pages have a mobile menu that lists these links; splash pages have
+     no menu, so they keep the links in the header at every width. */
+  .top-nav {
+    display: none;
+    gap: 1.25rem;
+    align-items: center;
+    font-size: var(--sl-text-sm);
+    font-weight: 500;
+  }
+
+  :global(:root:not([data-has-sidebar])) .top-nav {
+    display: flex;
+  }
+
+  @media (max-width: 49.99rem) {
+    .title-wrapper {
+      gap: 1rem;
+    }
+    .top-nav {
+      gap: 0.85rem;
+      font-size: var(--sl-text-xs);
+    }
+  }
+
+  @media (min-width: 50rem) {
+    .top-nav {
+      display: flex;
+    }
+  }
+
+  .top-nav a {
+    color: var(--sl-color-gray-2);
+    text-decoration: none;
+    white-space: nowrap;
+    padding-block: 0.25rem;
+    border-bottom: 2px solid transparent;
+  }
+
+  .top-nav a:hover {
+    color: var(--sl-color-white);
+  }
+
+  .top-nav a[aria-current='page'] {
+    color: var(--sl-color-white);
+    border-bottom-color: var(--sl-color-accent);
+  }
+
+  .right-group,
+  .social-icons {
+    gap: 1rem;
+    align-items: center;
+  }
+
+  .social-icons::after {
+    content: '';
+    height: 2rem;
+    border-inline-end: 1px solid var(--sl-color-gray-5);
+  }
+
+  @media (min-width: 50rem) {
+    :global(:root[data-has-sidebar]) {
+      --__sidebar-pad: calc(2 * var(--sl-nav-pad-x));
+    }
+    :global(:root:not([data-has-toc])) {
+      --__toc-width: 0rem;
+    }
+    .header {
+      --__sidebar-width: max(0rem, var(--sl-content-inline-start, 0rem) - var(--sl-nav-pad-x));
+      --__main-column-fr: calc(
+        (
+            100% + var(--__sidebar-pad, 0rem) - var(--__toc-width, var(--sl-sidebar-width)) -
+              (2 * var(--__toc-width, var(--sl-nav-pad-x))) - var(--sl-content-inline-start, 0rem) -
+              var(--sl-content-width)
+          ) / 2
+      );
+      display: grid;
+      grid-template-columns:
+        minmax(
+          calc(var(--__sidebar-width) + max(0rem, var(--__main-column-fr) - var(--sl-nav-gap))),
+          auto
+        )
+        1fr
+        auto;
+      align-content: center;
+    }
+  }
+</style>

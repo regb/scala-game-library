@@ -17,16 +17,21 @@ pnpm build
 pnpm preview
 ```
 
-The site is static by default and can be deployed to GitHub Pages, Netlify,
-Cloudflare Pages, Vercel, or any static host. Configure `site` in
-`astro.config.mjs` to match the production domain.
+The site is static. `.github/workflows/website.yml` deploys it to the `libsgl`
+Cloudflare Pages project: `master` goes to https://libsgl.com, and pull requests
+from this repository get a preview URL.
 
 ## Structure
 
 - `src/content/docs/index.mdx` — landing page (Starlight splash template)
 - `src/components/Hero.astro` — overrides Starlight's hero on the landing page
 - `src/components/Landing.astro` — landing page sections
+- `src/content/docs/showcase.mdx`, `community.mdx` — top-level splash pages
 - `src/content/docs/docs` — documentation pages; the sidebar is defined in `astro.config.mjs`
+- `src/components/Header.astro`, `Footer.astro`, `MobileMenuFooter.astro` — Starlight overrides
+  adding the site navigation (links in `src/data/nav.ts`) and the site footer
+- `src/data/showcase.ts` — games and examples shown on the landing and showcase pages
+- `src/assets/showcase` — their screenshots, captured from the HTML5 builds and optimized at build time
 - `src/styles/custom.css` — theme tokens (light and dark) and landing page styles
 - `public/logo.svg`, `public/favicon.svg` — branding assets
 

@@ -28,6 +28,9 @@ export default defineConfig({
       customCss: ['./src/styles/custom.css'],
       components: {
         Hero: './src/components/Hero.astro',
+        Header: './src/components/Header.astro',
+        Footer: './src/components/Footer.astro',
+        MobileMenuFooter: './src/components/MobileMenuFooter.astro',
       },
       expressiveCode: {
         themes: ['github-dark-default', 'github-light'],
@@ -92,7 +95,6 @@ export default defineConfig({
             { label: 'Bazel rules', slug: 'docs/bazel-rules' },
             { label: 'API sources', slug: 'docs/api' },
             { label: 'Migration notes', slug: 'docs/migration' },
-            { label: 'Community', slug: 'docs/community' },
           ],
         },
       ],

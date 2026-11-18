@@ -1,0 +1,27 @@
+---
+// Starlight's mobile menu footer, preceded by the top-level site links that
+// the header shows on wider screens.
+import Default from '@astrojs/starlight/components/MobileMenuFooter.astro';
+
+import { navLinks } from '../data/nav';
+---
+
+<nav class="mobile-site-nav" aria-label="Site">
+  {navLinks.map(({ label, href }) => <a href={href}>{label}</a>)}
+</nav>
+<Default />
+
+<style>
+  .mobile-site-nav {
+    display: flex;
+    gap: 1.25rem;
+    padding: 1rem 0 0.75rem;
+    border-top: 1px solid var(--sl-color-gray-6);
+    font-weight: 600;
+  }
+
+  .mobile-site-nav a {
+    color: var(--sl-color-white);
+    text-decoration: none;
+  }
+</style>

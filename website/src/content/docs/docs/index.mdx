@@ -3,7 +3,7 @@ title: Introduction
 description: What SGL is, how it is organized, and where to start.
 ---
 
-import { Aside, Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+import { Aside, Card, CardGrid, LinkCard, Steps } from '@astrojs/starlight/components';
 
 The Scala Game Library (SGL) is a library for writing cross-platform games in Scala. You write the
 game against portable APIs for the application lifecycle, rendering, input, audio, assets, and
@@ -17,6 +17,25 @@ level of [SDL](https://www.libsdl.org/), with Scala APIs on top.
 SGL has not had a release yet and its APIs change often. Use it if you are willing to follow the
 repository and adapt to breaking changes.
 </Aside>
+
+## Getting started
+
+<Steps>
+
+1. **[Install Bazel](/docs/installation/)** with Bazelisk, then clone the repository or add SGL to
+   your own Bazel module.
+
+2. **Run an example.** `bazel run //examples/hello-canvas:desktop-awt` opens a window, and
+   `bazel run //examples/hello-canvas:html5` serves the same game on `http://localhost:8080`.
+   The [showcase](/showcase/) lists more.
+
+3. **[Write your first game](/docs/getting-started/)**: a game core, a desktop target, and a web
+   target.
+
+4. **[Choose an engine](/docs/engines/)** when your game outgrows a single `frame` method:
+   GameObject for components and OpenGL, Screen2D for Canvas screens.
+
+</Steps>
 
 ## How SGL is organized
 

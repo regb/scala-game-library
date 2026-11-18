@@ -1,0 +1,99 @@
+---
+title: Community
+description: Get help, report issues, share your game, and contribute to SGL.
+template: splash
+editUrl: false
+lastUpdated: false
+---
+
+import { Code, Icon } from '@astrojs/starlight/components';
+import { repo } from '../../data/showcase';
+
+export const checks = `bazel build //...
+bazel test //...
+bazel run @buildifier_prebuilt//:buildifier -- -mode=check -lint=warn -r .`;
+
+export const docsPreview = `cd website
+pnpm install
+pnpm dev`;
+
+<div class="not-content">
+  <div class="page-intro">
+    <p class="section-lead">
+      SGL is developed in the open on GitHub. Questions, bug reports, and games built with SGL are
+      all welcome there.
+    </p>
+    <div class="hero-actions">
+      <a class="sgl-button primary" href={repo}>GitHub repository</a>
+      <a class="sgl-button secondary" href={`${repo}/issues`}>Browse issues</a>
+    </div>
+  </div>
+
+  <div class="callout-grid">
+    <article class="callout">
+      <span class="callout-icon"><Icon name="information" /></span>
+      <h3>Ask a question or report a bug</h3>
+      <p>
+        Open an issue on GitHub. Include the backend you run on and, for bugs, the smallest example
+        that shows the problem.
+      </p>
+      <div class="hero-actions">
+        <a class="sgl-button secondary" href={`${repo}/issues/new`}>Open an issue</a>
+      </div>
+    </article>
+    <article class="callout">
+      <span class="callout-icon"><Icon name="star" /></span>
+      <h3>Share your game</h3>
+      <p>
+        Built something with SGL? Open an issue with a link and a screenshot, and it will be added
+        to the showcase.
+      </p>
+      <div class="hero-actions">
+        <a class="sgl-button secondary" href="/showcase/">See the showcase</a>
+      </div>
+    </article>
+    <article class="callout">
+      <span class="callout-icon"><Icon name="github" /></span>
+      <h3>Follow development</h3>
+      <p>
+        SGL has not had a release yet and changes often. Star and watch the repository to follow
+        it; breaking changes are listed in the migration notes.
+      </p>
+      <div class="hero-actions">
+        <a class="sgl-button secondary" href="/docs/migration/">Migration notes</a>
+      </div>
+    </article>
+  </div>
+
+  <section class="page-section">
+    <h2>Contributing</h2>
+    <p>
+      Pull requests are welcome. They should build, pass all tests, and have formatted BUILD files.
+      Explain the motivation for API changes in the pull request. Many design decisions are
+      documented in comments at the top of the relevant source files.
+    </p>
+    <Code code={checks} lang="bash" title="Before opening a pull request" />
+  </section>
+
+  <section class="page-section">
+    <h2>Improving the documentation</h2>
+    <p>
+      This site lives in <code>website/</code> and uses Astro Starlight. Every docs page has an edit
+      link at the bottom. Changes to <code>master</code> are deployed automatically.
+    </p>
+    <Code code={docsPreview} lang="bash" title="Preview the site locally" />
+  </section>
+
+  <section class="page-section">
+    <h2>Articles</h2>
+    <p>
+      Background on why SGL exists and how it is designed. They were written for an earlier,
+      sbt-based version of the library, so the code no longer matches the current API.
+    </p>
+    <ul class="link-list">
+      <li><a href={`${repo}/blob/master/doc/2020-06-07-cross-platform-game-development-in-scala-natively.md`}><strong>Cross-platform game development in Scala, natively</strong><span>June 2020 · part 1 of a tutorial: one codebase, native on each platform</span></a></li>
+      <li><a href={`${repo}/blob/master/doc/2020-06-21-making-a-scala-game-part2.md`}><strong>Making a Scala game, part 2</strong><span>June 2020 · game coordinates, bitmaps, and character animation</span></a></li>
+      <li><a href="https://github.com/regb/scalavator"><strong>Scalavator source code</strong><span>A complete game on Android, web, and desktop</span></a></li>
+    </ul>
+  </section>
+</div>
