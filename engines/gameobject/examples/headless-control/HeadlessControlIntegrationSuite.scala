@@ -81,6 +81,33 @@ class HeadlessControlIntegrationSuite extends AnyFunSuite {
     } finally app.stop()
   }
 
+  test("a sprite, a circle mask and a text overlay are composed in that order") {
+    object app extends HeadlessOpenGLApp
+        with LayeredDrawingGame
+        with DesktopSystemProvider
+        with NoLoggingProvider {
+      override val frameDimension: (Int, Int) = (64, 64)
+    }
+
+    app.start()
+    try {
+      val frame = captureNextStep(app)
+      // The sprite shows through the hole of the mask.
+      assertPixel(frame, 32, 33, red = 0, green = 255, blue = 0, alpha = 255)
+      // Inside the hole but off the sprite: the clear color.
+      assertPixel(frame, 32, 20, red = 0, green = 0, blue = 0, alpha = 255)
+      // Outside the hole the mask covers the world, sprite included.
+      assertPixel(frame, 60, 32, red = 0, green = 0, blue = 255, alpha = 255)
+      assertPixel(frame, 32, 60, red = 0, green = 0, blue = 255, alpha = 255)
+      // The overlay is drawn over the mask: its background, then its glyphs.
+      assertPixel(frame, 4, 4, red = 255, green = 0, blue = 0, alpha = 255)
+      assertPixel(frame, 14, 15, red = 255, green = 0, blue = 0, alpha = 255)
+      assertPixel(frame, 8, 6, red = 255, green = 255, blue = 255, alpha = 255)
+      assertPixel(frame, 6, 6, red = 255, green = 0, blue = 0, alpha = 255)
+      assertPixel(frame, 17, 4, red = 0, green = 0, blue = 255, alpha = 255)
+    } finally app.stop()
+  }
+
   private def captureNextStep(app: HeadlessOpenGLApp): CapturedFrame = {
     val capture = app.captureNextFrame()
     app.step(1.0 / 60.0)
@@ -213,5 +240,28 @@ object HardCodedMovementScene extends Scene {
     context.spawn2D("Triangle", Transform2D(position = Vec2(-16f, 0f)))
       .attach(new MoveRight(_))
       .attach(new SpriteRenderer(_, SpriteVisual.Triangle((0.2f, 0.8f, 1f, 1f)), 10f, 10f))
+  }
+}
+
+trait LayeredDrawingGame extends OpenGLGameObjectApp {
+  override def configure(builder: GameBuilder): Unit = {
+    builder
+      .install(Render2DModule)
+      .setGlobal(ClearColor(0f, 0f, 0f, 1f))
+      .setInitialScene(LayeredDrawingScene)
+  }
+}
+
+object LayeredDrawingScene extends Scene {
+  override def load(context: GameContext)(using Scope): Unit = {
+    context.spawn2D("Camera").attach(new Camera2D(_, Vec2(64f, 64f)))
+    // Wide enough to reach under the mask on both sides.
+    context.spawn2D("Sprite")
+      .attach(new SpriteRenderer(_, SpriteVisual.Triangle((0f, 1f, 0f, 1f)), 60f, 10f))
+    context.spawn("Mask")
+      .attach(new CircleMaskTransition(_, Vec2(0f, 0f), radius = 16f, color = (0f, 0f, 1f, 1f)))
+    context.spawn("Overlay")
+      .attach(new TextOverlay(_, Vector("A"), x = 2f, y = 2f, scale = 1f,
+        background = (1f, 0f, 0f, 1f), color = (1f, 1f, 1f, 1f)))
   }
 }
