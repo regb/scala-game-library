@@ -1,8 +1,5 @@
-package sgl.engine.gameobject.capability
+package sgl.engine.gameobject
 
-import sgl.engine.gameobject.{CapabilityKey, Component, Globals, RequiresGlobals, Scope}
-import sgl.engine.gameobject.runtime.{GameBuilder, GameContext, GameModule}
-import sgl.engine.gameobject.schedule.{Stage, System, SystemId}
 
 /** Optional object-specific update capability.
   *
@@ -21,14 +18,14 @@ trait Updatable extends RequiresGlobals {
 }
 
 object Updatable {
-  given CapabilityKey[Updatable] = CapabilityKey[Updatable]("sgl.engine.gameobject.capability.Updatable") {
+  given CapabilityKey[Updatable] = CapabilityKey[Updatable]("sgl.engine.gameobject.Updatable") {
     case component: (Component & Updatable) => Some(component)
     case _ => None
   }
 }
 
 object UpdateComponentsSystem extends System {
-  override val id: SystemId = SystemId("sgl.engine.gameobject.capability.update")
+  override val id: SystemId = SystemId("sgl.engine.gameobject.update")
 
   override def run(context: GameContext)(using Scope): Unit =
     context.world.capabilityIndex[Updatable].foreach(_.update(context))
@@ -43,14 +40,14 @@ trait FixedUpdatable extends RequiresGlobals {
 }
 
 object FixedUpdatable {
-  given CapabilityKey[FixedUpdatable] = CapabilityKey[FixedUpdatable]("sgl.engine.gameobject.capability.FixedUpdatable") {
+  given CapabilityKey[FixedUpdatable] = CapabilityKey[FixedUpdatable]("sgl.engine.gameobject.FixedUpdatable") {
     case component: (Component & FixedUpdatable) => Some(component)
     case _ => None
   }
 }
 
 object FixedUpdateComponentsSystem extends System {
-  override val id: SystemId = SystemId("sgl.engine.gameobject.capability.fixed-update")
+  override val id: SystemId = SystemId("sgl.engine.gameobject.fixed-update")
 
   override def run(context: GameContext)(using Scope): Unit =
     context.world.capabilityIndex[FixedUpdatable].foreach(_.fixedUpdate(context))

@@ -1,10 +1,9 @@
 package sgl.engine.gameobject.render3d
 
 import sgl.assets.{DrawableAsset, RawImageAsset}
-import sgl.engine.gameobject.{Scope, World}
+import sgl.engine.gameobject.{ComponentOf, Scope, World}
 import sgl.engine.gameobject.render2d.{Render2D, Texture2D}
 import sgl.engine.gameobject.spatial3d.{GameObject3D, Spatial3D}
-import sgl.engine.gameobject.typed.ComponentOf
 import sgl.math.Mat4
 
 /** A mesh uploaded to the renderer. */

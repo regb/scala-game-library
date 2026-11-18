@@ -4,8 +4,7 @@ import scala.collection.mutable
 import scala.util.{Failure, Success}
 
 import sgl.{OpenGLProvider, SystemProvider, WindowProvider}
-import sgl.engine.gameobject.{CompositionError, Scope, World}
-import sgl.engine.gameobject.runtime.ClearColor
+import sgl.engine.gameobject.{ClearColor, Color, CompositionError, Scope, World}
 import sgl.engine.gameobject.spatial2d.Spatial2D
 import sgl.assets.{DrawableAsset, RawImageAsset, TextureFilter}
 import sgl.engine.gameobject.render2d.{Camera2D, Painter2D, Render2D, Texture2D, TextureSource}
@@ -213,7 +212,7 @@ final class OpenGLRenderer(
       override val viewport: Vec2,
       override val screenSize: Vec2
   ) extends Painter2D {
-    private def put(out: Array[Float], index: Int, p: Vec2, color: (Float, Float, Float, Float), u: Float, v: Float): Unit = {
+    private def put(out: Array[Float], index: Int, p: Vec2, color: Color, u: Float, v: Float): Unit = {
       val offset = index * 8
       if(inWorld) {
         out(offset) = ((p.x - camera.x) / viewport.x) * 2f
@@ -222,15 +221,15 @@ final class OpenGLRenderer(
         out(offset) = (p.x / screenSize.x) * 2f - 1f
         out(offset + 1) = 1f - (p.y / screenSize.y) * 2f
       }
-      out(offset + 2) = color._1
-      out(offset + 3) = color._2
-      out(offset + 4) = color._3
-      out(offset + 5) = color._4
+      out(offset + 2) = color.red
+      out(offset + 3) = color.green
+      out(offset + 4) = color.blue
+      out(offset + 5) = color.alpha
       out(offset + 6) = u
       out(offset + 7) = v
     }
 
-    override def triangle(a: Vec2, b: Vec2, c: Vec2, color: (Float, Float, Float, Float)): Unit = {
+    override def triangle(a: Vec2, b: Vec2, c: Vec2, color: Color): Unit = {
       val out = new Array[Float](3 * 8)
       put(out, 0, a, color, 0f, 0f)
       put(out, 1, b, color, 0f, 0f)
@@ -238,14 +237,14 @@ final class OpenGLRenderer(
       batch.add(None, out)
     }
 
-    override def quad(a: Vec2, b: Vec2, c: Vec2, d: Vec2, color: (Float, Float, Float, Float)): Unit =
+    override def quad(a: Vec2, b: Vec2, c: Vec2, d: Vec2, color: Color): Unit =
       textured(None, a, b, c, d, 0f, 0f, 0f, 0f, color)
 
     override def image(
         texture: Texture2D,
         a: Vec2, b: Vec2, c: Vec2, d: Vec2,
         u0: Float, v0: Float, u1: Float, v1: Float,
-        color: (Float, Float, Float, Float)
+        color: Color
     ): Unit =
       textureForSource(texture.source) match {
         case Some(resolved) =>
@@ -259,7 +258,7 @@ final class OpenGLRenderer(
         texture: Option[GLTexture],
         a: Vec2, b: Vec2, c: Vec2, d: Vec2,
         u0: Float, v0: Float, u1: Float, v1: Float,
-        color: (Float, Float, Float, Float)
+        color: Color
     ): Unit = {
       val out = new Array[Float](6 * 8)
       put(out, 0, a, color, u0, v0)
@@ -277,9 +276,8 @@ final class OpenGLRenderer(
     if(disposed) return
 
     val clear = world.globals.getOption[ClearColor]
-      .map(c => (c.red, c.green, c.blue, c.alpha))
-      .getOrElse((0f, 0f, 0f, 1f))
-    GL.clearColor(clear._1, clear._2, clear._3, clear._4)
+      .getOrElse(ClearColor(0f, 0f, 0f, 1f))
+    GL.clearColor(clear.red, clear.green, clear.blue, clear.alpha)
     GL.clear(GL.clearMask(GL.ColorBufferBit, GL.DepthBufferBit))
   }
 

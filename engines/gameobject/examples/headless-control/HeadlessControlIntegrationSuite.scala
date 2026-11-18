@@ -3,12 +3,9 @@ package sgl.examples.gameobject.headlesscontrol
 import org.scalatest.funsuite.AnyFunSuite
 import sgl.{Application, CanvasProvider, CapturedFrame, DesktopSystemProvider, Input, OpenGLCanvasProvider, OpenGLProvider, WindowProvider}
 import sgl.engine.gameobject._
-import sgl.engine.gameobject.capability._
 import sgl.engine.gameobject.extras._
 import sgl.engine.gameobject.render2d._
-import sgl.engine.gameobject.runtime._
 import sgl.engine.gameobject.spatial2d._
-import sgl.engine.gameobject.typed._
 import sgl.headless.opengl.HeadlessOpenGLApp
 import sgl.math.Vec2
 import sgl.util.NoLoggingProvider
@@ -240,7 +237,7 @@ object HardCodedMovementScene extends Scene {
     context.spawn2D("Camera").attach(new Camera2D(_, Vec2(64f, 64f)))
     context.spawn2D("Triangle", Transform2D(position = Vec2(-16f, 0f)))
       .attach(new MoveRight(_))
-      .attach(new SpriteRenderer(_, SpriteVisual.Triangle((0.2f, 0.8f, 1f, 1f)), 10f, 10f))
+      .attach(new SpriteRenderer(_, SpriteVisual.Triangle(Color(0.2f, 0.8f, 1f, 1f)), 10f, 10f))
   }
 }
 
@@ -260,11 +257,11 @@ object LayeredDrawingScene extends Scene {
     context.spawn2D("Camera").attach(new Camera2D(_, Vec2(64f, 64f)))
     // Wide enough to reach under the mask on both sides.
     context.spawn2D("Sprite")
-      .attach(new SpriteRenderer(_, SpriteVisual.Triangle((0f, 1f, 0f, 1f)), 60f, 10f))
+      .attach(new SpriteRenderer(_, SpriteVisual.Triangle(Color(0f, 1f, 0f, 1f)), 60f, 10f))
     context.spawn("Mask")
-      .attach(new CircleMaskTransition(_, Vec2(0f, 0f), radius = 16f, color = (0f, 0f, 1f, 1f)))
+      .attach(new CircleMaskTransition(_, Vec2(0f, 0f), radius = 16f, color = Color(0f, 0f, 1f, 1f)))
     context.spawn("Overlay")
       .attach(new TextOverlay(_, Vector("A"), x = 2f, y = 2f, scale = 1f,
-        background = (1f, 0f, 0f, 1f), color = (1f, 1f, 1f, 1f)))
+        background = Color(1f, 0f, 0f, 1f), color = Color(1f, 1f, 1f, 1f)))
   }
 }

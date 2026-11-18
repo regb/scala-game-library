@@ -1,19 +1,21 @@
-package sgl.engine.gameobject.runtime
+package sgl.engine.gameobject
 
 import scala.collection.mutable
 import scala.reflect.ClassTag
 
 import sgl.{Application, OpenGLProvider, SystemProvider, WindowProvider}
-import sgl.engine.gameobject.{Scope, World}
 import sgl.assets.{AssetRuntime, DrawableAsset, RawImageAsset}
 import sgl.engine.gameobject.render2d.{Render2D, Texture2D}
 import sgl.engine.gameobject.opengl.OpenGLEngine
 import sgl.engine.gameobject.render3d.Renderer
-import sgl.engine.gameobject.schedule.{Schedule, Stage, System}
 import sgl.util.{Loader, LoggingProvider}
 
 /** Color the renderer clears the frame with. */
 final case class ClearColor(red: Float, green: Float, blue: Float, alpha: Float)
+
+object ClearColor {
+  def apply(color: Color): ClearColor = ClearColor(color.red, color.green, color.blue, color.alpha)
+}
 
 final case class DeltaTime(seconds: Double)
 
@@ -25,6 +27,13 @@ final case class DeltaTime(seconds: Double)
 final case class FixedDeltaTime(seconds: Double, maxStepsPerFrame: Int = 8)
 
 final case class ElapsedTime(seconds: Double)
+
+/** Longest time a single frame is allowed to stand for. A frame that took
+  * longer, because of a hitch or a return from the background, is seen by the
+  * game as this long: `DeltaTime` is capped and `ElapsedTime` advances by the
+  * capped value, so one frame never moves the game by seconds at once.
+  */
+final case class MaxDeltaTime(seconds: Double)
 
 trait GameModule {
   def install(builder: GameBuilder): Unit
@@ -40,6 +49,16 @@ trait GameModule {
 trait Scene {
   def load(context: GameContext)(using Scope): Unit
   def unload(context: GameContext)(using Scope): Unit = {}
+
+  /** Called on the current scene when the application leaves the foreground,
+    * before the systems of `Stage.Pause`.
+    */
+  def pause(context: GameContext)(using Scope): Unit = {}
+
+  /** Called on the current scene when the application comes back, before the
+    * systems of `Stage.Resume`.
+    */
+  def resume(context: GameContext)(using Scope): Unit = {}
 }
 
 /** Services and scope shared by scenes, systems, and component callbacks. */
@@ -57,6 +76,11 @@ final class GameContext(
 
   /** Seconds since the previous frame, or the fixed step during `FixedUpdate`. */
   def dt: Float = world.globals.get[DeltaTime].seconds.toFloat
+
+  /** Sets a global for as long as the given scope lives: set from a scene, it
+    * goes away with the scene. See [[sgl.engine.gameobject.Globals.setScoped]].
+    */
+  def setGlobal[A: ClassTag](value: A)(using Scope): Unit = world.globals.setScoped(value)
 }
 
 /** Engine services exposed to systems. */
@@ -104,7 +128,7 @@ final class GameBuilder {
   }
 }
 
-final class GameRuntime private[runtime] (
+final class GameRuntime private[gameobject] (
     val engine: Engine,
     schedules: Map[Stage, Schedule],
     globalInitializers: Vector[World => Unit],
@@ -148,9 +172,10 @@ final class GameRuntime private[runtime] (
     }
   }
 
-  def frame(dt: Double): Unit = {
+  def frame(frameSeconds: Double): Unit = {
     ensureRunning()
-    if(!dt.isFinite || dt < 0.0) throw new IllegalArgumentException("Frame delta time must be a finite, non-negative number of seconds")
+    if(!frameSeconds.isFinite || frameSeconds < 0.0) throw new IllegalArgumentException("Frame delta time must be a finite, non-negative number of seconds")
+    val dt = math.min(frameSeconds, math.max(worldValue.globals.get[MaxDeltaTime].seconds, 0.0))
     processingFrame = true
     try {
       elapsedSeconds += dt
@@ -199,7 +224,9 @@ final class GameRuntime private[runtime] (
     */
   def pause(): Unit = {
     if(!started || disposed) return
-    run(Stage.Pause, currentSceneScope.getOrElse(worldValue.globalScope))
+    val scope = currentSceneScope.getOrElse(worldValue.globalScope)
+    currentScene.foreach(_.pause(new GameContext(worldValue, engine, this, scope))(using scope))
+    run(Stage.Pause, scope)
   }
 
   /** Runs the systems of `Stage.Resume`. Fixed steps start over from here:
@@ -208,7 +235,9 @@ final class GameRuntime private[runtime] (
   def resume(): Unit = {
     if(!started || disposed) return
     fixedAccumulator = 0.0
-    run(Stage.Resume, currentSceneScope.getOrElse(worldValue.globalScope))
+    val scope = currentSceneScope.getOrElse(worldValue.globalScope)
+    currentScene.foreach(_.resume(new GameContext(worldValue, engine, this, scope))(using scope))
+    run(Stage.Resume, scope)
   }
 
   def dispose(): Unit = {
@@ -271,6 +300,9 @@ final class GameRuntime private[runtime] (
     globalInitializers.foreach(_(world))
     if(world.globals.getOption[ClearColor].isEmpty) {
       world.globals.set(ClearColor(0f, 0f, 0f, 1f))
+    }
+    if(world.globals.getOption[MaxDeltaTime].isEmpty) {
+      world.globals.set(MaxDeltaTime(0.25))
     }
     if(world.globals.getOption[FixedDeltaTime].isEmpty) {
       world.globals.set(FixedDeltaTime(defaultFixedStep))

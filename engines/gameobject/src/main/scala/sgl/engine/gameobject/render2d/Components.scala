@@ -1,7 +1,7 @@
 package sgl.engine.gameobject.render2d
 
 import sgl.engine.gameobject.spatial2d.{GameObject2D, Spatial2D}
-import sgl.engine.gameobject.typed.{ComponentOf, TypedObject}
+import sgl.engine.gameobject.{Color, ComponentOf, TypedObject}
 import sgl.assets.{DrawableAsset, RawImageAsset}
 
 sealed trait TextureSource
@@ -37,8 +37,8 @@ final class Camera2D(
 sealed trait SpriteVisual
 object SpriteVisual {
   final case class Texture(texture: Texture2D, u0: Float = 0f, v0: Float = 0f, u1: Float = 1f, v1: Float = 1f) extends SpriteVisual
-  final case class Triangle(color: (Float, Float, Float, Float)) extends SpriteVisual
-  final case class Circle(color: (Float, Float, Float, Float), segments: Int = 18) extends SpriteVisual
+  final case class Triangle(color: Color) extends SpriteVisual
+  final case class Circle(color: Color, segments: Int = 18) extends SpriteVisual
 }
 
 final class SpriteRenderer(

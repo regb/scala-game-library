@@ -21,12 +21,8 @@ Extend `OpenGLGameObjectApp` and configure the game in `configure`. The engine o
 
 ```scala
 import sgl.engine.gameobject._
-import sgl.engine.gameobject.capability._
 import sgl.engine.gameobject.render2d._
-import sgl.engine.gameobject.runtime._
-import sgl.engine.gameobject.schedule._
 import sgl.engine.gameobject.spatial2d._
-import sgl.engine.gameobject.typed._
 
 trait AbstractApp extends OpenGLGameObjectApp {
   override def configure(builder: GameBuilder): Unit =
@@ -122,7 +118,7 @@ final class Player(obj: TypedObject[Spatial2D & Velocity & Collider]) extends Co
 context.spawn2D("Bullet", Transform2D(position = pos))   // GameObject2D
   .attach(new Collider(_, 4f))                                   // & Collider
   .attach(new Bullet(_))                                         // & Bullet
-  .attach(new SpriteRenderer(_, SpriteVisual.Circle((1f, 0.9f, 0.5f, 1f)), 7f, 7f))
+  .attach(new SpriteRenderer(_, SpriteVisual.Circle(Color(1f, 0.9f, 0.5f, 1f)), 7f, 7f))
 ```
 
 The compiler rejects these mistakes:
@@ -242,10 +238,13 @@ schedule rejects duplicate system IDs.
 
 A frame runs at most `maxStepsPerFrame` fixed steps (8 by default, set with
 `FixedDeltaTime(1.0 / 60.0, maxStepsPerFrame = 4)`) and drops the time beyond that, so a long
-frame slows the simulation down for a moment instead of replaying every missed step.
+frame slows the simulation down for a moment instead of replaying every missed step. The frame's
+own delta time is capped too, by the `MaxDeltaTime` global (0.25 s by default): a longer frame is
+seen by the game as that long.
 
 Two more stages run outside of a frame: `Pause` when the application leaves the foreground and
-`Resume` when it comes back, which is where a game saves its state or stops its music. Fixed
+`Resume` when it comes back, which is where a game saves its state or stops its music. The current
+scene is told first, through its `pause` and `resume` methods. Fixed
 steps start over on resume, so the time spent in the background is not simulated.
 
 For small systems, `System("game.spawner") { ... }` creates one from a block that receives a given
@@ -282,6 +281,21 @@ world.globals.getOption[Difficulty]  // also get, set, contains
 
 Type arguments are not part of the class: wrap a `List[Int]` in a class of its own instead of
 storing it directly.
+
+A global set this way lives as long as the world. For state that belongs to one scene, set it from
+the scene with `context.setGlobal(value)`: it is bound to the scene's scope and goes away with it,
+giving back the value it replaced if there was one.
+
+```scala
+object Level1 extends Scene {
+  override def load(context: GameContext)(using Scope): Unit = {
+    context.setGlobal(LevelState(lives = 3))   // gone when another scene loads
+  }
+}
+```
+
+A single component found with `world.single[A]` is the other way to hold scene state. Use a
+global for a plain value, and a component when the state belongs to an object.
 
 A `GameModule` bundles globals and systems. The built-in `UpdateCapabilitiesModule`
 publishes itself among the globals, which is what `Updatable` and `FixedUpdatable` require.
@@ -335,11 +349,11 @@ and children) and `GameObject2D`. Extensions on `GameObject2D` give direct acces
 
 ```scala
 val ship = context.spawn2D("Ship")
-  .attach(new SpriteRenderer(_, SpriteVisual.Triangle((0.9f, 0.9f, 1f, 1f)), 28f, 34f))
+  .attach(new SpriteRenderer(_, SpriteVisual.Triangle(Color(0.9f, 0.9f, 1f, 1f)), 28f, 34f))
 
 context.spawn2D("Thruster", Transform2D(position = Vec2(0f, 20f)))
   .childOf(ship)
-  .attach(new SpriteRenderer(_, SpriteVisual.Circle((1f, 0.5f, 0.2f, 1f)), 8f, 8f))
+  .attach(new SpriteRenderer(_, SpriteVisual.Circle(Color(1f, 0.5f, 0.2f, 1f)), 8f, 8f))
 ```
 
 `obj.spatial.local` is writable. `obj.global` is computed from the parent chain when it is read, so

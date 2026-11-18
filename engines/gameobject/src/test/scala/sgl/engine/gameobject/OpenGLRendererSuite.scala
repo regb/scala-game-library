@@ -253,11 +253,11 @@ class OpenGLRendererSuite extends AnyFunSuite {
     val renderer = new OpenGLRenderer(app)
     val world = renderWorld()
     val draw = renderer.render2D
-    val red = (1f, 0f, 0f, 1f)
-    val green = (0f, 1f, 0f, 1f)
-    val blue = (0f, 0f, 1f, 1f)
-    val white = (1f, 1f, 1f, 1f)
-    def corner(painter: sgl.engine.gameobject.render2d.Painter2D, color: (Float, Float, Float, Float)): Unit =
+    val red = Color(1f, 0f, 0f, 1f)
+    val green = Color(0f, 1f, 0f, 1f)
+    val blue = Color(0f, 0f, 1f, 1f)
+    val white = Color(1f, 1f, 1f, 1f)
+    def corner(painter: sgl.engine.gameobject.render2d.Painter2D, color: Color): Unit =
       painter.triangle(Vec2(0f, 0f), Vec2(1f, 0f), Vec2(0f, 1f), color)
 
     renderer.beginFrame(world)
@@ -271,7 +271,7 @@ class OpenGLRendererSuite extends AnyFunSuite {
     assert(app.draws.size == 1)
     val vertices = app.draws.head._2.grouped(8).toVector
     val firstOfEach = vertices.grouped(3).map(_.head).toVector
-    assert(firstOfEach.map(v => (v(2), v(3), v(4), v(5))) == Vector(green, red, blue, white))
+    assert(firstOfEach.map(v => Color(v(2), v(3), v(4), v(5))) == Vector(green, red, blue, white))
     // A world origin is the middle of the view; a screen origin is its top left.
     assert(firstOfEach.map(v => (v(0), v(1))) == Vector((0f, 0f), (0f, 0f), (-1f, 1f), (-1f, 1f)))
 

@@ -1,11 +1,9 @@
-package sgl.engine.gameobject.typed
+package sgl.engine.gameobject
 
 import scala.annotation.implicitNotFound
 import scala.reflect.ClassTag
 import scala.util.NotGiven
 
-import sgl.engine.gameobject.{Component, GameObject, HasGameObject, Scope, World}
-import sgl.engine.gameobject.runtime.GameContext
 
 /** A game object whose type records components known to be attached to it.
   *

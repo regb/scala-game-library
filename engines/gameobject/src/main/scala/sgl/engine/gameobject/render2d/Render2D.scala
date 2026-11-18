@@ -1,5 +1,6 @@
 package sgl.engine.gameobject.render2d
 
+import sgl.engine.gameobject.Color
 import sgl.math.Vec2
 
 /** Where systems draw in 2D.
@@ -46,10 +47,10 @@ trait Painter2D {
   /** Size of the screen, in pixels. */
   def screenSize: Vec2
 
-  def triangle(a: Vec2, b: Vec2, c: Vec2, color: (Float, Float, Float, Float)): Unit
+  def triangle(a: Vec2, b: Vec2, c: Vec2, color: Color): Unit
 
   /** A filled quad, its corners given in order around it. */
-  def quad(a: Vec2, b: Vec2, c: Vec2, d: Vec2, color: (Float, Float, Float, Float)): Unit
+  def quad(a: Vec2, b: Vec2, c: Vec2, d: Vec2, color: Color): Unit
 
   /** A textured quad. The corners go around the quad starting where the
     * texture coordinate is (`u0`, `v0`): `a` (u0, v0), `b` (u1, v0),
@@ -61,6 +62,6 @@ trait Painter2D {
       texture: Texture2D,
       a: Vec2, b: Vec2, c: Vec2, d: Vec2,
       u0: Float = 0f, v0: Float = 0f, u1: Float = 1f, v1: Float = 1f,
-      color: (Float, Float, Float, Float) = (1f, 1f, 1f, 1f)
+      color: Color = Color(1f, 1f, 1f, 1f)
   ): Unit
 }

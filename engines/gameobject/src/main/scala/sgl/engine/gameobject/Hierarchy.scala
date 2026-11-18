@@ -1,6 +1,5 @@
-package sgl.engine.gameobject.hierarchy
+package sgl.engine.gameobject
 
-import sgl.engine.gameobject.{Component, CompositionError}
 
 /** Parent/child links between components of one kind.
   *

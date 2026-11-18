@@ -192,6 +192,29 @@ final class Globals private[gameobject] () {
   def set[A](value: A)(using tag: ClassTag[A]): Unit =
     values(tag.runtimeClass) = value
 
+  /** Sets a value for as long as the scope lives. When the scope is destroyed
+    * the global goes back to what it was before, which is usually absent. This
+    * is the way to hold state for one scene: unlike `set`, nothing has to be
+    * cleared by hand when the scene is left.
+    *
+    * A later `set` or `setScoped` of the same type takes over: the scope then
+    * leaves the newer value alone.
+    */
+  def setScoped[A](value: A)(using tag: ClassTag[A], scope: Scope): Unit = {
+    val key = tag.runtimeClass
+    val previous = values.get(key)
+    val boxed = value.asInstanceOf[AnyRef]
+    scope.onDestroy { () =>
+      if(values.get(key).exists(_.asInstanceOf[AnyRef] eq boxed)) {
+        previous match {
+          case Some(restored) => values(key) = restored
+          case None => values.remove(key)
+        }
+      }
+    }
+    values(key) = boxed
+  }
+
   def get[A](using tag: ClassTag[A]): A =
     getOption[A].getOrElse(throw new NoSuchElementException(s"Missing global ${tag.runtimeClass.getName}"))
 

@@ -1,10 +1,7 @@
 package sgl.engine.gameobject.extras
 
-import sgl.engine.gameobject.{Globals, RequiresGlobals, Scope, World}
+import sgl.engine.gameobject.{Color, ComponentOf, GameBuilder, GameContext, GameModule, Globals, RequiresGlobals, Scope, Stage, System, SystemId, TypedObject, World}
 import sgl.engine.gameobject.render2d.{Painter2D, Render2D}
-import sgl.engine.gameobject.runtime.{GameBuilder, GameContext, GameModule}
-import sgl.engine.gameobject.schedule.{Stage, System, SystemId}
-import sgl.engine.gameobject.typed.{ComponentOf, TypedObject}
 import sgl.math.Vec2
 
 /** Covers the world with `color` except for a disc around `worldCenter`: an
@@ -15,7 +12,7 @@ final class CircleMaskTransition(
     obj: TypedObject[Any],
     var worldCenter: Vec2,
     var radius: Float,
-    var color: (Float, Float, Float, Float) = (0f, 0f, 0f, 1f),
+    var color: Color = Color(0f, 0f, 0f, 1f),
     var segments: Int = 96,
     var visible: Boolean = true
 ) extends ComponentOf(obj) with RequiresGlobals {

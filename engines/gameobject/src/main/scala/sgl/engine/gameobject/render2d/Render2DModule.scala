@@ -1,8 +1,6 @@
 package sgl.engine.gameobject.render2d
 
-import sgl.engine.gameobject.{Globals, RequiresGlobals, Scope, World}
-import sgl.engine.gameobject.runtime.{GameBuilder, GameContext, GameModule}
-import sgl.engine.gameobject.schedule.{Stage, System, SystemId}
+import sgl.engine.gameobject.{Color, GameBuilder, GameContext, GameModule, Globals, RequiresGlobals, Scope, Stage, System, SystemId, World}
 import sgl.math.Vec2
 
 /** Mixed into the components that only do something with [[Render2DModule]]
@@ -78,7 +76,7 @@ object TilemapRenderSystem extends System {
             at(quad.x, quad.y), at(quad.x + quad.width, quad.y),
             at(quad.x + quad.width, quad.y + quad.height), at(quad.x, quad.y + quad.height),
             quad.u0, quad.v0, quad.u1, quad.v1,
-            (1f, 1f, 1f, quad.alpha)
+            Color(1f, 1f, 1f, quad.alpha)
           )
         }
       }

@@ -1,10 +1,7 @@
 package sgl.engine.gameobject.extras
 
-import sgl.engine.gameobject.{Globals, RequiresGlobals, Scope, World}
+import sgl.engine.gameobject.{Color, ComponentOf, GameBuilder, GameContext, GameModule, Globals, RequiresGlobals, Scope, Stage, System, SystemId, TypedObject, World}
 import sgl.engine.gameobject.render2d.{Painter2D, Render2D}
-import sgl.engine.gameobject.runtime.{GameBuilder, GameContext, GameModule}
-import sgl.engine.gameobject.schedule.{Stage, System, SystemId}
-import sgl.engine.gameobject.typed.{ComponentOf, TypedObject}
 import sgl.math.Vec2
 
 // A drawable written the way a game would write its own: a component, a
@@ -21,8 +18,8 @@ final class TextOverlay(
     var x: Float = 32f,
     var y: Float = 32f,
     var scale: Float = 5f,
-    var background: (Float, Float, Float, Float) = (0f, 0f, 0f, 0.78f),
-    var color: (Float, Float, Float, Float) = (1f, 1f, 1f, 1f),
+    var background: Color = Color(0f, 0f, 0f, 0.78f),
+    var color: Color = Color(1f, 1f, 1f, 1f),
     var order: Int = 0
 ) extends ComponentOf(obj) with RequiresGlobals {
   override def requiredGlobals: Vector[Class[?]] =
@@ -49,7 +46,7 @@ object TextOverlaySystem extends System {
     val width = overlay.lines.map(_.length).max.toFloat * (charWidth + gap) + pad * 2f
     val height = overlay.lines.size.toFloat * (charHeight + lineGap) - lineGap + pad * 2f
 
-    def rect(x: Float, y: Float, w: Float, h: Float, color: (Float, Float, Float, Float)): Unit =
+    def rect(x: Float, y: Float, w: Float, h: Float, color: Color): Unit =
       painter.quad(Vec2(x, y), Vec2(x + w, y), Vec2(x + w, y + h), Vec2(x, y + h), color)
 
     rect(overlay.x, overlay.y, width, height, overlay.background)

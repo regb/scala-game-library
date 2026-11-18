@@ -3,13 +3,9 @@ package sgl.engine.gameobject
 import org.scalatest.funsuite.AnyFunSuite
 
 import sgl.assets.{DrawableAsset, RawImageAsset}
-import sgl.engine.gameobject.capability.{FixedUpdatable, Updatable, UpdateCapabilitiesModule}
 import sgl.engine.gameobject.render2d.Texture2D
 import sgl.engine.gameobject.render3d.{Material, Mesh, MeshData, Renderer}
-import sgl.engine.gameobject.runtime.{Engine, FixedDeltaTime, GameBuilder, GameContext, Scene}
-import sgl.engine.gameobject.schedule.{Schedule, Stage, System}
 import sgl.engine.gameobject.spatial2d._
-import sgl.engine.gameobject.typed.{ComponentOf, TypedObject}
 import sgl.math.Vec2
 
 class GameObjectSuite extends AnyFunSuite {
@@ -710,6 +706,7 @@ class GameObjectSuite extends AnyFunSuite {
     var seenDt = 0f
     val runtime = new GameBuilder()
       .setGlobal(FixedDeltaTime(0.1, maxStepsPerFrame = 3))
+      .setGlobal(MaxDeltaTime(120.0))
       .addSystem(Stage.FixedUpdate, System("count") { steps += 1; seenDt = summon[GameContext].dt })
       .build(new TestEngine(new RecordingRenderer))
     runtime.startup()
@@ -722,9 +719,58 @@ class GameObjectSuite extends AnyFunSuite {
     assert(steps === 4)
   }
 
+  test("a frame longer than MaxDeltaTime is seen as that long") {
+    var seen = Vector.empty[Float]
+    val runtime = new GameBuilder()
+      .addSystem(Stage.Update, System("record") { seen :+= summon[GameContext].dt })
+      .build(new TestEngine(new RecordingRenderer))
+    runtime.startup()
+    runtime.frame(0.1)
+    runtime.frame(30.0)
+    assert(seen === Vector(0.1f, 0.25f))
+    assert(runtime.world.globals.get[ElapsedTime].seconds === 0.35)
+  }
+
+  test("a global set for a scene goes away with it and gives back what it replaced") {
+    final case class Difficulty(level: Int)
+    final case class Checkpoint(name: String)
+    object First extends Scene {
+      override def load(context: GameContext)(using Scope): Unit = {
+        context.setGlobal(Difficulty(3))
+        context.setGlobal(Checkpoint("start"))
+        // A later permanent value takes over: the scene leaves it alone.
+        context.world.globals.set(Checkpoint("kept"))
+      }
+    }
+    object Second extends Scene {
+      override def load(context: GameContext)(using Scope): Unit = ()
+    }
+    val runtime = new GameBuilder()
+      .setGlobal(Difficulty(1))
+      .setInitialScene(First)
+      .build(new TestEngine(new RecordingRenderer))
+    runtime.startup()
+    assert(runtime.world.globals.get[Difficulty] === Difficulty(3))
+
+    runtime.loadScene(Second)
+    assert(runtime.world.globals.get[Difficulty] === Difficulty(1))
+    assert(runtime.world.globals.get[Checkpoint] === Checkpoint("kept"))
+
+    val scope = runtime.world.createScope("temporary")
+    runtime.world.globals.setScoped("text")(using summon, scope)
+    runtime.world.destroyScope(scope)
+    assert(!runtime.world.globals.contains[String])
+  }
+
   test("pause and resume run their stages, and resuming starts fixed steps over") {
     var events = Vector.empty[String]
+    object Watched extends Scene {
+      override def load(context: GameContext)(using Scope): Unit = ()
+      override def pause(context: GameContext)(using Scope): Unit = events :+= "scene pause"
+      override def resume(context: GameContext)(using Scope): Unit = events :+= "scene resume"
+    }
     val runtime = new GameBuilder()
+      .setInitialScene(Watched)
       .setGlobal(FixedDeltaTime(0.1))
       .addSystem(Stage.Pause, System("pause") { events :+= "pause" })
       .addSystem(Stage.Resume, System("resume") { events :+= "resume" })
@@ -738,10 +784,10 @@ class GameObjectSuite extends AnyFunSuite {
     runtime.pause()
     runtime.resume()
     runtime.frame(0.09)
-    assert(events === Vector("pause", "resume"))
+    assert(events === Vector("scene pause", "pause", "scene resume", "resume"))
     runtime.dispose()
     runtime.resume()
-    assert(events === Vector("pause", "resume"))
+    assert(events === Vector("scene pause", "pause", "scene resume", "resume"))
   }
 
   test("scene changes requested by a system happen after rendering") {
@@ -799,7 +845,7 @@ class GameObjectSuite extends AnyFunSuite {
 
   test("drawable components require their render module") {
     import sgl.engine.gameobject.render2d.{Render2DModule, SpriteRenderer, SpriteVisual}
-    val visual = SpriteVisual.Triangle((1f, 1f, 1f, 1f))
+    val visual = SpriteVisual.Triangle(Color(1f, 1f, 1f, 1f))
 
     val bare = new GameBuilder().build(new TestEngine(new RecordingRenderer))
     val error = intercept[CompositionError] {

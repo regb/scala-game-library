@@ -86,7 +86,7 @@ object Level extends Scene {
     context.spawn2D("Camera").attach(new Camera2D(_, Vec2(800f, 600f)))
     context.spawn2D("Ship")
       .attach(new Spin(_))
-      .attach(new SpriteRenderer(_, SpriteVisual.Triangle((1f, 1f, 1f, 1f)), 28f, 34f))
+      .attach(new SpriteRenderer(_, SpriteVisual.Triangle(Color(1f, 1f, 1f, 1f)), 28f, 34f))
   }
 }`;
 

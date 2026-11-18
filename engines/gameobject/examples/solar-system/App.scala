@@ -2,12 +2,9 @@ package sgl.examples.gameobject.solar
 package core
 
 import sgl.{AudioProvider, Input, InputProcessor, PointerInputProcessor}
-import sgl.engine.gameobject._
+import sgl.engine.gameobject.{System as EngineSystem, _}
 import sgl.engine.gameobject.render3d._
-import sgl.engine.gameobject.runtime._
-import sgl.engine.gameobject.schedule.{Stage, System as EngineSystem, SystemId}
 import sgl.engine.gameobject.spatial3d._
-import sgl.engine.gameobject.typed._
 import sgl.math.{Quaternion, Vec3}
 
 import scala.language.implicitConversions

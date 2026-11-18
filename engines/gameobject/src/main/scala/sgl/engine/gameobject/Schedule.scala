@@ -1,7 +1,5 @@
-package sgl.engine.gameobject.schedule
+package sgl.engine.gameobject
 
-import sgl.engine.gameobject.{CompositionError, Scope, World}
-import sgl.engine.gameobject.runtime.{Engine, GameContext}
 
 final case class SystemId(value: String) extends AnyVal
 
@@ -29,8 +27,8 @@ object System {
   }
 }
 
-final class Schedule private[schedule] (systems: Vector[System]) {
-  def run(world: World, engine: Engine, runtime: sgl.engine.gameobject.runtime.GameRuntime, scope: Scope): Unit = {
+final class Schedule private[gameobject] (systems: Vector[System]) {
+  def run(world: World, engine: Engine, runtime: sgl.engine.gameobject.GameRuntime, scope: Scope): Unit = {
     val context = new GameContext(world, engine, runtime, scope)
     systems.foreach(_.run(context)(using scope))
   }

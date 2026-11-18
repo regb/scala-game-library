@@ -1,8 +1,6 @@
 package sgl.engine.gameobject.render3d
 
-import sgl.engine.gameobject.{Globals, RequiresGlobals, Scope}
-import sgl.engine.gameobject.runtime.{GameBuilder, GameContext, GameModule}
-import sgl.engine.gameobject.schedule.{Stage, System, SystemId}
+import sgl.engine.gameobject.{GameBuilder, GameContext, GameModule, Globals, RequiresGlobals, Scope, Stage, System, SystemId}
 
 /** Mixed into the components that only do something with [[Render3DModule]]
   * installed: attaching one without it is an error instead of an object that

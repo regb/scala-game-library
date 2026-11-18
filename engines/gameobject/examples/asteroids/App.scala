@@ -3,13 +3,9 @@ package core
 
 import sgl._
 import sgl.engine.gameobject._
-import sgl.engine.gameobject.capability._
 import sgl.engine.gameobject.extras._
 import sgl.engine.gameobject.render2d._
-import sgl.engine.gameobject.runtime._
-import sgl.engine.gameobject.schedule._
 import sgl.engine.gameobject.spatial2d._
-import sgl.engine.gameobject.typed._
 import sgl.math.Vec2
 import sgl.util.DefaultRandomProvider
 
@@ -114,7 +110,7 @@ object Player {
       .attach(new Bullet(_))
       .attach(new Velocity(_, dir * 420f))
       .attachPlain(new Lifetime(_, 1.2))
-      .attach(new SpriteRenderer(_, SpriteVisual.Circle((1f, 0.92f, 0.47f, 1f), segments = 10), 7f, 7f))
+      .attach(new SpriteRenderer(_, SpriteVisual.Circle(Color(1f, 0.92f, 0.47f, 1f), segments = 10), 7f, 7f))
   }
 
   def direction(rotation: Float): Vec2 = Vec2(scala.math.sin(rotation).toFloat, -scala.math.cos(rotation).toFloat)
@@ -160,7 +156,7 @@ object AsteroidsScene extends Scene {
       .attach(new Velocity(_, Vec2(0f, 0f)))
       .attach(new Collider(_, 14f))
       .attach(new Player(_))
-      .attach(new SpriteRenderer(_, SpriteVisual.Triangle((0.86f, 0.94f, 1f, 1f)), 28f, 34f))
+      .attach(new SpriteRenderer(_, SpriteVisual.Triangle(Color(0.86f, 0.94f, 1f, 1f)), 28f, 34f))
 
     for(i <- 0 until 8) AsteroidSpawner.spawn(context.world, i)
   }
@@ -181,7 +177,7 @@ object AsteroidSpawner {
       .attach(new Collider(_, size / 2f))
       .attach(new Asteroid(_))
       .attach(new Velocity(_, vel))
-      .attach(new SpriteRenderer(_, SpriteVisual.Circle((0.60f, 0.60f, 0.60f, 1f)), size, size))
+      .attach(new SpriteRenderer(_, SpriteVisual.Circle(Color(0.60f, 0.60f, 0.60f, 1f)), size, size))
   }
 }
 
