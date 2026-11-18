@@ -8,7 +8,8 @@ import sgl.{OpenGLProvider, PartsResourcePathProvider, SystemProvider, WindowPro
 import sgl.assets.{AssetFactory, BinaryAsset, DrawableAsset, TextAsset, TextureFilter}
 import sgl.engine.gameobject.opengl.OpenGLRenderer
 import sgl.engine.gameobject.spatial2d._
-import sgl.engine.gameobject.render2d.{Render2DModule, SpriteRenderer, SpriteVisual, Texture2D, TileQuad, Tilemap}
+import sgl.engine.gameobject.render2d.{Render2DModule, SpriteRenderSystem, SpriteRenderer, SpriteVisual, Texture2D, TileQuad, Tilemap, TilemapRenderSystem}
+import sgl.math.Vec2
 import sgl.util.{DefaultLoader, Loader}
 
 class OpenGLRendererSuite extends AnyFunSuite {
@@ -155,9 +156,8 @@ class OpenGLRendererSuite extends AnyFunSuite {
   // One frame as the runtime draws it: open, let the 2D systems submit, close.
   private def drawFrame(renderer: OpenGLRenderer, world: World): Unit = {
     renderer.beginFrame(world)
-    renderer.submitSprites(world)
-    renderer.submitTilemaps(world)
-    renderer.submitScreenEffects(world)
+    SpriteRenderSystem.submit(world, renderer.render2D)
+    TilemapRenderSystem.submit(world, renderer.render2D)
     renderer.endFrame(world)
   }
 
@@ -192,6 +192,39 @@ class OpenGLRendererSuite extends AnyFunSuite {
     val renderer = new OpenGLRenderer(app)
     renderer.loadDrawableTexture(coin)
     assert(app.uploads.map(u => (u.resourceName, u.mipmaps)) == Seq(("drawable-mdpi/coin.png", true)))
+  }
+
+  test("submitted drawings are composed by z, then screen order, whatever order they arrive in") {
+    val app = new FakeGLApp
+    val renderer = new OpenGLRenderer(app)
+    val world = renderWorld()
+    val draw = renderer.render2D
+    val red = (1f, 0f, 0f, 1f)
+    val green = (0f, 1f, 0f, 1f)
+    val blue = (0f, 0f, 1f, 1f)
+    val white = (1f, 1f, 1f, 1f)
+    def corner(painter: sgl.engine.gameobject.render2d.Painter2D, color: (Float, Float, Float, Float)): Unit =
+      painter.triangle(Vec2(0f, 0f), Vec2(1f, 0f), Vec2(0f, 1f), color)
+
+    renderer.beginFrame(world)
+    draw.screen(order = 5)(corner(_, white))
+    draw.world(z = 2f)(corner(_, red))
+    draw.screen(order = 1)(corner(_, blue))
+    draw.world(z = 1f)(corner(_, green))
+    renderer.endFrame(world)
+
+    // Untextured drawings share one draw; each vertex is x, y, r, g, b, a, u, v.
+    assert(app.draws.size == 1)
+    val vertices = app.draws.head._2.grouped(8).toVector
+    val firstOfEach = vertices.grouped(3).map(_.head).toVector
+    assert(firstOfEach.map(v => (v(2), v(3), v(4), v(5))) == Vector(green, red, blue, white))
+    // A world origin is the middle of the view; a screen origin is its top left.
+    assert(firstOfEach.map(v => (v(0), v(1))) == Vector((0f, 0f), (0f, 0f), (-1f, 1f), (-1f, 1f)))
+
+    // Nothing is carried over to the next frame.
+    renderer.beginFrame(world)
+    renderer.endFrame(world)
+    assert(app.draws.size == 1)
   }
 
   test("consecutive sprites on a shared page render in one draw with page-relative UVs") {

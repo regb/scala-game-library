@@ -6,7 +6,7 @@ import scala.reflect.ClassTag
 import sgl.{Application, OpenGLProvider, SystemProvider, WindowProvider}
 import sgl.engine.gameobject.{Scope, World}
 import sgl.assets.{AssetRuntime, DrawableAsset, RawImageAsset}
-import sgl.engine.gameobject.render2d.Texture2D
+import sgl.engine.gameobject.render2d.{Render2D, Texture2D}
 import sgl.engine.gameobject.opengl.OpenGLEngine
 import sgl.engine.gameobject.render3d.{MaterialAsset, MeshAsset, Renderer, TextureAsset}
 import sgl.engine.gameobject.schedule.{Schedule, Stage, System}
@@ -245,6 +245,7 @@ final class GameRuntime(
 
   private def createWorld(): World = {
     val world = new World
+    world.globals.set[Render2D](engine.renderer.render2D)
     globalInitializers.foreach(_(world))
     if(world.globals.getOption[ClearColor].isEmpty) {
       world.globals.set(ClearColor(0f, 0f, 0f, 1f))

@@ -8,7 +8,7 @@ import sgl.engine.gameobject.World
 import sgl.engine.gameobject.runtime.ClearColor
 import sgl.engine.gameobject.spatial2d.Spatial2D
 import sgl.assets.{DrawableAsset, RawImageAsset, TextureFilter}
-import sgl.engine.gameobject.render2d.{Camera2D, CircleMaskTransition, SpriteRenderer, SpriteVisual, TextOverlay, Texture2D, TextureSource, TileQuad, Tilemap}
+import sgl.engine.gameobject.render2d.{Camera2D, Painter2D, Render2D, Texture2D, TextureSource}
 import sgl.engine.gameobject.render3d._
 import sgl.math.{Mat4, Vec2}
 import sgl.util.Loader
@@ -179,16 +179,84 @@ final class OpenGLRenderer(
   override def resize(width: Int, height: Int): Unit =
     GL.viewport(0, 0, width, height)
 
-  // One frame of 2D drawing: what a submitted item draws with.
-  private final case class Frame2D(batch: Batch2D, camera: Vec2, viewport: Vec2)
-
-  // World items are drawn first, ordered by z. Masks and then overlays follow,
-  // in screen space. Items that compare equal keep their submission order.
-  private final case class Queued2D(layer: Int, z: Float, draw: Frame2D => Unit)
-  private val WorldLayer = 0
-  private val MaskLayer = 1
-  private val OverlayLayer = 2
+  // World drawings come first, ordered by z; screen drawings follow, ordered
+  // by their order. Drawings that compare equal keep their submission order.
+  private final case class Queued2D(screen: Boolean, key: Float, draw: Painter2D => Unit)
   private val queue2D = mutable.ArrayBuffer.empty[Queued2D]
+
+  override val render2D: Render2D = new Render2D {
+    override def world(z: Float)(draw: Painter2D => Unit): Unit =
+      queue2D += Queued2D(screen = false, z, draw)
+    override def screen(order: Int)(draw: Painter2D => Unit): Unit =
+      queue2D += Queued2D(screen = true, order.toFloat, draw)
+  }
+
+  // Turns points of one space, world or screen, into batched vertices.
+  private final class Painter(
+      batch: Batch2D,
+      inWorld: Boolean,
+      override val camera: Vec2,
+      override val viewport: Vec2,
+      override val screenSize: Vec2
+  ) extends Painter2D {
+    private def put(out: Array[Float], index: Int, p: Vec2, color: (Float, Float, Float, Float), u: Float, v: Float): Unit = {
+      val offset = index * 8
+      if(inWorld) {
+        out(offset) = ((p.x - camera.x) / viewport.x) * 2f
+        out(offset + 1) = -((p.y - camera.y) / viewport.y) * 2f
+      } else {
+        out(offset) = (p.x / screenSize.x) * 2f - 1f
+        out(offset + 1) = 1f - (p.y / screenSize.y) * 2f
+      }
+      out(offset + 2) = color._1
+      out(offset + 3) = color._2
+      out(offset + 4) = color._3
+      out(offset + 5) = color._4
+      out(offset + 6) = u
+      out(offset + 7) = v
+    }
+
+    override def triangle(a: Vec2, b: Vec2, c: Vec2, color: (Float, Float, Float, Float)): Unit = {
+      val out = new Array[Float](3 * 8)
+      put(out, 0, a, color, 0f, 0f)
+      put(out, 1, b, color, 0f, 0f)
+      put(out, 2, c, color, 0f, 0f)
+      batch.add(None, out)
+    }
+
+    override def quad(a: Vec2, b: Vec2, c: Vec2, d: Vec2, color: (Float, Float, Float, Float)): Unit =
+      textured(None, a, b, c, d, 0f, 0f, 0f, 0f, color)
+
+    override def image(
+        texture: Texture2D,
+        a: Vec2, b: Vec2, c: Vec2, d: Vec2,
+        u0: Float, v0: Float, u1: Float, v1: Float,
+        color: (Float, Float, Float, Float)
+    ): Unit =
+      textureForSource(texture.source) match {
+        case Some(resolved) =>
+          val view = resolved.view
+          textured(Some(resolved.texture), a, b, c, d, view.u(u0), view.v(v0), view.u(u1), view.v(v1), color)
+        case None =>
+          textured(None, a, b, c, d, u0, v0, u1, v1, color)
+      }
+
+    private def textured(
+        texture: Option[GLTexture],
+        a: Vec2, b: Vec2, c: Vec2, d: Vec2,
+        u0: Float, v0: Float, u1: Float, v1: Float,
+        color: (Float, Float, Float, Float)
+    ): Unit = {
+      val out = new Array[Float](6 * 8)
+      put(out, 0, a, color, u0, v0)
+      put(out, 1, b, color, u1, v0)
+      put(out, 2, c, color, u1, v1)
+      put(out, 3, a, color, u0, v0)
+      put(out, 4, c, color, u1, v1)
+      put(out, 5, d, color, u0, v1)
+      batch.add(texture, out)
+    }
+  }
 
   override def beginFrame(world: World): Unit = {
     queue2D.clear()
@@ -223,36 +291,6 @@ final class OpenGLRenderer(
     }
   }
 
-  override private[gameobject] def submitSprites(world: World): Unit =
-    world.index[SpriteRenderer].foreach { sprite =>
-      queue2D += Queued2D(WorldLayer, sprite.z, frame => {
-        val resolved = textureForSprite(sprite)
-        frame.batch.add(resolved.map(_.texture), spriteVertices(sprite, sprite.spatial, frame.camera, frame.viewport, resolved.map(_.view)))
-      })
-    }
-
-  override private[gameobject] def submitTilemaps(world: World): Unit =
-    world.index[Tilemap].foreach { tilemap =>
-      queue2D += Queued2D(WorldLayer, tilemap.z, frame => {
-        // Keep painter order, including overlapping translucent quads. Batch2D
-        // merges consecutive page-compatible draws without regrouping vertices.
-        tilemap.quads.foreach { quad =>
-          val resolved = textureForSource(quad.texture.source)
-          frame.batch.add(resolved.map(_.texture),
-            tilemapVertices(Vector(quad), tilemap.spatial, frame.camera, frame.viewport, resolved.map(_.view)))
-        }
-      })
-    }
-
-  override private[gameobject] def submitScreenEffects(world: World): Unit = {
-    world.index[CircleMaskTransition].foreach { mask =>
-      queue2D += Queued2D(MaskLayer, 0f, frame => renderCircleMaskTransition(mask, frame.camera, frame.viewport))
-    }
-    world.index[TextOverlay].foreach { overlay =>
-      queue2D += Queued2D(OverlayLayer, 0f, _ => renderTextOverlay(overlay))
-    }
-  }
-
   override def endFrame(world: World): Unit = {
     if(disposed || queue2D.isEmpty) {
       queue2D.clear()
@@ -278,125 +316,21 @@ final class OpenGLRenderer(
     val cameraPosition = camera.flatMap(_.owner.component[Spatial2D]).map(_.global.position).getOrElse(Vec2(0f, 0f))
     val viewport = camera.map(_.viewportSize).getOrElse(Vec2(app.Window.width.toFloat, app.Window.height.toFloat))
 
-    val frame = Frame2D(new Batch2D, cameraPosition, viewport)
-    val (worldItems, screenItems) = queue2D.toVector.partition(_.layer == WorldLayer)
+    val screenSize = Vec2(app.Window.width.toFloat, app.Window.height.toFloat)
+    val batch = new Batch2D
+    val worldPainter = new Painter(batch, inWorld = true, cameraPosition, viewport, screenSize)
+    val screenPainter = new Painter(batch, inWorld = false, cameraPosition, viewport, screenSize)
+    val (screenDrawings, worldDrawings) = queue2D.toVector.partition(_.screen)
     queue2D.clear()
-    worldItems.sortBy(_.z).foreach(_.draw(frame))
-    frame.batch.flush()
-    screenItems.sortBy(_.layer).foreach(_.draw(frame))
+    worldDrawings.sortBy(_.key).foreach(_.draw(worldPainter))
+    screenDrawings.sortBy(_.key).foreach(_.draw(screenPainter))
+    batch.flush()
 
     GL.unbindBuffer(GL.ArrayBuffer)
     GL.unbindVertexArray()
     GL.useNoProgram()
     GL.disable(GL.Blend)
     GL.enable(GL.DepthTest)
-  }
-
-  private def renderCircleMaskTransition(mask: CircleMaskTransition, camera: Vec2, viewport: Vec2): Unit = {
-    if(!mask.visible) return
-    GL.uniform1f(useTexture2DLocation, 0f)
-    GL.unbindTexture(GL.Texture2D)
-    val vertices = circleMaskVertices(mask, camera, viewport)
-    if(vertices.nonEmpty) {
-      GL.bufferDataFloat(GL.ArrayBuffer, vertices, GL.StaticDraw)
-      GL.drawArrays(GL.Triangles, 0, vertices.length / 8)
-    }
-  }
-
-  private def circleMaskVertices(mask: CircleMaskTransition, camera: Vec2, viewport: Vec2): Array[Float] = {
-    val center = Vec2(((mask.worldCenter.x - camera.x) / viewport.x) * 2f, -((mask.worldCenter.y - camera.y) / viewport.y) * 2f)
-    val rx = (mask.radius / viewport.x) * 2f
-    val ry = (mask.radius / viewport.y) * 2f
-    val outer = 4f
-    val color = mask.color
-    val buf = mutable.ArrayBuffer.empty[Float]
-    def emit(p: Vec2): Unit = buf ++= Vector(p.x, p.y, color._1, color._2, color._3, color._4, 0f, 0f)
-    val segments = scala.math.max(12, mask.segments)
-    var i = 0
-    while(i < segments) {
-      val a0 = (i.toFloat / segments.toFloat) * scala.math.Pi.toFloat * 2f
-      val a1 = ((i + 1).toFloat / segments.toFloat) * scala.math.Pi.toFloat * 2f
-      val d0 = Vec2(scala.math.cos(a0).toFloat, scala.math.sin(a0).toFloat)
-      val d1 = Vec2(scala.math.cos(a1).toFloat, scala.math.sin(a1).toFloat)
-      val inner0 = center + Vec2(d0.x * rx, d0.y * ry)
-      val inner1 = center + Vec2(d1.x * rx, d1.y * ry)
-      val outer0 = center + d0 * outer
-      val outer1 = center + d1 * outer
-      emit(inner0); emit(outer0); emit(outer1)
-      emit(inner0); emit(outer1); emit(inner1)
-      i += 1
-    }
-    buf.toArray
-  }
-
-  private def renderTextOverlay(overlay: TextOverlay): Unit = {
-    if(!overlay.visible || overlay.lines.isEmpty) return
-    GL.uniform1f(useTexture2DLocation, 0f)
-    GL.unbindTexture(GL.Texture2D)
-    val vertices = textOverlayVertices(overlay)
-    if(vertices.nonEmpty) {
-      GL.bufferDataFloat(GL.ArrayBuffer, vertices, GL.StaticDraw)
-      GL.drawArrays(GL.Triangles, 0, vertices.length / 8)
-    }
-  }
-
-  private def textOverlayVertices(overlay: TextOverlay): Array[Float] = {
-    val charW = 5f * overlay.scale
-    val charH = 7f * overlay.scale
-    val gap = overlay.scale
-    val lineGap = overlay.scale * 2f
-    val pad = overlay.scale * 4f
-    val width = overlay.lines.map(_.length).maxOption.getOrElse(0).toFloat * (charW + gap) + pad * 2f
-    val height = overlay.lines.size.toFloat * (charH + lineGap) - lineGap + pad * 2f
-    val buf = mutable.ArrayBuffer.empty[Float]
-    def ndc(x: Float, y: Float): Vec2 = Vec2((x / app.Window.width.toFloat) * 2f - 1f, 1f - (y / app.Window.height.toFloat) * 2f)
-    def rect(x: Float, y: Float, w: Float, h: Float, color: (Float, Float, Float, Float)): Unit = {
-      val p0 = ndc(x, y); val p1 = ndc(x + w, y); val p2 = ndc(x + w, y + h); val p3 = ndc(x, y + h)
-      Vector(p0, p1, p2, p0, p2, p3).foreach { p =>
-        buf ++= Vector(p.x, p.y, color._1, color._2, color._3, color._4, 0f, 0f)
-      }
-    }
-    rect(overlay.x, overlay.y, width, height, overlay.background)
-    overlay.lines.zipWithIndex.foreach { case (line, row) =>
-      line.toUpperCase.zipWithIndex.foreach { case (ch, col) =>
-        glyph(ch).zipWithIndex.foreach { case (bits, gy) =>
-          var gx = 0
-          while(gx < 5) {
-            if(((bits >> (4 - gx)) & 1) == 1) {
-              rect(overlay.x + pad + col * (charW + gap) + gx * overlay.scale, overlay.y + pad + row * (charH + lineGap) + gy * overlay.scale, overlay.scale, overlay.scale, overlay.color)
-            }
-            gx += 1
-          }
-        }
-      }
-    }
-    buf.toArray
-  }
-
-  private def glyph(ch: Char): Vector[Int] = ch match {
-    case 'A' => Vector(14,17,17,31,17,17,17); case 'B' => Vector(30,17,17,30,17,17,30)
-    case 'C' => Vector(14,17,16,16,16,17,14); case 'D' => Vector(30,17,17,17,17,17,30)
-    case 'E' => Vector(31,16,16,30,16,16,31); case 'F' => Vector(31,16,16,30,16,16,16)
-    case 'G' => Vector(14,17,16,23,17,17,14); case 'H' => Vector(17,17,17,31,17,17,17)
-    case 'I' => Vector(14,4,4,4,4,4,14); case 'J' => Vector(7,2,2,2,18,18,12)
-    case 'K' => Vector(17,18,20,24,20,18,17); case 'L' => Vector(16,16,16,16,16,16,31)
-    case 'M' => Vector(17,27,21,21,17,17,17); case 'N' => Vector(17,25,21,19,17,17,17)
-    case 'O' => Vector(14,17,17,17,17,17,14); case 'P' => Vector(30,17,17,30,16,16,16)
-    case 'Q' => Vector(14,17,17,17,21,18,13); case 'R' => Vector(30,17,17,30,20,18,17)
-    case 'S' => Vector(15,16,16,14,1,1,30); case 'T' => Vector(31,4,4,4,4,4,4)
-    case 'U' => Vector(17,17,17,17,17,17,14); case 'V' => Vector(17,17,17,17,17,10,4)
-    case 'W' => Vector(17,17,17,21,21,21,10); case 'X' => Vector(17,17,10,4,10,17,17)
-    case 'Y' => Vector(17,17,10,4,4,4,4); case 'Z' => Vector(31,1,2,4,8,16,31)
-    case '0' => Vector(14,17,19,21,25,17,14); case '1' => Vector(4,12,4,4,4,4,14)
-    case '2' => Vector(14,17,1,2,4,8,31); case '3' => Vector(30,1,1,14,1,1,30)
-    case '4' => Vector(2,6,10,18,31,2,2); case '5' => Vector(31,16,16,30,1,1,30)
-    case '6' => Vector(14,16,16,30,17,17,14); case '7' => Vector(31,1,2,4,8,8,8)
-    case '8' => Vector(14,17,17,14,17,17,14); case '9' => Vector(14,17,17,15,1,1,14)
-    case '-' => Vector(0,0,0,31,0,0,0); case '_' => Vector(0,0,0,0,0,0,31)
-    case ':' => Vector(0,4,4,0,4,4,0); case '.' => Vector(0,0,0,0,0,12,12)
-    case '[' => Vector(14,8,8,8,8,8,14); case ']' => Vector(14,2,2,2,2,2,14)
-    case '/' => Vector(1,1,2,4,8,16,16); case ' ' => Vector(0,0,0,0,0,0,0)
-    case _ => Vector(31,17,1,2,4,0,4)
   }
 
   private def active2DCamera(world: World): Option[Camera2D] =
@@ -456,13 +390,6 @@ final class OpenGLRenderer(
       loader
   }
 
-  private def textureForSprite(sprite: SpriteRenderer): Option[ResolvedTexture] = {
-    sprite.visual match {
-      case SpriteVisual.Texture(texture, _, _, _, _) => textureForSource(texture.source)
-      case _ => None
-    }
-  }
-
   private def textureForSource(source: TextureSource): Option[ResolvedTexture] =
     imageViews.get(source).flatMap { view =>
       pages.get(view.page) match {
@@ -508,73 +435,6 @@ final class OpenGLRenderer(
     }
   }
 
-
-  private def spriteVertices(sprite: SpriteRenderer, spatial: Spatial2D, camera: Vec2, viewport: Vec2, view: Option[ImageView]): Array[Float] = {
-    def ndc(p: Vec2): Vec2 = Vec2(
-      ((p.x - camera.x) / viewport.x) * 2f,
-      -((p.y - camera.y) / viewport.y) * 2f,
-    )
-    val (color, uv) = sprite.visual match {
-      case SpriteVisual.Texture(_, u0, v0, u1, v1) => ((1f, 1f, 1f, 1f), view.fold((u0, v0, u1, v1))(w => (w.u(u0), w.v(v0), w.u(u1), w.v(v1))))
-      case SpriteVisual.Triangle(c) => (c, (0f, 0f, 1f, 1f))
-      case SpriteVisual.Circle(c, _) => (c, (0f, 0f, 1f, 1f))
-    }
-    def emit(points: Vector[Vec2]): Array[Float] = {
-      val (r, g, b, a) = color
-      points.zipWithIndex.flatMap { case (p, i) =>
-        val q = ndc(spatial.transformPoint(p))
-        val uv = pointUv(i)
-        Vector(q.x, q.y, r, g, b, a, uv.x, uv.y)
-      }.toArray
-    }
-    def pointUv(i: Int): Vec2 = {
-      val (u0, v0, u1, v1) = uv
-      i % 6 match {
-        case 0 => Vec2(u0, v0)
-        case 1 => Vec2(u1, v0)
-        case 2 => Vec2(u1, v1)
-        case 3 => Vec2(u0, v0)
-        case 4 => Vec2(u1, v1)
-        case _ => Vec2(u0, v1)
-      }
-    }
-    sprite.visual match {
-      case _: SpriteVisual.Texture => emit(Vector(
-        Vec2(-sprite.width / 2f, -sprite.height / 2f), Vec2(sprite.width / 2f, -sprite.height / 2f), Vec2(sprite.width / 2f, sprite.height / 2f),
-        Vec2(-sprite.width / 2f, -sprite.height / 2f), Vec2(sprite.width / 2f, sprite.height / 2f), Vec2(-sprite.width / 2f, sprite.height / 2f),
-      ))
-      case _: SpriteVisual.Triangle => emit(Vector(
-        Vec2(0f, -sprite.height / 2f), Vec2(-sprite.width / 2f, sprite.height / 2f), Vec2(sprite.width / 2f, sprite.height / 2f)
-      ))
-      case SpriteVisual.Circle(_, segments) => circleTriangles(sprite.width / 2f, segments).flatMap(tri => emit(tri)).toArray
-    }
-  }
-
-  private def tilemapVertices(quads: Iterable[TileQuad], spatial: Spatial2D, camera: Vec2, viewport: Vec2, view: Option[ImageView]): Array[Float] = {
-    def ndc(p: Vec2): Vec2 = Vec2(
-      ((p.x - camera.x) / viewport.x) * 2f,
-      -((p.y - camera.y) / viewport.y) * 2f,
-    )
-    def emit(q: TileQuad): Vector[Float] = {
-      val (u0, v0, u1, v1) = view.fold((q.u0, q.v0, q.u1, q.v1))(w => (w.u(q.u0), w.v(q.v0), w.u(q.u1), w.v(q.v1)))
-      val p0 = ndc(spatial.transformPoint(Vec2(q.x, q.y)))
-      val p1 = ndc(spatial.transformPoint(Vec2(q.x + q.width, q.y)))
-      val p2 = ndc(spatial.transformPoint(Vec2(q.x + q.width, q.y + q.height)))
-      val p3 = ndc(spatial.transformPoint(Vec2(q.x, q.y + q.height)))
-      Vector(
-        (p0, Vec2(u0, v0)), (p1, Vec2(u1, v0)), (p2, Vec2(u1, v1)),
-        (p0, Vec2(u0, v0)), (p2, Vec2(u1, v1)), (p3, Vec2(u0, v1)),
-      ).flatMap { case (p, uv) => Vector(p.x, p.y, 1f, 1f, 1f, q.alpha, uv.x, uv.y) }
-    }
-    quads.toVector.flatMap(emit).toArray
-  }
-
-  private def circleTriangles(radius: Float, segments: Int): Vector[Vector[Vec2]] =
-    (0 until segments).toVector.map { i =>
-      val a0 = (i.toFloat / segments.toFloat) * scala.math.Pi.toFloat * 2f
-      val a1 = ((i + 1).toFloat / segments.toFloat) * scala.math.Pi.toFloat * 2f
-      Vector(Vec2(0f, 0f), Vec2(scala.math.cos(a0).toFloat * radius, scala.math.sin(a0).toFloat * radius), Vec2(scala.math.cos(a1).toFloat * radius, scala.math.sin(a1).toFloat * radius))
-    }
 
   private def findCamera(world: World): Option[Camera3D] = {
     var result: Option[Camera3D] = None

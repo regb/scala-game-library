@@ -118,6 +118,12 @@ gameObject.component[Spatial2D].foreach { spatial =>
   and circle masks, and `Render3DModule` for meshes and `Camera3D`; without the module, attaching
   one of those components throws a `CompositionError`. `Renderer.render(world)` was replaced by
   `beginFrame` and `endFrame` around a new `Render` stage.
+- `TextOverlay` and `CircleMaskTransition` moved from `render2d` to the `extras` package, and each
+  has its own module: install `TextOverlayModule` or `CircleMaskModule`. `TextOverlay` gained an
+  `order` among screen drawings.
+- Games can draw their own components: a system in the `Render` stage submits to
+  `context.global[Render2D]`. See
+  [drawing your own components](/docs/gameobject/#drawing-your-own-components).
 - `Camera3DView` was removed. `Camera3D` now takes a `GameObject3D` and is placed by its
   transform: instead of writing a view matrix, set the camera object's `spatial.local`, for example
   with `Transform3D.lookAt(eye, target, up)`, or parent the camera to another object.

@@ -32,7 +32,7 @@ trait AbstractApp extends OpenGLGameObjectApp {
   override def configure(builder: GameBuilder): Unit =
     builder
       .install(UpdateCapabilitiesModule)        // drives Updatable components
-      .install(Render2DModule)                  // draws sprites, tilemaps and overlays
+      .install(Render2DModule)                  // draws sprites and tilemaps
       .setGlobal(ClearColor(0.02f, 0.02f, 0.05f, 1f))
       .setGlobal(FixedDeltaTime(1.0 / 60.0))
       .addSystem(Stage.PostUpdate, CollisionSystem)
@@ -136,7 +136,7 @@ attached. `TypedObject` holds only the `GameObject` and adds no runtime state. I
 accurate because components are never detached from a live object.
 
 The engine's own components follow the same rule. `SpriteRenderer` and `Tilemap` take a
-`GameObject2D`, and `MeshRenderer` takes a `GameObject3D`. `Camera2D`, `Camera3D`, `TextOverlay`,
+`GameObject2D`, and `MeshRenderer` and `Camera3D` take a `GameObject3D`. `Camera2D`, `TextOverlay`,
 and `CircleMaskTransition` take a `TypedObject[Any]`.
 
 ### Dynamic lookup
@@ -279,8 +279,7 @@ A `GameModule` bundles globals and systems. The built-in `UpdateCapabilitiesModu
 publishes itself among the globals, which is what `Updatable` and `FixedUpdatable` require.
 
 Drawing is done by modules too, with systems in the `Render` stage. `Render2DModule` draws sprites
-and tilemaps ordered by `z`, then circle masks and text overlays; `Render3DModule` draws meshes
-from the active `Camera3D`. Install the ones a game uses: the 2D and 3D components require their
+and tilemaps ordered by `z`; `Render3DModule` draws meshes from the active `Camera3D`. Install the ones a game uses: the 2D and 3D components require their
 module, so attaching a `SpriteRenderer` without `Render2DModule` throws a `CompositionError`
 instead of leaving an object that never appears.
 
@@ -350,9 +349,48 @@ Render components:
 | --- | --- |
 | `SpriteRenderer` | `SpriteVisual.Texture`, `Triangle`, or `Circle` at a size and `z` |
 | `Tilemap` | A batch of `TileQuad`s, typically from a Tiled map |
-| `TextOverlay` | Screen-space lines of text with a background |
-| `CircleMaskTransition` | A circular wipe for scene transitions |
 | `Camera2D` | The view. The active camera with the highest `priority` wins. |
+
+The `extras` package has two more, each with its own module to install:
+
+| Component | Module | Draws |
+| --- | --- | --- |
+| `TextOverlay` | `TextOverlayModule` | Screen-space lines of text with a background |
+| `CircleMaskTransition` | `CircleMaskModule` | A circular wipe for scene transitions |
+
+### Drawing your own components
+
+A game draws its own components the same way the engine draws sprites: a system in the `Render`
+stage submits drawings to `Render2D`. Nothing is drawn until the stage has ended, when the frame is
+composed from everything submitted, so what ends up in front depends on `z`, never on which system
+ran first.
+
+```scala
+final class Spark(obj: GameObject2D, var life: Float) extends ComponentOf(obj)
+
+object SparkRenderSystem extends System {
+  override val id: SystemId = SystemId("game.sparks")
+
+  override def run(context: GameContext)(using Scope): Unit = {
+    val draw = context.global[Render2D]
+    context.world.index[Spark].foreach { spark =>
+      draw.world(z = 5f) { painter =>
+        val p = spark.global.position
+        painter.quad(p + Vec2(-2f, -2f), p + Vec2(2f, -2f), p + Vec2(2f, 2f), p + Vec2(-2f, 2f),
+          (1f, 0.8f, 0.2f, spark.life))
+      }
+    }
+  }
+}
+
+builder.addSystem(Stage.Render, SparkRenderSystem)
+```
+
+`draw.world(z)` takes points in world units, seen through the active camera. `draw.screen(order)`
+takes screen pixels from the top left and goes over every world drawing. The painter has
+`triangle`, `quad`, and `image` for a textured quad, plus the `camera` position, the `viewport`
+size, and the `screenSize`. `TextOverlay` and `CircleMaskTransition` are written this way and are
+short examples to read.
 
 Textures are loaded from typed assets through the engine, usually while a scene loads:
 

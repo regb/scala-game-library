@@ -66,26 +66,3 @@ final class Tilemap(
 ) extends ComponentOf(obj) with Rendered2D {
   val spatial: Spatial2D = obj.spatial
 }
-
-
-final class TextOverlay(
-    obj: TypedObject[Any],
-    var lines: Vector[String],
-    var visible: Boolean = true,
-    var x: Float = 32f,
-    var y: Float = 32f,
-    var scale: Float = 5f,
-    var background: (Float, Float, Float, Float) = (0f, 0f, 0f, 0.78f),
-    var color: (Float, Float, Float, Float) = (1f, 1f, 1f, 1f)
-) extends ComponentOf(obj) with Rendered2D
-
-
-final class CircleMaskTransition(
-    obj: TypedObject[Any],
-    var worldCenter: Vec2,
-    var radius: Float,
-    var color: (Float, Float, Float, Float) = (0f, 0f, 0f, 1f),
-    var segments: Int = 96,
-    var visible: Boolean = true
-) extends ComponentOf(obj) with Rendered2D
-

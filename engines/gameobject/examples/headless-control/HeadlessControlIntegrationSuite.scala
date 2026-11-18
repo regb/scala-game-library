@@ -4,6 +4,7 @@ import org.scalatest.funsuite.AnyFunSuite
 import sgl.{Application, CanvasProvider, CapturedFrame, DesktopSystemProvider, Input, OpenGLCanvasProvider, OpenGLProvider, WindowProvider}
 import sgl.engine.gameobject._
 import sgl.engine.gameobject.capability._
+import sgl.engine.gameobject.extras._
 import sgl.engine.gameobject.render2d._
 import sgl.engine.gameobject.runtime._
 import sgl.engine.gameobject.spatial2d._
@@ -247,6 +248,8 @@ trait LayeredDrawingGame extends OpenGLGameObjectApp {
   override def configure(builder: GameBuilder): Unit = {
     builder
       .install(Render2DModule)
+      .install(CircleMaskModule)
+      .install(TextOverlayModule)
       .setGlobal(ClearColor(0f, 0f, 0f, 1f))
       .setInitialScene(LayeredDrawingScene)
   }

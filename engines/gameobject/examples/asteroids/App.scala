@@ -4,6 +4,7 @@ package core
 import sgl._
 import sgl.engine.gameobject._
 import sgl.engine.gameobject.capability._
+import sgl.engine.gameobject.extras._
 import sgl.engine.gameobject.render2d._
 import sgl.engine.gameobject.runtime._
 import sgl.engine.gameobject.schedule._
@@ -18,6 +19,7 @@ trait AbstractApp extends OpenGLGameObjectApp with DefaultRandomProvider {
     builder
       .install(UpdateCapabilitiesModule)
       .install(Render2DModule)
+      .install(TextOverlayModule)
       .setGlobal(ClearColor(0.02f, 0.02f, 0.05f, 1f))
       .setGlobal(FixedDeltaTime(1.0 / 60.0))
       .setGlobal(AsteroidRandom(Random.fromSeed(0)))

@@ -2,6 +2,7 @@ package sgl.engine.gameobject.render3d
 
 import sgl.assets.{DrawableAsset, RawImageAsset}
 import sgl.engine.gameobject.World
+import sgl.engine.gameobject.render2d.Render2D
 import sgl.engine.gameobject.spatial3d.{GameObject3D, Spatial3D}
 import sgl.engine.gameobject.typed.ComponentOf
 import sgl.math.Mat4
@@ -73,14 +74,13 @@ trait Renderer {
   /** Closes a frame: draws what was submitted during the Render stage. */
   def endFrame(world: World): Unit = {}
 
-  // What the built-in render systems ask of the renderer. Meshes are drawn
-  // immediately, against the depth buffer. 2D items are submitted and drawn
-  // together when the frame ends, ordered by depth, so that the systems
-  // submitting them do not depend on each other's order.
+  /** Where 2D drawings are submitted during the Render stage. They are drawn
+    * together when the frame ends.
+    */
+  def render2D: Render2D = Render2D.Discard
+
+  // Meshes are drawn immediately, against the depth buffer.
   private[gameobject] def drawMeshes(world: World): Unit = {}
-  private[gameobject] def submitSprites(world: World): Unit = {}
-  private[gameobject] def submitTilemaps(world: World): Unit = {}
-  private[gameobject] def submitScreenEffects(world: World): Unit = {}
 
   def dispose(): Unit = {}
 }
