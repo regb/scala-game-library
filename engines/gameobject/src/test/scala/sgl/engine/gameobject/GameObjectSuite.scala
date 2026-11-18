@@ -335,11 +335,12 @@ class GameObjectSuite extends AnyFunSuite {
   }
 
   test("a 3D camera's view follows its transform and its parents") {
-    import sgl.engine.gameobject.render3d.Camera3D
+    import sgl.engine.gameobject.render3d.{Camera3D, Render3DModule}
     import sgl.engine.gameobject.spatial3d._
     import sgl.math.{Mat4, Quaternion, Vec3}
     val world = new World
     import world.given
+    world.globals.set[Render3DModule.type](Render3DModule)
     def assertClose(actual: Mat4, expected: Mat4): Unit =
       actual.values.zip(expected.values).foreach { case (a, e) => assert(scala.math.abs(a - e) < 1e-4f) }
 
@@ -617,6 +618,44 @@ class GameObjectSuite extends AnyFunSuite {
     assert(runtime.world.objects.map(_.name) === Vector("second-scene-object"))
   }
 
+  test("the Render stage runs inside the frame, after the other stages") {
+    val renderer = new RecordingRenderer
+    def record(name: String) = System(name) { renderer.frameEvents :+= name }
+    val runtime = new GameBuilder()
+      .addSystem(Stage.Render, record("render"))
+      .addSystem(Stage.PreRender, record("pre-render"))
+      .addSystem(Stage.Update, record("update"))
+      .build(new TestEngine(renderer))
+
+    runtime.startup()
+    runtime.frame(1.0 / 60.0)
+    assert(renderer.frameEvents === Vector("update", "pre-render", "begin", "render", "end"))
+
+    val failing = new RecordingRenderer
+    val broken = new GameBuilder()
+      .addSystem(Stage.Render, System("broken") { throw new IllegalStateException("draw failed") })
+      .build(new TestEngine(failing))
+    broken.startup()
+    intercept[IllegalStateException] {
+      broken.frame(1.0 / 60.0)
+    }
+    assert(failing.frameEvents === Vector("begin", "end"))
+  }
+
+  test("drawable components require their render module") {
+    import sgl.engine.gameobject.render2d.{Render2DModule, SpriteRenderer, SpriteVisual}
+    val visual = SpriteVisual.Triangle((1f, 1f, 1f, 1f))
+
+    val bare = new GameBuilder().build(new TestEngine(new RecordingRenderer))
+    val error = intercept[CompositionError] {
+      bare.world.spawn2D("sprite")(using bare.world.globalScope).attach(new SpriteRenderer(_, visual, 1f, 1f))
+    }
+    assert(error.getMessage.contains("Render2DModule"))
+
+    val configured = new GameBuilder().install(Render2DModule).build(new TestEngine(new RecordingRenderer))
+    configured.world.spawn2D("sprite")(using configured.world.globalScope).attach(new SpriteRenderer(_, visual, 1f, 1f))
+  }
+
   private final class RecordingRenderer extends Renderer {
     override type Texture = TextureAsset
     override type Mesh = MeshAsset
@@ -631,8 +670,13 @@ class GameObjectSuite extends AnyFunSuite {
     override def releaseMesh(mesh: AssetId[Mesh]): Unit = ()
     override def releaseTexture(texture: AssetId[Texture]): Unit = ()
     override def releaseMaterial(material: AssetId[Material]): Unit = ()
-    override def render(world: World): Unit =
+    var frameEvents: Vector[String] = Vector.empty
+
+    override def beginFrame(world: World): Unit = {
+      frameEvents :+= "begin"
       renderedObjectNames :+= world.objects.map(_.name)
+    }
+    override def endFrame(world: World): Unit = frameEvents :+= "end"
   }
 
   private final class TestEngine(override val renderer: RecordingRenderer) extends Engine {

@@ -25,7 +25,7 @@ final class Camera2D(
     var viewportSize: Vec2,
     var active: Boolean = true,
     var priority: Int = 0
-) extends ComponentOf(obj)
+) extends ComponentOf(obj) with Rendered2D
 
 
 sealed trait SpriteVisual
@@ -41,7 +41,7 @@ final class SpriteRenderer(
     var width: Float,
     var height: Float,
     var z: Float = 0f
-) extends ComponentOf(obj) {
+) extends ComponentOf(obj) with Rendered2D {
   val spatial: Spatial2D = obj.spatial
 }
 
@@ -63,7 +63,7 @@ final class Tilemap(
     obj: GameObject2D,
     var quads: Vector[TileQuad],
     var z: Float = 0f
-) extends ComponentOf(obj) {
+) extends ComponentOf(obj) with Rendered2D {
   val spatial: Spatial2D = obj.spatial
 }
 
@@ -77,7 +77,7 @@ final class TextOverlay(
     var scale: Float = 5f,
     var background: (Float, Float, Float, Float) = (0f, 0f, 0f, 0.78f),
     var color: (Float, Float, Float, Float) = (1f, 1f, 1f, 1f)
-) extends ComponentOf(obj)
+) extends ComponentOf(obj) with Rendered2D
 
 
 final class CircleMaskTransition(
@@ -87,5 +87,5 @@ final class CircleMaskTransition(
     var color: (Float, Float, Float, Float) = (0f, 0f, 0f, 1f),
     var segments: Int = 96,
     var visible: Boolean = true
-) extends ComponentOf(obj)
+) extends ComponentOf(obj) with Rendered2D
 

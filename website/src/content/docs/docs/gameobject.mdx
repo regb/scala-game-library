@@ -32,6 +32,7 @@ trait AbstractApp extends OpenGLGameObjectApp {
   override def configure(builder: GameBuilder): Unit =
     builder
       .install(UpdateCapabilitiesModule)        // drives Updatable components
+      .install(Render2DModule)                  // draws sprites, tilemaps and overlays
       .setGlobal(ClearColor(0.02f, 0.02f, 0.05f, 1f))
       .setGlobal(FixedDeltaTime(1.0 / 60.0))
       .addSystem(Stage.PostUpdate, CollisionSystem)
@@ -230,7 +231,8 @@ in steps of `FixedDeltaTime` (default 1/60 s):
 2. `FixedUpdate`, with `DeltaTime` set to the fixed step
 3. `Update`
 4. `PostUpdate`
-5. `PreRender`, then the renderer draws the world
+5. `PreRender`
+6. `Render`, inside the frame: the screen is cleared before it and the frame is presented after it
 
 </Steps>
 
@@ -275,6 +277,12 @@ storing it directly.
 
 A `GameModule` bundles globals and systems. The built-in `UpdateCapabilitiesModule`
 publishes itself among the globals, which is what `Updatable` and `FixedUpdatable` require.
+
+Drawing is done by modules too, with systems in the `Render` stage. `Render2DModule` draws sprites
+and tilemaps ordered by `z`, then circle masks and text overlays; `Render3DModule` draws meshes
+from the active `Camera3D`. Install the ones a game uses: the 2D and 3D components require their
+module, so attaching a `SpriteRenderer` without `Render2DModule` throws a `CompositionError`
+instead of leaving an object that never appears.
 
 ## Scenes and scopes
 

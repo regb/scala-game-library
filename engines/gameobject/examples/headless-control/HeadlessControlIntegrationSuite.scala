@@ -190,6 +190,7 @@ trait HardCodedMovementGame extends OpenGLGameObjectApp {
   override def configure(builder: GameBuilder): Unit = {
     builder
       .install(UpdateCapabilitiesModule)
+      .install(Render2DModule)
       .setGlobal(ClearColor(0f, 0f, 0f, 1f))
       .setGlobal(FixedDeltaTime(1.0 / 60.0))
       .setInitialScene(HardCodedMovementScene)

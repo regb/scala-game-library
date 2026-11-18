@@ -8,7 +8,7 @@ import sgl.{OpenGLProvider, PartsResourcePathProvider, SystemProvider, WindowPro
 import sgl.assets.{AssetFactory, BinaryAsset, DrawableAsset, TextAsset, TextureFilter}
 import sgl.engine.gameobject.opengl.OpenGLRenderer
 import sgl.engine.gameobject.spatial2d._
-import sgl.engine.gameobject.render2d.{SpriteRenderer, SpriteVisual, Texture2D, TileQuad, Tilemap}
+import sgl.engine.gameobject.render2d.{Render2DModule, SpriteRenderer, SpriteVisual, Texture2D, TileQuad, Tilemap}
 import sgl.util.{DefaultLoader, Loader}
 
 class OpenGLRendererSuite extends AnyFunSuite {
@@ -145,6 +145,22 @@ class OpenGLRendererSuite extends AnyFunSuite {
   private def uvs(vertices: Array[Float]): Vector[(Float, Float)] =
     vertices.grouped(8).map(v => (v(6), v(7))).toVector
 
+  // A world as the runtime sets it up when Render2DModule is installed.
+  private def renderWorld(): World = {
+    val world = new World
+    world.globals.set[Render2DModule.type](Render2DModule)
+    world
+  }
+
+  // One frame as the runtime draws it: open, let the 2D systems submit, close.
+  private def drawFrame(renderer: OpenGLRenderer, world: World): Unit = {
+    renderer.beginFrame(world)
+    renderer.submitSprites(world)
+    renderer.submitTilemaps(world)
+    renderer.submitScreenEffects(world)
+    renderer.endFrame(world)
+  }
+
   private def loaded(loader: Loader[Texture2D]): Texture2D = {
     assert(loader.isLoaded)
     loader.value.get.get
@@ -181,13 +197,13 @@ class OpenGLRendererSuite extends AnyFunSuite {
   test("consecutive sprites on a shared page render in one draw with page-relative UVs") {
     val app = new FakeGLApp
     val renderer = new OpenGLRenderer(app)
-    val world = new World
+    val world = renderWorld()
     val coinTexture = renderer.loadDrawableTexture(coin)
     val gemTexture = renderer.loadDrawableTexture(gem)
     app.uploads.head.complete()
     sprite(world, loaded(coinTexture), 0f)
     sprite(world, loaded(gemTexture), 1f)
-    renderer.render(world)
+    drawFrame(renderer, world)
 
     assert(app.draws.size == 1)
     val (texture, vertices) = app.draws.head
@@ -203,12 +219,12 @@ class OpenGLRendererSuite extends AnyFunSuite {
   test("crops and flips stay relative to the logical image") {
     val app = new FakeGLApp
     val renderer = new OpenGLRenderer(app)
-    val world = new World
+    val world = renderWorld()
     val coinTexture = renderer.loadDrawableTexture(coin)
     app.uploads.head.complete()
     // Right half of the coin, mirrored horizontally.
     sprite(world, loaded(coinTexture), 0f, SpriteVisual.Texture(_, u0 = 1f, v0 = 0f, u1 = 0.5f, v1 = 1f))
-    renderer.render(world)
+    drawFrame(renderer, world)
     val quad = uvs(app.draws.head._2)
     assert(quad.head == ((18f / 64f, 2f / 32f)))
     assert(quad(2) == ((10f / 64f, 18f / 32f)))
@@ -217,14 +233,14 @@ class OpenGLRendererSuite extends AnyFunSuite {
   test("draws are batched only when consecutive, so z order is preserved") {
     val app = new FakeGLApp
     val renderer = new OpenGLRenderer(app)
-    val world = new World
+    val world = renderWorld()
     val coinTexture = renderer.loadDrawableTexture(coin)
     val heroTexture = renderer.loadDrawableTexture(standalone)
     app.uploads.foreach(_.complete())
     sprite(world, loaded(coinTexture), 0f)
     sprite(world, loaded(heroTexture), 1f)
     sprite(world, loaded(coinTexture), 2f)
-    renderer.render(world)
+    drawFrame(renderer, world)
     val atlasTexture = app.uploads.find(_.resourceName == page).get.texture
     val heroPage = app.uploads.find(_.resourceName == "drawable-mdpi/hero.png").get.texture
     assert(app.draws.map(_._1) == Seq(atlasTexture, heroPage, atlasTexture))
@@ -233,7 +249,7 @@ class OpenGLRendererSuite extends AnyFunSuite {
   test("overlapping translucent tilemap quads keep painter order while sharing one draw") {
     val app = new FakeGLApp
     val renderer = new OpenGLRenderer(app)
-    val world = new World
+    val world = renderWorld()
     import world.given
     val coinTexture = loadedAfter(app, renderer.loadDrawableTexture(coin))
     val gemTexture = renderer.loadDrawableTexture(gem)
@@ -243,7 +259,7 @@ class OpenGLRendererSuite extends AnyFunSuite {
       TileQuad(loaded(gemTexture), 0f, 0f, 8f, 8f, 0f, 0f, 1f, 1f, alpha = 0.5f),
       TileQuad(coinTexture, 0f, 0f, 8f, 8f, 0.5f, 0.5f, 1f, 1f, alpha = 0.75f),
     )))
-    renderer.render(world)
+    drawFrame(renderer, world)
     assert(app.draws.size == 1)
     assert(app.draws.head._2.length == 3 * 6 * 8)
     val vertices = app.draws.head._2
@@ -256,7 +272,7 @@ class OpenGLRendererSuite extends AnyFunSuite {
   test("tilemap batches flush at intervening pages without changing painter order") {
     val app = new FakeGLApp
     val renderer = new OpenGLRenderer(app)
-    val world = new World
+    val world = renderWorld()
     import world.given
     val coinLoader = renderer.loadDrawableTexture(coin)
     val heroLoader = renderer.loadDrawableTexture(standalone)
@@ -268,7 +284,7 @@ class OpenGLRendererSuite extends AnyFunSuite {
       TileQuad(heroTexture, 0f, 0f, 8f, 8f, 0f, 0f, 1f, 1f, alpha = 0.5f),
       TileQuad(coinTexture, 0f, 0f, 8f, 8f, 0f, 0f, 1f, 1f, alpha = 0.75f)
     )))
-    renderer.render(world)
+    drawFrame(renderer, world)
     assert(app.draws.map(_._1) == Seq(app.uploads(0).texture, app.uploads(1).texture, app.uploads(0).texture))
     assert(app.draws.map(_._2(5)) == Seq(0.25f, 0.5f, 0.75f))
   }

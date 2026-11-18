@@ -30,7 +30,7 @@ final class Camera3D(
     var far: Float,
     var active: Boolean = true,
     var priority: Int = 0
-) extends ComponentOf(obj) {
+) extends ComponentOf(obj) with Rendered3D {
   val spatial: Spatial3D = obj.spatial
 
   /** World-to-camera matrix: the inverse of the camera's global transform.
@@ -45,7 +45,7 @@ final class MeshRenderer(
     obj: GameObject3D,
     var mesh: AssetId[MeshAsset],
     var material: AssetId[MaterialAsset]
-) extends ComponentOf(obj) {
+) extends ComponentOf(obj) with Rendered3D {
   val spatial: Spatial3D = obj.spatial
 }
 
@@ -64,6 +64,23 @@ trait Renderer {
   def releaseMaterial(material: AssetId[Material]): Unit
 
   def resize(width: Int, height: Int): Unit = {}
-  def render(world: World): Unit
+
+  /** Opens a frame: clears the screen. The systems of the Render stage then
+    * draw, and [[endFrame]] closes the frame.
+    */
+  def beginFrame(world: World): Unit
+
+  /** Closes a frame: draws what was submitted during the Render stage. */
+  def endFrame(world: World): Unit = {}
+
+  // What the built-in render systems ask of the renderer. Meshes are drawn
+  // immediately, against the depth buffer. 2D items are submitted and drawn
+  // together when the frame ends, ordered by depth, so that the systems
+  // submitting them do not depend on each other's order.
+  private[gameobject] def drawMeshes(world: World): Unit = {}
+  private[gameobject] def submitSprites(world: World): Unit = {}
+  private[gameobject] def submitTilemaps(world: World): Unit = {}
+  private[gameobject] def submitScreenEffects(world: World): Unit = {}
+
   def dispose(): Unit = {}
 }

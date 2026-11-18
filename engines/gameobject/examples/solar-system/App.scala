@@ -20,6 +20,7 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
 
   override def configure(game: GameBuilder): Unit = {
     game
+      .install(Render3DModule)
       .setGlobal(ClearColor(0.005f, 0.008f, 0.018f, 1.0f))
       .setGlobal(cameraController)
       .setInitialScene(new SolarSystemScene)

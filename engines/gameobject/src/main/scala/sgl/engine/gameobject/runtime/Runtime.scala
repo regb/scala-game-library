@@ -173,7 +173,11 @@ final class GameRuntime(
       run(Stage.Update, frameScope)
       run(Stage.PostUpdate, frameScope)
       run(Stage.PreRender, frameScope)
-      engine.renderer.render(worldValue)
+      // Drawing is a stage like the others: the renderer opens the frame, the
+      // systems of the Render stage draw into it, and the renderer closes it.
+      engine.renderer.beginFrame(worldValue)
+      try run(Stage.Render, frameScope)
+      finally engine.renderer.endFrame(worldValue)
     } finally {
       processingFrame = false
     }

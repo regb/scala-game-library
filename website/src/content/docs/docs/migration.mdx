@@ -114,6 +114,10 @@ gameObject.component[Spatial2D].foreach { spatial =>
   still creates a plain `GameObject`.
 - A component built from a typed object extends `ComponentOf(obj)` instead of declaring
   `override val owner`.
+- Drawing is now done by modules. Install `Render2DModule` for sprites, tilemaps, text overlays
+  and circle masks, and `Render3DModule` for meshes and `Camera3D`; without the module, attaching
+  one of those components throws a `CompositionError`. `Renderer.render(world)` was replaced by
+  `beginFrame` and `endFrame` around a new `Render` stage.
 - `Camera3DView` was removed. `Camera3D` now takes a `GameObject3D` and is placed by its
   transform: instead of writing a view matrix, set the camera object's `spatial.local`, for example
   with `Transform3D.lookAt(eye, target, up)`, or parent the camera to another object.

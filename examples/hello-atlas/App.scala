@@ -3,7 +3,7 @@ package core
 
 import _root_.sgl.engine.gameobject.Scope
 import _root_.sgl.engine.gameobject.spatial2d._
-import _root_.sgl.engine.gameobject.render2d.{SpriteRenderer, SpriteVisual, Texture2D, TileQuad, Tilemap}
+import _root_.sgl.engine.gameobject.render2d.{Render2DModule, SpriteRenderer, SpriteVisual, Texture2D, TileQuad, Tilemap}
 import _root_.sgl.engine.gameobject.runtime.{ClearColor, GameBuilder, GameContext, OpenGLGameObjectApp, Scene}
 import _root_.sgl.math.Vec2
 
@@ -17,6 +17,7 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
 
   override def configure(builder: GameBuilder): Unit =
     builder
+      .install(Render2DModule)
       .setGlobal(ClearColor(0.08f, 0.09f, 0.12f, 1f))
       .setInitialScene(new AtlasScene)
 

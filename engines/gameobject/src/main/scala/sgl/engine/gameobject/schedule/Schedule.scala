@@ -6,7 +6,7 @@ import sgl.engine.gameobject.runtime.{Engine, GameContext}
 final case class SystemId(value: String) extends AnyVal
 
 enum Stage {
-  case Startup, PreUpdate, FixedUpdate, Update, PostUpdate, PreRender
+  case Startup, PreUpdate, FixedUpdate, Update, PostUpdate, PreRender, Render
 }
 
 trait System {

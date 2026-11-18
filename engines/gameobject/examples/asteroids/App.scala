@@ -17,6 +17,7 @@ trait AbstractApp extends OpenGLGameObjectApp with DefaultRandomProvider {
   override def configure(builder: GameBuilder): Unit = {
     builder
       .install(UpdateCapabilitiesModule)
+      .install(Render2DModule)
       .setGlobal(ClearColor(0.02f, 0.02f, 0.05f, 1f))
       .setGlobal(FixedDeltaTime(1.0 / 60.0))
       .setGlobal(AsteroidRandom(Random.fromSeed(0)))

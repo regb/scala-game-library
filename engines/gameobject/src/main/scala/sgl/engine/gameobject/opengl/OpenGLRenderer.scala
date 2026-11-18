@@ -179,7 +179,19 @@ final class OpenGLRenderer(
   override def resize(width: Int, height: Int): Unit =
     GL.viewport(0, 0, width, height)
 
-  override def render(world: World): Unit = {
+  // One frame of 2D drawing: what a submitted item draws with.
+  private final case class Frame2D(batch: Batch2D, camera: Vec2, viewport: Vec2)
+
+  // World items are drawn first, ordered by z. Masks and then overlays follow,
+  // in screen space. Items that compare equal keep their submission order.
+  private final case class Queued2D(layer: Int, z: Float, draw: Frame2D => Unit)
+  private val WorldLayer = 0
+  private val MaskLayer = 1
+  private val OverlayLayer = 2
+  private val queue2D = mutable.ArrayBuffer.empty[Queued2D]
+
+  override def beginFrame(world: World): Unit = {
+    queue2D.clear()
     if(disposed) return
 
     val clear = world.globals.getOption[ClearColor]
@@ -187,6 +199,10 @@ final class OpenGLRenderer(
       .getOrElse((0f, 0f, 0f, 1f))
     GL.clearColor(clear._1, clear._2, clear._3, clear._4)
     GL.clear(GL.clearMask(GL.ColorBufferBit, GL.DepthBufferBit))
+  }
+
+  override private[gameobject] def drawMeshes(world: World): Unit = {
+    if(disposed) return
 
     findCamera(world).foreach { camera =>
       val aspect = app.Window.width.toFloat / scala.math.max(1, app.Window.height).toFloat
@@ -205,16 +221,43 @@ final class OpenGLRenderer(
       GL.unbindTexture(GL.Texture2D)
       GL.useNoProgram()
     }
-
-    render2D(world)
   }
 
-  private def render2D(world: World): Unit = {
-    val sprites = world.index[SpriteRenderer].toVector
-    val tilemaps = world.index[Tilemap].toVector
-    val masks = world.index[CircleMaskTransition].toVector
-    val overlays = world.index[TextOverlay].toVector
-    if(sprites.isEmpty && tilemaps.isEmpty && masks.isEmpty && overlays.isEmpty) return
+  override private[gameobject] def submitSprites(world: World): Unit =
+    world.index[SpriteRenderer].foreach { sprite =>
+      queue2D += Queued2D(WorldLayer, sprite.z, frame => {
+        val resolved = textureForSprite(sprite)
+        frame.batch.add(resolved.map(_.texture), spriteVertices(sprite, sprite.spatial, frame.camera, frame.viewport, resolved.map(_.view)))
+      })
+    }
+
+  override private[gameobject] def submitTilemaps(world: World): Unit =
+    world.index[Tilemap].foreach { tilemap =>
+      queue2D += Queued2D(WorldLayer, tilemap.z, frame => {
+        // Keep painter order, including overlapping translucent quads. Batch2D
+        // merges consecutive page-compatible draws without regrouping vertices.
+        tilemap.quads.foreach { quad =>
+          val resolved = textureForSource(quad.texture.source)
+          frame.batch.add(resolved.map(_.texture),
+            tilemapVertices(Vector(quad), tilemap.spatial, frame.camera, frame.viewport, resolved.map(_.view)))
+        }
+      })
+    }
+
+  override private[gameobject] def submitScreenEffects(world: World): Unit = {
+    world.index[CircleMaskTransition].foreach { mask =>
+      queue2D += Queued2D(MaskLayer, 0f, frame => renderCircleMaskTransition(mask, frame.camera, frame.viewport))
+    }
+    world.index[TextOverlay].foreach { overlay =>
+      queue2D += Queued2D(OverlayLayer, 0f, _ => renderTextOverlay(overlay))
+    }
+  }
+
+  override def endFrame(world: World): Unit = {
+    if(disposed || queue2D.isEmpty) {
+      queue2D.clear()
+      return
+    }
 
     GL.disable(GL.DepthTest)
     GL.enable(GL.Blend)
@@ -235,35 +278,12 @@ final class OpenGLRenderer(
     val cameraPosition = camera.flatMap(_.owner.component[Spatial2D]).map(_.global.position).getOrElse(Vec2(0f, 0f))
     val viewport = camera.map(_.viewportSize).getOrElse(Vec2(app.Window.width.toFloat, app.Window.height.toFloat))
 
-    val batch = new Batch2D
-    sealed trait Item { def z: Float; def draw(): Unit }
-    final case class SpriteItem(sprite: SpriteRenderer, spatial: Spatial2D) extends Item {
-      def z: Float = sprite.z
-      def draw(): Unit = {
-        val resolved = textureForSprite(sprite)
-        batch.add(resolved.map(_.texture), spriteVertices(sprite, spatial, cameraPosition, viewport, resolved.map(_.view)))
-      }
-    }
-    final case class TilemapItem(tilemap: Tilemap, spatial: Spatial2D) extends Item {
-      def z: Float = tilemap.z
-      def draw(): Unit = {
-        // Keep painter order, including overlapping translucent quads. Batch2D
-        // merges consecutive page-compatible draws without regrouping vertices.
-        tilemap.quads.foreach { quad =>
-          val resolved = textureForSource(quad.texture.source)
-          batch.add(resolved.map(_.texture),
-            tilemapVertices(Vector(quad), spatial, cameraPosition, viewport, resolved.map(_.view)))
-        }
-      }
-    }
-
-    val items = sprites.map(s => SpriteItem(s, s.spatial)) ++
-      tilemaps.map(t => TilemapItem(t, t.spatial))
-    items.sortBy(_.z).foreach(_.draw())
-    batch.flush()
-
-    masks.foreach(renderCircleMaskTransition(_, cameraPosition, viewport))
-    overlays.foreach(renderTextOverlay)
+    val frame = Frame2D(new Batch2D, cameraPosition, viewport)
+    val (worldItems, screenItems) = queue2D.toVector.partition(_.layer == WorldLayer)
+    queue2D.clear()
+    worldItems.sortBy(_.z).foreach(_.draw(frame))
+    frame.batch.flush()
+    screenItems.sortBy(_.layer).foreach(_.draw(frame))
 
     GL.unbindBuffer(GL.ArrayBuffer)
     GL.unbindVertexArray()
