@@ -7,6 +7,11 @@ final case class SystemId(value: String) extends AnyVal
 
 enum Stage {
   case Startup, PreUpdate, FixedUpdate, Update, PostUpdate, PreRender, Render
+
+  /** Run when the application is paused and resumed, outside of any frame:
+    * on Android when the game leaves and comes back to the foreground.
+    */
+  case Pause, Resume
 }
 
 trait System {
@@ -15,9 +20,12 @@ trait System {
 }
 
 object System {
-  def apply(systemId: String)(body: GameContext ?=> Unit): System = new System {
+  /** A system from a block. The block is given the context and the frame's
+    * scope, exactly as `run` is, so it can create objects directly.
+    */
+  def apply(systemId: String)(body: (GameContext, Scope) ?=> Unit): System = new System {
     override val id: SystemId = SystemId(systemId)
-    override def run(context: GameContext)(using Scope): Unit = body(using context)
+    override def run(context: GameContext)(using scope: Scope): Unit = body(using context, scope)
   }
 }
 

@@ -36,6 +36,9 @@ trait Component {
   protected def onDestroy(): Unit = ()
 
   private[gameobject] final def notifyDestroyed(): Unit = onDestroy()
+
+  // Set once the component has left the world's indexes.
+  private[gameobject] var removedFromWorld: Boolean = false
 }
 
 /** Mixed into a capability trait whose components only work when something is
@@ -126,21 +129,50 @@ object CapabilityKey {
   * destroyed, including one destroyed earlier in the same traversal; components
   * attached during a traversal are seen by the next one. `toVector` is a plain
   * snapshot: code holding on to it checks `isAlive` itself.
+  *
+  * `foreach` allocates nothing, which makes it the one to use every frame;
+  * `iterator` and `toVector` copy the index.
   */
 final class ComponentIndex[A] private[gameobject] () {
-  private final case class Entry(source: Component, value: A)
+  private final class Entry(val source: Component, val value: A)
   private val entries = mutable.ArrayBuffer.empty[Entry]
+  // Entries of removed components stay in place until no traversal is running,
+  // so that removing is constant time and never shifts what a traversal reads.
+  private var removed = 0
+  private var traversals = 0
 
-  private[gameobject] def add(source: Component, value: A): Unit = entries += Entry(source, value)
-  private[gameobject] def removeSource(source: Component): Unit = {
-    val index = entries.indexWhere(_.source eq source)
-    if(index >= 0) entries.remove(index)
+  private[gameobject] def add(source: Component, value: A): Unit = entries += new Entry(source, value)
+  private[gameobject] def sourceRemoved(): Unit = removed += 1
+
+  private def compact(): Unit = {
+    if(removed > 0 && traversals == 0) {
+      entries.filterInPlace(!_.source.removedFromWorld)
+      removed = 0
+    }
   }
 
-  def foreach(f: A => Unit): Unit = iterator.foreach(f)
-  def iterator: Iterator[A] = entries.toVector.iterator.filter(_.source.owner.isAlive).map(_.value)
-  def toVector: Vector[A] = entries.toVector.map(_.value)
-  def size: Int = entries.size
+  def foreach(f: A => Unit): Unit = {
+    compact()
+    val end = entries.size
+    traversals += 1
+    try {
+      var i = 0
+      while(i < end) {
+        val entry = entries(i)
+        if(entry.source.owner.isAlive) f(entry.value)
+        i += 1
+      }
+    } finally traversals -= 1
+  }
+
+  def iterator: Iterator[A] = snapshot.iterator.filter(_.source.owner.isAlive).map(_.value)
+  def toVector: Vector[A] = snapshot.map(_.value)
+  def size: Int = entries.size - removed
+
+  private def snapshot: Vector[Entry] = {
+    compact()
+    entries.iterator.filter(!_.source.removedFromWorld).toVector
+  }
 }
 
 /** Typed values global to a world, such as the frame's delta time, the clear
@@ -219,10 +251,9 @@ final class Scope private[gameobject] (val id: ScopeId, val name: String, privat
   override def toString: String = s"Scope(${id.value}, $name)"
 }
 
-private final case class ComponentRecord(key: Class[?], component: Component)
-
 private[gameobject] final class ComponentSet(owner: GameObject, world: World) {
-  private val components = mutable.HashMap.empty[Class[?], Component]
+  // In attach order, which is also the order of the destroy hooks.
+  private val components = mutable.LinkedHashMap.empty[Class[?], Component]
 
   def add[A <: Component](component: A)(using tag: ClassTag[A]): A = {
     val key = tag.runtimeClass
@@ -273,6 +304,7 @@ private[gameobject] final class ComponentSet(owner: GameObject, world: World) {
   }
 
   def all: Iterable[Component] = components.values
+  def entries: Iterable[(Class[?], Component)] = components
 }
 
 /** Identity and composition boundary for domain objects.
@@ -327,8 +359,9 @@ final class World {
   private var nextObjectId = 0
   private var nextScopeId = 0
   private val scopesBuffer = mutable.ArrayBuffer.empty[Scope]
-  private val objectsBuffer = mutable.ArrayBuffer.empty[GameObject]
-  private val records = mutable.ArrayBuffer.empty[ComponentRecord]
+  // In creation order. An object stays here, no longer alive, while its
+  // destroy hooks run.
+  private val objectsById = mutable.LinkedHashMap.empty[Int, GameObject]
   private val exactIndexes = mutable.HashMap.empty[Class[?], ComponentIndex[?]]
   private val supertypeLookups = mutable.HashMap.empty[Class[?], Component]
   private val capabilityIndexes = mutable.HashMap.empty[CapabilityKey[?], ComponentIndex[?]]
@@ -360,9 +393,14 @@ final class World {
     if(!scope.isActive) throw new CompositionError(s"Cannot create an object in inactive scope ${scope.name}")
     val obj = new GameObject(ObjectId(nextObjectId), name, scope, this)
     nextObjectId += 1
-    objectsBuffer += obj
+    objectsById(obj.id.value) = obj
     obj
   }
+
+  /** The live object with this id, if there is one. Ids are never reused, so
+    * an id is a safe way to refer to an object that may have been destroyed.
+    */
+  def find(id: ObjectId): Option[GameObject] = objectsById.get(id.value).filter(_.isAlive)
 
   /** Destroys an object: its components get `onDestroy`, then leave the
     * indexes. A hook that throws does not stop the others or the cleanup; the
@@ -372,14 +410,14 @@ final class World {
     if(obj.world ne this) throw new CompositionError(s"Object ${obj.id.value} belongs to a different world")
     if(!obj.isAlive) return
     obj.markDestroyed()
-    objectsBuffer -= obj
-    val components = obj.components.all.toVector
+    val components = obj.components.entries.toVector
     var failure: Option[Throwable] = None
-    components.foreach { component =>
+    components.foreach { case (_, component) =>
       try component.notifyDestroyed()
       catch { case scala.util.control.NonFatal(error) => if(failure.isEmpty) failure = Some(error) }
     }
-    components.foreach(removeComponent)
+    components.foreach { case (key, component) => removeComponent(key, component) }
+    objectsById.remove(obj.id.value)
     failure.foreach(throw _)
   }
 
@@ -390,7 +428,7 @@ final class World {
   def destroyScope(scope: Scope): Unit = {
     if(scope.world ne this) throw new CompositionError("Cannot destroy a scope belonging to another world")
     if(!scope.isActive) return
-    val objectsFailure = destroyAll(objectsBuffer.filter(_.scope eq scope).toVector)
+    val objectsFailure = destroyAll(objects.filter(_.scope eq scope))
     val actionsFailure = scope.runDestroyActions()
     if(scope ne globalScope) {
       scope.deactivate()
@@ -423,11 +461,14 @@ final class World {
     failure
   }
 
-  def objects: Vector[GameObject] = objectsBuffer.toVector
+  def objects: Vector[GameObject] = objectsById.valuesIterator.filter(_.isAlive).toVector
+
+  private def allComponents: Iterator[(Class[?], Component)] =
+    objectsById.valuesIterator.flatMap(_.components.entries)
 
   private[gameobject] def dispose(): Unit = {
     if(!activeValue) return
-    var failure = destroyAll(objectsBuffer.toVector)
+    var failure = destroyAll(objects)
     scopesBuffer.toVector.reverse.foreach { scope =>
       val actionsFailure = scope.runDestroyActions()
       if(failure.isEmpty) failure = actionsFailure
@@ -449,11 +490,11 @@ final class World {
     val key = tag.runtimeClass
     supertypeLookups.get(key).foreach(World.rejectSupertypeLookup(key, _))
     exactIndexes.getOrElseUpdate(key, {
-      records.find(record => (record.key ne key) && key.isInstance(record.component))
-        .foreach(record => World.rejectSupertypeLookup(key, record.component))
+      allComponents.find { case (stored, component) => (stored ne key) && key.isInstance(component) }
+        .foreach { case (_, component) => World.rejectSupertypeLookup(key, component) }
       val index = new ComponentIndex[A]
-      records.foreach { record =>
-        if(record.key eq key) index.add(record.component, record.component.asInstanceOf[A])
+      allComponents.foreach { case (stored, component) =>
+        if(stored eq key) index.add(component, component.asInstanceOf[A])
       }
       index
     }).asInstanceOf[ComponentIndex[A]]
@@ -462,7 +503,7 @@ final class World {
   def capabilityIndex[A](using key: CapabilityKey[A]): ComponentIndex[A] = {
     capabilityIndexes.getOrElseUpdate(key, {
       val index = new ComponentIndex[A]
-      records.foreach { record => key.select(record.component).foreach(value => index.add(record.component, value)) }
+      allComponents.foreach { case (_, component) => key.select(component).foreach(value => index.add(component, value)) }
       index
     }).asInstanceOf[ComponentIndex[A]]
   }
@@ -485,7 +526,6 @@ final class World {
     single[A].getOrElse(throw new CompositionError(s"World is missing singleton component ${tag.runtimeClass.getName}"))
 
   private[gameobject] def componentAdded(key: Class[?], component: Component): Unit = {
-    records += ComponentRecord(key, component)
     exactIndexes.get(key).foreach(_.asInstanceOf[ComponentIndex[Component]].add(component, component))
     // An index asked for earlier under a supertype of this class would stay
     // empty forever: remember it, so the next lookup fails instead.
@@ -499,13 +539,11 @@ final class World {
     }
   }
 
-  private def removeComponent(component: Component): Unit = {
-    records.indexWhere(_.component eq component) match {
-      case -1 =>
-      case index =>
-        val record = records.remove(index)
-        exactIndexes.get(record.key).foreach(_.asInstanceOf[ComponentIndex[Component]].removeSource(component))
-        capabilityIndexes.values.foreach(_.asInstanceOf[ComponentIndex[Any]].removeSource(component))
+  private def removeComponent(key: Class[?], component: Component): Unit = {
+    component.removedFromWorld = true
+    exactIndexes.get(key).foreach(_.sourceRemoved())
+    capabilityIndexes.foreach { case (capability, index) =>
+      if(capability.select(component).nonEmpty) index.sourceRemoved()
     }
   }
 }

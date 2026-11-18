@@ -46,7 +46,7 @@ final class Velocity(obj: TypedObject[Spatial2D], var value: Vec2) extends Compo
   private val spatial = obj.spatial
 
   override def update(context: GameContext)(using Scope): Unit = {
-    val dt = context.global[DeltaTime].seconds.toFloat
+    val dt = context.dt
     val p = spatial.local.position + value * dt
     spatial.local = spatial.local.copy(position = Velocity.wrap(p))
   }
@@ -87,7 +87,7 @@ final class Player(obj: TypedObject[Spatial2D & Velocity & Collider]) extends Co
   private var fireCooldown = 0f
 
   override def update(context: GameContext)(using Scope): Unit = {
-    val dt = context.global[DeltaTime].seconds.toFloat
+    val dt = context.dt
 
     if(Input.isKeyPressed(Input.Keys.Left)) spatial.local = spatial.local.copy(rotation = spatial.local.rotation - 4.5f * dt)
     if(Input.isKeyPressed(Input.Keys.Right)) spatial.local = spatial.local.copy(rotation = spatial.local.rotation + 4.5f * dt)

@@ -65,7 +65,6 @@ object Spatial2D {
     def children: Vector[Spatial2D] = obj.spatial.children
     def setParent(parent: GameObject2D): Unit = obj.spatial.setParent(parent.spatial)
     def clearParent(): Unit = obj.spatial.clearParent()
-    def destroySubtree(): Unit = obj.spatial.destroySubtree()
 
     /** Places this object under `parent` and returns it, for use in a chain. */
     def childOf(parent: GameObject2D): TypedObject[Has] = {

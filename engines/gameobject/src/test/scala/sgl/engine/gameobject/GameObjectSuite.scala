@@ -6,7 +6,7 @@ import sgl.assets.{DrawableAsset, RawImageAsset}
 import sgl.engine.gameobject.capability.{FixedUpdatable, Updatable, UpdateCapabilitiesModule}
 import sgl.engine.gameobject.render2d.Texture2D
 import sgl.engine.gameobject.render3d.{Material, Mesh, MeshData, Renderer}
-import sgl.engine.gameobject.runtime.{Engine, GameBuilder, GameContext, Scene}
+import sgl.engine.gameobject.runtime.{Engine, FixedDeltaTime, GameBuilder, GameContext, Scene}
 import sgl.engine.gameobject.schedule.{Schedule, Stage, System}
 import sgl.engine.gameobject.spatial2d._
 import sgl.engine.gameobject.typed.{ComponentOf, TypedObject}
@@ -15,6 +15,9 @@ import sgl.math.Vec2
 class GameObjectSuite extends AnyFunSuite {
 
   final class Marker(override val owner: GameObject) extends Component
+  final class FailingOnDestroy(override val owner: GameObject) extends Component {
+    override protected def onDestroy(): Unit = throw new IllegalStateException("hook failed")
+  }
 
   final class Other(override val owner: GameObject) extends Component
 
@@ -320,23 +323,92 @@ class GameObjectSuite extends AnyFunSuite {
     assert(world.index[Registered].size === 0)
   }
 
-  test("a destroyed spatial leaves its hierarchy and destroySubtree removes descendants") {
+  test("destroying an object destroys what is below it in the hierarchy") {
     val world = new World
     import world.given
     val root = world.spawn2D("root")
-    val middle = world.spawn2D("middle")
-    val leaf = world.spawn2D("leaf")
-    middle.setParent(root)
-    leaf.setParent(middle)
+    val middle = world.spawn2D("middle").childOf(root)
+    val leaf = world.spawn2D("leaf").childOf(middle)
+    val other = world.spawn2D("other").childOf(root)
 
     middle.destroy()
-    assert(!middle.isAlive)
-    assert(root.children.isEmpty)
-    assert(leaf.parent.isEmpty)
+    assert(!middle.isAlive && !leaf.isAlive)
+    assert(root.children === Vector(other.spatial))
+    assert(world.objects.map(_.name) === Vector("root", "other"))
 
-    leaf.setParent(root)
-    root.destroySubtree()
+    root.destroy()
     assert(world.objects.isEmpty)
+  }
+
+  test("a child taken out of the hierarchy outlives its former parent") {
+    val world = new World
+    import world.given
+    val root = world.spawn2D("root")
+    val kept = world.spawn2D("kept").childOf(root)
+    val moved = world.spawn2D("moved").childOf(root)
+    val elsewhere = world.spawn2D("elsewhere")
+
+    kept.clearParent()
+    moved.setParent(elsewhere)
+    root.destroy()
+    assert(world.objects.map(_.name) === Vector("kept", "moved", "elsewhere"))
+    assert(moved.parent === Some(elsewhere.spatial))
+  }
+
+  test("a child in a longer-lived scope goes with a parent destroyed with its scope") {
+    val world = new World
+    val scene = world.createScope("scene")
+    val parent = world.spawn2D("parent")(using scene)
+    val child = world.spawn2D("child")(using world.globalScope).childOf(parent)
+
+    world.destroyScope(scene)
+    assert(!child.isAlive && world.objects.isEmpty)
+  }
+
+  test("every child is destroyed even if the destroy hook of one throws") {
+    val world = new World
+    import world.given
+    val root = world.spawn2D("root")
+    val broken = world.spawn2D("broken").childOf(root)
+    broken.attachPlain(new FailingOnDestroy(_))
+    val sibling = world.spawn2D("sibling").childOf(root)
+
+    val error = intercept[IllegalStateException](root.destroy())
+    assert(error.getMessage === "hook failed")
+    assert(!broken.isAlive && !sibling.isAlive && world.objects.isEmpty)
+  }
+
+  test("an object is found by its id while it is alive") {
+    val world = new World
+    import world.given
+    val obj = world.createObject("object")
+    assert(world.find(obj.id) === Some(obj))
+    world.destroy(obj)
+    assert(world.find(obj.id).isEmpty)
+    assert(world.find(ObjectId(1234)).isEmpty)
+  }
+
+  test("an index keeps its order and its size as objects are destroyed during a traversal") {
+    val world = new World
+    import world.given
+    val markers = (0 until 6).map(i => world.createObject(s"object-$i").attach(new Marker(_)))
+    val index = world.index[Marker]
+    val seen = Vector.newBuilder[String]
+    index.foreach { marker =>
+      seen += marker.owner.name
+      if(marker eq markers(1)) {
+        // One already visited, one still to come, and a nested traversal.
+        world.destroy(markers(0).owner)
+        world.destroy(markers(3).owner)
+        assert(index.size === 4)
+        var nested = 0
+        index.foreach(_ => nested += 1)
+        assert(nested === 4)
+      }
+    }
+    assert(seen.result() === Vector("object-0", "object-1", "object-2", "object-4", "object-5"))
+    assert(index.size === 4)
+    assert(index.toVector.map(_.owner.name) === Vector("object-1", "object-2", "object-4", "object-5"))
   }
 
   test("global transforms follow the parent chain as soon as it changes") {
@@ -456,10 +528,10 @@ class GameObjectSuite extends AnyFunSuite {
     assert(leaf2D.parent === Some(root2D.spatial))
     assert(root3D.children === Vector(leaf3D.spatial))
 
-    root3D.destroySubtree()
+    root3D.destroy()
     assert(world.objects.map(_.name) === Vector("root2D", "leaf2D"))
     leaf2D.clearParent()
-    root2D.destroySubtree()
+    root2D.destroy()
     assert(world.objects.map(_.name) === Vector("leaf2D"))
   }
 
@@ -611,6 +683,65 @@ class GameObjectSuite extends AnyFunSuite {
     intercept[CompositionError] {
       Schedule.build(Vector(first, second))
     }
+  }
+
+  test("a system written as a block creates objects in the scope of the frame") {
+    object EmptyScene extends Scene {
+      override def load(context: GameContext)(using Scope): Unit = ()
+    }
+    var created = Option.empty[GameObject]
+    val spawner = System("spawner") {
+      if(created.isEmpty) created = Some(summon[GameContext].world.createObject("spawned"))
+    }
+    val runtime = new GameBuilder()
+      .setInitialScene(EmptyScene)
+      .addSystem(Stage.Update, spawner)
+      .build(new TestEngine(new RecordingRenderer))
+    runtime.startup()
+    runtime.frame(1.0 / 60.0)
+
+    assert(created.get.scope.name.contains("EmptyScene"))
+    runtime.loadScene(EmptyScene)
+    assert(!created.get.isAlive)
+  }
+
+  test("a long frame runs a bounded number of fixed steps") {
+    var steps = 0
+    var seenDt = 0f
+    val runtime = new GameBuilder()
+      .setGlobal(FixedDeltaTime(0.1, maxStepsPerFrame = 3))
+      .addSystem(Stage.FixedUpdate, System("count") { steps += 1; seenDt = summon[GameContext].dt })
+      .build(new TestEngine(new RecordingRenderer))
+    runtime.startup()
+
+    runtime.frame(60.0)
+    assert(steps === 3)
+    assert(seenDt === 0.1f)
+    // The dropped time is gone: the next frame does not catch up on it.
+    runtime.frame(0.1)
+    assert(steps === 4)
+  }
+
+  test("pause and resume run their stages, and resuming starts fixed steps over") {
+    var events = Vector.empty[String]
+    val runtime = new GameBuilder()
+      .setGlobal(FixedDeltaTime(0.1))
+      .addSystem(Stage.Pause, System("pause") { events :+= "pause" })
+      .addSystem(Stage.Resume, System("resume") { events :+= "resume" })
+      .addSystem(Stage.FixedUpdate, System("fixed") { events :+= "fixed" })
+      .build(new TestEngine(new RecordingRenderer))
+
+    runtime.pause()
+    assert(events.isEmpty)
+    runtime.startup()
+    runtime.frame(0.09)
+    runtime.pause()
+    runtime.resume()
+    runtime.frame(0.09)
+    assert(events === Vector("pause", "resume"))
+    runtime.dispose()
+    runtime.resume()
+    assert(events === Vector("pause", "resume"))
   }
 
   test("scene changes requested by a system happen after rendering") {

@@ -17,7 +17,12 @@ final case class ClearColor(red: Float, green: Float, blue: Float, alpha: Float)
 
 final case class DeltaTime(seconds: Double)
 
-final case class FixedDeltaTime(seconds: Double)
+/** Length of a fixed step. A frame runs as many fixed steps as its duration
+  * holds, up to `maxStepsPerFrame`: the time beyond that is dropped, so a long
+  * frame or a return from the background slows the simulation down for a
+  * moment instead of replaying every missed step at once.
+  */
+final case class FixedDeltaTime(seconds: Double, maxStepsPerFrame: Int = 8)
 
 final case class ElapsedTime(seconds: Double)
 
@@ -27,8 +32,10 @@ trait GameModule {
 
 /** A loadable top-level composition for a World.
   *
-  * Scenes are Scala code that populate a fresh runtime World. Smaller reusable
-  * object graphs can stay as ordinary game-level factory functions.
+  * Scenes are Scala code that populate the runtime's World. The world and
+  * its globals outlive a scene; what the scene creates is in a scope of its
+  * own, destroyed when another scene is loaded. Smaller reusable object graphs
+  * can stay as ordinary game-level factory functions.
   */
 trait Scene {
   def load(context: GameContext)(using Scope): Unit
@@ -47,6 +54,9 @@ final class GameContext(
 
   /** The world's global of type `A`, such as `context.global[DeltaTime]`. */
   def global[A: ClassTag]: A = world.globals.get[A]
+
+  /** Seconds since the previous frame, or the fixed step during `FixedUpdate`. */
+  def dt: Float = world.globals.get[DeltaTime].seconds.toFloat
 }
 
 /** Engine services exposed to systems. */
@@ -94,7 +104,7 @@ final class GameBuilder {
   }
 }
 
-final class GameRuntime(
+final class GameRuntime private[runtime] (
     val engine: Engine,
     schedules: Map[Stage, Schedule],
     globalInitializers: Vector[World => Unit],
@@ -151,9 +161,11 @@ final class GameRuntime(
 
       run(Stage.PreUpdate, frameScope)
 
-      val fixedStep = worldValue.globals.get[FixedDeltaTime].seconds
+      val fixed = worldValue.globals.get[FixedDeltaTime]
+      val fixedStep = fixed.seconds
       fixedAccumulator += dt
       if(fixedStep > 0.0) {
+        fixedAccumulator = math.min(fixedAccumulator, fixedStep * math.max(fixed.maxStepsPerFrame, 1))
         while(fixedAccumulator >= fixedStep) {
           worldValue.globals.set(DeltaTime(fixedStep))
           run(Stage.FixedUpdate, frameScope)
@@ -179,6 +191,24 @@ final class GameRuntime(
   def resize(width: Int, height: Int): Unit = {
     ensureRunning()
     engine.renderer.resize(width, height)
+  }
+
+  /** Runs the systems of `Stage.Pause`: the application is leaving the
+    * foreground. Like `resume`, it does nothing on a runtime that is not
+    * running, since a backend may pause while starting or shutting down.
+    */
+  def pause(): Unit = {
+    if(!started || disposed) return
+    run(Stage.Pause, currentSceneScope.getOrElse(worldValue.globalScope))
+  }
+
+  /** Runs the systems of `Stage.Resume`. Fixed steps start over from here:
+    * the time spent in the background is not simulated.
+    */
+  def resume(): Unit = {
+    if(!started || disposed) return
+    fixedAccumulator = 0.0
+    run(Stage.Resume, currentSceneScope.getOrElse(worldValue.globalScope))
   }
 
   def dispose(): Unit = {
@@ -277,6 +307,12 @@ trait GameObjectEngineApp extends Application {
 
   override def resize(width: Int, height: Int): Unit =
     if(runtime != null) runtime.resize(width, height)
+
+  override def pause(): Unit =
+    if(runtime != null) runtime.pause()
+
+  override def resume(): Unit =
+    if(runtime != null) runtime.resume()
 
   override def dispose(): Unit =
     if(runtime != null) runtime.dispose()

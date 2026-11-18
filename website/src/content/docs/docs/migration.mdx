@@ -135,3 +135,13 @@ gameObject.component[Spatial2D].foreach { spatial =>
   instead of returning the first.
 - `attach` is no longer available through `HasGameObject`: call it on a `TypedObject` or a
   `GameObject`, not on a component or domain object.
+- Destroying an object now destroys its children in the hierarchy; they used to become roots.
+  `destroySubtree()` was removed: call `destroy()`. Call `clearParent()` first on a child that
+  must survive.
+- A `System("id") { ... }` block is given a `Scope` as well as the `GameContext`.
+- `FixedDeltaTime` gained `maxStepsPerFrame` (default 8): a frame no longer runs an unbounded
+  number of fixed steps.
+- The application's `pause` and `resume` run the new `Pause` and `Resume` stages.
+- `context.dt` replaces `context.global[DeltaTime].seconds.toFloat`, and `world.find(id)` looks an
+  object up by its `ObjectId`.
+- `GameRuntime` is built with `GameBuilder.build`; its constructor is no longer public.

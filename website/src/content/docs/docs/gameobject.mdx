@@ -236,12 +236,20 @@ in steps of `FixedDeltaTime` (default 1/60 s):
 
 </Steps>
 
-`Startup` runs once before the initial scene loads. Read time from the globals:
-`context.global[DeltaTime].seconds` or `ElapsedTime`. A schedule rejects duplicate
-system IDs.
+`Startup` runs once before the initial scene loads. `context.dt` is the frame's delta time in
+seconds as a `Float`; the `DeltaTime` and `ElapsedTime` globals hold the same as `Double`s. A
+schedule rejects duplicate system IDs.
+
+A frame runs at most `maxStepsPerFrame` fixed steps (8 by default, set with
+`FixedDeltaTime(1.0 / 60.0, maxStepsPerFrame = 4)`) and drops the time beyond that, so a long
+frame slows the simulation down for a moment instead of replaying every missed step.
+
+Two more stages run outside of a frame: `Pause` when the application leaves the foreground and
+`Resume` when it comes back, which is where a game saves its state or stops its music. Fixed
+steps start over on resume, so the time spent in the background is not simulated.
 
 For small systems, `System("game.spawner") { ... }` creates one from a block that receives a given
-`GameContext`.
+`GameContext` and a given `Scope`, so it can spawn objects directly.
 
 ### Per-object updates
 
@@ -251,7 +259,7 @@ having a system. Only components that implement these traits are indexed and upd
 ```scala
 final class Lifetime(override val owner: GameObject, var seconds: Double) extends Component with Updatable {
   override def update(context: GameContext)(using Scope): Unit = {
-    seconds -= context.global[DeltaTime].seconds
+    seconds -= context.dt
     if(seconds <= 0.0) this.destroy()
   }
 }
@@ -321,8 +329,8 @@ Find singletons with `world.single[A]` and `world.requireSingle[A]`. Both throw 
 
 `spatial2d` adds `Spatial2D` (a local `Transform2D` of position, rotation, and scale, with parent
 and children) and `GameObject2D`. Extensions on `GameObject2D` give direct access to `spatial`,
-`local`, `global`, `parent`, `children`, `setParent`, `clearParent`, `childOf`, `transformPoint`,
-and `destroySubtree`. They are defined in the `Spatial2D` companion, so they need no import.
+`local`, `global`, `parent`, `children`, `setParent`, `clearParent`, `childOf`, and
+`transformPoint`. They are defined in the `Spatial2D` companion, so they need no import.
 `childOf` sets the parent and returns the object, so it fits in a chain:
 
 ```scala
@@ -337,8 +345,10 @@ context.spawn2D("Thruster", Transform2D(position = Vec2(0f, 20f)))
 `obj.spatial.local` is writable. `obj.global` is computed from the parent chain when it is read, so
 it is never stale and does not depend on system order. For hierarchies with non-uniform scale, use
 `transformPoint`, which keeps affine shear that the decomposed `global` transform cannot represent.
-`destroySubtree()` destroys an object and its descendants, and a destroyed object's children
-become roots.
+
+A child belongs to its parent: destroying an object destroys everything below it, whatever scope
+the children were created in. To keep a child, take it out first with `clearParent()` or give it
+another parent.
 
 The parent and child links come from the `Hierarchy` trait, which `Spatial2D` and `Spatial3D` mix
 in. A game can mix it into its own components for any other tree of objects.
