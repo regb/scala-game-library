@@ -210,7 +210,10 @@ class OpenGLRendererSuite extends AnyFunSuite {
     val mesh = renderer.createMesh(sgl.engine.gameobject.render3d.MeshData(Array.empty[Float], Array.empty[Short]))(using scene)
     val material = renderer.createMaterial(texture, emissive = 0f)(using scene)
     assert(mesh.toString == "Mesh(0)" && material.toString == "Material(0)")
+    val ready = renderer.whenReady(texture)
+    assert(!ready.isLoaded)
     app.uploads.head.complete()
+    assert(ready.value.map(_.get) == Some(texture))
     val uploaded = app.uploads.head.texture
 
     world.spawn2D("sprite")(using scene).attach(new SpriteRenderer(_, SpriteVisual.Texture(texture), 10f, 10f))

@@ -154,3 +154,6 @@ gameObject.component[Spatial2D].foreach { spatial =>
 - A frame's delta time is capped by the new `MaxDeltaTime` global (0.25 s by default).
 - `context.setGlobal(value)` sets a global for the lifetime of the current scope, and `Scene` gained
   `pause` and `resume`.
+- Scenes can load before they appear: see [`AsyncScene`](/docs/gameobject/#scenes-that-load-first).
+  Code that created objects from a `Loader` callback should use `context.whenLoaded(loader) { ... }`
+  instead, which runs on the game thread and is dropped when the scene is left.

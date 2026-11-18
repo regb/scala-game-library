@@ -339,6 +339,60 @@ the world's global scope, whose objects persist across scenes. Use `world.create
 Find singletons with `world.single[A]` and `world.requireSingle[A]`. Both throw a
 `CompositionError` when the world holds more than one `A`.
 
+### Scenes that load first
+
+A scene that needs files or images before it can be populated extends `AsyncScene[A]`, where `A` is
+what it loads. `preload` starts the loading and returns one `Loader[A]`; when it has completed,
+`load` is called with the result:
+
+```scala
+final case class LevelAssets(map: Array[String], tiles: Texture2D)
+
+object Level extends AsyncScene[LevelAssets] {
+  override def preload(context: GameContext)(using Scope): Loader[LevelAssets] = {
+    val renderer = context.engine.renderer
+    for {
+      map <- System.loadText(Assets.text.level)
+      tiles <- renderer.whenReady(renderer.loadTexture2D(Assets.rawImage.tiles))
+    } yield LevelAssets(map, tiles)
+  }
+
+  override def load(context: GameContext, assets: LevelAssets)(using Scope): Unit = {
+    // spawn the level from assets.map, with assets.tiles already usable
+  }
+}
+
+context.runtime.loadScene(Level)                                       // the current scene stays until Level is ready
+context.runtime.loadScene(Level, whileLoading = Some(LoadingScreen))   // or show another scene meanwhile
+```
+
+- The scene that was running keeps running until the new one is ready, and the swap happens
+  between two frames. The `SceneLoading` global is present in the meantime.
+- `preload` is given the scope of the new scene. The textures and meshes it creates are released
+  with the scene, or at once if the loading fails or another scene is requested first.
+- `preload` cannot create objects: that throws a `CompositionError`. Objects are created in `load`.
+- If the loading fails, the current scene stays and the failure is thrown out of the frame. Pass
+  `onFailure = cause => ...` to `loadScene` to handle it instead.
+- `renderer.whenReady(texture)` completes when a texture's image is loaded, and fails if it could
+  not be.
+
+`builder.setInitialScene` takes an `AsyncScene` too.
+
+### Acting on something loaded later
+
+To use something that arrives while a scene is already running, pass its `Loader` to
+`context.whenLoaded`:
+
+```scala
+context.whenLoaded(Audio.loadMusic(Assets.audio.theme)) { music =>
+  music.play()
+}
+```
+
+The block runs on the game thread at the start of a frame, and only if the scene that asked is
+still the current one. Do not create objects from `loader.foreach` or `loader.onLoad`: on some
+backends those callbacks run on a loading thread, and they still run after the scene is gone.
+
 ## 2D
 
 `spatial2d` adds `Spatial2D` (a local `Transform2D` of position, rotation, and scale, with parent
@@ -420,10 +474,13 @@ Textures are loaded from typed assets through the engine, usually while a scene 
 
 ```scala
 val texture: Loader[Texture2D] = context.engine.loadDrawableTexture(Assets.drawable.coin)
-texture.foreach { coin =>
+context.whenLoaded(texture) { coin =>
   context.spawn2D("Coin").attach(new SpriteRenderer(_, SpriteVisual.Texture(coin), 32f, 32f))
 }
 ```
+
+A scene that should appear with its textures already loaded waits for them in the `preload` of an
+[`AsyncScene`](#scenes-that-load-first).
 
 Drawables packed with [`sgl_texture_atlas`](/docs/assets/#texture-atlases) are drawn from shared
 pages, and consecutive draws on the same page are batched.

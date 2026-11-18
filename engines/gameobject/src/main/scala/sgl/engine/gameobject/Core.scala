@@ -223,6 +223,8 @@ final class Globals private[gameobject] () {
 
   def contains[A](using tag: ClassTag[A]): Boolean = contains(tag.runtimeClass)
 
+  def remove[A](using tag: ClassTag[A]): Unit = values.remove(tag.runtimeClass)
+
   private[gameobject] def contains(key: Class[?]): Boolean = values.contains(key)
 }
 
@@ -249,6 +251,10 @@ final class Scope private[gameobject] (val id: ScopeId, val name: String, privat
 
   def isActive: Boolean = activeValue
   private[gameobject] def deactivate(): Unit = activeValue = false
+
+  // Set while the scene the scope belongs to is preloading: it can own assets
+  // but not objects yet.
+  private[gameobject] var preloading: Boolean = false
 
   /** Registers something to release when the scope is destroyed, after its
     * objects. This is how what is created for a scene, such as a mesh or a
@@ -414,6 +420,12 @@ final class World {
     if(!activeValue) throw new CompositionError("Cannot create an object in a disposed world")
     if(scope.world ne this) throw new CompositionError("A scope must belong to the world creating the object")
     if(!scope.isActive) throw new CompositionError(s"Cannot create an object in inactive scope ${scope.name}")
+    if(scope.preloading) {
+      throw new CompositionError(
+        s"Cannot create an object in scope ${scope.name} while its scene is preloading: " +
+          "preload only loads what the scene needs, and objects are created in load"
+      )
+    }
     val obj = new GameObject(ObjectId(nextObjectId), name, scope, this)
     nextObjectId += 1
     objectsById(obj.id.value) = obj

@@ -2,6 +2,8 @@ package sgl.engine.gameobject
 
 import scala.collection.mutable
 import scala.reflect.ClassTag
+import scala.util.{Failure, Success}
+import scala.util.control.NonFatal
 
 import sgl.{Application, OpenGLProvider, SystemProvider, WindowProvider}
 import sgl.assets.{AssetRuntime, DrawableAsset, RawImageAsset}
@@ -61,6 +63,61 @@ trait Scene {
   def resume(context: GameContext)(using Scope): Unit = {}
 }
 
+/** A scene that needs things loaded before it can be populated.
+  *
+  * Loading such a scene happens in two steps. `preload` starts the loading
+  * and describes its result as one `Loader`; the game keeps running what it
+  * was running. Once the loader has completed, the previous scene is left and
+  * `load` populates the world with the loaded `A` at hand, so nothing appears
+  * half loaded:
+  *
+  * {{{
+  * final case class LevelAssets(map: Array[String], tiles: Texture2D)
+  *
+  * object Level extends AsyncScene[LevelAssets] {
+  *   override def preload(context: GameContext)(using Scope): Loader[LevelAssets] = {
+  *     val renderer = context.engine.renderer
+  *     for {
+  *       map <- System.loadText(Assets.text.level)
+  *       tiles <- renderer.whenReady(renderer.loadTexture2D(Assets.rawImage.tiles))
+  *     } yield LevelAssets(map, tiles)
+  *   }
+  *
+  *   override def load(context: GameContext, assets: LevelAssets)(using Scope): Unit = ...
+  * }
+  * }}}
+  *
+  * Both steps are given the scope of the scene. What `preload` creates in it,
+  * such as textures and meshes, is released with the scene, or right away if
+  * the loading fails or another scene is requested in the meantime. `preload`
+  * cannot create objects: the previous scene is still the one running.
+  */
+trait AsyncScene[A] {
+  def preload(context: GameContext)(using Scope): Loader[A]
+  def load(context: GameContext, assets: A)(using Scope): Unit
+  def unload(context: GameContext)(using Scope): Unit = {}
+  def pause(context: GameContext)(using Scope): Unit = {}
+  def resume(context: GameContext)(using Scope): Unit = {}
+}
+
+/** Present among the globals while a scene is preloading: `startedAt` is the
+  * `ElapsedTime` at which the loading started. A loading screen reads it to
+  * show what is going on.
+  */
+final case class SceneLoading(scene: String, startedAt: Double)
+
+// An AsyncScene with what it loaded is an ordinary scene.
+private final class LoadedScene[A](scene: AsyncScene[A], assets: A) extends Scene {
+  override def load(context: GameContext)(using Scope): Unit = scene.load(context, assets)
+  override def unload(context: GameContext)(using Scope): Unit = scene.unload(context)
+  override def pause(context: GameContext)(using Scope): Unit = scene.pause(context)
+  override def resume(context: GameContext)(using Scope): Unit = scene.resume(context)
+}
+
+private sealed trait SceneRequest
+private final case class LoadNow(scene: Scene) extends SceneRequest
+private final case class Preload[A](scene: AsyncScene[A], whileLoading: Option[Scene], onFailure: Throwable => Unit) extends SceneRequest
+
 /** Services and scope shared by scenes, systems, and component callbacks. */
 final class GameContext(
     val world: World,
@@ -81,6 +138,17 @@ final class GameContext(
     * goes away with the scene. See [[sgl.engine.gameobject.Globals.setScoped]].
     */
   def setGlobal[A: ClassTag](value: A)(using Scope): Unit = world.globals.setScoped(value)
+
+  /** Runs `body` with what the loader produced, once it has.
+    *
+    * This is the way to act on something loaded in the background. The body
+    * runs on the game thread at the start of a frame, never from the thread
+    * that did the loading, and only if the given scope is still alive: what a
+    * scene asked for is dropped when the scene is left. A failed loading is
+    * handed to `onFailure`, which by default throws it out of the frame.
+    */
+  def whenLoaded[A](loader: Loader[A], onFailure: Throwable => Unit = GameRuntime.rethrow)(body: A => Unit)(using Scope): Unit =
+    runtime.whenLoaded(loader, onFailure)(body)
 }
 
 /** Engine services exposed to systems. */
@@ -96,7 +164,7 @@ trait Engine {
 final class GameBuilder {
   private val globalInitializers = mutable.ArrayBuffer.empty[World => Unit]
   private val systemsByStage = mutable.HashMap.empty[Stage, mutable.ArrayBuffer[GameSystem]]
-  private var initialSceneValue: Option[Scene] = None
+  private var initialSceneValue: Option[SceneRequest] = None
 
   def install(module: GameModule): this.type = {
     module.install(this)
@@ -109,7 +177,15 @@ final class GameBuilder {
   }
 
   def setInitialScene(scene: Scene): this.type = {
-    initialSceneValue = Some(scene)
+    initialSceneValue = Some(LoadNow(scene))
+    this
+  }
+
+  /** Starts the game on a scene that preloads. `whileLoading` is shown in the
+    * meantime; without it nothing is until the scene is ready.
+    */
+  def setInitialScene[A](scene: AsyncScene[A], whileLoading: Option[Scene] = None): this.type = {
+    initialSceneValue = Some(Preload(scene, whileLoading, GameRuntime.rethrow))
     this
   }
 
@@ -132,14 +208,16 @@ final class GameRuntime private[gameobject] (
     val engine: Engine,
     schedules: Map[Stage, Schedule],
     globalInitializers: Vector[World => Unit],
-    initialScene: Option[Scene]
+    initialScene: Option[SceneRequest]
 ) {
   private val worldValue: World = createWorld()
   private var currentScene: Option[Scene] = None
   private var currentSceneScope: Option[Scope] = None
   private var elapsedSeconds: Double = 0.0
   private var fixedAccumulator: Double = 0.0
-  private var pendingScene: Option[Scene] = None
+  private var pendingScene: Option[SceneRequest] = None
+  private var loading: Option[Loading[?]] = None
+  private val continuations = mutable.ArrayBuffer.empty[Continuation[?]]
   private var processingFrame = false
   private var changingScene = false
   private var started = false
@@ -154,7 +232,7 @@ final class GameRuntime private[gameobject] (
     started = true
     resetFrameGlobals()
     run(Stage.Startup, worldValue.globalScope)
-    initialScene.foreach(changeScene)
+    initialScene.foreach(start)
     applyPendingScene()
   }
 
@@ -163,18 +241,46 @@ final class GameRuntime private[gameobject] (
     * Requests made while a frame is running take effect after rendering. This
     * keeps the active scene and creation scope unchanged for that frame.
     */
-  def loadScene(scene: Scene): Unit = {
+  def loadScene(scene: Scene): Unit = request(LoadNow(scene))
+
+  /** Requests a scene that preloads.
+    *
+    * The current scene keeps running until the new one is ready, unless
+    * `whileLoading` names a scene to show in the meantime, typically a loading
+    * screen. The `SceneLoading` global is present for as long as it takes.
+    *
+    * Requesting another scene before this one is ready abandons it and
+    * releases what it had loaded. If the loading fails, the same happens, the
+    * scene on screen stays, and `onFailure` is called; by default it throws
+    * the failure out of the frame.
+    */
+  def loadScene[A](
+      scene: AsyncScene[A],
+      whileLoading: Option[Scene] = None,
+      onFailure: Throwable => Unit = GameRuntime.rethrow
+  ): Unit = request(Preload(scene, whileLoading, onFailure))
+
+  private def request(sceneRequest: SceneRequest): Unit = {
     ensureRunning()
-    if(processingFrame || changingScene) pendingScene = Some(scene)
+    if(processingFrame || changingScene) pendingScene = Some(sceneRequest)
     else {
-      changeScene(scene)
+      start(sceneRequest)
       applyPendingScene()
     }
+  }
+
+  private[gameobject] def whenLoaded[A](loader: Loader[A], onFailure: Throwable => Unit)(body: A => Unit)(using scope: Scope): Unit = {
+    if(disposed) throw new IllegalStateException("Game runtime has been disposed")
+    continuations += new Continuation(scope, loader, body, onFailure)
   }
 
   def frame(frameSeconds: Double): Unit = {
     ensureRunning()
     if(!frameSeconds.isFinite || frameSeconds < 0.0) throw new IllegalArgumentException("Frame delta time must be a finite, non-negative number of seconds")
+    // What finished loading since the last frame takes effect here, between
+    // two frames and on the game thread.
+    pollLoading()
+    runContinuations()
     val dt = math.min(frameSeconds, math.max(worldValue.globals.get[MaxDeltaTime].seconds, 0.0))
     processingFrame = true
     try {
@@ -253,42 +359,122 @@ final class GameRuntime private[gameobject] (
       currentSceneScope = None
       currentScene = None
       pendingScene = None
+      loading = None
+      continuations.clear()
       worldValue.dispose()
       engine.dispose()
     }
   }
 
-  private def changeScene(scene: Scene): Unit = {
+  private def start(sceneRequest: SceneRequest): Unit = sceneRequest match {
+    case LoadNow(scene) =>
+      cancelLoading()
+      changeScene(scene)
+    case preload: Preload[a] =>
+      startLoading(preload)
+  }
+
+  // Scene code may request another scene while it runs: the request is kept
+  // for when the transition is over.
+  private def transition(body: => Unit): Unit = {
+    val nested = changingScene
     changingScene = true
+    try body
+    finally changingScene = nested
+  }
+
+  private def changeScene(scene: Scene): Unit = transition {
+    leaveScene()
+    enterScene(scene, worldValue.createScope(sceneName(scene)))
+  }
+
+  private def leaveScene(): Unit = {
     try {
       currentScene.foreach { oldScene =>
         val oldScope = currentSceneScope.getOrElse(worldValue.globalScope)
         oldScene.unload(new GameContext(worldValue, engine, this, oldScope))(using oldScope)
       }
-      currentSceneScope.foreach(worldValue.destroyScope)
-
-      val sceneScope = worldValue.createScope(scene.getClass.getName.stripSuffix("$"))
-      currentScene = Some(scene)
-      currentSceneScope = Some(sceneScope)
-      fixedAccumulator = 0.0
-      resetFrameGlobals()
-      try scene.load(new GameContext(worldValue, engine, this, sceneScope))(using sceneScope)
-      catch {
-        case error: Throwable =>
-          worldValue.destroyScope(sceneScope)
-          currentScene = None
-          currentSceneScope = None
-          throw error
-      }
     } finally {
-      changingScene = false
+      val oldScope = currentSceneScope
+      currentScene = None
+      currentSceneScope = None
+      oldScope.foreach(worldValue.destroyScope)
     }
   }
+
+  private def enterScene(scene: Scene, sceneScope: Scope): Unit = {
+    currentScene = Some(scene)
+    currentSceneScope = Some(sceneScope)
+    fixedAccumulator = 0.0
+    resetFrameGlobals()
+    try scene.load(new GameContext(worldValue, engine, this, sceneScope))(using sceneScope)
+    catch {
+      case error: Throwable =>
+        currentScene = None
+        currentSceneScope = None
+        worldValue.destroyScope(sceneScope)
+        throw error
+    }
+  }
+
+  private def startLoading[A](preload: Preload[A]): Unit = transition {
+    cancelLoading()
+    preload.whileLoading.foreach(changeScene)
+    val name = sceneName(preload.scene)
+    val scope = worldValue.createScope(name)
+    scope.preloading = true
+    val loader =
+      try preload.scene.preload(new GameContext(worldValue, engine, this, scope))(using scope)
+      catch { case NonFatal(error) => Loader.failed[A](error) }
+    loading = Some(new Loading(name, scope, preload.scene, loader, preload.onFailure))
+    worldValue.globals.set(SceneLoading(name, elapsedSeconds))
+    // A loader that is already complete does not cost a frame.
+    pollLoading()
+  }
+
+  private def cancelLoading(): Unit = loading.foreach { abandoned =>
+    loading = None
+    worldValue.globals.remove[SceneLoading]
+    worldValue.destroyScope(abandoned.scope)
+  }
+
+  private def pollLoading(): Unit = loading.foreach(poll(_))
+
+  private def poll[A](pending: Loading[A]): Unit = pending.loader.value match {
+    case None =>
+    case Some(Failure(cause)) =>
+      cancelLoading()
+      pending.onFailure(cause)
+    case Some(Success(assets)) =>
+      loading = None
+      worldValue.globals.remove[SceneLoading]
+      transition {
+        try leaveScene()
+        catch {
+          case error: Throwable =>
+            worldValue.destroyScope(pending.scope)
+            throw error
+        }
+        pending.scope.preloading = false
+        enterScene(new LoadedScene(pending.scene, assets), pending.scope)
+      }
+  }
+
+  private def runContinuations(): Unit = {
+    if(continuations.exists(_.isDue)) {
+      continuations.filter(_.isDue).toVector.foreach { continuation =>
+        continuations -= continuation
+        continuation.run()
+      }
+    }
+  }
+
+  private def sceneName(scene: AnyRef): String = scene.getClass.getName.stripSuffix("$")
 
   private def applyPendingScene(): Unit = {
     val nextScene = pendingScene
     pendingScene = None
-    nextScene.foreach(changeScene)
+    nextScene.foreach(start)
   }
 
   private def run(stage: Stage, scope: Scope): Unit =
@@ -318,6 +504,30 @@ final class GameRuntime private[gameobject] (
   private def ensureRunning(): Unit = {
     if(disposed) throw new IllegalStateException("Game runtime has been disposed")
     if(!started) throw new IllegalStateException("Game runtime has not been started")
+  }
+}
+
+object GameRuntime {
+  /** The default answer to a failed loading: throw it. */
+  val rethrow: Throwable => Unit = cause => throw cause
+}
+
+private final class Loading[A](
+    val name: String,
+    val scope: Scope,
+    val scene: AsyncScene[A],
+    val loader: Loader[A],
+    val onFailure: Throwable => Unit
+)
+
+private final class Continuation[A](scope: Scope, loader: Loader[A], body: A => Unit, onFailure: Throwable => Unit) {
+  def isDue: Boolean = !scope.isActive || loader.value.nonEmpty
+
+  def run(): Unit = {
+    if(scope.isActive) loader.value.foreach {
+      case Success(value) => body(value)
+      case Failure(cause) => onFailure(cause)
+    }
   }
 }
 

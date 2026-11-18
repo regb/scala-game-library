@@ -790,6 +790,154 @@ class GameObjectSuite extends AnyFunSuite {
     assert(events === Vector("scene pause", "pause", "scene resume", "resume"))
   }
 
+  // An async scene whose loading the test completes by hand.
+  private final class Preloaded(name: String) extends AsyncScene[String] {
+    val loader = new sgl.util.DefaultLoader[String]
+    var released = 0
+    var loadedWith = Option.empty[String]
+    override def preload(context: GameContext)(using scope: Scope): sgl.util.Loader[String] = {
+      scope.onDestroy(() => released += 1)
+      loader
+    }
+    override def load(context: GameContext, assets: String)(using Scope): Unit = {
+      loadedWith = Some(assets)
+      context.createObject(name)
+    }
+  }
+  private final class Plain(name: String) extends Scene {
+    override def load(context: GameContext)(using Scope): Unit = context.createObject(name)
+  }
+  private def runtimeOn(scene: Scene) = {
+    val runtime = new GameBuilder().setInitialScene(scene).build(new TestEngine(new RecordingRenderer))
+    runtime.startup()
+    runtime
+  }
+  private def names(runtime: GameRuntime) = runtime.world.objects.map(_.name)
+
+  test("an async scene replaces the current one once what it preloads is there") {
+    val runtime = runtimeOn(new Plain("menu"))
+    val level = new Preloaded("level")
+    runtime.loadScene(level)
+    runtime.frame(0.1)
+
+    assert(names(runtime) === Vector("menu"))
+    assert(runtime.world.globals.get[SceneLoading].scene.contains("Preloaded"))
+    level.loader.success("assets")
+    // Nothing changes until the next frame starts.
+    assert(names(runtime) === Vector("menu"))
+    runtime.frame(0.1)
+    assert(names(runtime) === Vector("level"))
+    assert(level.loadedWith === Some("assets"))
+    assert(!runtime.world.globals.contains[SceneLoading])
+
+    // What was preloaded belongs to the scene: it goes when the scene is left.
+    assert(level.released === 0)
+    runtime.loadScene(new Plain("next"))
+    assert(level.released === 1)
+  }
+
+  test("a game can start on an async scene and show another one while it loads") {
+    val level = new Preloaded("level")
+    val runtime = new GameBuilder()
+      .setInitialScene(level, whileLoading = Some(new Plain("loading-screen")))
+      .build(new TestEngine(new RecordingRenderer))
+    runtime.startup()
+    assert(names(runtime) === Vector("loading-screen"))
+    level.loader.success("assets")
+    runtime.frame(0.1)
+    assert(names(runtime) === Vector("level"))
+
+    // A loader that is already complete does not wait for a frame.
+    val ready = new Preloaded("ready")
+    ready.loader.success("there")
+    runtime.loadScene(ready)
+    assert(names(runtime) === Vector("ready"))
+  }
+
+  test("preload cannot create objects") {
+    object Eager extends AsyncScene[Unit] {
+      override def preload(context: GameContext)(using Scope): sgl.util.Loader[Unit] = {
+        context.createObject("too-early")
+        sgl.util.Loader.successful(())
+      }
+      override def load(context: GameContext, assets: Unit)(using Scope): Unit = ()
+    }
+    val runtime = runtimeOn(new Plain("menu"))
+    val error = intercept[CompositionError](runtime.loadScene(Eager))
+    assert(error.getMessage.contains("preloading"))
+    assert(names(runtime) === Vector("menu"))
+    assert(runtime.world.scopes.map(_.name).forall(!_.contains("Eager")))
+  }
+
+  test("a failed preload leaves the current scene, releases what was loaded and is reported") {
+    val runtime = runtimeOn(new Plain("menu"))
+    val broken = new Preloaded("broken")
+    runtime.loadScene(broken)
+    broken.loader.failure(new IllegalStateException("missing file"))
+    val error = intercept[IllegalStateException](runtime.frame(0.1))
+    assert(error.getMessage === "missing file")
+    assert(broken.released === 1 && broken.loadedWith.isEmpty)
+    assert(!runtime.world.globals.contains[SceneLoading])
+    runtime.frame(0.1)
+    assert(names(runtime) === Vector("menu"))
+
+    var reported = Option.empty[Throwable]
+    val handled = new Preloaded("handled")
+    runtime.loadScene(handled, onFailure = cause => reported = Some(cause))
+    handled.loader.failure(new IllegalStateException("handled"))
+    runtime.frame(0.1)
+    assert(reported.map(_.getMessage) === Some("handled"))
+    assert(names(runtime) === Vector("menu"))
+  }
+
+  test("requesting another scene abandons the one that is preloading") {
+    val runtime = runtimeOn(new Plain("menu"))
+    val first = new Preloaded("first")
+    val second = new Preloaded("second")
+    runtime.loadScene(first)
+    runtime.loadScene(second)
+    assert(first.released === 1)
+
+    first.loader.success("late")
+    runtime.frame(0.1)
+    assert(names(runtime) === Vector("menu") && first.loadedWith.isEmpty)
+
+    runtime.loadScene(new Plain("other"))
+    assert(second.released === 1 && names(runtime) === Vector("other"))
+    second.loader.success("late")
+    runtime.frame(0.1)
+    assert(names(runtime) === Vector("other"))
+  }
+
+  test("whenLoaded runs between frames, in the scope that asked, unless that scope is gone") {
+    val wanted = new sgl.util.DefaultLoader[String]
+    val dropped = new sgl.util.DefaultLoader[String]
+    val failing = new sgl.util.DefaultLoader[String]
+    object Asking extends Scene {
+      override def load(context: GameContext)(using Scope): Unit = {
+        context.whenLoaded(wanted)(name => context.createObject(name))
+        context.whenLoaded(dropped)(name => context.createObject(name))
+      }
+    }
+    val runtime = runtimeOn(Asking)
+    wanted.success("spawned")
+    assert(names(runtime).isEmpty)
+    runtime.frame(0.1)
+    assert(names(runtime) === Vector("spawned"))
+    assert(runtime.world.objects.head.scope.name.contains("Asking"))
+
+    val later = new Plain("later")
+    runtime.loadScene(later)
+    dropped.success("never")
+    runtime.frame(0.1)
+    assert(names(runtime) === Vector("later"))
+
+    runtime.whenLoaded(failing, GameRuntime.rethrow)(_ => fail("a failed loader has no value"))(using runtime.world.globalScope)
+    failing.failure(new IllegalStateException("load failed"))
+    assert(intercept[IllegalStateException](runtime.frame(0.1)).getMessage === "load failed")
+    runtime.frame(0.1)
+  }
+
   test("scene changes requested by a system happen after rendering") {
     object FirstScene extends Scene {
       override def load(context: GameContext)(using Scope): Unit =

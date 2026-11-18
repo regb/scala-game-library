@@ -5,6 +5,7 @@ import sgl.engine.gameobject.{ComponentOf, Scope, World}
 import sgl.engine.gameobject.render2d.{Render2D, Texture2D}
 import sgl.engine.gameobject.spatial3d.{GameObject3D, Spatial3D}
 import sgl.math.Mat4
+import sgl.util.Loader
 
 /** A mesh uploaded to the renderer. */
 final class Mesh private[gameobject] (private[gameobject] val id: Int) {
@@ -67,6 +68,12 @@ trait Renderer {
     */
   def loadTexture2D(asset: DrawableAsset)(using Scope): Texture2D
   def loadTexture2D(asset: RawImageAsset)(using Scope): Texture2D
+
+  /** Completes with the texture once its image is loaded and usable, or fails
+    * with what went wrong. A scene waits on it in `preload` to appear with its
+    * images already there, and to hear about the ones that could not load.
+    */
+  def whenReady(texture: Texture2D): Loader[Texture2D] = Loader.successful(texture)
 
   /** A material needs an image of its own: a texture that is a region of an
     * atlas page is rejected.

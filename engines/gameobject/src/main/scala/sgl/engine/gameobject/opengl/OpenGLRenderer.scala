@@ -69,6 +69,7 @@ final class OpenGLRenderer(
 
   private val meshes = mutable.ArrayBuffer.empty[MeshState]
   private val textures = mutable.ArrayBuffer.empty[TextureState]
+  private val standaloneLoaders = mutable.ArrayBuffer.empty[Loader[Texture2D]]
   // Physical pages own the GPU textures and are deleted only on dispose. Logical
   // image views never own a texture, so several drawables can share one page.
   private val pages = mutable.HashMap.empty[PageKey, PageState]
@@ -136,15 +137,25 @@ final class OpenGLRenderer(
 
   private def loadStandalone(loader: => Loader[GLTexture])(using scope: Scope): Texture2D = owned(scope) {
     val id = textures.size
+    val handle = new Texture2D(TextureSource.Standalone(id))
+    val loading = loader
     textures += TextureLoading()
-    loader.onLoad {
+    loading.onLoad {
       case Success(texture) =>
         if(disposed || textures(id) == TextureReleased) GL.deleteTexture(texture)
         else textures(id) = TextureReady(texture)
       case Failure(cause) => if(textures(id) != TextureReleased) textures(id) = TextureFailed(cause)
     }
-    new Texture2D(TextureSource.Standalone(id))
+    // Registered after the state update above, so the texture is usable by
+    // the time this completes.
+    standaloneLoaders += loading.map(_ => handle)
+    handle
   }(releaseTexture)
+
+  override def whenReady(texture: Texture2D): Loader[Texture2D] = texture.source match {
+    case TextureSource.Standalone(id) => standaloneLoaders(id)
+    case source => loadTexture(source, texture)
+  }
 
   override def createMaterial(texture: Texture2D, emissive: Float)(using scope: Scope): Material = {
     val partOfPage = imageViews.get(texture.source).exists(view => view.uScale != 1f || view.vScale != 1f || view.uOffset != 0f || view.vOffset != 0f)

@@ -163,16 +163,20 @@ trait GameStateComponent {
     * the object back to its previous coordinates instead of moving it to the
     * closest possible point outside the collision.
     */
-  abstract class FixedTimestepGameScreen(val fixedDelta: Long) extends
-  GameScreen { require(fixedDelta > 0)
-
-    //TODO: handle the "spiral of death" problem in that class maybe?
-    //      could provide a "def panic(): Unit" function that gets called
-    //      when we need to call fixedUpdate more than a configurable maxUpdateSteps
+  abstract class FixedTimestepGameScreen(val fixedDelta: Long, val maxStepsPerFrame: Int = 8) extends GameScreen {
+    require(fixedDelta > 0)
+    require(maxStepsPerFrame > 0)
 
     private var accumulatedDelta = 0L
+
+    /** Runs as many fixed steps as `dt` holds, up to `maxStepsPerFrame`.
+      *
+      * The time beyond that is dropped, so a long frame or a return from the
+      * background slows the game down for a moment instead of replaying every
+      * missed step at once (and possibly falling further behind each frame).
+      */
     final override def update(dt: Long): Unit = {
-      accumulatedDelta += dt
+      accumulatedDelta = (accumulatedDelta + dt).min(fixedDelta * maxStepsPerFrame)
 
       val screensStack = gameState.screensStack
 

@@ -3,9 +3,11 @@ package core
 
 import sgl.{AudioProvider, Input, InputProcessor, PointerInputProcessor}
 import sgl.engine.gameobject._
+import sgl.engine.gameobject.render2d.Texture2D
 import sgl.engine.gameobject.render3d._
 import sgl.engine.gameobject.spatial3d._
 import sgl.math.{Quaternion, Vec3}
+import sgl.util.Loader
 
 import scala.language.implicitConversions
 
@@ -25,23 +27,30 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
       .addSystem(Stage.Update, OrbitCameraSystem)
   }
 
-  private final class SolarSystemScene extends Scene {
-    private var loaded = false
+  private final case class BodyTextures(sun: Texture2D, earth: Texture2D, moon: Texture2D)
 
-    override def load(context: GameContext)(using Scope): Unit = {
-    loaded = true
+  private final class SolarSystemScene extends AsyncScene[BodyTextures] {
+
+    // The scene appears once its three images are loaded, so no body is ever
+    // drawn without its texture.
+    override def preload(context: GameContext)(using Scope): Loader[BodyTextures] = {
+      val renderer = context.engine.renderer
+      for {
+        sun <- renderer.whenReady(renderer.loadTexture2D(Assets.rawImage.sun))
+        earth <- renderer.whenReady(renderer.loadTexture2D(Assets.rawImage.earth))
+        moon <- renderer.whenReady(renderer.loadTexture2D(Assets.rawImage.moon))
+      } yield BodyTextures(sun, earth, moon)
+    }
+
+    override def load(context: GameContext, textures: BodyTextures)(using Scope): Unit = {
     val renderer = context.engine.renderer
     // Meshes, textures and materials belong to the scene's scope: they are
     // released when the scene is unloaded.
     val sphere = renderer.createMesh(MeshPrimitives.sphere(32, 18))
 
-    val sunTexture = renderer.loadTexture2D(Assets.rawImage.sun)
-    val earthTexture = renderer.loadTexture2D(Assets.rawImage.earth)
-    val moonTexture = renderer.loadTexture2D(Assets.rawImage.moon)
-
-    val sunMaterial = renderer.createMaterial(sunTexture, emissive = 1.15f)
-    val earthMaterial = renderer.createMaterial(earthTexture, emissive = 0.0f)
-    val moonMaterial = renderer.createMaterial(moonTexture, emissive = 0.0f)
+    val sunMaterial = renderer.createMaterial(textures.sun, emissive = 1.15f)
+    val earthMaterial = renderer.createMaterial(textures.earth, emissive = 0.0f)
+    val moonMaterial = renderer.createMaterial(textures.moon, emissive = 0.0f)
 
     createBody(
       context,
@@ -87,13 +96,14 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
       .attach(new Camera3D(_, 55f.toRadians, near = 0.1f, far = 100f))
       .childOf(cameraPivot)
 
-    Audio.loadMusic(Assets.audio.ambience).foreach { music =>
-      if(loaded) {
-        music.setVolume(0.55f)
-        music.setLooping(true)
-        music.play()
-        ambience = Some(music)
-      } else music.dispose()
+    // The music is not worth waiting for, and the game runs without it when
+    // there is no audio device: it starts whenever it arrives, if the scene
+    // is still there.
+    context.whenLoaded(Audio.loadMusic(Assets.audio.ambience), onFailure = _ => ()) { music =>
+      music.setVolume(0.55f)
+      music.setLooping(true)
+      music.play()
+      ambience = Some(music)
     }
 
     Input.setInputProcessor(new InputProcessor with PointerInputProcessor {
@@ -115,7 +125,6 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
     }
 
     override def unload(context: GameContext)(using Scope): Unit = {
-      loaded = false
       ambience.foreach(_.dispose())
       ambience = None
     }
