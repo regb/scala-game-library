@@ -334,6 +334,34 @@ class GameObjectSuite extends AnyFunSuite {
     assert(child3D.globalMatrix.values.toSeq === parent3D.spatial.local.matrix.values.toSeq)
   }
 
+  test("a 3D camera's view follows its transform and its parents") {
+    import sgl.engine.gameobject.render3d.Camera3D
+    import sgl.engine.gameobject.spatial3d._
+    import sgl.math.{Mat4, Quaternion, Vec3}
+    val world = new World
+    import world.given
+    def assertClose(actual: Mat4, expected: Mat4): Unit =
+      actual.values.zip(expected.values).foreach { case (a, e) => assert(scala.math.abs(a - e) < 1e-4f) }
+
+    val eye = Vec3(4f, 2f, -3f)
+    val target = Vec3(-1f, 0.5f, 2f)
+    val free = world.spawn3D("free", Transform3D.lookAt(eye, target)).attach(new Camera3D(_, 1f, 0.1f, 100f))
+    assertClose(free.get[Camera3D].viewMatrix, Mat4.lookAt(eye, target, Vec3.UnitY))
+
+    // An orbit camera: a pivot that turns, and a camera hanging behind it.
+    val yaw = 0.7f
+    val pitch = -0.3f
+    val pivot = world.spawn3D("pivot", Transform3D(rotation = Quaternion.rotationY(-yaw) * Quaternion.rotationX(-pitch)))
+    val orbit = world.spawn3D("orbit", Transform3D(position = Vec3(0f, 0.35f, 8f)))
+      .attach(new Camera3D(_, 1f, 0.1f, 100f))
+      .childOf(pivot)
+    val expected = Mat4.translation(0f, -0.35f, -8f) * Mat4.rotationX(pitch) * Mat4.rotationY(yaw)
+    assertClose(orbit.get[Camera3D].viewMatrix, expected)
+
+    pivot.spatial.local = Transform3D.Identity
+    assertClose(orbit.get[Camera3D].viewMatrix, Mat4.translation(0f, -0.35f, -8f))
+  }
+
   final class Crate(val obj: GameObject2D, val marker: Marker)
   object Crate {
     given HasGameObject[Crate] with {

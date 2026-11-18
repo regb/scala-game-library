@@ -190,8 +190,8 @@ final class OpenGLRenderer(
 
     findCamera(world).foreach { camera =>
       val aspect = app.Window.width.toFloat / scala.math.max(1, app.Window.height).toFloat
-      val projection = Mat4.perspective(camera.camera.fovRadians, aspect, camera.camera.near, camera.camera.far)
-      val viewProjection = projection * camera.view.view
+      val projection = Mat4.perspective(camera.fovRadians, aspect, camera.near, camera.far)
+      val viewProjection = projection * camera.viewMatrix
 
       GL.useProgram(program)
       GL.activeTexture(GL.Texture0)
@@ -556,15 +556,11 @@ final class OpenGLRenderer(
       Vector(Vec2(0f, 0f), Vec2(scala.math.cos(a0).toFloat * radius, scala.math.sin(a0).toFloat * radius), Vec2(scala.math.cos(a1).toFloat * radius, scala.math.sin(a1).toFloat * radius))
     }
 
-  private final case class RenderCamera(camera: Camera3D, view: Camera3DView)
-
-  private def findCamera(world: World): Option[RenderCamera] = {
-    var result: Option[RenderCamera] = None
+  private def findCamera(world: World): Option[Camera3D] = {
+    var result: Option[Camera3D] = None
     world.index[Camera3D].foreach { camera =>
-      camera.owner.component[Camera3DView].foreach { view =>
-        if(camera.active && result.forall(existing => camera.priority > existing.camera.priority)) {
-          result = Some(RenderCamera(camera, view))
-        }
+      if(camera.active && result.forall(existing => camera.priority > existing.priority)) {
+        result = Some(camera)
       }
     }
     result

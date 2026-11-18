@@ -8,7 +8,7 @@ import sgl.engine.gameobject.runtime._
 import sgl.engine.gameobject.schedule.{Stage, System as EngineSystem, SystemId}
 import sgl.engine.gameobject.spatial3d._
 import sgl.engine.gameobject.typed._
-import sgl.math.{Mat4, Quaternion, Vec3}
+import sgl.math.{Quaternion, Vec3}
 
 import scala.language.implicitConversions
 
@@ -91,9 +91,13 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
     )
     moon.spatial.setParent(moonOrbit.spatial)
 
-    context.spawn("Camera3D")
+    // The camera sits behind and above a pivot at the origin; dragging turns
+    // the pivot, which carries the camera around the scene.
+    val cameraPivot = context.spawn3D("CameraPivot", Transform3D(rotation = cameraController.rotation))
+      .attach(new OrbitCameraPivot(_))
+    context.spawn3D("Camera3D", Transform3D(position = Vec3(0f, cameraController.targetHeight, cameraController.distance)))
       .attach(new Camera3D(_, 55f.toRadians, near = 0.1f, far = 100f))
-      .attach(new Camera3DView(_, cameraController.viewMatrix))
+      .childOf(cameraPivot)
 
     Audio.loadMusic(Assets.audio.ambience).foreach { music =>
       if(loaded) {
@@ -235,25 +239,23 @@ final class OrbitCameraController {
     }
   }
 
-  def viewMatrix: Mat4 =
-    Mat4.translation(0f, -targetHeight, -distance) * Mat4.rotationX(pitch) * Mat4.rotationY(yaw)
+  /** Orientation of the pivot the camera hangs from. */
+  def rotation: Quaternion = Quaternion.rotationY(-yaw) * Quaternion.rotationX(-pitch)
 
   private def clamp(value: Float, min: Float, max: Float): Float =
     scala.math.max(min, scala.math.min(max, value)).toFloat
 }
 
 
+final class OrbitCameraPivot(obj: GameObject3D) extends ComponentOf(obj)
+
 object OrbitCameraSystem extends EngineSystem {
   override val id: SystemId = SystemId("solar-go.orbit-camera")
 
   override def run(context: GameContext)(using Scope): Unit = {
     val controller = context.global[OrbitCameraController]
-    context.world.index[Camera3D].foreach { camera =>
-      if(camera.active) {
-        camera.owner.component[Camera3DView].foreach { view =>
-          view.view = controller.viewMatrix
-        }
-      }
+    context.world.index[OrbitCameraPivot].foreach { pivot =>
+      pivot.spatial.local = pivot.spatial.local.copy(rotation = controller.rotation)
     }
   }
 }

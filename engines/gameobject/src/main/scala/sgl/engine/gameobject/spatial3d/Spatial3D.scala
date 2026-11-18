@@ -19,6 +19,13 @@ final case class Transform3D(
 
 object Transform3D {
   val Identity: Transform3D = Transform3D()
+
+  /** A transform at `eye` facing `target`, for cameras and anything else that
+    * looks along its local -Z axis. `up` says which way is overhead and must
+    * not be parallel to the viewing direction.
+    */
+  def lookAt(eye: Vec3, target: Vec3, up: Vec3 = Vec3.UnitY): Transform3D =
+    Transform3D(position = eye, rotation = Quaternion.lookAlong(target - eye, up))
 }
 
 /** Optional 3D spatial capability. Non-spatial game objects do not need one. */

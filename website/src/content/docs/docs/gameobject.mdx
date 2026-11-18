@@ -362,7 +362,9 @@ pages, and consecutive draws on the same page are batched.
 
 `spatial3d` has `Spatial3D` (`Transform3D` with a quaternion rotation) and `GameObject3D`, with the
 same extensions as in 2D, where `globalMatrix` replaces `global`.
-`render3d` has `Camera3D`, `Camera3DView`, and `MeshRenderer`. Create meshes, textures, and
+`render3d` has `Camera3D` and `MeshRenderer`. A camera is placed by its object's transform, like a
+mesh: it looks along its local -Z axis, and `Transform3D.lookAt(eye, target, up)` builds a
+transform that faces a point. Create meshes, textures, and
 materials through the renderer, and release them when the scene unloads:
 
 ```scala

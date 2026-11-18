@@ -114,6 +114,9 @@ gameObject.component[Spatial2D].foreach { spatial =>
   still creates a plain `GameObject`.
 - A component built from a typed object extends `ComponentOf(obj)` instead of declaring
   `override val owner`.
+- `Camera3DView` was removed. `Camera3D` now takes a `GameObject3D` and is placed by its
+  transform: instead of writing a view matrix, set the camera object's `spatial.local`, for example
+  with `Transform3D.lookAt(eye, target, up)`, or parent the camera to another object.
 - `world.single[A]` and `world.requireSingle[A]` throw when the world holds more than one `A`
   instead of returning the first.
 - `attach` is no longer available through `HasGameObject`: call it on a `TypedObject` or a

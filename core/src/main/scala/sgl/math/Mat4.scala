@@ -2,6 +2,11 @@ package sgl.math
 
 final case class Mat4(values: Array[Float]) {
   def *(that: Mat4): Mat4 = Mat4.multiply(this, that)
+
+  /** The matrix undoing this one. A camera's view matrix is the inverse of
+    * the camera's own transform.
+    */
+  def inverse: Mat4 = Mat4.invert(this)
 }
 
 object Mat4 {
@@ -74,6 +79,38 @@ object Mat4 {
       side.z, cameraUp.z, -forward.z, 0f,
       -dot(side, eye), -dot(cameraUp, eye), dot(forward, eye), 1f,
     ))
+  }
+
+  def invert(matrix: Mat4): Mat4 = {
+    val m = matrix.values
+    val inv = new Array[Float](16)
+
+    inv(0) = m(5) * m(10) * m(15) - m(5) * m(11) * m(14) - m(9) * m(6) * m(15) + m(9) * m(7) * m(14) + m(13) * m(6) * m(11) - m(13) * m(7) * m(10)
+    inv(4) = -m(4) * m(10) * m(15) + m(4) * m(11) * m(14) + m(8) * m(6) * m(15) - m(8) * m(7) * m(14) - m(12) * m(6) * m(11) + m(12) * m(7) * m(10)
+    inv(8) = m(4) * m(9) * m(15) - m(4) * m(11) * m(13) - m(8) * m(5) * m(15) + m(8) * m(7) * m(13) + m(12) * m(5) * m(11) - m(12) * m(7) * m(9)
+    inv(12) = -m(4) * m(9) * m(14) + m(4) * m(10) * m(13) + m(8) * m(5) * m(14) - m(8) * m(6) * m(13) - m(12) * m(5) * m(10) + m(12) * m(6) * m(9)
+    inv(1) = -m(1) * m(10) * m(15) + m(1) * m(11) * m(14) + m(9) * m(2) * m(15) - m(9) * m(3) * m(14) - m(13) * m(2) * m(11) + m(13) * m(3) * m(10)
+    inv(5) = m(0) * m(10) * m(15) - m(0) * m(11) * m(14) - m(8) * m(2) * m(15) + m(8) * m(3) * m(14) + m(12) * m(2) * m(11) - m(12) * m(3) * m(10)
+    inv(9) = -m(0) * m(9) * m(15) + m(0) * m(11) * m(13) + m(8) * m(1) * m(15) - m(8) * m(3) * m(13) - m(12) * m(1) * m(11) + m(12) * m(3) * m(9)
+    inv(13) = m(0) * m(9) * m(14) - m(0) * m(10) * m(13) - m(8) * m(1) * m(14) + m(8) * m(2) * m(13) + m(12) * m(1) * m(10) - m(12) * m(2) * m(9)
+    inv(2) = m(1) * m(6) * m(15) - m(1) * m(7) * m(14) - m(5) * m(2) * m(15) + m(5) * m(3) * m(14) + m(13) * m(2) * m(7) - m(13) * m(3) * m(6)
+    inv(6) = -m(0) * m(6) * m(15) + m(0) * m(7) * m(14) + m(4) * m(2) * m(15) - m(4) * m(3) * m(14) - m(12) * m(2) * m(7) + m(12) * m(3) * m(6)
+    inv(10) = m(0) * m(5) * m(15) - m(0) * m(7) * m(13) - m(4) * m(1) * m(15) + m(4) * m(3) * m(13) + m(12) * m(1) * m(7) - m(12) * m(3) * m(5)
+    inv(14) = -m(0) * m(5) * m(14) + m(0) * m(6) * m(13) + m(4) * m(1) * m(14) - m(4) * m(2) * m(13) - m(12) * m(1) * m(6) + m(12) * m(2) * m(5)
+    inv(3) = -m(1) * m(6) * m(11) + m(1) * m(7) * m(10) + m(5) * m(2) * m(11) - m(5) * m(3) * m(10) - m(9) * m(2) * m(7) + m(9) * m(3) * m(6)
+    inv(7) = m(0) * m(6) * m(11) - m(0) * m(7) * m(10) - m(4) * m(2) * m(11) + m(4) * m(3) * m(10) + m(8) * m(2) * m(7) - m(8) * m(3) * m(6)
+    inv(11) = -m(0) * m(5) * m(11) + m(0) * m(7) * m(9) + m(4) * m(1) * m(11) - m(4) * m(3) * m(9) - m(8) * m(1) * m(7) + m(8) * m(3) * m(5)
+    inv(15) = m(0) * m(5) * m(10) - m(0) * m(6) * m(9) - m(4) * m(1) * m(10) + m(4) * m(2) * m(9) + m(8) * m(1) * m(6) - m(8) * m(2) * m(5)
+
+    val determinant = m(0) * inv(0) + m(1) * inv(4) + m(2) * inv(8) + m(3) * inv(12)
+    if(determinant == 0f) throw new ArithmeticException("Matrix is not invertible")
+    val scale = 1f / determinant
+    var i = 0
+    while(i < 16) {
+      inv(i) *= scale
+      i += 1
+    }
+    Mat4(inv)
   }
 
   def dot(a: Vec3, b: Vec3): Float = a.x * b.x + a.y * b.y + a.z * b.z
