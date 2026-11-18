@@ -4,8 +4,7 @@ import asteroids from '../assets/showcase/asteroids.png';
 import helloAtlas from '../assets/showcase/hello-atlas.png';
 import helloScalagl from '../assets/showcase/hello-scalagl.png';
 import ratTrap from '../assets/showcase/rat-trap.png';
-import scalavator from '../assets/showcase/scalavator.png';
-import solarSystem from '../assets/showcase/solar-system.png';
+import scalavator from '../assets/showcase/scalavator.jpg';
 import winsmash from '../assets/showcase/winsmash.png';
 
 export const repo = 'https://github.com/regb/scala-game-library';
@@ -48,10 +47,10 @@ export const games: ShowcaseEntry[] = [
   },
   {
     title: 'Scalavator',
-    tag: 'Game',
-    body: 'An arcade game where you jump from platform to platform to climb as high as you can. Built on an earlier, sbt-based version of SGL.',
+    tag: 'Arcade · Open source',
+    body: 'Charge, jump, climb: time your jumps between moving platforms and dodge the bugs as the sky turns from day to night. The full source is on GitHub.',
     image: scalavator,
-    imageAlt: 'Scalavator: a red robot made of a Scala logo standing on a cloud, with two green flies',
+    imageAlt: 'Scalavator: a red spring-shaped hero jumps between grassy platforms under a sunset sky, with a bee flying nearby',
     href: 'https://github.com/regb/scalavator',
     platforms: ['Android', 'Web', 'Desktop'],
   },
@@ -66,16 +65,6 @@ export const examples: ShowcaseEntry[] = [
     imageAlt: 'Asteroids example: a white ship among grey asteroids, with a score overlay',
     href: `${repo}/tree/master/engines/gameobject/examples/asteroids`,
     run: '//engines/gameobject/examples/asteroids:desktop-lwjgl',
-    platforms: ['Desktop', 'Web', 'Native'],
-  },
-  {
-    title: 'Solar System',
-    tag: 'GameObject 3D',
-    body: 'A spatial hierarchy of textured meshes with materials and an orbit camera.',
-    image: solarSystem,
-    imageAlt: 'Solar System example: a textured sun, earth, and moon in 3D',
-    href: `${repo}/tree/master/engines/gameobject/examples/solar-system`,
-    run: '//engines/gameobject/examples/solar-system:desktop-lwjgl',
     platforms: ['Desktop', 'Web', 'Native'],
   },
   {
