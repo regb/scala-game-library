@@ -24,7 +24,7 @@ object Updatable {
   }
 }
 
-object UpdateComponentsSystem extends System {
+object UpdateComponentsSystem extends GameSystem {
   override val id: SystemId = SystemId("sgl.engine.gameobject.update")
 
   override def run(context: GameContext)(using Scope): Unit =
@@ -46,7 +46,7 @@ object FixedUpdatable {
   }
 }
 
-object FixedUpdateComponentsSystem extends System {
+object FixedUpdateComponentsSystem extends GameSystem {
   override val id: SystemId = SystemId("sgl.engine.gameobject.fixed-update")
 
   override def run(context: GameContext)(using Scope): Unit =

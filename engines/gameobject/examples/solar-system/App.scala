@@ -2,7 +2,7 @@ package sgl.examples.gameobject.solar
 package core
 
 import sgl.{AudioProvider, Input, InputProcessor, PointerInputProcessor}
-import sgl.engine.gameobject.{System as EngineSystem, _}
+import sgl.engine.gameobject._
 import sgl.engine.gameobject.render3d._
 import sgl.engine.gameobject.spatial3d._
 import sgl.math.{Quaternion, Vec3}
@@ -178,7 +178,7 @@ final class YRotation(
 ) extends ComponentOf(obj)
 
 
-object YRotationSystem extends EngineSystem {
+object YRotationSystem extends GameSystem {
   override val id: SystemId = SystemId("solar-go.y-rotation")
 
   override def run(context: GameContext)(using Scope): Unit = {
@@ -235,7 +235,7 @@ final class OrbitCameraController {
 
 final class OrbitCameraPivot(obj: GameObject3D) extends ComponentOf(obj)
 
-object OrbitCameraSystem extends EngineSystem {
+object OrbitCameraSystem extends GameSystem {
   override val id: SystemId = SystemId("solar-go.orbit-camera")
 
   override def run(context: GameContext)(using Scope): Unit = {

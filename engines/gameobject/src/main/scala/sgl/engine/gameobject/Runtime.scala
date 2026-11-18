@@ -95,7 +95,7 @@ trait Engine {
 
 final class GameBuilder {
   private val globalInitializers = mutable.ArrayBuffer.empty[World => Unit]
-  private val systemsByStage = mutable.HashMap.empty[Stage, mutable.ArrayBuffer[System]]
+  private val systemsByStage = mutable.HashMap.empty[Stage, mutable.ArrayBuffer[GameSystem]]
   private var initialSceneValue: Option[Scene] = None
 
   def install(module: GameModule): this.type = {
@@ -113,7 +113,7 @@ final class GameBuilder {
     this
   }
 
-  def addSystem(stage: Stage, system: System): this.type = {
+  def addSystem(stage: Stage, system: GameSystem): this.type = {
     systemsByStage.getOrElseUpdate(stage, mutable.ArrayBuffer.empty) += system
     this
   }

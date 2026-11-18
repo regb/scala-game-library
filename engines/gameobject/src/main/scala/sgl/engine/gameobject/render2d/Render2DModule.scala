@@ -1,6 +1,6 @@
 package sgl.engine.gameobject.render2d
 
-import sgl.engine.gameobject.{Color, GameBuilder, GameContext, GameModule, Globals, RequiresGlobals, Scope, Stage, System, SystemId, World}
+import sgl.engine.gameobject.{Color, GameBuilder, GameContext, GameModule, Globals, RequiresGlobals, Scope, Stage, GameSystem, SystemId, World}
 import sgl.math.Vec2
 
 /** Mixed into the components that only do something with [[Render2DModule]]
@@ -15,7 +15,7 @@ trait Rendered2D extends RequiresGlobals {
 // The built-in render systems use the same Render2D service a game does: they
 // are the reference for writing one.
 
-object SpriteRenderSystem extends System {
+object SpriteRenderSystem extends GameSystem {
   override val id: SystemId = SystemId("sgl.engine.gameobject.render2d.sprites")
 
   override def run(context: GameContext)(using Scope): Unit =
@@ -58,7 +58,7 @@ object SpriteRenderSystem extends System {
   }
 }
 
-object TilemapRenderSystem extends System {
+object TilemapRenderSystem extends GameSystem {
   override val id: SystemId = SystemId("sgl.engine.gameobject.render2d.tilemaps")
 
   override def run(context: GameContext)(using Scope): Unit =

@@ -1,6 +1,6 @@
 package sgl.engine.gameobject.render3d
 
-import sgl.engine.gameobject.{GameBuilder, GameContext, GameModule, Globals, RequiresGlobals, Scope, Stage, System, SystemId}
+import sgl.engine.gameobject.{GameBuilder, GameContext, GameModule, Globals, RequiresGlobals, Scope, Stage, GameSystem, SystemId}
 
 /** Mixed into the components that only do something with [[Render3DModule]]
   * installed: attaching one without it is an error instead of an object that
@@ -11,7 +11,7 @@ trait Rendered3D extends RequiresGlobals {
     super.requiredGlobals :+ Globals.keyOf[Render3DModule.type]
 }
 
-object MeshRenderSystem extends System {
+object MeshRenderSystem extends GameSystem {
   override val id: SystemId = SystemId("sgl.engine.gameobject.render3d.meshes")
 
   override def run(context: GameContext)(using Scope): Unit =

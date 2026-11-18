@@ -12,22 +12,22 @@ enum Stage {
   case Pause, Resume
 }
 
-trait System {
+trait GameSystem {
   def id: SystemId
   def run(context: GameContext)(using Scope): Unit
 }
 
-object System {
+object GameSystem {
   /** A system from a block. The block is given the context and the frame's
     * scope, exactly as `run` is, so it can create objects directly.
     */
-  def apply(systemId: String)(body: (GameContext, Scope) ?=> Unit): System = new System {
+  def apply(systemId: String)(body: (GameContext, Scope) ?=> Unit): GameSystem = new GameSystem {
     override val id: SystemId = SystemId(systemId)
     override def run(context: GameContext)(using scope: Scope): Unit = body(using context, scope)
   }
 }
 
-final class Schedule private[gameobject] (systems: Vector[System]) {
+final class Schedule private[gameobject] (systems: Vector[GameSystem]) {
   def run(world: World, engine: Engine, runtime: sgl.engine.gameobject.GameRuntime, scope: Scope): Unit = {
     val context = new GameContext(world, engine, runtime, scope)
     systems.foreach(_.run(context)(using scope))
@@ -36,7 +36,7 @@ final class Schedule private[gameobject] (systems: Vector[System]) {
 
 object Schedule {
   val empty: Schedule = new Schedule(Vector.empty)
-  private[gameobject] def build(systems: Vector[System]): Schedule = {
+  private[gameobject] def build(systems: Vector[GameSystem]): Schedule = {
     val duplicateIds = systems.groupBy(_.id).collect { case (id, matches) if matches.size > 1 => id.value }.toVector.sorted
     if(duplicateIds.nonEmpty) {
       throw new CompositionError(s"A schedule cannot contain duplicate system IDs: ${duplicateIds.mkString(", ")}")

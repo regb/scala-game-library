@@ -49,7 +49,7 @@ the core library's `deps`.
 | `TypedObject[Has]` | A `GameObject` whose type lists the components it has. `GameObject2D` is `TypedObject[Spatial2D]`. |
 | `Component` | A plain class with an `owner`, stored and indexed by its concrete class |
 | `Globals` | Values for the whole world, one per class, such as `DeltaTime`, `ClearColor`, and installed modules |
-| `System` | Code that runs over the world once per stage |
+| `GameSystem` | Code that runs over the world once per stage |
 | `GameModule` | A reusable bundle of systems and globals |
 | `Scene` | Loads a set of objects. Its objects are destroyed when another scene loads. |
 | `Scope` | Groups objects so they are destroyed together. Every object is created in one. |
@@ -202,7 +202,7 @@ A system has a stable `SystemId` and runs once per frame in its stage. Query com
 the world's indexes:
 
 ```scala
-object CollisionSystem extends System {
+object CollisionSystem extends GameSystem {
   override val id: SystemId = SystemId("game.collision")
 
   override def run(context: GameContext)(using Scope): Unit = {
@@ -247,7 +247,7 @@ Two more stages run outside of a frame: `Pause` when the application leaves the 
 scene is told first, through its `pause` and `resume` methods. Fixed
 steps start over on resume, so the time spent in the background is not simulated.
 
-For small systems, `System("game.spawner") { ... }` creates one from a block that receives a given
+For small systems, `GameSystem("game.spawner") { ... }` creates one from a block that receives a given
 `GameContext` and a given `Scope`, so it can spawn objects directly.
 
 ### Per-object updates
@@ -392,7 +392,7 @@ ran first.
 ```scala
 final class Spark(obj: GameObject2D, var life: Float) extends ComponentOf(obj)
 
-object SparkRenderSystem extends System {
+object SparkRenderSystem extends GameSystem {
   override val id: SystemId = SystemId("game.sparks")
 
   override def run(context: GameContext)(using Scope): Unit = {

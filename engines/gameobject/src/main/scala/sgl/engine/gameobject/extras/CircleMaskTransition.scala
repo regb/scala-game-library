@@ -1,6 +1,6 @@
 package sgl.engine.gameobject.extras
 
-import sgl.engine.gameobject.{Color, ComponentOf, GameBuilder, GameContext, GameModule, Globals, RequiresGlobals, Scope, Stage, System, SystemId, TypedObject, World}
+import sgl.engine.gameobject.{Color, ComponentOf, GameBuilder, GameContext, GameModule, Globals, RequiresGlobals, Scope, Stage, GameSystem, SystemId, TypedObject, World}
 import sgl.engine.gameobject.render2d.{Painter2D, Render2D}
 import sgl.math.Vec2
 
@@ -20,7 +20,7 @@ final class CircleMaskTransition(
     super.requiredGlobals :+ Globals.keyOf[CircleMaskModule.type]
 }
 
-object CircleMaskSystem extends System {
+object CircleMaskSystem extends GameSystem {
   override val id: SystemId = SystemId("sgl.engine.gameobject.extras.circle-mask")
 
   override def run(context: GameContext)(using Scope): Unit =

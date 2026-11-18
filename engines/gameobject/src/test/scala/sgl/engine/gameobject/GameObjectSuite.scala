@@ -673,8 +673,8 @@ class GameObjectSuite extends AnyFunSuite {
   }
 
   test("schedules reject duplicate system IDs") {
-    val first = System("duplicate") {}
-    val second = System("duplicate") {}
+    val first = GameSystem("duplicate") {}
+    val second = GameSystem("duplicate") {}
 
     intercept[CompositionError] {
       Schedule.build(Vector(first, second))
@@ -686,7 +686,7 @@ class GameObjectSuite extends AnyFunSuite {
       override def load(context: GameContext)(using Scope): Unit = ()
     }
     var created = Option.empty[GameObject]
-    val spawner = System("spawner") {
+    val spawner = GameSystem("spawner") {
       if(created.isEmpty) created = Some(summon[GameContext].world.createObject("spawned"))
     }
     val runtime = new GameBuilder()
@@ -707,7 +707,7 @@ class GameObjectSuite extends AnyFunSuite {
     val runtime = new GameBuilder()
       .setGlobal(FixedDeltaTime(0.1, maxStepsPerFrame = 3))
       .setGlobal(MaxDeltaTime(120.0))
-      .addSystem(Stage.FixedUpdate, System("count") { steps += 1; seenDt = summon[GameContext].dt })
+      .addSystem(Stage.FixedUpdate, GameSystem("count") { steps += 1; seenDt = summon[GameContext].dt })
       .build(new TestEngine(new RecordingRenderer))
     runtime.startup()
 
@@ -722,7 +722,7 @@ class GameObjectSuite extends AnyFunSuite {
   test("a frame longer than MaxDeltaTime is seen as that long") {
     var seen = Vector.empty[Float]
     val runtime = new GameBuilder()
-      .addSystem(Stage.Update, System("record") { seen :+= summon[GameContext].dt })
+      .addSystem(Stage.Update, GameSystem("record") { seen :+= summon[GameContext].dt })
       .build(new TestEngine(new RecordingRenderer))
     runtime.startup()
     runtime.frame(0.1)
@@ -772,9 +772,9 @@ class GameObjectSuite extends AnyFunSuite {
     val runtime = new GameBuilder()
       .setInitialScene(Watched)
       .setGlobal(FixedDeltaTime(0.1))
-      .addSystem(Stage.Pause, System("pause") { events :+= "pause" })
-      .addSystem(Stage.Resume, System("resume") { events :+= "resume" })
-      .addSystem(Stage.FixedUpdate, System("fixed") { events :+= "fixed" })
+      .addSystem(Stage.Pause, GameSystem("pause") { events :+= "pause" })
+      .addSystem(Stage.Resume, GameSystem("resume") { events :+= "resume" })
+      .addSystem(Stage.FixedUpdate, GameSystem("fixed") { events :+= "fixed" })
       .build(new TestEngine(new RecordingRenderer))
 
     runtime.pause()
@@ -800,7 +800,7 @@ class GameObjectSuite extends AnyFunSuite {
         context.createObject("second-scene-object")
     }
 
-    val switchSystem = System("switch-scene") {
+    val switchSystem = GameSystem("switch-scene") {
       val context = summon[GameContext]
       if(context.world.objects.exists(_.name == "first-scene-object")) {
         context.runtime.loadScene(SecondScene)
@@ -821,7 +821,7 @@ class GameObjectSuite extends AnyFunSuite {
 
   test("the Render stage runs inside the frame, after the other stages") {
     val renderer = new RecordingRenderer
-    def record(name: String) = System(name) { renderer.frameEvents :+= name }
+    def record(name: String) = GameSystem(name) { renderer.frameEvents :+= name }
     val runtime = new GameBuilder()
       .addSystem(Stage.Render, record("render"))
       .addSystem(Stage.PreRender, record("pre-render"))
@@ -834,7 +834,7 @@ class GameObjectSuite extends AnyFunSuite {
 
     val failing = new RecordingRenderer
     val broken = new GameBuilder()
-      .addSystem(Stage.Render, System("broken") { throw new IllegalStateException("draw failed") })
+      .addSystem(Stage.Render, GameSystem("broken") { throw new IllegalStateException("draw failed") })
       .build(new TestEngine(failing))
     broken.startup()
     intercept[IllegalStateException] {

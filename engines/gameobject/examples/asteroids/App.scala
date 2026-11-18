@@ -137,7 +137,7 @@ final class ScoreHud(obj: TypedObject[TextOverlay]) extends ComponentOf(obj) wit
   }
 }
 
-object ScoreStartupSystem extends System {
+object ScoreStartupSystem extends GameSystem {
   override val id: SystemId = SystemId("sgl.examples.gameobject.asteroids.score-startup")
 
   override def run(context: GameContext)(using Scope): Unit = {
@@ -181,7 +181,7 @@ object AsteroidSpawner {
   }
 }
 
-object CollisionSystem extends System {
+object CollisionSystem extends GameSystem {
   override val id: SystemId = SystemId("sgl.examples.gameobject.asteroids.collision")
   private var nextAsteroidId = 1000
 

@@ -138,7 +138,8 @@ gameObject.component[Spatial2D].foreach { spatial =>
 - Destroying an object now destroys its children in the hierarchy; they used to become roots.
   `destroySubtree()` was removed: call `destroy()`. Call `clearParent()` first on a child that
   must survive.
-- A `System("id") { ... }` block is given a `Scope` as well as the `GameContext`.
+- The engine's `System` was renamed `GameSystem`, so it no longer shadows `java.lang.System` or
+  the `System` of `SystemProvider`. A `GameSystem("id") { ... }` block is given a `Scope` as well as the `GameContext`.
 - `FixedDeltaTime` gained `maxStepsPerFrame` (default 8): a frame no longer runs an unbounded
   number of fixed steps.
 - The application's `pause` and `resume` run the new `Pause` and `Resume` stages.
