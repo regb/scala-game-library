@@ -18,5 +18,7 @@ class MainActivity : BaseMainActivity(::makeGameApp) {
         SystemBarsMode = @SYSTEM_BARS_MODE@
         SystemBarsBehavior = @SYSTEM_BARS_BEHAVIOR@
         NavigationBarContrastEnforced = @NAVIGATION_BAR_CONTRAST_ENFORCED@
+        PortraitOnPhones = @PORTRAIT_ON_PHONES@
+        PhoneMaxSmallestWidthDp = @PHONE_MAX_SMALLEST_WIDTH_DP@
     }
 }

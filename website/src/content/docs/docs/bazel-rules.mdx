@@ -133,6 +133,9 @@ Generates a Gradle project and creates the runnable targets `-debug`, `-release`
 | `system_bars_mode` | `"immersive"` | `"immersive"`, `"safe-area"`, or `"edge-to-edge"` |
 | `shrink_resources` | `True` | Resource shrinking in release builds |
 | `keep_screen_on` | `True` | Keep the screen on while playing |
+| `screen_orientation` | `"portrait"` | `"portrait"`, `"landscape"`, `"any"` (rotates), or `"portrait-on-phones"` (portrait on screens under `phone_max_smallest_width_dp`, rotates on tablets and desktops) |
+| `require_screen_orientation` | `False` | Make the locked orientation a required Play feature. Off, devices without such a screen (Chromebooks, XR) still install the game and show it in a window |
+| `phone_max_smallest_width_dp` | `600` | Smallest-width boundary between phones and tablets, for `"portrait-on-phones"` |
 | `launcher_icon` | `""` | Launcher icon |
 | `play_games_project_id`, `admob_*`, `google_services_json`, `firebase_*` | | Optional Play Games, AdMob, and Firebase integrations |
 

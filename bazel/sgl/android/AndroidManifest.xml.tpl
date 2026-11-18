@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-    <application
+@ORIENTATION_FEATURES@    <application
         android:allowBackup="false"
         android:label="@LABEL@"
 @APPLICATION_ICON@        android:supportsRtl="true">
@@ -10,7 +10,7 @@
             android:configChanges="keyboardHidden|orientation|screenSize"
             android:exported="true"
             android:label="@LABEL@"
-            android:screenOrientation="portrait"
+            android:screenOrientation="@SCREEN_ORIENTATION@"
             android:theme="@android:style/Theme.Material.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

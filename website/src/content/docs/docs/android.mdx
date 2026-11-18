@@ -96,6 +96,7 @@ from the edge shows them temporarily.
 sgl_android_app(
     name = "android",
     system_bars_mode = "immersive",              # "immersive", "safe-area", or "edge-to-edge"
+    screen_orientation = "portrait",             # "portrait", "landscape", "any", or "portrait-on-phones"
     system_bars_behavior = "transient-by-swipe", # or "default"
     navigation_bar_contrast_enforced = False,
     # ...

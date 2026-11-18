@@ -28,6 +28,26 @@ def _system_bars_mode(value):
         "immersive": "AndroidSystemBarsMode.Immersive",
     }[value]
 
+# android:screenOrientation for each screen_orientation value. "portrait-on-phones" lets the
+# activity rotate and locks phones to portrait at startup (BaseMainActivity.PortraitOnPhones).
+_SCREEN_ORIENTATIONS = {
+    "portrait": "portrait",
+    "landscape": "landscape",
+    "any": "fullUser",
+    "portrait-on-phones": "fullUser",
+}
+
+def _orientation_features(orientation, required):
+    """A locked orientation implies a required screen feature, which hides the app on Play from
+    devices without such a screen (Chromebooks, XR, landscape-only tablets). Declare it explicitly,
+    optional unless the game requires it: those devices then show the locked app in a window."""
+    if orientation not in ["portrait", "landscape"]:
+        return ""
+    return "    <uses-feature android:name=\"android.hardware.screen.%s\" android:required=\"%s\" />\n" % (
+        orientation,
+        "true" if required else "false",
+    )
+
 def _system_bars_behavior(value):
     return {
         "default": "AndroidSystemBarsBehavior.Default",
@@ -140,6 +160,10 @@ def _android_runner_impl(ctx):
         "@SYSTEM_BARS_MODE@": _system_bars_mode(ctx.attr.system_bars_mode),
         "@SYSTEM_BARS_BEHAVIOR@": _system_bars_behavior(ctx.attr.system_bars_behavior),
         "@NAVIGATION_BAR_CONTRAST_ENFORCED@": str(ctx.attr.navigation_bar_contrast_enforced).lower(),
+        "@SCREEN_ORIENTATION@": _SCREEN_ORIENTATIONS[ctx.attr.screen_orientation],
+        "@ORIENTATION_FEATURES@": _orientation_features(ctx.attr.screen_orientation, ctx.attr.require_screen_orientation),
+        "@PORTRAIT_ON_PHONES@": str(ctx.attr.screen_orientation == "portrait-on-phones").lower(),
+        "@PHONE_MAX_SMALLEST_WIDTH_DP@": str(ctx.attr.phone_max_smallest_width_dp),
     }
 
     project_files = []
@@ -239,6 +263,9 @@ _android_runner = rule(
         "system_bars_mode": attr.string(default = "immersive", values = ["safe-area", "edge-to-edge", "immersive"]),
         "system_bars_behavior": attr.string(default = "transient-by-swipe", values = ["default", "transient-by-swipe"]),
         "navigation_bar_contrast_enforced": attr.bool(default = False),
+        "screen_orientation": attr.string(default = "portrait", values = ["portrait", "landscape", "any", "portrait-on-phones"]),
+        "require_screen_orientation": attr.bool(default = False),
+        "phone_max_smallest_width_dp": attr.int(default = 600),
         "shrink_resources": attr.bool(default = True),
         "assets_dir": attr.string(default = ""),
         "assets": attr.label_list(providers = [SglAssetsInfo]),
@@ -287,6 +314,9 @@ def sgl_android_app(
         system_bars_mode = "immersive",
         system_bars_behavior = "transient-by-swipe",
         navigation_bar_contrast_enforced = False,
+        screen_orientation = "portrait",
+        require_screen_orientation = False,
+        phone_max_smallest_width_dp = 600,
         shrink_resources = True,
         assets_dir = "",
         assets = [],
@@ -326,6 +356,9 @@ def sgl_android_app(
             system_bars_mode = system_bars_mode,
             system_bars_behavior = system_bars_behavior,
             navigation_bar_contrast_enforced = navigation_bar_contrast_enforced,
+            screen_orientation = screen_orientation,
+            require_screen_orientation = require_screen_orientation,
+            phone_max_smallest_width_dp = phone_max_smallest_width_dp,
             shrink_resources = shrink_resources,
             assets_dir = assets_dir,
             assets = assets,

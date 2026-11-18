@@ -4,6 +4,7 @@ package sgl.android
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.os.Build
 import android.os.Bundle
 import android.view.ViewGroup
@@ -53,6 +54,15 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
      */
     var KeepScreenOn: Boolean = true
 
+    /** Lock phones to portrait while larger screens follow the manifest orientation.
+     *
+     * A phone is a screen whose smallest width is under PhoneMaxSmallestWidthDp (600dp, the
+     * usual phone/tablet boundary). Set from the sgl_android_app screen_orientation
+     * "portrait-on-phones", whose manifest orientation lets the activity rotate.
+     */
+    var PortraitOnPhones: Boolean = false
+    var PhoneMaxSmallestWidthDp: Int = 600
+
     /** Indicates if the activity is in running state
      *
      * This checks that the activity is between calls
@@ -94,6 +104,9 @@ open class BaseMainActivity(val makeGameApp: (ctx: Context, platform: AndroidPla
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (PortraitOnPhones && resources.configuration.smallestScreenWidthDp < PhoneMaxSmallestWidthDp) {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }
         //logger.trace("onCreated called")
 
         appResumed = false
