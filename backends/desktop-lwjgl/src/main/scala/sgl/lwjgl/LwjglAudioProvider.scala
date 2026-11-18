@@ -7,6 +7,7 @@ import sgl.util.Loader
 import java.io.ByteArrayOutputStream
 import javax.sound.sampled.{AudioFormat, AudioInputStream, AudioSystem, UnsupportedAudioFileException}
 import scala.collection.mutable
+import scala.util.control.NonFatal
 
 import org.lwjgl.BufferUtils
 import org.lwjgl.openal.{AL, AL10, ALC, ALC10}
@@ -24,23 +25,45 @@ trait LwjglAudioProvider extends AudioProvider {
     private val musics = mutable.Set.empty[Music]
     private val playbacks = mutable.Set.empty[Playback]
 
+    // Set once the audio device turned out to be unusable, so that it is
+    // reported once and not opened again for every sound.
+    private var unavailable: Option[Throwable] = None
+
     private def initOpenAL(): Unit = synchronized {
+      unavailable.foreach(throw _)
       if(!initialized) {
-        device = ALC10.alcOpenDevice(null.asInstanceOf[java.nio.ByteBuffer])
-        if(device == 0L) throw new RuntimeException("Could not open OpenAL audio device")
-        val capabilities = ALC.createCapabilities(device)
-        context = ALC10.alcCreateContext(device, null.asInstanceOf[java.nio.IntBuffer])
-        if(context == 0L) {
-          ALC10.alcCloseDevice(device)
-          device = 0L
-          throw new RuntimeException("Could not create OpenAL audio context")
+        try openDevice()
+        catch {
+          case NonFatal(error) =>
+            unavailable = Some(error)
+            logger.warning("Audio is unavailable, sounds and music will not play: " + error.getMessage)
+            throw error
         }
-        ALC10.alcMakeContextCurrent(context)
-        AL.createCapabilities(capabilities)
         initialized = true
         logger.info("Initialized LWJGL OpenAL audio")
       }
     }
+
+    private def openDevice(): Unit = {
+      device = ALC10.alcOpenDevice(null.asInstanceOf[java.nio.ByteBuffer])
+      if(device == 0L) throw new RuntimeException("Could not open OpenAL audio device")
+      val capabilities = ALC.createCapabilities(device)
+      context = ALC10.alcCreateContext(device, null.asInstanceOf[java.nio.IntBuffer])
+      if(context == 0L) {
+        ALC10.alcCloseDevice(device)
+        device = 0L
+        throw new RuntimeException("Could not create OpenAL audio context")
+      }
+      ALC10.alcMakeContextCurrent(context)
+      AL.createCapabilities(capabilities)
+    }
+
+    // A sound that cannot be loaded, because the resource is missing or
+    // unsupported or because the machine has no usable audio device, is a
+    // failed load for the game to handle or ignore, not a crash at startup.
+    private def loading[A](load: => A): Loader[A] =
+      try Loader.successful(load)
+      catch { case NonFatal(error) => Loader.failed(error) }
 
     private case class PcmAudio(format: Int, data: Array[Byte], sampleRate: Int)
 
@@ -199,7 +222,7 @@ trait LwjglAudioProvider extends AudioProvider {
     }
 
     override def loadSound(asset: sgl.assets.AudioAsset, extras: sgl.assets.AudioAsset*): Loader[Sound] =
-      Loader.successful(new Sound(makeBuffer(loadPcm(asset)), 0, 1f))
+      loading(new Sound(makeBuffer(loadPcm(asset)), 0, 1f))
 
     class Music private[LwjglAudio] (buffer: SharedBuffer) extends AbstractMusic {
       private var source: Int = 0
@@ -255,7 +278,7 @@ trait LwjglAudioProvider extends AudioProvider {
     }
 
     override def loadMusic(asset: sgl.assets.AudioAsset, extras: sgl.assets.AudioAsset*): Loader[Music] =
-      Loader.successful(new Music(makeBuffer(loadPcm(asset))))
+      loading(new Music(makeBuffer(loadPcm(asset))))
 
     def dispose(): Unit = synchronized {
       if(initialized) {
