@@ -22,8 +22,10 @@ set -e
 
 export APPDIR="$(cd "$(dirname "$0")" && pwd)/squashfs-root"
 
-# Set up library paths
-export LD_LIBRARY_PATH="$APPDIR/usr/lib:$APPDIR/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}"
+# The libraries bundled in the AppImage are for Tiled only. Exporting them
+# would also apply to the system tools xvfb-run starts (mktemp, xauth, Xvfb),
+# which then fail against the bundled copies on a newer distribution.
+TILED_LIBRARY_PATH="$APPDIR/usr/lib:$APPDIR/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}"
 
 # This AppImage only includes Qt's xcb plugin, so use a temporary X server.
 export LC_ALL=C.UTF-8
@@ -33,7 +35,7 @@ if ! command -v xvfb-run >/dev/null 2>&1; then
     echo "Tiled requires xvfb-run on Linux" >&2
     exit 1
 fi
-exec xvfb-run -a "$APPDIR/usr/bin/tiled" "$@"
+exec xvfb-run -a env LD_LIBRARY_PATH="$TILED_LIBRARY_PATH" "$APPDIR/usr/bin/tiled" "$@"
 """, executable = True)
 
     repository_ctx.file("BUILD", """

@@ -303,7 +303,7 @@
   "moduleExtensions": {
     "//bazel/tiled:extensions.bzl%tiled_extension": {
       "general": {
-        "bzlTransitiveDigest": "IWAJrzVJr8PtfEteSG0zny/Jf2eNJaSF9iktaMQVsAA=",
+        "bzlTransitiveDigest": "GR2xe9HJkJ2xz8URy3CG8PJDhjdHm3Ff8B2O46ONVdU=",
         "usagesDigest": "tg5Q6i9TWFeYw/r2IOuP3N+9PbragJVH+m7lvowHgQc=",
         "recordedInputs": [],
         "generatedRepoSpecs": {
