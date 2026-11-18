@@ -44,6 +44,9 @@ final class GameContext(
 ) {
   def createObject(name: String): sgl.engine.gameobject.GameObject =
     world.createObject(name)(using scope)
+
+  /** The world's global of type `A`, such as `context.global[DeltaTime]`. */
+  def global[A: ClassTag]: A = world.globals.get[A]
 }
 
 /** Engine services exposed to systems. */
@@ -65,7 +68,7 @@ trait Engine {
 }
 
 final class GameBuilder {
-  private val contextInitializers = mutable.ArrayBuffer.empty[World => Unit]
+  private val globalInitializers = mutable.ArrayBuffer.empty[World => Unit]
   private val systemsByStage = mutable.HashMap.empty[Stage, mutable.ArrayBuffer[System]]
   private var initialSceneValue: Option[Scene] = None
 
@@ -74,8 +77,8 @@ final class GameBuilder {
     this
   }
 
-  def setContext[A: ClassTag](value: A): this.type = {
-    contextInitializers += (_.context.set(value))
+  def setGlobal[A: ClassTag](value: A): this.type = {
+    globalInitializers += (_.globals.set(value))
     this
   }
 
@@ -95,14 +98,14 @@ final class GameBuilder {
       stage -> Schedule.build(configuredSystems)
     }.toMap
 
-    new GameRuntime(engine, schedules, contextInitializers.toVector, initialSceneValue)
+    new GameRuntime(engine, schedules, globalInitializers.toVector, initialSceneValue)
   }
 }
 
 final class GameRuntime(
     val engine: Engine,
     schedules: Map[Stage, Schedule],
-    contextInitializers: Vector[World => Unit],
+    globalInitializers: Vector[World => Unit],
     initialScene: Option[Scene]
 ) {
   private val worldValue: World = createWorld()
@@ -123,7 +126,7 @@ final class GameRuntime(
     if(disposed) throw new IllegalStateException("Cannot start a disposed game runtime")
     if(started) throw new IllegalStateException("Game runtime has already been started")
     started = true
-    resetFrameContext()
+    resetFrameGlobals()
     run(Stage.Startup, worldValue.globalScope)
     initialScene.foreach(changeScene)
     applyPendingScene()
@@ -149,23 +152,23 @@ final class GameRuntime(
     processingFrame = true
     try {
       elapsedSeconds += dt
-      worldValue.context.set(DeltaTime(dt))
-      worldValue.context.set(ElapsedTime(elapsedSeconds))
+      worldValue.globals.set(DeltaTime(dt))
+      worldValue.globals.set(ElapsedTime(elapsedSeconds))
 
       val frameScope = currentSceneScope.getOrElse(worldValue.globalScope)
 
       run(Stage.PreUpdate, frameScope)
 
-      val fixedStep = worldValue.context.get[FixedDeltaTime].seconds
+      val fixedStep = worldValue.globals.get[FixedDeltaTime].seconds
       fixedAccumulator += dt
       if(fixedStep > 0.0) {
         while(fixedAccumulator >= fixedStep) {
-          worldValue.context.set(DeltaTime(fixedStep))
+          worldValue.globals.set(DeltaTime(fixedStep))
           run(Stage.FixedUpdate, frameScope)
           fixedAccumulator -= fixedStep
         }
       }
-      worldValue.context.set(DeltaTime(dt))
+      worldValue.globals.set(DeltaTime(dt))
 
       run(Stage.Update, frameScope)
       run(Stage.PostUpdate, frameScope)
@@ -213,7 +216,7 @@ final class GameRuntime(
       currentScene = Some(scene)
       currentSceneScope = Some(sceneScope)
       fixedAccumulator = 0.0
-      resetFrameContext()
+      resetFrameGlobals()
       try scene.load(new GameContext(worldValue, engine, this, sceneScope))(using sceneScope)
       catch {
         case error: Throwable =>
@@ -238,19 +241,19 @@ final class GameRuntime(
 
   private def createWorld(): World = {
     val world = new World
-    contextInitializers.foreach(_(world))
-    if(world.context.getOption[ClearColor].isEmpty) {
-      world.context.set(ClearColor(0f, 0f, 0f, 1f))
+    globalInitializers.foreach(_(world))
+    if(world.globals.getOption[ClearColor].isEmpty) {
+      world.globals.set(ClearColor(0f, 0f, 0f, 1f))
     }
-    if(world.context.getOption[FixedDeltaTime].isEmpty) {
-      world.context.set(FixedDeltaTime(defaultFixedStep))
+    if(world.globals.getOption[FixedDeltaTime].isEmpty) {
+      world.globals.set(FixedDeltaTime(defaultFixedStep))
     }
     world
   }
 
-  private def resetFrameContext(): Unit = {
-    worldValue.context.set(DeltaTime(0.0))
-    worldValue.context.set(ElapsedTime(elapsedSeconds))
+  private def resetFrameGlobals(): Unit = {
+    worldValue.globals.set(DeltaTime(0.0))
+    worldValue.globals.set(ElapsedTime(elapsedSeconds))
   }
 
   private def ensureRunning(): Unit = {

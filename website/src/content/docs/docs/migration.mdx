@@ -72,7 +72,7 @@ components, and their creation helpers are extensions in the `spatial2d` and `sp
 packages:
 
 ```scala
-context.createObject2D("Player", Transform2D(position = spawn))
+context.spawn2D("Player", Transform2D(position = spawn))
   .attach(new PlayerController(_))
 
 gameObject.component[Spatial2D].foreach { spatial =>
@@ -90,24 +90,30 @@ gameObject.component[Spatial2D].foreach { spatial =>
   called from scenes, or `import world.given` for the global scope. Objects created through
   `GameContext` helpers go into the current scene's scope.
 - The block builders (`context.gameObject2D(name) { obj => ... }` and the 3D variant) were removed.
-  `child2DOf` and `child3DOf` became `childOf` in a chain: `createObject2D(name).childOf(parent)`.
+  `child2DOf` and `child3DOf` became `childOf` in a chain: `spawn2D(name).childOf(parent)`.
 - Objects are now `TypedObject`s. Compose them as a chain of `attach`, and have components that
   depend on other components take a `TypedObject[...]` constructor parameter instead of looking
   them up with `require`. See
   [composition checked by the compiler](/docs/gameobject/#composition-checked-by-the-compiler).
 - `GameObject2D` and `GameObject3D` are now aliases of `TypedObject[Spatial2D]` and
   `TypedObject[Spatial3D]`. The wrapper classes, `attach2D`, `attach3D`, and `.typed` were
-  removed: call `attach` directly on the result of `createObject2D` or `createObject3D`.
+  removed: call `attach` directly on the result of `spawn2D` or `spawn3D`.
 - Engine components take a typed object instead of an owner. `SpriteRenderer` and `Tilemap` need a
   `GameObject2D`, `MeshRenderer` needs a `GameObject3D`, and the cameras and overlays take a
   `TypedObject[Any]`. Their runtime `requires[Spatial2D]` is now a compile-time check.
 - Components that still take a plain `owner: GameObject` are attached to typed objects with
-  `attachPlain`. `context.typedObject(name)` creates an object without a spatial.
+  `attachPlain`. `context.spawn(name)` creates an object without a spatial.
 - `ComponentKey` and the `given` each component declared in its companion were removed, along with
   `.requires[B]` and `.requiresContext[B]`. Components are stored and indexed by their concrete
-  class. A requirement on the world is declared on a trait with `ContextDependent`.
-- `ContextKey` was removed. Context values are stored under the class they are set as, so delete
-  the `given ContextKey` declarations.
+  class. A requirement on the world is declared on a trait with `RequiresGlobals`.
+- `ContextKey` was removed and the world's context is now its globals: `world.context` became
+  `world.globals`, `builder.setContext` became `builder.setGlobal`, and
+  `context.world.context.get[A]` is `context.global[A]`. Values are stored under the class they
+  are set as, so delete the `given ContextKey` declarations.
+- `createObject2D` and `createObject3D` were renamed `spawn2D` and `spawn3D`. `world.createObject`
+  still creates a plain `GameObject`.
+- A component built from a typed object extends `ComponentOf(obj)` instead of declaring
+  `override val owner`.
 - `world.single[A]` and `world.requireSingle[A]` throw when the world holds more than one `A`
   instead of returning the first.
 - `attach` is no longer available through `HasGameObject`: call it on a `TypedObject` or a

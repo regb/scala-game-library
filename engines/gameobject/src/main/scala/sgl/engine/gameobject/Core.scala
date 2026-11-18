@@ -39,7 +39,7 @@ trait Component {
 }
 
 /** Mixed into a capability trait whose components only work when something is
-  * present in the world context, typically the module that drives them.
+  * present among the world's globals, typically the module that drives them.
   *
   * The requirement is checked when a component with the capability is
   * attached, so it is stated once on the trait and holds for every component
@@ -47,19 +47,14 @@ trait Component {
   * in several capabilities:
   *
   * {{{
-  * trait Updatable extends ContextDependent {
-  *   override def contextRequirements: Vector[Class[?]] =
-  *     super.contextRequirements :+ ContextDependent.on[UpdateCapabilitiesModule.type]
+  * trait Updatable extends RequiresGlobals {
+  *   override def requiredGlobals: Vector[Class[?]] =
+  *     super.requiredGlobals :+ Globals.keyOf[UpdateCapabilitiesModule.type]
   * }
   * }}}
   */
-trait ContextDependent {
-  def contextRequirements: Vector[Class[?]] = Vector.empty
-}
-
-object ContextDependent {
-  /** The class a value of type `A` is stored under in a [[Context]]. */
-  def on[A](using tag: ClassTag[A]): Class[?] = tag.runtimeClass
+trait RequiresGlobals {
+  def requiredGlobals: Vector[Class[?]] = Vector.empty
 }
 
 object Component {
@@ -148,24 +143,25 @@ final class ComponentIndex[A] private[gameobject] () {
   def size: Int = entries.size
 }
 
-/** Typed world-local context values.
+/** Typed values global to a world, such as the frame's delta time, the clear
+  * color, or an installed module.
   *
-  * This is intentionally named Context rather than Resource: these values are
-  * scoped globals for a World/Scene, not assets such as textures or meshes.
+  * They are not called resources: they are scoped globals for a World, not
+  * assets such as textures or meshes.
   *
   * A value is stored under the class of the type it is set as, so there is one
   * value per class and `get[DeltaTime]` needs no key. Type arguments are not
   * part of that class: wrap a `List[Int]` in a class of its own rather than
   * storing it directly.
   */
-final class Context private[gameobject] () {
+final class Globals private[gameobject] () {
   private val values = mutable.HashMap.empty[Class[?], Any]
 
   def set[A](value: A)(using tag: ClassTag[A]): Unit =
     values(tag.runtimeClass) = value
 
   def get[A](using tag: ClassTag[A]): A =
-    getOption[A].getOrElse(throw new NoSuchElementException(s"Missing context value ${tag.runtimeClass.getName}"))
+    getOption[A].getOrElse(throw new NoSuchElementException(s"Missing global ${tag.runtimeClass.getName}"))
 
   def getOption[A](using tag: ClassTag[A]): Option[A] =
     values.get(tag.runtimeClass).map(_.asInstanceOf[A])
@@ -173,6 +169,11 @@ final class Context private[gameobject] () {
   def contains[A](using tag: ClassTag[A]): Boolean = contains(tag.runtimeClass)
 
   private[gameobject] def contains(key: Class[?]): Boolean = values.contains(key)
+}
+
+object Globals {
+  /** The class a value of type `A` is stored under. */
+  def keyOf[A](using tag: ClassTag[A]): Class[?] = tag.runtimeClass
 }
 
 /** Lifetime of a group of objects: destroying a scope destroys what was
@@ -216,12 +217,12 @@ private[gameobject] final class ComponentSet(owner: GameObject, world: World) {
       throw new CompositionError(s"Cannot attach ${key.getName} to $target: the object already has one")
     }
     component match {
-      case dependent: ContextDependent =>
-        dependent.contextRequirements.distinct.foreach { required =>
-          if(!world.context.contains(required)) {
+      case dependent: RequiresGlobals =>
+        dependent.requiredGlobals.distinct.foreach { required =>
+          if(!world.globals.contains(required)) {
             throw new CompositionError(
               s"Cannot attach ${key.getName} to $target: " +
-                s"it requires ${required.getName} in the world context; is the module providing it installed?"
+                s"it requires ${required.getName} among the world's globals; is the module providing it installed?"
             )
           }
         }
@@ -232,8 +233,21 @@ private[gameobject] final class ComponentSet(owner: GameObject, world: World) {
     component
   }
 
-  def get[A <: Component](using tag: ClassTag[A]): Option[A] =
-    components.get(tag.runtimeClass).map(_.asInstanceOf[A])
+  /** Fails before a component is built when the object cannot take one of that class. */
+  def checkCanAdd(key: Class[?]): Unit = {
+    if(components.contains(key)) {
+      throw new CompositionError(
+        s"Cannot attach ${key.getName} to object ${owner.id.value} (${owner.name}): the object already has one"
+      )
+    }
+  }
+
+  def get[A <: Component](using tag: ClassTag[A]): Option[A] = {
+    val key = tag.runtimeClass
+    val found = components.get(key)
+    if(found.isEmpty) components.values.find(key.isInstance).foreach(World.rejectSupertypeLookup(key, _))
+    found.map(_.asInstanceOf[A])
+  }
 
   def all: Iterable[Component] = components.values
 }
@@ -256,15 +270,20 @@ final class GameObject private[gameobject] (
 
   def isAlive: Boolean = aliveValue
 
-  private def addComponent[A <: Component: ClassTag](component: A): A = {
-    if(!aliveValue) throw new CompositionError(s"Cannot attach a component to destroyed object ${id.value} ($name)")
-    components.add(component)
-  }
 
   private[gameobject] def markDestroyed(): Unit = aliveValue = false
 
-  def attach[A <: Component: ClassTag](factory: GameObject => A): A =
-    addComponent(factory(this))
+  /** Builds a component for this object and attaches it.
+    *
+    * What can be checked without the component is checked before the factory
+    * runs, so a rejected attach on a destroyed object or as a duplicate never
+    * constructs anything.
+    */
+  def attach[A <: Component](factory: GameObject => A)(using tag: ClassTag[A]): A = {
+    if(!aliveValue) throw new CompositionError(s"Cannot attach a component to destroyed object ${id.value} ($name)")
+    components.checkCanAdd(tag.runtimeClass)
+    components.add(factory(this))
+  }
 
   def component[A <: Component: ClassTag]: Option[A] =
     components.get[A]
@@ -288,10 +307,11 @@ final class World {
   private val objectsBuffer = mutable.ArrayBuffer.empty[GameObject]
   private val records = mutable.ArrayBuffer.empty[ComponentRecord]
   private val exactIndexes = mutable.HashMap.empty[Class[?], ComponentIndex[?]]
+  private val supertypeLookups = mutable.HashMap.empty[Class[?], Component]
   private val capabilityIndexes = mutable.HashMap.empty[CapabilityKey[?], ComponentIndex[?]]
   private var activeValue = true
 
-  val context: Context = new Context
+  val globals: Globals = new Globals
   val globalScope: Scope = createScope("global")
 
   /** The global scope as a given, for `import world.given`. Objects created
@@ -321,40 +341,88 @@ final class World {
     obj
   }
 
+  /** Destroys an object: its components get `onDestroy`, then leave the
+    * indexes. A hook that throws does not stop the others or the cleanup; the
+    * first failure is rethrown once the object is fully removed.
+    */
   def destroy(obj: GameObject): Unit = {
     if(obj.world ne this) throw new CompositionError(s"Object ${obj.id.value} belongs to a different world")
     if(!obj.isAlive) return
     obj.markDestroyed()
     objectsBuffer -= obj
     val components = obj.components.all.toVector
-    components.foreach(_.notifyDestroyed())
+    var failure: Option[Throwable] = None
+    components.foreach { component =>
+      try component.notifyDestroyed()
+      catch { case scala.util.control.NonFatal(error) => if(failure.isEmpty) failure = Some(error) }
+    }
     components.foreach(removeComponent)
+    failure.foreach(throw _)
   }
 
+  /** Destroys every object of a scope, including the ones an `onDestroy` hook
+    * creates in it along the way, then retires the scope. The global scope is
+    * emptied but stays usable.
+    */
   def destroyScope(scope: Scope): Unit = {
     if(scope.world ne this) throw new CompositionError("Cannot destroy a scope belonging to another world")
-    if(scope eq globalScope) {
-      objectsBuffer.filter(_.scope eq scope).toVector.foreach(destroy)
-    } else if(scope.isActive) {
-      objectsBuffer.filter(_.scope eq scope).toVector.foreach(destroy)
+    if(!scope.isActive) return
+    val failure = destroyAll(objectsBuffer.filter(_.scope eq scope).toVector)
+    if(scope ne globalScope) {
       scope.deactivate()
       scopesBuffer -= scope
     }
+    failure.foreach(throw _)
+  }
+
+  // Destroys the selected objects until none is left, so that objects created
+  // by a destroy hook are swept too. Every object is destroyed even if a hook
+  // throws; the first failure is returned for the caller to rethrow.
+  private def destroyAll(select: => Vector[GameObject]): Option[Throwable] = {
+    var failure: Option[Throwable] = None
+    var rounds = 0
+    var remaining = select
+    while(remaining.nonEmpty) {
+      if(rounds == World.MaxDestroyRounds) {
+        throw new CompositionError(
+          s"Objects keep being created while their scope is destroyed (${remaining.size} left after $rounds rounds): " +
+            "an onDestroy hook must not create an object that creates another one when destroyed"
+        )
+      }
+      remaining.foreach { obj =>
+        try destroy(obj)
+        catch { case scala.util.control.NonFatal(error) => if(failure.isEmpty) failure = Some(error) }
+      }
+      rounds += 1
+      remaining = select
+    }
+    failure
   }
 
   def objects: Vector[GameObject] = objectsBuffer.toVector
 
   private[gameobject] def dispose(): Unit = {
     if(!activeValue) return
-    objectsBuffer.toVector.foreach(destroy)
+    val failure = destroyAll(objectsBuffer.toVector)
     scopesBuffer.foreach(_.deactivate())
     scopesBuffer.clear()
     activeValue = false
+    failure.foreach(throw _)
   }
 
+  /** Every live component of class `A`.
+    *
+    * Components are indexed under their own concrete class, so `A` must be
+    * that class. Asking for a trait or a base class of attached components is
+    * an error rather than an empty result; index by a shared trait with
+    * [[capabilityIndex]].
+    */
   def index[A <: Component](using tag: ClassTag[A]): ComponentIndex[A] = {
     val key = tag.runtimeClass
+    supertypeLookups.get(key).foreach(World.rejectSupertypeLookup(key, _))
     exactIndexes.getOrElseUpdate(key, {
+      records.find(record => (record.key ne key) && key.isInstance(record.component))
+        .foreach(record => World.rejectSupertypeLookup(key, record.component))
       val index = new ComponentIndex[A]
       records.foreach { record =>
         if(record.key eq key) index.add(record.component, record.component.asInstanceOf[A])
@@ -391,6 +459,11 @@ final class World {
   private[gameobject] def componentAdded(key: Class[?], component: Component): Unit = {
     records += ComponentRecord(key, component)
     exactIndexes.get(key).foreach(_.asInstanceOf[ComponentIndex[Component]].add(component, component))
+    // An index asked for earlier under a supertype of this class would stay
+    // empty forever: remember it, so the next lookup fails instead.
+    exactIndexes.keysIterator.foreach { indexed =>
+      if((indexed ne key) && indexed.isInstance(component)) supertypeLookups(indexed) = component
+    }
     capabilityIndexes.foreach { case (capability, index) =>
       capability.asInstanceOf[CapabilityKey[Any]].select(component).foreach { value =>
         index.asInstanceOf[ComponentIndex[Any]].add(component, value)
@@ -407,4 +480,14 @@ final class World {
         capabilityIndexes.values.foreach(_.asInstanceOf[ComponentIndex[Any]].removeSource(component))
     }
   }
+}
+
+object World {
+  private val MaxDestroyRounds = 64
+
+  private[gameobject] def rejectSupertypeLookup(key: Class[?], found: Component): Nothing =
+    throw new CompositionError(
+      s"${key.getName} cannot be looked up: a component is stored under its own concrete class, " +
+        s"here ${found.getClass.getName}. Look that class up, or use a capability to index components by a shared trait"
+    )
 }

@@ -20,8 +20,8 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
 
   override def configure(game: GameBuilder): Unit = {
     game
-      .setContext(ClearColor(0.005f, 0.008f, 0.018f, 1.0f))
-      .setContext(cameraController)
+      .setGlobal(ClearColor(0.005f, 0.008f, 0.018f, 1.0f))
+      .setGlobal(cameraController)
       .setInitialScene(new SolarSystemScene)
       .addSystem(Stage.Update, YRotationSystem)
       .addSystem(Stage.Update, OrbitCameraSystem)
@@ -91,7 +91,7 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
     )
     moon.spatial.setParent(moonOrbit.spatial)
 
-    context.typedObject("Camera3D")
+    context.spawn("Camera3D")
       .attach(new Camera3D(_, 55f.toRadians, near = 0.1f, far = 100f))
       .attach(new Camera3DView(_, cameraController.viewMatrix))
 
@@ -137,7 +137,7 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
       transform: Transform3D,
       rotationSpeed: Float = 0f
   ): SpatialFacade = {
-    val obj = context.createObject3D(name, transform)
+    val obj = context.spawn3D(name, transform)
     if(rotationSpeed != 0f) obj.attach(new YRotation(_, rotationSpeed))
     SpatialFacade(obj.gameObject, obj.spatial)
   }
@@ -150,7 +150,7 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
       transform: Transform3D,
       rotationSpeed: Float
   ): RenderedBody = {
-    val obj = context.createObject3D(name, transform)
+    val obj = context.spawn3D(name, transform)
       .attach(new YRotation(_, rotationSpeed))
       .attach(new MeshRenderer(_, mesh, material))
     RenderedBody(obj.gameObject, obj.spatial, obj.get[YRotation], obj.get[MeshRenderer])
@@ -185,14 +185,14 @@ final class YRotation(
     obj: GameObject3D,
     val speedRadiansPerSecond: Float,
     val phase: Float = 0f
-) extends TypedComponent(obj)
+) extends ComponentOf(obj)
 
 
 object YRotationSystem extends EngineSystem {
   override val id: SystemId = SystemId("solar-go.y-rotation")
 
   override def run(context: GameContext)(using Scope): Unit = {
-    val t = context.world.context.get[ElapsedTime].seconds.toFloat
+    val t = context.global[ElapsedTime].seconds.toFloat
     context.world.index[YRotation].foreach { rotation =>
       val spatial = rotation.spatial
       spatial.local = spatial.local.copy(
@@ -247,7 +247,7 @@ object OrbitCameraSystem extends EngineSystem {
   override val id: SystemId = SystemId("solar-go.orbit-camera")
 
   override def run(context: GameContext)(using Scope): Unit = {
-    val controller = context.world.context.get[OrbitCameraController]
+    val controller = context.global[OrbitCameraController]
     context.world.index[Camera3D].foreach { camera =>
       if(camera.active) {
         camera.owner.component[Camera3DView].foreach { view =>

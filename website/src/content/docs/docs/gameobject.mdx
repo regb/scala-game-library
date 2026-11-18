@@ -32,8 +32,8 @@ trait AbstractApp extends OpenGLGameObjectApp {
   override def configure(builder: GameBuilder): Unit =
     builder
       .install(UpdateCapabilitiesModule)        // drives Updatable components
-      .setContext(ClearColor(0.02f, 0.02f, 0.05f, 1f))
-      .setContext(FixedDeltaTime(1.0 / 60.0))
+      .setGlobal(ClearColor(0.02f, 0.02f, 0.05f, 1f))
+      .setGlobal(FixedDeltaTime(1.0 / 60.0))
       .addSystem(Stage.PostUpdate, CollisionSystem)
       .setInitialScene(Level1)
 }
@@ -47,13 +47,13 @@ the core library's `deps`.
 
 | Concept | What it is |
 | --- | --- |
-| `World` | Holds objects, scopes, component indexes, and the `Context` |
+| `World` | Holds objects, scopes, component indexes, and the `Globals` |
 | `GameObject` | An identity (`id`, `name`) with at most one component of each type |
 | `TypedObject[Has]` | A `GameObject` whose type lists the components it has. `GameObject2D` is `TypedObject[Spatial2D]`. |
 | `Component` | A plain class with an `owner`, stored and indexed by its concrete class |
-| `Context` | Values for the whole world, one per class, such as `DeltaTime`, `ClearColor`, and installed modules |
+| `Globals` | Values for the whole world, one per class, such as `DeltaTime`, `ClearColor`, and installed modules |
 | `System` | Code that runs over the world once per stage |
-| `GameModule` | A reusable bundle of systems and context values |
+| `GameModule` | A reusable bundle of systems and globals |
 | `Scene` | Loads a set of objects. Its objects are destroyed when another scene loads. |
 | `Scope` | Groups objects so they are destroyed together. Every object is created in one. |
 
@@ -64,22 +64,21 @@ records the components that are known to be attached. Each `attach` returns the 
 larger type, so an object is composed as a chain:
 
 ```scala
-context.typedObject("Enemy")               // TypedObject[Any]
+context.spawn("Enemy")               // TypedObject[Any]
   .attach(new Health(_, points = 3))       // TypedObject[Health]
   .attach(new EnemyBrain(_))               // TypedObject[Health & EnemyBrain]
 ```
 
 `GameObject2D` and `GameObject3D` are aliases of `TypedObject[Spatial2D]` and
-`TypedObject[Spatial3D]`. `context.createObject2D` returns an object that already has its spatial.
+`TypedObject[Spatial3D]`. `context.spawn2D` returns an object that already has its spatial.
 There is one kind of composed object and one `attach`.
 
 A component is an ordinary class with methods and private state. It takes the typed object as its
-constructor parameter and sets `owner` from it:
+constructor parameter and extends `ComponentOf(obj)`, which derives its `owner` and keeps the
+object reachable as `obj`:
 
 ```scala
-final class Health(obj: TypedObject[Any], var points: Int) extends Component {
-  override val owner: GameObject = obj.gameObject
-}
+final class Health(obj: TypedObject[Any], var points: Int) extends ComponentOf(obj)
 ```
 
 Components are stored and indexed by their class, so no key or registration is needed. An object
@@ -95,11 +94,10 @@ owner and its siblings are still attached.
 ## Composition checked by the compiler
 
 A component that needs other components on its object asks for them in the type of its constructor
-parameter, and reads them with `get`, which cannot fail:
+parameter, and reads them with `get`, which the type guarantees to succeed:
 
 ```scala
-final class Collider(obj: GameObject2D, var radius: Float) extends Component {
-  override val owner: GameObject = obj.gameObject
+final class Collider(obj: GameObject2D, var radius: Float) extends ComponentOf(obj) {
   private val spatial = obj.spatial
 
   def overlaps(other: Collider): Boolean = {
@@ -109,20 +107,18 @@ final class Collider(obj: GameObject2D, var radius: Float) extends Component {
   }
 }
 
-final class Bullet(obj: TypedObject[Collider]) extends Component {
-  override val owner: GameObject = obj.gameObject
+final class Bullet(obj: TypedObject[Collider]) extends ComponentOf(obj) {
   val collider: Collider = obj.get[Collider]
 }
 
-final class Player(obj: TypedObject[Spatial2D & Velocity & Collider]) extends Component with Updatable {
-  override val owner: GameObject = obj.gameObject
+final class Player(obj: TypedObject[Spatial2D & Velocity & Collider]) extends ComponentOf(obj) with Updatable {
   private val velocity = obj.get[Velocity]
   // ...
 }
 ```
 
 ```scala
-context.createObject2D("Bullet", Transform2D(position = pos))   // GameObject2D
+context.spawn2D("Bullet", Transform2D(position = pos))   // GameObject2D
   .attach(new Collider(_, 4f))                                   // & Collider
   .attach(new Bullet(_))                                         // & Bullet
   .attach(new SpriteRenderer(_, SpriteVisual.Circle((1f, 0.9f, 0.5f, 1f)), 7f, 7f))
@@ -156,14 +152,14 @@ obj.destroy()
 
 Some requirements are not properties of the object but of the world, typically a module that must
 be installed for the component to do anything. A trait states them once by mixing in
-`ContextDependent`, and they are checked whenever a component with that trait is attached:
+`RequiresGlobals`, and they are checked whenever a component with that trait is attached:
 
 ```scala
-trait Updatable extends ContextDependent {
+trait Updatable extends RequiresGlobals {
   def update(context: GameContext)(using Scope): Unit
 
-  override def contextRequirements: Vector[Class[?]] =
-    super.contextRequirements :+ ContextDependent.on[UpdateCapabilitiesModule.type]
+  override def requiredGlobals: Vector[Class[?]] =
+    super.requiredGlobals :+ Globals.keyOf[UpdateCapabilitiesModule.type]
 }
 ```
 
@@ -185,6 +181,10 @@ context.world.index[Bullet].foreach { bullet =>
 `foreach` and `iterator` on an index never return a component whose object was destroyed, even one
 destroyed earlier in the same traversal. Components attached during a traversal appear in the next
 one. `toVector` is a plain snapshot, so code that keeps it checks `isAlive` itself.
+
+An index is asked for by the component's own class. Asking for a trait or a base class of attached
+components throws a `CompositionError` instead of returning an empty index; `obj.component[A]`,
+`obj.require[A]`, and `get[A]` behave the same way.
 
 `destroy()`, `isAlive`, `component`, and `require` work on anything with a `HasGameObject` instance:
 `GameObject`, `TypedObject` (including `GameObject2D` and `GameObject3D`), and every component.
@@ -234,8 +234,8 @@ in steps of `FixedDeltaTime` (default 1/60 s):
 
 </Steps>
 
-`Startup` runs once before the initial scene loads. Read time from the context:
-`context.world.context.get[DeltaTime].seconds` or `ElapsedTime`. A schedule rejects duplicate
+`Startup` runs once before the initial scene loads. Read time from the globals:
+`context.global[DeltaTime].seconds` or `ElapsedTime`. A schedule rejects duplicate
 system IDs.
 
 For small systems, `System("game.spawner") { ... }` creates one from a block that receives a given
@@ -249,7 +249,7 @@ having a system. Only components that implement these traits are indexed and upd
 ```scala
 final class Lifetime(override val owner: GameObject, var seconds: Double) extends Component with Updatable {
   override def update(context: GameContext)(using Scope): Unit = {
-    seconds -= context.world.context.get[DeltaTime].seconds
+    seconds -= context.global[DeltaTime].seconds
     if(seconds <= 0.0) this.destroy()
   }
 }
@@ -257,23 +257,24 @@ final class Lifetime(override val owner: GameObject, var seconds: Double) extend
 
 Prefer systems for logic that applies to many objects.
 
-## Context and modules
+## Globals and modules
 
-The `Context` holds values for the whole world. A value is stored under the class it is set as, so
+`world.globals` holds values for the whole world. A value is stored under the class it is set as, so
 there is one value per class and no key to declare:
 
 ```scala
 final case class Difficulty(level: Int)
 
-builder.setContext(Difficulty(2))
-context.world.context.get[Difficulty]          // or getOption, contains
+builder.setGlobal(Difficulty(2))
+context.global[Difficulty]
+world.globals.getOption[Difficulty]  // also get, set, contains
 ```
 
 Type arguments are not part of the class: wrap a `List[Int]` in a class of its own instead of
 storing it directly.
 
-A `GameModule` bundles context values and systems. The built-in `UpdateCapabilitiesModule`
-publishes itself in the context, which is what `Updatable` and `FixedUpdatable` require.
+A `GameModule` bundles globals and systems. The built-in `UpdateCapabilitiesModule`
+publishes itself among the globals, which is what `Updatable` and `FixedUpdatable` require.
 
 ## Scenes and scopes
 
@@ -283,7 +284,7 @@ when another scene loads:
 ```scala
 object Level1 extends Scene {
   override def load(context: GameContext)(using Scope): Unit = {
-    context.createObject2D("Camera").attach(new Camera2D(_, Vec2(800f, 600f), priority = 10))
+    context.spawn2D("Camera").attach(new Camera2D(_, Vec2(800f, 600f), priority = 10))
     // ...
   }
 
@@ -298,7 +299,7 @@ Creating an object always names its scope. `GameContext` helpers use the current
 
 ```scala
 def spawnAsteroid(world: World, i: Int)(using Scope): Unit =
-  world.createObject2D(s"Asteroid-$i").attach(...)
+  world.spawn2D(s"Asteroid-$i").attach(...)
 ```
 
 Forgetting the `(using Scope)` is a compile error, not an object that silently survives scene
@@ -318,10 +319,10 @@ and `destroySubtree`. They are defined in the `Spatial2D` companion, so they nee
 `childOf` sets the parent and returns the object, so it fits in a chain:
 
 ```scala
-val ship = context.createObject2D("Ship")
+val ship = context.spawn2D("Ship")
   .attach(new SpriteRenderer(_, SpriteVisual.Triangle((0.9f, 0.9f, 1f, 1f)), 28f, 34f))
 
-context.createObject2D("Thruster", Transform2D(position = Vec2(0f, 20f)))
+context.spawn2D("Thruster", Transform2D(position = Vec2(0f, 20f)))
   .childOf(ship)
   .attach(new SpriteRenderer(_, SpriteVisual.Circle((1f, 0.5f, 0.2f, 1f)), 8f, 8f))
 ```
@@ -350,7 +351,7 @@ Textures are loaded from typed assets through the engine, usually while a scene 
 ```scala
 val texture: Loader[Texture2D] = context.engine.loadDrawableTexture(Assets.drawable.coin)
 texture.foreach { coin =>
-  context.createObject2D("Coin").attach(new SpriteRenderer(_, SpriteVisual.Texture(coin), 32f, 32f))
+  context.spawn2D("Coin").attach(new SpriteRenderer(_, SpriteVisual.Texture(coin), 32f, 32f))
 }
 ```
 
@@ -370,8 +371,8 @@ val sphere = renderer.createMesh(MeshPrimitives.sphere(32, 18))
 val sunMaterial = renderer.createMaterial(renderer.loadTexture2D(Assets.rawImage.sun), emissive = 1f)
 val earthMaterial = renderer.createMaterial(renderer.loadTexture2D(Assets.rawImage.earth), emissive = 0f)
 
-val sun = context.createObject3D("Sun").attach(new MeshRenderer(_, sphere, sunMaterial))
-val earth = context.createObject3D("Earth", Transform3D(position = Vec3(3.2f, 0f, 0f)))
+val sun = context.spawn3D("Sun").attach(new MeshRenderer(_, sphere, sunMaterial))
+val earth = context.spawn3D("Earth", Transform3D(position = Vec3(3.2f, 0f, 0f)))
   .attach(new MeshRenderer(_, sphere, earthMaterial))
 earth.setParent(sun)
 ```

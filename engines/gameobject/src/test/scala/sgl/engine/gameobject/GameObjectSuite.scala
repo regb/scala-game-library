@@ -8,7 +8,7 @@ import sgl.engine.gameobject.render3d.{AssetId, MaterialAsset, MeshAsset, MeshDa
 import sgl.engine.gameobject.runtime.{Engine, GameBuilder, GameContext, Scene}
 import sgl.engine.gameobject.schedule.{Schedule, Stage, System}
 import sgl.engine.gameobject.spatial2d._
-import sgl.engine.gameobject.typed.{TypedComponent, TypedObject}
+import sgl.engine.gameobject.typed.{ComponentOf, TypedObject}
 import sgl.math.Vec2
 
 class GameObjectSuite extends AnyFunSuite {
@@ -75,7 +75,7 @@ class GameObjectSuite extends AnyFunSuite {
     val world = new World
 
     val noScope: List[Error] = typeCheckErrors("""world.createObject("object")""")
-    val noScope2D: List[Error] = typeCheckErrors("""world.createObject2D("object")""")
+    val noScope2D: List[Error] = typeCheckErrors("""world.spawn2D("object")""")
     assert(noScope.exists(_.message.contains("No Scope to create the object in")))
     assert(noScope2D.exists(_.message.contains("No Scope to create the object in")))
 
@@ -91,19 +91,19 @@ class GameObjectSuite extends AnyFunSuite {
 
   test("context values are stored by the class they are set as") {
     val world = new World
-    assert(world.context.getOption[Gravity].isEmpty)
-    assert(!world.context.contains[Gravity])
+    assert(world.globals.getOption[Gravity].isEmpty)
+    assert(!world.globals.contains[Gravity])
     intercept[NoSuchElementException] {
-      world.context.get[Gravity]
+      world.globals.get[Gravity]
     }
 
-    world.context.set(Gravity(9.81f))
-    world.context.set(Gravity(1.62f))
-    assert(world.context.get[Gravity] === Gravity(1.62f))
+    world.globals.set(Gravity(9.81f))
+    world.globals.set(Gravity(1.62f))
+    assert(world.globals.get[Gravity] === Gravity(1.62f))
 
     val fixed = new Clock { def now: Double = 42.0 }
-    world.context.set[Clock](fixed)
-    assert(world.context.get[Clock] eq fixed)
+    world.globals.set[Clock](fixed)
+    assert(world.globals.get[Clock] eq fixed)
   }
 
   test("single rejects a world with more than one such component") {
@@ -126,6 +126,125 @@ class GameObjectSuite extends AnyFunSuite {
 
     first.destroy()
     assert(world.single[Marker].map(_.owner.name) === Some("second"))
+  }
+
+  final class Failing(override val owner: GameObject) extends Component {
+    override protected def onDestroy(): Unit = throw new IllegalStateException("release failed")
+  }
+
+  final class Counted(override val owner: GameObject, onRelease: () => Unit) extends Component {
+    override protected def onDestroy(): Unit = onRelease()
+  }
+
+  test("a destroy hook that throws does not leave the object half removed") {
+    val world = new World
+    import world.given
+    var released = 0
+    val obj = world.createObject("object")
+    obj.attach(new Counted(_, () => released += 1))
+    obj.attach(new Failing(_))
+    obj.attach(new Marker(_))
+
+    val error = intercept[IllegalStateException] {
+      world.destroy(obj)
+    }
+    assert(error.getMessage === "release failed")
+    assert(released === 1)
+    assert(!obj.isAlive && world.objects.isEmpty)
+    assert(world.index[Failing].size === 0 && world.index[Marker].size === 0 && world.index[Counted].size === 0)
+    assert(world.single[Marker].isEmpty)
+    world.destroy(obj)
+  }
+
+  test("destroying a scope also destroys what its destroy hooks create in it") {
+    val world = new World
+    val scene = world.createScope("scene")
+    var debris = 0
+    val exploding = world.createObject("exploding")(using scene)
+    exploding.attach(new Counted(_, () => {
+      debris += 1
+      world.createObject("debris")(using scene).attach(new Marker(_))
+    }))
+    val failing = world.createObject("failing")(using scene)
+    failing.attach(new Failing(_))
+    val kept = world.createObject("kept")(using world.globalScope)
+
+    intercept[IllegalStateException] {
+      world.destroyScope(scene)
+    }
+    assert(debris === 1)
+    assert(world.objects === Vector(kept))
+    assert(world.index[Marker].size === 0)
+    assert(!scene.isActive && world.scopes === Vector(world.globalScope))
+  }
+
+  test("a scope whose objects recreate themselves when destroyed is reported") {
+    val world = new World
+    val scene = world.createScope("scene")
+    def phoenix(): Unit =
+      world.createObject("phoenix")(using scene).attach(new Counted(_, () => phoenix()))
+    phoenix()
+
+    val error = intercept[CompositionError] {
+      world.destroyScope(scene)
+    }
+    assert(error.getMessage.contains("keep being created"))
+  }
+
+  test("a rejected attach does not build the component") {
+    val world = new World
+    import world.given
+    var built = 0
+    val obj = world.createObject("object")
+    obj.attach { owner => built += 1; new Marker(owner) }
+
+    intercept[CompositionError] {
+      obj.attach { owner => built += 1; new Marker(owner) }
+    }
+    intercept[CompositionError] {
+      TypedObject(obj).attachPlain { owner => built += 1; new Marker(owner) }
+    }
+    world.destroy(obj)
+    intercept[CompositionError] {
+      obj.attach { owner => built += 1; new Other(owner) }
+    }
+    assert(built === 1)
+  }
+
+  trait Scorable extends Component { def points: Int }
+  abstract class Enemy(override val owner: GameObject) extends Component
+  final class FastEnemy(owner: GameObject) extends Enemy(owner) with Scorable { def points: Int = 5 }
+
+  test("looking components up by a trait or base class is an error, not an empty result") {
+    val world = new World
+    import world.given
+    assert(world.index[Enemy].size === 0)
+
+    val obj = world.createObject("enemy")
+    val enemy = obj.attach(new FastEnemy(_))
+    assert(world.index[FastEnemy].toVector === Vector(enemy))
+
+    val earlier = intercept[CompositionError] {
+      world.index[Enemy]
+    }
+    assert(earlier.getMessage.contains("FastEnemy"))
+    intercept[CompositionError] {
+      world.index[Scorable]
+    }
+    intercept[CompositionError] {
+      world.single[Scorable]
+    }
+    intercept[CompositionError] {
+      obj.component[Enemy]
+    }
+    assert(obj.component[Marker].isEmpty)
+
+    val typed = world.spawn2D("typed").attachPlain(new FastEnemy(_))
+    assert(typed.get[FastEnemy].points === 5)
+    val supertype = intercept[CompositionError] {
+      typed.get[Scorable]
+    }
+    assert(supertype.getMessage.contains("concrete class"))
   }
 
   test("a component must be attached under its own concrete class") {
@@ -180,9 +299,9 @@ class GameObjectSuite extends AnyFunSuite {
   test("a destroyed spatial leaves its hierarchy and destroySubtree removes descendants") {
     val world = new World
     import world.given
-    val root = world.createObject2D("root")
-    val middle = world.createObject2D("middle")
-    val leaf = world.createObject2D("leaf")
+    val root = world.spawn2D("root")
+    val middle = world.spawn2D("middle")
+    val leaf = world.spawn2D("leaf")
     middle.setParent(root)
     leaf.setParent(middle)
 
@@ -201,8 +320,8 @@ class GameObjectSuite extends AnyFunSuite {
     val world = new World
     import world.given
 
-    val parent = world.createObject2D("parent", Transform2D(position = Vec2(10f, 0f)))
-    val child = world.createObject2D("child", Transform2D(position = Vec2(1f, 2f))).childOf(parent)
+    val parent = world.spawn2D("parent", Transform2D(position = Vec2(10f, 0f)))
+    val child = world.spawn2D("child", Transform2D(position = Vec2(1f, 2f))).childOf(parent)
     assert(child.global.position === Vec2(11f, 2f))
 
     parent.spatial.local = Transform2D(position = Vec2(-5f, 0f), scale = Vec2(2f, 2f))
@@ -210,8 +329,8 @@ class GameObjectSuite extends AnyFunSuite {
     child.clearParent()
     assert(child.global.position === Vec2(1f, 2f))
 
-    val parent3D = world.createObject3D("parent3D", Transform3D(position = sgl.math.Vec3(1f, 2f, 3f)))
-    val child3D = world.createObject3D("child3D").childOf(parent3D)
+    val parent3D = world.spawn3D("parent3D", Transform3D(position = sgl.math.Vec3(1f, 2f, 3f)))
+    val child3D = world.spawn3D("child3D").childOf(parent3D)
     assert(child3D.globalMatrix.values.toSeq === parent3D.spatial.local.matrix.values.toSeq)
   }
 
@@ -225,7 +344,7 @@ class GameObjectSuite extends AnyFunSuite {
   test("components, wrappers, and game classes can be used as their game object") {
     val world = new World
     import world.given
-    val obj = world.createObject2D("crate")
+    val obj = world.spawn2D("crate")
     val marker = obj.attachPlain(new Marker(_)).get[Marker]
     val crate = new Crate(obj, marker)
 
@@ -242,18 +361,18 @@ class GameObjectSuite extends AnyFunSuite {
     assert(world.objects.map(_.name) === Vector("other"))
   }
 
-  final class Hull(obj: TypedObject[Spatial2D], val radius: Float) extends TypedComponent(obj) {
+  final class Hull(obj: TypedObject[Spatial2D], val radius: Float) extends ComponentOf(obj) {
     val spatial: Spatial2D = obj.spatial
   }
 
-  final class Shell(obj: TypedObject[Hull]) extends TypedComponent(obj) {
+  final class Shell(obj: TypedObject[Hull]) extends ComponentOf(obj) {
     val hull: Hull = obj.get[Hull]
   }
 
   test("a typed object grows with each attach and hands components their siblings") {
     val world = new World
     import world.given
-    val obj: TypedObject[Spatial2D & Hull & Shell & Marker] = world.createObject2D("shell")
+    val obj: TypedObject[Spatial2D & Hull & Shell & Marker] = world.spawn2D("shell")
       .attach(new Hull(_, 4f))
       .attach(new Shell(_))
       .attachPlain(new Marker(_))
@@ -274,10 +393,10 @@ class GameObjectSuite extends AnyFunSuite {
     val world = new World
     import world.given
 
-    val root3D: GameObject3D = world.createObject3D("root3D")
-    val leaf3D = world.createObject3D("leaf3D").childOf(root3D)
-    val root2D: GameObject2D = world.createObject2D("root2D")
-    val leaf2D = world.createObject2D("leaf2D").attachPlain(new Marker(_)).childOf(root2D)
+    val root3D: GameObject3D = world.spawn3D("root3D")
+    val leaf3D = world.spawn3D("leaf3D").childOf(root3D)
+    val root2D: GameObject2D = world.spawn2D("root2D")
+    val leaf2D = world.spawn2D("leaf2D").attachPlain(new Marker(_)).childOf(root2D)
     assert(leaf2D.get[Marker].owner eq leaf2D.gameObject)
 
     assert(leaf3D.parent === Some(root3D.spatial))
@@ -296,13 +415,13 @@ class GameObjectSuite extends AnyFunSuite {
     val world = new World
     import world.given
 
-    val missingSibling: List[Error] = typeCheckErrors("""world.createObject2D("o").attach(new Shell(_))""")
-    val wrongOrder: List[Error] = typeCheckErrors("""world.createObject2D("o").attach(new Shell(_)).attach(new Hull(_, 1f))""")
+    val missingSibling: List[Error] = typeCheckErrors("""world.spawn2D("o").attach(new Shell(_))""")
+    val wrongOrder: List[Error] = typeCheckErrors("""world.spawn2D("o").attach(new Shell(_)).attach(new Hull(_, 1f))""")
     val noSpatial: List[Error] = typeCheckErrors("""TypedObject(world.createObject("o")).attach(new Hull(_, 1f))""")
-    val duplicate: List[Error] = typeCheckErrors("""world.createObject2D("o").attach(new Hull(_, 1f)).attach(new Hull(_, 2f))""")
-    val absentGet: List[Error] = typeCheckErrors("""world.createObject2D("o").get[Hull]""")
-    val other = world.createObject2D("other").attach(new Hull(_, 1f))
-    val foreignSibling: List[Error] = typeCheckErrors("""world.createObject2D("o").attach(_ => new Shell(other))""")
+    val duplicate: List[Error] = typeCheckErrors("""world.spawn2D("o").attach(new Hull(_, 1f)).attach(new Hull(_, 2f))""")
+    val absentGet: List[Error] = typeCheckErrors("""world.spawn2D("o").get[Hull]""")
+    val other = world.spawn2D("other").attach(new Hull(_, 1f))
+    val foreignSibling: List[Error] = typeCheckErrors("""world.spawn2D("o").attach(_ => new Shell(other))""")
 
     Seq("missingSibling" -> missingSibling, "wrongOrder" -> wrongOrder, "noSpatial" -> noSpatial,
         "duplicate" -> duplicate, "absentGet" -> absentGet, "foreignSibling" -> foreignSibling).foreach { case (name, errors) =>
@@ -319,7 +438,7 @@ class GameObjectSuite extends AnyFunSuite {
     // owned by that other object, which attach rejects.
     assert(foreignSibling.isEmpty)
     intercept[CompositionError] {
-      world.createObject2D("o").attach(_ => new Shell(other))
+      world.spawn2D("o").attach(_ => new Shell(other))
     }
   }
 
@@ -346,8 +465,8 @@ class GameObjectSuite extends AnyFunSuite {
   test("Spatial2D point transforms preserve affine shear through parent chains") {
     val world = new World
     import world.given
-    val parent = world.createObject2D("parent", Transform2D(scale = Vec2(2f, 1f)))
-    val child = world.createObject2D("child", Transform2D(rotation = (scala.math.Pi / 2.0).toFloat))
+    val parent = world.spawn2D("parent", Transform2D(scale = Vec2(2f, 1f)))
+    val child = world.spawn2D("child", Transform2D(rotation = (scala.math.Pi / 2.0).toFloat))
     child.setParent(parent)
 
     val transformed = child.transformPoint(Vec2(1f, 0f))
@@ -358,8 +477,8 @@ class GameObjectSuite extends AnyFunSuite {
   test("spatial parenting rejects cycles and objects from another world") {
     val world = new World
     import world.given
-    val parent = world.createObject2D("parent")
-    val child = world.createObject2D("child")
+    val parent = world.spawn2D("parent")
+    val child = world.spawn2D("child")
     child.setParent(parent)
 
     intercept[CompositionError] {
@@ -367,7 +486,7 @@ class GameObjectSuite extends AnyFunSuite {
     }
 
     val otherWorld = new World
-    val foreignParent = otherWorld.createObject2D("foreign")(using otherWorld.globalScope)
+    val foreignParent = otherWorld.spawn2D("foreign")(using otherWorld.globalScope)
     intercept[CompositionError] {
       child.setParent(foreignParent)
     }

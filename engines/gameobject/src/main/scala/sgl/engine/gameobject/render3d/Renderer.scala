@@ -3,7 +3,7 @@ package sgl.engine.gameobject.render3d
 import sgl.assets.{DrawableAsset, RawImageAsset}
 import sgl.engine.gameobject.World
 import sgl.engine.gameobject.spatial3d.{GameObject3D, Spatial3D}
-import sgl.engine.gameobject.typed.{TypedComponent, TypedObject}
+import sgl.engine.gameobject.typed.{ComponentOf, TypedObject}
 import sgl.math.Mat4
 
 trait Asset
@@ -23,20 +23,20 @@ final class Camera3D(
     var far: Float,
     var active: Boolean = true,
     var priority: Int = 0
-) extends TypedComponent(obj)
+) extends ComponentOf(obj)
 
 
 final class Camera3DView(
     obj: TypedObject[Any],
     var view: Mat4
-) extends TypedComponent(obj)
+) extends ComponentOf(obj)
 
 
 final class MeshRenderer(
     obj: GameObject3D,
     var mesh: AssetId[MeshAsset],
     var material: AssetId[MaterialAsset]
-) extends TypedComponent(obj) {
+) extends ComponentOf(obj) {
   val spatial: Spatial3D = obj.spatial
 }
 

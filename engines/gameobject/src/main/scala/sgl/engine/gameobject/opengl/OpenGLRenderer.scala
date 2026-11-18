@@ -182,7 +182,7 @@ final class OpenGLRenderer(
   override def render(world: World): Unit = {
     if(disposed) return
 
-    val clear = world.context.getOption[ClearColor]
+    val clear = world.globals.getOption[ClearColor]
       .map(c => (c.red, c.green, c.blue, c.alpha))
       .getOrElse((0f, 0f, 0f, 1f))
     GL.clearColor(clear._1, clear._2, clear._3, clear._4)

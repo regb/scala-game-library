@@ -74,20 +74,19 @@ const gameObjectCode = `trait AbstractApp extends OpenGLGameObjectApp {
       .setInitialScene(Level)
 }
 
-final class Spin(obj: GameObject2D) extends Component with Updatable {
-  override val owner: GameObject = obj.gameObject
+final class Spin(obj: GameObject2D) extends ComponentOf(obj) with Updatable {
   private val spatial = obj.spatial
 
   override def update(context: GameContext)(using Scope): Unit = {
-    val dt = context.world.context.get[DeltaTime].seconds.toFloat
+    val dt = context.global[DeltaTime].seconds.toFloat
     spatial.local = spatial.local.copy(rotation = spatial.local.rotation + 2f * dt)
   }
 }
 
 object Level extends Scene {
   override def load(context: GameContext)(using Scope): Unit = {
-    context.createObject2D("Camera").attach(new Camera2D(_, Vec2(800f, 600f)))
-    context.createObject2D("Ship")
+    context.spawn2D("Camera").attach(new Camera2D(_, Vec2(800f, 600f)))
+    context.spawn2D("Ship")
       .attach(new Spin(_))
       .attach(new SpriteRenderer(_, SpriteVisual.Triangle((1f, 1f, 1f, 1f)), 28f, 34f))
   }

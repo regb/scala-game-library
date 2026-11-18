@@ -17,7 +17,7 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
 
   override def configure(builder: GameBuilder): Unit =
     builder
-      .setContext(ClearColor(0.08f, 0.09f, 0.12f, 1f))
+      .setGlobal(ClearColor(0.08f, 0.09f, 0.12f, 1f))
       .setInitialScene(new AtlasScene)
 
   private final class AtlasScene extends Scene {
@@ -42,7 +42,7 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
 
     private def populate(context: GameContext, coin: Texture2D, gem: Texture2D, heart: Texture2D, tiles: Texture2D): Unit = {
       Vector(coin, gem, heart, coin).zipWithIndex.foreach { case (texture, i) =>
-        val sprite = context.createObject2D("sprite-" + i, Transform2D(Vec2(-240f + i * 160f, -60f)))
+        val sprite = context.spawn2D("sprite-" + i, Transform2D(Vec2(-240f + i * 160f, -60f)))
         // The last coin is mirrored and cropped to its left half: UVs stay relative to the image.
         val visual =
           if(i == 3) SpriteVisual.Texture(texture, u0 = 0.5f, v0 = 0f, u1 = 0f, v1 = 1f)
@@ -58,7 +58,7 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
         val v = (tile / 2) * 0.5f
         TileQuad(tiles, column * tileSize, 0f, tileSize, tileSize, u, v, u + 0.5f, v + 0.5f)
       }.toVector
-      val map = context.createObject2D("tiles", Transform2D(Vec2(-6f * tileSize, 80f)))
+      val map = context.spawn2D("tiles", Transform2D(Vec2(-6f * tileSize, 80f)))
       map.attach(new Tilemap(_, quads, z = -1f))
     }
   }

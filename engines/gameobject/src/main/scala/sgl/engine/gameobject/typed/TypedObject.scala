@@ -20,12 +20,12 @@ import sgl.engine.gameobject.runtime.GameContext
   * }}}
   *
   * A component states what it needs through the type of its constructor
-  * parameter and reads it with `get`, which cannot fail:
+  * parameter and reads it with `get`, which the type guarantees to succeed:
   *
   * A component with no such need takes a `TypedObject[Any]`.
   *
   * {{{
-  * final class Bullet(obj: TypedObject[Collider]) extends TypedComponent(obj) {
+  * final class Bullet(obj: TypedObject[Collider]) extends ComponentOf(obj) {
   *   val collider: Collider = obj.get[Collider]
   * }
   * }}}
@@ -58,7 +58,12 @@ final class TypedObject[+Has] private (val gameObject: GameObject) {
     new TypedObject[Has & C](gameObject)
   }
 
-  /** The component of type `C`, which the type of this object guarantees. */
+  /** The component of class `C`, which the type of this object guarantees.
+    *
+    * `C` is the component's own class, as it was attached. The compiler also
+    * accepts a supertype of it, such as `Component` itself; nothing is stored
+    * under a supertype, so that lookup is rejected at runtime.
+    */
   def get[C <: Component](using present: TypedObject.Present[Has, C], tag: ClassTag[C]): C =
     gameObject.require[C]
 
@@ -96,18 +101,18 @@ object TypedObject {
   * it (`player.obj.get[Velocity]`). Layers add shortcuts on top, such as
   * `spatial` for any component whose object has one.
   */
-trait TypedComponent[+Has](val obj: TypedObject[Has]) extends Component {
+trait ComponentOf[+Has](val obj: TypedObject[Has]) extends Component {
   final def owner: GameObject = obj.gameObject
 }
 
 extension (world: World) {
   /** Creates an object to compose as a chain of `attach`. */
-  def typedObject(name: String)(using scope: Scope): TypedObject[Any] =
+  def spawn(name: String)(using scope: Scope): TypedObject[Any] =
     TypedObject(world.createObject(name))
 }
 
 extension (context: GameContext) {
   /** Creates an object in the scope of the context, to compose as a chain of `attach`. */
-  def typedObject(name: String): TypedObject[Any] =
+  def spawn(name: String): TypedObject[Any] =
     TypedObject(context.createObject(name))
 }

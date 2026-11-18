@@ -21,7 +21,7 @@ object TiledGameObject {
   def addImageLayer(world: World, name: String, layer: ImageLayer, texture: Texture2D, z: Float = 0f)(using Scope): GameObject = {
     val width = if(layer.width > 0) layer.width.toFloat else 1f
     val height = if(layer.height > 0) layer.height.toFloat else 1f
-    val obj = world.createObject2D(name, Transform2D(Vec2(layer.offsetX.toFloat + width / 2f, layer.offsetY.toFloat + height / 2f), 0f, Vec2(1f, 1f)))
+    val obj = world.spawn2D(name, Transform2D(Vec2(layer.offsetX.toFloat + width / 2f, layer.offsetY.toFloat + height / 2f), 0f, Vec2(1f, 1f)))
     obj.attach(new SpriteRenderer(_, SpriteVisual.Texture(texture), width, height, z))
     obj.gameObject
   }
@@ -49,7 +49,7 @@ object TiledGameObject {
       }
     }
 
-    val obj = world.createObject2D(name, Transform2D(Vec2(layer.offsetX.toFloat, layer.offsetY.toFloat), 0f, Vec2(1f, 1f)))
+    val obj = world.spawn2D(name, Transform2D(Vec2(layer.offsetX.toFloat, layer.offsetY.toFloat), 0f, Vec2(1f, 1f)))
     obj.attach(new Tilemap(_, quads, z))
     obj.gameObject
   }

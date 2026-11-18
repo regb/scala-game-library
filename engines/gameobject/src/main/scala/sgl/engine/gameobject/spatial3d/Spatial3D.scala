@@ -3,7 +3,7 @@ package sgl.engine.gameobject.spatial3d
 import sgl.engine.gameobject.{Component, GameObject, Scope, World}
 import sgl.engine.gameobject.hierarchy.Hierarchy
 import sgl.engine.gameobject.runtime.GameContext
-import sgl.engine.gameobject.typed.{TypedComponent, TypedObject}
+import sgl.engine.gameobject.typed.{ComponentOf, TypedObject}
 import sgl.math.{Mat4, Quaternion, Vec3}
 
 // The 3D spatial layer, written against the public API of the core package.
@@ -50,7 +50,7 @@ object Spatial3D {
   }
 
   // The same reads for a component built from such an object.
-  extension [Has <: Spatial3D](component: TypedComponent[Has]) {
+  extension [Has <: Spatial3D](component: ComponentOf[Has]) {
     def spatial: Spatial3D = component.obj.spatial
     def local: Transform3D = component.obj.spatial.local
     def globalMatrix: Mat4 = component.obj.spatial.globalMatrix
@@ -64,16 +64,16 @@ object Spatial3D {
 type GameObject3D = TypedObject[Spatial3D]
 
 extension (world: World) {
-  def createObject3D(name: String, transform: Transform3D = Transform3D.Identity)(using scope: Scope): GameObject3D =
+  def spawn3D(name: String, transform: Transform3D = Transform3D.Identity)(using scope: Scope): GameObject3D =
     TypedObject(world.createObject(name)).attachPlain(new Spatial3D(_, transform))
 }
 
 // Creation helpers bound to the scope of a GameContext. Only one overload of a
 // name may declare default arguments, hence the explicit pair.
 extension (context: GameContext) {
-  def createObject3D(name: String): GameObject3D =
-    context.world.createObject3D(name)(using context.scope)
+  def spawn3D(name: String): GameObject3D =
+    context.world.spawn3D(name)(using context.scope)
 
-  def createObject3D(name: String, transform: Transform3D): GameObject3D =
-    context.world.createObject3D(name, transform)(using context.scope)
+  def spawn3D(name: String, transform: Transform3D): GameObject3D =
+    context.world.spawn3D(name, transform)(using context.scope)
 }

@@ -1,6 +1,6 @@
 package sgl.engine.gameobject.capability
 
-import sgl.engine.gameobject.{CapabilityKey, Component, ContextDependent, Scope}
+import sgl.engine.gameobject.{CapabilityKey, Component, Globals, RequiresGlobals, Scope}
 import sgl.engine.gameobject.runtime.{GameBuilder, GameContext, GameModule}
 import sgl.engine.gameobject.schedule.{Stage, System, SystemId}
 
@@ -13,11 +13,11 @@ import sgl.engine.gameobject.schedule.{Stage, System, SystemId}
   * Attaching such a component requires [[UpdateCapabilitiesModule]], without
   * which `update` would never be called.
   */
-trait Updatable extends ContextDependent {
+trait Updatable extends RequiresGlobals {
   def update(context: GameContext)(using Scope): Unit
 
-  override def contextRequirements: Vector[Class[?]] =
-    super.contextRequirements :+ ContextDependent.on[UpdateCapabilitiesModule.type]
+  override def requiredGlobals: Vector[Class[?]] =
+    super.requiredGlobals :+ Globals.keyOf[UpdateCapabilitiesModule.type]
 }
 
 object Updatable {
@@ -35,11 +35,11 @@ object UpdateComponentsSystem extends System {
 }
 
 /** Fixed-step counterpart of [[Updatable]], with the same module requirement. */
-trait FixedUpdatable extends ContextDependent {
+trait FixedUpdatable extends RequiresGlobals {
   def fixedUpdate(context: GameContext)(using Scope): Unit
 
-  override def contextRequirements: Vector[Class[?]] =
-    super.contextRequirements :+ ContextDependent.on[UpdateCapabilitiesModule.type]
+  override def requiredGlobals: Vector[Class[?]] =
+    super.requiredGlobals :+ Globals.keyOf[UpdateCapabilitiesModule.type]
 }
 
 object FixedUpdatable {
@@ -57,13 +57,13 @@ object FixedUpdateComponentsSystem extends System {
 }
 
 /** Drives [[Updatable]] and [[FixedUpdatable]] components. The module publishes
-  * itself in the world context, which is what those capabilities require.
+  * itself among the world's globals, which is what those capabilities require.
   */
 object UpdateCapabilitiesModule extends GameModule {
 
   override def install(builder: GameBuilder): Unit = {
     builder
-      .setContext[UpdateCapabilitiesModule.type](this)
+      .setGlobal[UpdateCapabilitiesModule.type](this)
       .addSystem(Stage.Update, UpdateComponentsSystem)
       .addSystem(Stage.FixedUpdate, FixedUpdateComponentsSystem)
   }

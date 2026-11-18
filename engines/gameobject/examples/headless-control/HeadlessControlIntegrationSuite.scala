@@ -190,13 +190,13 @@ trait HardCodedMovementGame extends OpenGLGameObjectApp {
   override def configure(builder: GameBuilder): Unit = {
     builder
       .install(UpdateCapabilitiesModule)
-      .setContext(ClearColor(0f, 0f, 0f, 1f))
-      .setContext(FixedDeltaTime(1.0 / 60.0))
+      .setGlobal(ClearColor(0f, 0f, 0f, 1f))
+      .setGlobal(FixedDeltaTime(1.0 / 60.0))
       .setInitialScene(HardCodedMovementScene)
   }
 }
 
-final class MoveRight(obj: GameObject2D) extends TypedComponent(obj) with Updatable {
+final class MoveRight(obj: GameObject2D) extends ComponentOf(obj) with Updatable {
   private val spatial = obj.spatial
 
   override def update(context: GameContext)(using Scope): Unit = {
@@ -208,8 +208,8 @@ final class MoveRight(obj: GameObject2D) extends TypedComponent(obj) with Updata
 
 object HardCodedMovementScene extends Scene {
   override def load(context: GameContext)(using Scope): Unit = {
-    context.createObject2D("Camera").attach(new Camera2D(_, Vec2(64f, 64f)))
-    context.createObject2D("Triangle", Transform2D(position = Vec2(-16f, 0f)))
+    context.spawn2D("Camera").attach(new Camera2D(_, Vec2(64f, 64f)))
+    context.spawn2D("Triangle", Transform2D(position = Vec2(-16f, 0f)))
       .attach(new MoveRight(_))
       .attach(new SpriteRenderer(_, SpriteVisual.Triangle((0.2f, 0.8f, 1f, 1f)), 10f, 10f))
   }

@@ -138,7 +138,7 @@ class OpenGLRendererSuite extends AnyFunSuite {
   private val standalone = AssetFactory.drawable(Vector("mdpi" -> "drawable-mdpi/hero.png"))
 
   private def sprite(world: World, texture: Texture2D, z: Float, visual: Texture2D => SpriteVisual = SpriteVisual.Texture(_)): Unit = {
-    val obj = world.createObject2D("sprite-" + z)(using world.globalScope)
+    val obj = world.spawn2D("sprite-" + z)(using world.globalScope)
     obj.attach(new SpriteRenderer(_, visual(texture), 10f, 10f, z))
   }
 
@@ -237,7 +237,7 @@ class OpenGLRendererSuite extends AnyFunSuite {
     import world.given
     val coinTexture = loadedAfter(app, renderer.loadDrawableTexture(coin))
     val gemTexture = renderer.loadDrawableTexture(gem)
-    val obj = world.createObject2D("map")
+    val obj = world.spawn2D("map")
     obj.attach(new Tilemap(_, Vector(
       TileQuad(coinTexture, 0f, 0f, 8f, 8f, 0f, 0f, 0.5f, 0.5f, alpha = 0.25f),
       TileQuad(loaded(gemTexture), 0f, 0f, 8f, 8f, 0f, 0f, 1f, 1f, alpha = 0.5f),
@@ -263,7 +263,7 @@ class OpenGLRendererSuite extends AnyFunSuite {
     app.uploads.foreach(_.complete())
     val coinTexture = loaded(coinLoader)
     val heroTexture = loaded(heroLoader)
-    world.createObject2D("map").attach(new Tilemap(_, Vector(
+    world.spawn2D("map").attach(new Tilemap(_, Vector(
       TileQuad(coinTexture, 0f, 0f, 8f, 8f, 0f, 0f, 1f, 1f, alpha = 0.25f),
       TileQuad(heroTexture, 0f, 0f, 8f, 8f, 0f, 0f, 1f, 1f, alpha = 0.5f),
       TileQuad(coinTexture, 0f, 0f, 8f, 8f, 0f, 0f, 1f, 1f, alpha = 0.75f)

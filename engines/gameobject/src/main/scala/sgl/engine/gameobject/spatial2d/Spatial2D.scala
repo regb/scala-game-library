@@ -3,7 +3,7 @@ package sgl.engine.gameobject.spatial2d
 import sgl.engine.gameobject.{Component, GameObject, Scope, World}
 import sgl.engine.gameobject.hierarchy.Hierarchy
 import sgl.engine.gameobject.runtime.GameContext
-import sgl.engine.gameobject.typed.{TypedComponent, TypedObject}
+import sgl.engine.gameobject.typed.{ComponentOf, TypedObject}
 import sgl.math.Vec2
 
 // The 2D spatial layer. Everything here is written against the public API of
@@ -75,7 +75,7 @@ object Spatial2D {
   }
 
   // The same reads for a component built from such an object.
-  extension [Has <: Spatial2D](component: TypedComponent[Has]) {
+  extension [Has <: Spatial2D](component: ComponentOf[Has]) {
     def spatial: Spatial2D = component.obj.spatial
     def local: Transform2D = component.obj.spatial.local
     def global: Transform2D = component.obj.spatial.global
@@ -89,16 +89,16 @@ object Spatial2D {
 type GameObject2D = TypedObject[Spatial2D]
 
 extension (world: World) {
-  def createObject2D(name: String, transform: Transform2D = Transform2D.Identity)(using scope: Scope): GameObject2D =
+  def spawn2D(name: String, transform: Transform2D = Transform2D.Identity)(using scope: Scope): GameObject2D =
     TypedObject(world.createObject(name)).attachPlain(new Spatial2D(_, transform))
 }
 
 // Creation helpers bound to the scope of a GameContext. Only one overload of a
 // name may declare default arguments, hence the explicit pair.
 extension (context: GameContext) {
-  def createObject2D(name: String): GameObject2D =
-    context.world.createObject2D(name)(using context.scope)
+  def spawn2D(name: String): GameObject2D =
+    context.world.spawn2D(name)(using context.scope)
 
-  def createObject2D(name: String, transform: Transform2D): GameObject2D =
-    context.world.createObject2D(name, transform)(using context.scope)
+  def spawn2D(name: String, transform: Transform2D): GameObject2D =
+    context.world.spawn2D(name, transform)(using context.scope)
 }
