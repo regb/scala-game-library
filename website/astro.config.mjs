@@ -1,5 +1,6 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import starlightLlmsTxt from 'starlight-llms-txt';
 
 const repo = 'https://github.com/regb/scala-game-library';
 
@@ -26,6 +27,49 @@ export default defineConfig({
         },
       ],
       customCss: ['./src/styles/custom.css'],
+      // /llms.txt, /llms-full.txt, /llms-small.txt, and /_llms-txt/<set>.txt for coding agents.
+      plugins: [
+        starlightLlmsTxt({
+          projectName: 'SGL (Scala Game Library)',
+          description:
+            'SGL is a code-first, type-safe game framework in Scala 3. One game core builds with Bazel for desktop JVM, the web (Scala.js), native binaries (Scala Native), and Android.',
+          details: [
+            'SGL is pre-release (before 0.1) and its API changes often. When the docs and the code disagree, the code wins: read the SGL source and its examples (`examples/`, `engines/*/examples/`) at the commit your project pins.',
+            '',
+            'Rules that matter when writing SGL code:',
+            '- A game is a trait that names the providers it needs in its self-type; each backend rule generates an entry point that mixes in the implementations.',
+            '- Load assets in `create()` or a `lazy val`, never in a plain `val`: the generated assets provider is mixed in after the game trait.',
+            '- In the GameObject engine, the components an object has are part of its type. A compile error such as "This object is not known to have a Collider" means a component is attached in the wrong order or missing; fix the composition instead of casting.',
+            '- Build and run with Bazel: `bazel build //...`, `bazel test //...`, and `bazel run` on an application target (for example `:desktop-lwjgl` or `:html5`, which serves on http://localhost:8080).',
+            '- To check rendering without a display, use the headless OpenGL backend and frame capture (see the Testing and headless page).',
+          ].join('\n'),
+          promote: ['docs/index', 'docs/installation', 'docs/getting-started', 'docs/core-concepts'],
+          demote: ['index', 'showcase', 'community', 'docs/migration'],
+          exclude: ['index', 'showcase', 'community', 'docs/migration', 'docs/live-configuration'],
+          customSets: [
+            {
+              label: 'GameObject engine',
+              description: 'Objects, components, systems, scenes, and compile-time checked composition.',
+              paths: ['docs/engines', 'docs/gameobject', 'docs/core-concepts'],
+            },
+            {
+              label: 'Core APIs',
+              description: 'Application lifecycle, Canvas and OpenGL graphics, input, audio, and typed assets.',
+              paths: ['docs/core-concepts', 'docs/graphics', 'docs/input', 'docs/audio', 'docs/assets'],
+            },
+            {
+              label: 'Build and platforms',
+              description: 'Bazel rules, backends, Android, and testing on the headless backend.',
+              paths: ['docs/installation', 'docs/bazel-rules', 'docs/platforms', 'docs/android', 'docs/testing'],
+            },
+          ],
+          optionalLinks: [
+            { label: 'Source code', url: 'https://github.com/regb/scala-game-library', description: 'The SGL repository, including runnable examples' },
+            { label: 'Examples', url: 'https://github.com/regb/scala-game-library/tree/master/examples', description: 'Core API examples, each with desktop, web, and native targets' },
+            { label: 'GameObject examples', url: 'https://github.com/regb/scala-game-library/tree/master/engines/gameobject/examples', description: 'Asteroids, Solar System, and a headless-control test' },
+          ],
+        }),
+      ],
       components: {
         Hero: './src/components/Hero.astro',
         Header: './src/components/Header.astro',

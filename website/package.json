@@ -16,7 +16,7 @@
     "@astrojs/mdx": "latest",
     "@astrojs/starlight": "latest",
     "astro": "latest",
+    "starlight-llms-txt": "0.12.0",
     "typescript": "^5.9.3"
-  },
-  "devDependencies": {}
+  }
 }

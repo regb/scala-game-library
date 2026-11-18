@@ -22,6 +22,7 @@ export const footerColumns = [
       { label: 'Bazel rules', href: '/docs/bazel-rules/' },
       { label: 'API sources', href: '/docs/api/' },
       { label: 'Migration notes', href: '/docs/migration/' },
+      { label: 'llms.txt', href: '/llms.txt' },
     ],
   },
   {
