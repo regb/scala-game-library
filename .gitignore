@@ -18,3 +18,6 @@ project/metals.sbt
 website/node_modules
 website/dist
 website/.astro
+
+# Local cache written by the Cloudflare CLI (account id and name)
+/.cloudflare/
