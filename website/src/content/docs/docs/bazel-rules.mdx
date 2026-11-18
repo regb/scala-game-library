@@ -1,0 +1,152 @@
+---
+title: Bazel rules
+description: Reference for the SGL core library, asset, and backend application rules.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+All rules are Starlark macros. In your own module, load them from `@sgl`. Inside the SGL
+repository, use `//`.
+
+```python
+load("@sgl//bazel/sgl:defs.bzl",
+     "sgl_core_library", "sgl_desktop_awt_app", "sgl_desktop_lwjgl_app",
+     "sgl_desktop_native_app", "sgl_html5_app", "sgl_html5_opengl_app", "sgl_android_app")
+load("@sgl//bazel/sgl:assets.bzl",
+     "sgl_drawable_assets", "sgl_raw_image_assets", "sgl_text_assets", "sgl_binary_assets",
+     "sgl_audio_assets", "sgl_font_assets", "sgl_texture_atlas")
+load("@sgl//bazel/tiled:defs.bzl", "sgl_tiled_import")
+```
+
+## sgl_core_library
+
+Compiles the platform-independent game, and generates the typed `Assets` object when `assets` is
+set.
+
+| Attribute | Default | Description |
+| --- | --- | --- |
+| `srcs` | required | Scala sources of the game core |
+| `assets` | `[]` | Asset targets (asset rules, `sgl_texture_atlas`, `sgl_tiled_import`) |
+| `package` | the Bazel package path | Scala package of the generated `AssetsProvider` and `GeneratedAssetsProvider` |
+| `deps` | `[]` | Extra dependencies, such as `@sgl//engines:sgl-gameobject` |
+| `include_default_modules` | `False` | Adds scene2d and particles |
+| `use_extension_tiled` | `False` | Adds the Tiled extension |
+
+Assets must be under the package's `assets/` directory.
+
+## Application rules
+
+Every application rule takes the same core attributes:
+
+| Attribute | Description |
+| --- | --- |
+| `deps` | Usually `[":core"]` |
+| `package` | Package prefix of the generated entry point, for example `my.game` |
+| `main_class` | Name of the generated object |
+| `core_abstract_class` | Fully qualified game trait, for example `my.game.core.AbstractApp` |
+| `extra_mixins` | Traits mixed in after the game, such as `my.game.core.GeneratedAssetsProvider` and `_root_.sgl.OpenGLCanvasProvider` |
+
+<Aside type="caution">
+Always add `GeneratedAssetsProvider` to `extra_mixins` when the core declares assets. Without it,
+`Assets` is never implemented, and the generated entry point does not compile.
+</Aside>
+
+### sgl_desktop_awt_app
+
+JVM, AWT Canvas, JavaSound. `bazel run` opens a window.
+
+| Attribute | Default | Description |
+| --- | --- | --- |
+| `frame_width`, `frame_height` | `800`, `800` | Window size |
+| `use_screen2d` | `True` | Mixes in `Screen2DGameApp` |
+| `file_save` | `""` | Save file path. Saves are kept in memory when it is empty. |
+| `save_component` | `""` | A `SaveComponent` to mix in instead, such as `NoSaveComponent` |
+| `simulated_safe_area_insets` | `[]` | `[left, top, right, bottom]` insets to test safe-area layouts |
+| `runtime_jdk` | remote JDK 17 | Java runtime used by `bazel run` |
+| `use_extension_tiled` | `False` | Mixes in the Tiled providers |
+
+### sgl_desktop_lwjgl_app
+
+JVM, GLFW, OpenGL 3.3, OpenAL.
+
+| Attribute | Default | Description |
+| --- | --- | --- |
+| `frame_width`, `frame_height` | `800`, `600` | Window size |
+| `window_title` | `"SGL LWJGL App"` | Window title |
+| `target_fps` | `60` | Frame rate cap |
+| `data` | `[]` | Asset targets available at runtime |
+| `file_save` | `""` | Save file path. Saves are kept in memory when it is empty. |
+
+### sgl_html5_app
+
+Scala.js with the 2D canvas. `bazel run` serves the game on `http://localhost:8080`.
+
+| Attribute | Default | Description |
+| --- | --- | --- |
+| `assets`, `assets_strip_prefix` | `[]`, `""` | Asset targets to copy, and the prefix to strip from their paths |
+| `canvas_width`, `canvas_height` | `800`, `600` | Canvas size |
+| `fullscreen` | `False` | Fill the page |
+| `use_provided_canvas` | `False` | Keep the canvas layout of the host page |
+| `use_screen2d` | `True` | Mixes in `Screen2DGameApp` |
+| `pack_assets` | `False` | Bundle all assets into one binary pack |
+| `save_component` | `"LocalStorageSaveComponent"` | Save implementation |
+| `keyboard_capture` | `"global"` | `"global"` or `"canvas_focused"` |
+| `*_prevent_default`, `touch_stop_propagation` | `True` | Browser default handling for keyboard, mouse, wheel, and touch events |
+| `static_folder`, `output_name`, `html_output_name` | `"static"`, `"index.js"`, `"index.html"` | Output layout |
+
+### sgl_html5_opengl_app
+
+Scala.js with WebGL 2. It takes the same attributes as `sgl_html5_app`, without `use_screen2d`,
+`pack_assets`, `fullscreen`, `use_provided_canvas`, and `save_component`. It adds:
+
+| Attribute | Default | Description |
+| --- | --- | --- |
+| `export_name` | required | JavaScript name under which the game is exported |
+| `target_fps` | `0` | Frame rate cap. `0` follows `requestAnimationFrame`. |
+
+### sgl_desktop_native_app
+
+Scala Native with SDL2.
+
+| Attribute | Default | Description |
+| --- | --- | --- |
+| `backend_app` | `"NativeApp"` | `"NativeOpenGLApp"` for OpenGL and GameObject games |
+| `assets`, `assets_strip_prefix` | `[]`, `""` | Asset targets copied next to the executable |
+| `frame_width`, `frame_height` | `800`, `800` | Window size |
+| `target_fps` | `60` | Frame rate cap |
+| `linkopts` | `["-lSDL2", "-lSDL2_image", "-lGL"]` | OpenGL apps link `-lGLESv2` instead of `-lGL` |
+| `use_screen2d` | `True` | Mixes in `Screen2DGameApp` |
+| `screen_force_ppi` | `0` | Override the detected pixel density |
+
+### sgl_android_app
+
+Generates a Gradle project and creates the runnable targets `-debug`, `-release`, `-bundle`,
+`-install`, `-run`, and `-publish-internal`. See [Android](/docs/android/).
+
+| Attribute | Default | Description |
+| --- | --- | --- |
+| `package`, `label` | required | Android application ID and app name |
+| `core` | `":core"` | The `sgl_core_library` |
+| `assets` | `[]` | Asset targets |
+| `wiring_expression` | `""` | Scala expression that creates the game from `platformProxy` |
+| `version_code`, `version_name` | `1`, `"1.0"` | App version |
+| `system_bars_mode` | `"immersive"` | `"immersive"`, `"safe-area"`, or `"edge-to-edge"` |
+| `shrink_resources` | `True` | Resource shrinking in release builds |
+| `keep_screen_on` | `True` | Keep the screen on while playing |
+| `launcher_icon` | `""` | Launcher icon |
+| `play_games_project_id`, `admob_*`, `google_services_json`, `firebase_*` | | Optional Play Games, AdMob, and Firebase integrations |
+
+## Asset rules
+
+| Rule | Generated handle | Loaded with |
+| --- | --- | --- |
+| `sgl_drawable_assets` | `Assets.drawable.*` | `Graphics.loadImage`, `OpenGL.loadTexture2D`, `engine.loadDrawableTexture` |
+| `sgl_raw_image_assets` | `Assets.rawImage.*` | `OpenGL.loadTexture2D`, `renderer.loadTexture2D` |
+| `sgl_text_assets` | `Assets.text.*` | `System.loadText` |
+| `sgl_binary_assets` | `Assets.binary.*` | `System.loadBinary` |
+| `sgl_audio_assets` | `Assets.audio.*` | `Audio.loadSound`, `Audio.loadMusic` |
+| `sgl_font_assets` | `Assets.font.*` | `Graphics.Font.load` |
+| `sgl_texture_atlas` | the wrapped drawables | Packed into atlas pages for the GameObject renderer |
+| `sgl_tiled_import` | text maps and drawables | Tiled projects with rewritten image references |
+
+See [Assets](/docs/assets/) for density handling, atlases, and Tiled import.

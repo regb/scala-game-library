@@ -18,6 +18,8 @@ project/metals.sbt
 website/node_modules
 website/dist
 website/.astro
+# Docs pages whose names match common global ignores such as bazel-*
+!website/src/content/docs/docs/bazel-rules.mdx
 
 # Local cache written by the Cloudflare CLI (account id and name)
 /.cloudflare/
