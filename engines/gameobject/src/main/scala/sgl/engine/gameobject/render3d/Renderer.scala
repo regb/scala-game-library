@@ -1,18 +1,21 @@
 package sgl.engine.gameobject.render3d
 
 import sgl.assets.{DrawableAsset, RawImageAsset}
-import sgl.engine.gameobject.World
-import sgl.engine.gameobject.render2d.Render2D
+import sgl.engine.gameobject.{Scope, World}
+import sgl.engine.gameobject.render2d.{Render2D, Texture2D}
 import sgl.engine.gameobject.spatial3d.{GameObject3D, Spatial3D}
 import sgl.engine.gameobject.typed.ComponentOf
 import sgl.math.Mat4
 
-trait Asset
-trait TextureAsset extends Asset
-trait MeshAsset extends Asset
-trait MaterialAsset extends Asset
+/** A mesh uploaded to the renderer. */
+final class Mesh private[gameobject] (private[gameobject] val id: Int) {
+  override def toString: String = s"Mesh($id)"
+}
 
-final case class AssetId[+A <: Asset](id: Int) extends AnyVal
+/** How a mesh is shaded: a texture and how much it glows by itself. */
+final class Material private[gameobject] (private[gameobject] val id: Int) {
+  override def toString: String = s"Material($id)"
+}
 
 /** Interleaved position/normal/UV vertices with unsigned-short triangle indices. */
 final case class MeshData(vertices: Array[Float], indices: Array[Short])
@@ -44,25 +47,36 @@ final class Camera3D(
 
 final class MeshRenderer(
     obj: GameObject3D,
-    var mesh: AssetId[MeshAsset],
-    var material: AssetId[MaterialAsset]
+    var mesh: Mesh,
+    var material: Material
 ) extends ComponentOf(obj) with Rendered3D {
   val spatial: Spatial3D = obj.spatial
 }
 
 
+/** Uploads what is drawn and draws the frame.
+  *
+  * Meshes, textures and materials belong to the scope they are created in and
+  * are released when it is destroyed: what a scene loads goes away with the
+  * scene, with nothing to keep track of. A `release` method frees one earlier.
+  */
 trait Renderer {
-  type Texture <: TextureAsset
-  type Mesh <: MeshAsset
-  type Material <: MaterialAsset
+  def createMesh(data: MeshData)(using Scope): Mesh
 
-  def createMesh(data: MeshData): AssetId[Mesh]
-  def loadTexture2D(asset: DrawableAsset): AssetId[Texture]
-  def loadTexture2D(asset: RawImageAsset): AssetId[Texture]
-  def createMaterial(texture: AssetId[Texture], emissive: Float): AssetId[Material]
-  def releaseMesh(mesh: AssetId[Mesh]): Unit
-  def releaseTexture(texture: AssetId[Texture]): Unit
-  def releaseMaterial(material: AssetId[Material]): Unit
+  /** Uploads an image of its own, available as soon as it has loaded. Sprites
+    * that share an atlas page are loaded through the engine instead.
+    */
+  def loadTexture2D(asset: DrawableAsset)(using Scope): Texture2D
+  def loadTexture2D(asset: RawImageAsset)(using Scope): Texture2D
+
+  /** A material needs an image of its own: a texture that is a region of an
+    * atlas page is rejected.
+    */
+  def createMaterial(texture: Texture2D, emissive: Float)(using Scope): Material
+
+  def releaseMesh(mesh: Mesh): Unit
+  def releaseTexture(texture: Texture2D): Unit
+  def releaseMaterial(material: Material): Unit
 
   def resize(width: Int, height: Int): Unit = {}
 

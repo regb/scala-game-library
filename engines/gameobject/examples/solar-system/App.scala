@@ -30,31 +30,21 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
 
   private final class SolarSystemScene extends Scene {
     private var loaded = false
-    private var releaseAssets = Vector.empty[() => Unit]
 
     override def load(context: GameContext)(using Scope): Unit = {
     loaded = true
     val renderer = context.engine.renderer
+    // Meshes, textures and materials belong to the scene's scope: they are
+    // released when the scene is unloaded.
     val sphere = renderer.createMesh(MeshPrimitives.sphere(32, 18))
-    releaseAssets :+= (() => renderer.releaseMesh(sphere))
 
     val sunTexture = renderer.loadTexture2D(Assets.rawImage.sun)
     val earthTexture = renderer.loadTexture2D(Assets.rawImage.earth)
     val moonTexture = renderer.loadTexture2D(Assets.rawImage.moon)
-    releaseAssets ++= Vector(
-      () => renderer.releaseTexture(sunTexture),
-      () => renderer.releaseTexture(earthTexture),
-      () => renderer.releaseTexture(moonTexture),
-    )
 
     val sunMaterial = renderer.createMaterial(sunTexture, emissive = 1.15f)
     val earthMaterial = renderer.createMaterial(earthTexture, emissive = 0.0f)
     val moonMaterial = renderer.createMaterial(moonTexture, emissive = 0.0f)
-    releaseAssets ++= Vector(
-      () => renderer.releaseMaterial(sunMaterial),
-      () => renderer.releaseMaterial(earthMaterial),
-      () => renderer.releaseMaterial(moonMaterial),
-    )
 
     createBody(
       context,
@@ -131,8 +121,6 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
       loaded = false
       ambience.foreach(_.dispose())
       ambience = None
-      releaseAssets.reverse.foreach(_())
-      releaseAssets = Vector.empty
     }
   }
 
@@ -150,8 +138,8 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
   private def createBody(
       context: GameContext,
       name: String,
-      mesh: AssetId[MeshAsset],
-      material: AssetId[MaterialAsset],
+      mesh: Mesh,
+      material: Material,
       transform: Transform3D,
       rotationSpeed: Float
   ): RenderedBody = {

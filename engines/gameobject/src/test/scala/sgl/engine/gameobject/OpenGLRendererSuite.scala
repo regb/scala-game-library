@@ -112,7 +112,13 @@ class OpenGLRendererSuite extends AnyFunSuite {
       override def texParameteri(target: Int, parameter: Int, value: Int): Unit = ()
       override def createTextureImage2D(width: Int, height: Int, rgba: Array[Byte]): TextureImage = fail("Renderer should load physical images")
       override def loadTextureImage2D(asset: DrawableAsset): Loader[TextureImage] = fail("Renderer should load physical images")
-      override def loadTextureImage2D(asset: sgl.assets.RawImageAsset): Loader[TextureImage] = fail("Renderer should load physical images")
+      // An image uploaded on its own, as the renderer does for a scope.
+      override def loadTextureImage2D(asset: sgl.assets.RawImageAsset): Loader[TextureImage] = {
+        val loader = new DefaultLoader[Int]
+        nextTexture += 1
+        uploads += Upload(asset.resourceName, TextureFilter.Nearest, mipmaps = true, loader, nextTexture)
+        loader.loader.map(new TextureImage(_, 1, 1))
+      }
       override private[sgl] def loadTexture2DResource(resourceName: String, filter: TextureFilter, generateMipmaps: Boolean): Loader[TextureImage] = {
         val loader = new DefaultLoader[Int]
         nextTexture += 1
@@ -192,6 +198,54 @@ class OpenGLRendererSuite extends AnyFunSuite {
     val renderer = new OpenGLRenderer(app)
     renderer.loadDrawableTexture(coin)
     assert(app.uploads.map(u => (u.resourceName, u.mipmaps)) == Seq(("drawable-mdpi/coin.png", true)))
+  }
+
+  test("what a scope loads is released with the scope, and usable by sprites and materials until then") {
+    val app = new FakeGLApp
+    val renderer = new OpenGLRenderer(app)
+    val world = renderWorld()
+    val scene = world.createScope("scene")
+
+    val texture = renderer.loadTexture2D(AssetFactory.rawImage("images/wood.png"))(using scene)
+    val mesh = renderer.createMesh(sgl.engine.gameobject.render3d.MeshData(Array.empty[Float], Array.empty[Short]))(using scene)
+    val material = renderer.createMaterial(texture, emissive = 0f)(using scene)
+    assert(mesh.toString == "Mesh(0)" && material.toString == "Material(0)")
+    app.uploads.head.complete()
+    val uploaded = app.uploads.head.texture
+
+    world.spawn2D("sprite")(using scene).attach(new SpriteRenderer(_, SpriteVisual.Texture(texture), 10f, 10f))
+    drawFrame(renderer, world)
+    assert(app.draws.map(_._1) == Seq(uploaded))
+    assert(app.deleted.isEmpty)
+
+    world.destroyScope(scene)
+    assert(app.deleted.toSeq == Seq(uploaded))
+    // Releasing again, by hand, is harmless.
+    renderer.releaseTexture(texture)
+    renderer.releaseMesh(mesh)
+    renderer.releaseMaterial(material)
+    assert(app.deleted.toSeq == Seq(uploaded))
+
+    intercept[CompositionError] {
+      renderer.loadTexture2D(AssetFactory.rawImage("images/late.png"))(using scene)
+    }
+    assert(app.uploads.size == 1)
+  }
+
+  test("a material rejects a texture that is a region of an atlas page") {
+    val app = new FakeGLApp
+    val renderer = new OpenGLRenderer(app)
+    val world = renderWorld()
+    import world.given
+    val coinLoader = renderer.loadDrawableTexture(coin)
+    val heroLoader = renderer.loadDrawableTexture(standalone)
+    app.uploads.foreach(_.complete())
+
+    val error = intercept[CompositionError] {
+      renderer.createMaterial(loaded(coinLoader), emissive = 0f)
+    }
+    assert(error.getMessage.contains("atlas page"))
+    renderer.createMaterial(loaded(heroLoader), emissive = 0f)
   }
 
   test("submitted drawings are composed by z, then screen order, whatever order they arrive in") {

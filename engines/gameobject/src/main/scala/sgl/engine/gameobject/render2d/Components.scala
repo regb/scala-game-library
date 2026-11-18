@@ -8,8 +8,14 @@ sealed trait TextureSource
 object TextureSource {
   private[gameobject] final case class Drawable(asset: DrawableAsset) extends TextureSource
   private[gameobject] final case class RawImage(asset: RawImageAsset) extends TextureSource
+  // An image uploaded on its own for one scope, by index in the renderer.
+  private[gameobject] final case class Standalone(id: Int) extends TextureSource
 }
 
+/** A texture, for sprites, tiles and materials alike. It is a handle: what it
+  * draws depends on the renderer having loaded it, and nothing is drawn with a
+  * texture that was released.
+  */
 final class Texture2D private[gameobject] (private[gameobject] val source: TextureSource) {
   override def toString: String = "Texture2D(<opaque>)"
 }

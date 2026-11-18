@@ -8,7 +8,7 @@ import sgl.engine.gameobject.{Scope, World}
 import sgl.assets.{AssetRuntime, DrawableAsset, RawImageAsset}
 import sgl.engine.gameobject.render2d.{Render2D, Texture2D}
 import sgl.engine.gameobject.opengl.OpenGLEngine
-import sgl.engine.gameobject.render3d.{MaterialAsset, MeshAsset, Renderer, TextureAsset}
+import sgl.engine.gameobject.render3d.Renderer
 import sgl.engine.gameobject.schedule.{Schedule, Stage, System}
 import sgl.util.{Loader, LoggingProvider}
 
@@ -51,15 +51,7 @@ final class GameContext(
 
 /** Engine services exposed to systems. */
 trait Engine {
-  type Texture <: TextureAsset
-  type Mesh <: MeshAsset
-  type Material <: MaterialAsset
-
-  def renderer: Renderer {
-    type Texture = Engine.this.Texture
-    type Mesh = Engine.this.Mesh
-    type Material = Engine.this.Material
-  }
+  def renderer: Renderer
 
   def loadDrawableTexture(asset: DrawableAsset): Loader[Texture2D] = Loader.successful(Texture2D.loaded(asset))
   def loadRawImageTexture(asset: RawImageAsset): Loader[Texture2D] = Loader.successful(Texture2D.loaded(asset))

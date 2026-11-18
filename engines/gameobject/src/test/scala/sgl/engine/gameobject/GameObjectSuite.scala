@@ -4,7 +4,8 @@ import org.scalatest.funsuite.AnyFunSuite
 
 import sgl.assets.{DrawableAsset, RawImageAsset}
 import sgl.engine.gameobject.capability.{FixedUpdatable, Updatable, UpdateCapabilitiesModule}
-import sgl.engine.gameobject.render3d.{AssetId, MaterialAsset, MeshAsset, MeshData, Renderer, TextureAsset}
+import sgl.engine.gameobject.render2d.Texture2D
+import sgl.engine.gameobject.render3d.{Material, Mesh, MeshData, Renderer}
 import sgl.engine.gameobject.runtime.{Engine, GameBuilder, GameContext, Scene}
 import sgl.engine.gameobject.schedule.{Schedule, Stage, System}
 import sgl.engine.gameobject.spatial2d._
@@ -176,6 +177,29 @@ class GameObjectSuite extends AnyFunSuite {
     assert(world.objects === Vector(kept))
     assert(world.index[Marker].size === 0)
     assert(!scene.isActive && world.scopes === Vector(world.globalScope))
+  }
+
+  test("a scope runs its destroy actions after its objects, last registered first") {
+    val world = new World
+    val scene = world.createScope("scene")
+    val events = scala.collection.mutable.ArrayBuffer.empty[String]
+    world.createObject("object")(using scene).attach(new Counted(_, () => events += "object"))
+    scene.onDestroy(() => events += "mesh")
+    scene.onDestroy(() => throw new IllegalStateException("release failed"))
+    scene.onDestroy(() => events += "material")
+    world.globalScope.onDestroy(() => events += "global")
+
+    intercept[IllegalStateException] {
+      world.destroyScope(scene)
+    }
+    assert(events.toVector === Vector("object", "material", "mesh"))
+    assert(!scene.isActive)
+    intercept[CompositionError] {
+      scene.onDestroy(() => ())
+    }
+
+    world.dispose()
+    assert(events.toVector === Vector("object", "material", "mesh", "global"))
   }
 
   test("a scope whose objects recreate themselves when destroyed is reported") {
@@ -657,19 +681,15 @@ class GameObjectSuite extends AnyFunSuite {
   }
 
   private final class RecordingRenderer extends Renderer {
-    override type Texture = TextureAsset
-    override type Mesh = MeshAsset
-    override type Material = MaterialAsset
-
     var renderedObjectNames: Vector[Vector[String]] = Vector.empty
 
-    override def createMesh(data: MeshData): AssetId[Mesh] = AssetId[Mesh](0)
-    override def loadTexture2D(asset: DrawableAsset): AssetId[Texture] = AssetId[Texture](0)
-    override def loadTexture2D(asset: RawImageAsset): AssetId[Texture] = AssetId[Texture](0)
-    override def createMaterial(texture: AssetId[Texture], emissive: Float): AssetId[Material] = AssetId[Material](0)
-    override def releaseMesh(mesh: AssetId[Mesh]): Unit = ()
-    override def releaseTexture(texture: AssetId[Texture]): Unit = ()
-    override def releaseMaterial(material: AssetId[Material]): Unit = ()
+    override def createMesh(data: MeshData)(using Scope): Mesh = new Mesh(0)
+    override def loadTexture2D(asset: DrawableAsset)(using Scope): Texture2D = Texture2D.loaded(asset)
+    override def loadTexture2D(asset: RawImageAsset)(using Scope): Texture2D = Texture2D.loaded(asset)
+    override def createMaterial(texture: Texture2D, emissive: Float)(using Scope): Material = new Material(0)
+    override def releaseMesh(mesh: Mesh): Unit = ()
+    override def releaseTexture(texture: Texture2D): Unit = ()
+    override def releaseMaterial(material: Material): Unit = ()
     var frameEvents: Vector[String] = Vector.empty
 
     override def beginFrame(world: World): Unit = {
@@ -679,9 +699,5 @@ class GameObjectSuite extends AnyFunSuite {
     override def endFrame(world: World): Unit = frameEvents :+= "end"
   }
 
-  private final class TestEngine(override val renderer: RecordingRenderer) extends Engine {
-    override type Texture = TextureAsset
-    override type Mesh = MeshAsset
-    override type Material = MaterialAsset
-  }
+  private final class TestEngine(override val renderer: RecordingRenderer) extends Engine
 }

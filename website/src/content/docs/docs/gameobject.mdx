@@ -410,8 +410,9 @@ pages, and consecutive draws on the same page are batched.
 same extensions as in 2D, where `globalMatrix` replaces `global`.
 `render3d` has `Camera3D` and `MeshRenderer`. A camera is placed by its object's transform, like a
 mesh: it looks along its local -Z axis, and `Transform3D.lookAt(eye, target, up)` builds a
-transform that faces a point. Create meshes, textures, and
-materials through the renderer, and release them when the scene unloads:
+transform that faces a point. Create meshes, textures, and materials through the renderer. They
+belong to the scope they are created in, so what a scene loads is released when the scene is
+unloaded, with nothing to keep track of:
 
 ```scala
 val renderer = context.engine.renderer
@@ -424,5 +425,10 @@ val earth = context.spawn3D("Earth", Transform3D(position = Vec3(3.2f, 0f, 0f)))
   .attach(new MeshRenderer(_, sphere, earthMaterial))
 earth.setParent(sun)
 ```
+
+`renderer.loadTexture2D` returns a `Texture2D`, the same type sprites use, and uploads the image
+on its own. A material needs such an image: a texture that is a region of an atlas page is
+rejected. `releaseMesh`, `releaseTexture`, and `releaseMaterial` free one before its scope ends,
+and `scope.onDestroy(action)` registers anything else a scene needs to release.
 
 `//engines/gameobject/examples/solar-system` is a complete example.

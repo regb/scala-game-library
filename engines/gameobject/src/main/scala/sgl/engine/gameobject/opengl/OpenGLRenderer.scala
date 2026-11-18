@@ -4,7 +4,7 @@ import scala.collection.mutable
 import scala.util.{Failure, Success}
 
 import sgl.{OpenGLProvider, SystemProvider, WindowProvider}
-import sgl.engine.gameobject.World
+import sgl.engine.gameobject.{CompositionError, Scope, World}
 import sgl.engine.gameobject.runtime.ClearColor
 import sgl.engine.gameobject.spatial2d.Spatial2D
 import sgl.assets.{DrawableAsset, RawImageAsset, TextureFilter}
@@ -16,10 +16,6 @@ import sgl.util.Loader
 final class OpenGLRenderer(
     private val app: OpenGLProvider with SystemProvider with WindowProvider
 ) extends Renderer {
-  override type Texture = OpenGLTextureAsset
-  override type Mesh = OpenGLMeshAsset
-  override type Material = OpenGLMaterialAsset
-
   private val GL = app.OpenGL
 
   private type GLProgram = GL.Program
@@ -38,7 +34,7 @@ final class OpenGLRenderer(
   private final case class TextureFailed(cause: Throwable) extends TextureState
   private final case class TextureLoading(loader: Option[Loader[Texture2D]] = None) extends TextureState
   private case object TextureReleased extends TextureState
-  private final case class GLMaterial(texture: AssetId[Texture], emissive: Float)
+  private final case class GLMaterial(texture: Texture2D, emissive: Float)
 
   /** One uploaded image: a standalone drawable or raw image, or a texture-atlas page. */
   private final case class PageKey(resourceName: String, filter: TextureFilter, atlasPage: Boolean)
@@ -84,8 +80,16 @@ final class OpenGLRenderer(
 
   GL.enable(GL.DepthTest)
 
-  override def createMesh(data: MeshData): AssetId[Mesh] = {
+  // What is created in a scope is released with it.
+  private def owned[A](scope: Scope)(create: => A)(release: A => Unit): A = {
     ensureActive()
+    if(!scope.isActive) throw new CompositionError(s"Cannot create an asset in inactive scope ${scope.name}")
+    val asset = create
+    scope.onDestroy(() => release(asset))
+    asset
+  }
+
+  override def createMesh(data: MeshData)(using scope: Scope): Mesh = owned(scope) {
     val id = meshes.size
     meshes += MeshLoading
     app.runOnOpenGLThread {
@@ -94,8 +98,8 @@ final class OpenGLRenderer(
         catch { case t: Throwable => if(meshes(id) != MeshReleased) meshes(id) = MeshFailed(t) }
       }
     }
-    AssetId[Mesh](id)
-  }
+    new Mesh(id)
+  }(releaseMesh)
 
   private def uploadMesh(data: MeshData): MeshReady = {
     GL.useProgram(program)
@@ -128,11 +132,10 @@ final class OpenGLRenderer(
     MeshReady(vertexArray, vbo, ibo, data.indices.length)
   }
 
-  override def loadTexture2D(asset: DrawableAsset): AssetId[Texture] = load3DTexture(GL.loadTexture2D(asset))
-  override def loadTexture2D(asset: RawImageAsset): AssetId[Texture] = load3DTexture(GL.loadTexture2D(asset))
+  override def loadTexture2D(asset: DrawableAsset)(using Scope): Texture2D = loadStandalone(GL.loadTexture2D(asset))
+  override def loadTexture2D(asset: RawImageAsset)(using Scope): Texture2D = loadStandalone(GL.loadTexture2D(asset))
 
-  private def load3DTexture(loader: => Loader[GLTexture]): AssetId[Texture] = {
-    ensureActive()
+  private def loadStandalone(loader: => Loader[GLTexture])(using scope: Scope): Texture2D = owned(scope) {
     val id = textures.size
     textures += TextureLoading()
     loader.onLoad {
@@ -141,17 +144,25 @@ final class OpenGLRenderer(
         else textures(id) = TextureReady(texture)
       case Failure(cause) => if(textures(id) != TextureReleased) textures(id) = TextureFailed(cause)
     }
-    AssetId[Texture](id)
+    new Texture2D(TextureSource.Standalone(id))
+  }(releaseTexture)
+
+  override def createMaterial(texture: Texture2D, emissive: Float)(using scope: Scope): Material = {
+    val partOfPage = imageViews.get(texture.source).exists(view => view.uScale != 1f || view.vScale != 1f || view.uOffset != 0f || view.vOffset != 0f)
+    if(partOfPage) {
+      throw new CompositionError(
+        "A material needs an image of its own, and this texture is a region of an atlas page. " +
+          "Load the image with renderer.loadTexture2D instead"
+      )
+    }
+    owned(scope) {
+      val id = materials.size
+      materials += Some(GLMaterial(texture, emissive))
+      new Material(id)
+    }(releaseMaterial)
   }
 
-  override def createMaterial(texture: AssetId[Texture], emissive: Float): AssetId[Material] = {
-    ensureActive()
-    val id = materials.size
-    materials += Some(GLMaterial(texture, emissive))
-    AssetId[Material](id)
-  }
-
-  override def releaseMesh(mesh: AssetId[Mesh]): Unit = {
+  override def releaseMesh(mesh: Mesh): Unit = {
     if(mesh.id < 0 || mesh.id >= meshes.size) return
     meshes(mesh.id) match {
       case ready: MeshReady =>
@@ -163,16 +174,19 @@ final class OpenGLRenderer(
     meshes(mesh.id) = MeshReleased
   }
 
-  override def releaseTexture(texture: AssetId[Texture]): Unit = {
-    if(texture.id < 0 || texture.id >= textures.size) return
-    textures(texture.id) match {
-      case TextureReady(handle) => GL.deleteTexture(handle)
-      case _ => ()
-    }
-    textures(texture.id) = TextureReleased
+  // Only an image uploaded on its own is released; atlas pages are shared by
+  // every texture cut from them and stay for the life of the renderer.
+  override def releaseTexture(texture: Texture2D): Unit = texture.source match {
+    case TextureSource.Standalone(id) if id >= 0 && id < textures.size =>
+      textures(id) match {
+        case TextureReady(handle) => GL.deleteTexture(handle)
+        case _ => ()
+      }
+      textures(id) = TextureReleased
+    case _ => ()
   }
 
-  override def releaseMaterial(material: AssetId[Material]): Unit = {
+  override def releaseMaterial(material: Material): Unit = {
     if(material.id >= 0 && material.id < materials.size) materials(material.id) = None
   }
 
@@ -354,6 +368,7 @@ final class OpenGLRenderer(
     * hold it, in which case the standalone image is loaded instead.
     */
   private def resolveView(source: TextureSource): ImageView = source match {
+    case TextureSource.Standalone(_) => wholeImage
     case TextureSource.RawImage(asset) =>
       ImageView(PageKey(asset.resourceName, TextureFilter.Nearest, atlasPage = false), 0f, 0f, 1f, 1f)
     case TextureSource.Drawable(asset) =>
@@ -390,7 +405,20 @@ final class OpenGLRenderer(
       loader
   }
 
-  private def textureForSource(source: TextureSource): Option[ResolvedTexture] =
+  private val wholeImage = ImageView(PageKey("", TextureFilter.Nearest, atlasPage = false), 0f, 0f, 1f, 1f)
+
+  private def textureForSource(source: TextureSource): Option[ResolvedTexture] = source match {
+    case TextureSource.Standalone(id) =>
+      if(id < 0 || id >= textures.size) None
+      else textures(id) match {
+        case TextureReady(texture) => Some(ResolvedTexture(texture, wholeImage))
+        case TextureFailed(cause) => throw cause
+        case _ => None
+      }
+    case _ => pageTextureForSource(source)
+  }
+
+  private def pageTextureForSource(source: TextureSource): Option[ResolvedTexture] =
     imageViews.get(source).flatMap { view =>
       pages.get(view.page) match {
         case Some(PageReady(texture)) => Some(ResolvedTexture(texture, view))
@@ -452,20 +480,21 @@ final class OpenGLRenderer(
 
     if(materials(meshRenderer.material.id).isEmpty) return
     val material = materials(meshRenderer.material.id).get
-    if(material.texture.id < 0 || material.texture.id >= textures.size) return
 
-    (meshes(meshRenderer.mesh.id), textures(material.texture.id)) match {
-      case (mesh: MeshReady, TextureReady(texture)) =>
-        val mvp = viewProjection * model
-        GL.uniformMatrix4fv(mvpLocation, transpose = false, mvp.values)
-        GL.uniformMatrix4fv(modelLocation, transpose = false, model.values)
-        GL.uniform1f(emissiveLocation, material.emissive)
-        GL.bindTexture(GL.Texture2D, texture)
-        GL.bindVertexArray(mesh.vao)
-        GL.drawElements(GL.Triangles, mesh.indexCount, GL.UnsignedShortType, 0L)
-      case (MeshLoading, _) | (_, TextureLoading(_)) | (MeshReleased, _) | (_, TextureReleased) =>
-      case (MeshFailed(cause), _) => throw cause
-      case (_, TextureFailed(cause)) => throw cause
+    meshes(meshRenderer.mesh.id) match {
+      case mesh: MeshReady =>
+        // A texture that is still loading, or was released, draws nothing.
+        textureForSource(material.texture.source).foreach { resolved =>
+          val mvp = viewProjection * model
+          GL.uniformMatrix4fv(mvpLocation, transpose = false, mvp.values)
+          GL.uniformMatrix4fv(modelLocation, transpose = false, model.values)
+          GL.uniform1f(emissiveLocation, material.emissive)
+          GL.bindTexture(GL.Texture2D, resolved.texture)
+          GL.bindVertexArray(mesh.vao)
+          GL.drawElements(GL.Triangles, mesh.indexCount, GL.UnsignedShortType, 0L)
+        }
+      case MeshLoading | MeshReleased =>
+      case MeshFailed(cause) => throw cause
     }
   }
 

@@ -124,6 +124,10 @@ gameObject.component[Spatial2D].foreach { spatial =>
 - Games can draw their own components: a system in the `Render` stage submits to
   `context.global[Render2D]`. See
   [drawing your own components](/docs/gameobject/#drawing-your-own-components).
+- Meshes, textures, and materials are released with the scope they are created in: drop the
+  release calls from `Scene.unload`. Their creation methods take a `using Scope`, which a scene
+  has. `AssetId[...]` and the `Asset` traits are replaced by plain `Mesh` and `Material` handles,
+  `renderer.loadTexture2D` returns a `Texture2D`, and `Engine` and `Renderer` have no type members.
 - `Camera3DView` was removed. `Camera3D` now takes a `GameObject3D` and is placed by its
   transform: instead of writing a view matrix, set the camera object's `spatial.local`, for example
   with `Transform3D.lookAt(eye, target, up)`, or parent the camera to another object.

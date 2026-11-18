@@ -190,8 +190,31 @@ object Globals {
 final class Scope private[gameobject] (val id: ScopeId, val name: String, private[gameobject] val world: World) {
   private var activeValue = true
 
+  private val destroyActions = mutable.ArrayBuffer.empty[() => Unit]
+
   def isActive: Boolean = activeValue
   private[gameobject] def deactivate(): Unit = activeValue = false
+
+  /** Registers something to release when the scope is destroyed, after its
+    * objects. This is how what is created for a scene, such as a mesh or a
+    * texture, goes away with it. Actions run last registered first.
+    */
+  def onDestroy(action: () => Unit): Unit = {
+    if(!activeValue) throw new CompositionError(s"Cannot register a destroy action on inactive scope $name")
+    destroyActions += action
+  }
+
+  // Runs and forgets the actions; every one runs even if another throws.
+  private[gameobject] def runDestroyActions(): Option[Throwable] = {
+    var failure: Option[Throwable] = None
+    val actions = destroyActions.toVector.reverse
+    destroyActions.clear()
+    actions.foreach { action =>
+      try action()
+      catch { case scala.util.control.NonFatal(error) => if(failure.isEmpty) failure = Some(error) }
+    }
+    failure
+  }
 
   override def toString: String = s"Scope(${id.value}, $name)"
 }
@@ -367,12 +390,13 @@ final class World {
   def destroyScope(scope: Scope): Unit = {
     if(scope.world ne this) throw new CompositionError("Cannot destroy a scope belonging to another world")
     if(!scope.isActive) return
-    val failure = destroyAll(objectsBuffer.filter(_.scope eq scope).toVector)
+    val objectsFailure = destroyAll(objectsBuffer.filter(_.scope eq scope).toVector)
+    val actionsFailure = scope.runDestroyActions()
     if(scope ne globalScope) {
       scope.deactivate()
       scopesBuffer -= scope
     }
-    failure.foreach(throw _)
+    objectsFailure.orElse(actionsFailure).foreach(throw _)
   }
 
   // Destroys the selected objects until none is left, so that objects created
@@ -403,8 +427,12 @@ final class World {
 
   private[gameobject] def dispose(): Unit = {
     if(!activeValue) return
-    val failure = destroyAll(objectsBuffer.toVector)
-    scopesBuffer.foreach(_.deactivate())
+    var failure = destroyAll(objectsBuffer.toVector)
+    scopesBuffer.toVector.reverse.foreach { scope =>
+      val actionsFailure = scope.runDestroyActions()
+      if(failure.isEmpty) failure = actionsFailure
+      scope.deactivate()
+    }
     scopesBuffer.clear()
     activeValue = false
     failure.foreach(throw _)
