@@ -79,14 +79,19 @@ JVM, GLFW, OpenGL 3.3, OpenAL.
 
 ### sgl_html5_app
 
-Scala.js with the 2D canvas. `bazel run` serves the game on `http://localhost:8080`.
+Scala.js with the 2D canvas. `<name>_site` is the game as a static website, ready to deploy:
+the page, `index.js`, the assets under `static/` (or the asset pack), and `site_files`.
+`bazel run //pkg:<name>` serves that same directory on `http://localhost:8080`.
 
 | Attribute | Default | Description |
 | --- | --- | --- |
 | `assets`, `assets_strip_prefix` | `[]`, `""` | Asset targets to copy, and the prefix to strip from their paths |
-| `canvas_width`, `canvas_height` | `800`, `600` | Canvas size |
+| `canvas_width`, `canvas_height` | `800`, `600` | Canvas size, in CSS pixels |
+| `center_canvas` | `True` | Style the page body and center the fixed-size canvas on it. `False` only sizes the canvas and leaves the layout to the page. |
 | `fullscreen` | `False` | Fill the page |
-| `use_provided_canvas` | `False` | Keep the canvas layout of the host page |
+| `use_provided_canvas` | `False` | Use the size the host page gives the canvas element |
+| `html_template` | generated page | Your own page. `{{JS_PATH}}` is replaced by the module file name and `{{MAIN_CLASS}}` by the exported name. |
+| `site_files` | `[]` | Extra files for the page (icon, images), placed at the site root by file name |
 | `use_screen2d` | `True` | Mixes in `Screen2DGameApp` |
 | `pack_assets` | `False` | Bundle all assets into one binary pack |
 | `save_component` | `"LocalStorageSaveComponent"` | Save implementation |
@@ -97,8 +102,8 @@ Scala.js with the 2D canvas. `bazel run` serves the game on `http://localhost:80
 
 ### sgl_html5_opengl_app
 
-Scala.js with WebGL 2. It takes the same attributes as `sgl_html5_app`, without `use_screen2d`,
-`pack_assets`, `fullscreen`, `use_provided_canvas`, and `save_component`. It adds:
+Scala.js with WebGL 2. It takes the same attributes as `sgl_html5_app`, without `use_screen2d`
+and `save_component`, and also produces `<name>_site`. It adds:
 
 | Attribute | Default | Description |
 | --- | --- | --- |

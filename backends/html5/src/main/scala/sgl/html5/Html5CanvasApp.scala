@@ -62,19 +62,8 @@ trait Html5CanvasApp extends Html5WindowProvider with Html5SystemProvider with H
    * the loadImage need to select the best resource, or perform
    * some scaling at runtime.
    */
-  def prepareCanvas(canvas: html.Canvas): Unit = {
-    val rect = canvas.getBoundingClientRect()
-    val cssWidth = scala.math.max(1, rect.width.toInt)
-    val cssHeight = scala.math.max(1, rect.height.toInt)
+  def prepareCanvas(canvas: html.Canvas): Unit = themes.CanvasLayout.prepare(canvas, theme)
 
-    if(!theme.preserveCanvasCssSize) {
-      canvas.style.width = s"${cssWidth}px"
-      canvas.style.height = s"${cssHeight}px"
-    }
-
-    canvas.width = (dom.window.devicePixelRatio*cssWidth).toInt
-    canvas.height = (dom.window.devicePixelRatio*cssHeight).toInt
-  }
   @JSExport
   def run(canvas: html.Canvas): Unit = {
     if(loopRunning || applicationDisposed) throw new IllegalStateException("HTML5 application can only be run once")

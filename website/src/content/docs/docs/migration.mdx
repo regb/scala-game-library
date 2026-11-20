@@ -157,3 +157,16 @@ gameObject.component[Spatial2D].foreach { spatial =>
 - Scenes can load before they appear: see [`AsyncScene`](/docs/gameobject/#scenes-that-load-first).
   Code that created objects from a `Loader` callback should use `context.whenLoaded(loader) { ... }`
   instead, which runs on the game thread and is dropped when the scene is left.
+
+## Web builds
+
+- `<name>_site` (from `sgl_html5_app` and `sgl_html5_opengl_app`) is the deployable website.
+  Replace scripts that copied `<name>_indexjs` and the assets into a site layout by hand with
+  it, and a custom page with `html_template` plus `site_files`.
+- In that site and in the dev server, the JavaScript module sits at the root (`index.js`),
+  not under the package path.
+- `sgl_html5_opengl_app` lays out its canvas like the Canvas rule: by default it is centered on
+  a dark page. Set `center_canvas = False` to keep the previous behavior, where the canvas stays
+  where the page puts it. `Html5OpenGLApp.canvasDimension` is replaced by `theme`.
+- The fixed-size theme centers against the viewport instead of the body's content height, so a
+  canvas on an otherwise empty page is now centered vertically too.

@@ -1,55 +1,109 @@
-def _scalajs_html_template_impl(ctx):
-    """Implementation for scalajs_html_template rule."""
+def _static_destination(src, strip_prefix):
+    path = src.short_path
+    if not strip_prefix:
+        return src.basename
+    index = path.find(strip_prefix)
+    if index < 0:
+        fail("static_strip_prefix '%s' not found in file path: %s" % (strip_prefix, path))
+    return path[index + len(strip_prefix):].lstrip("/")
 
-    js_file = ctx.attr.scalajs_target.files.to_list()[0]
-
-    output = ctx.actions.declare_file(ctx.attr.output_name)
-
+def _scalajs_site_impl(ctx):
+    js = ctx.file.scalajs_module
+    page = ctx.actions.declare_file(ctx.attr.name + "_page/" + ctx.attr.html_output_name)
     substitutions = {
-        "{{JS_PATH}}": js_file.short_path,
+        "{{JS_PATH}}": js.basename,
+        "{{MAIN_CLASS}}": ctx.attr.main_class,
     }
-    if ctx.attr.main_class:
-        substitutions["{{MAIN_CLASS}}"] = ctx.attr.main_class
+    ctx.actions.expand_template(template = ctx.file.template, output = page, substitutions = substitutions)
 
-    substitutions.update(ctx.attr.substitutions)
+    entries = [(page, ctx.attr.html_output_name), (js, js.basename)]
+    static_folder = ctx.attr.static_folder.strip("/")
+    for src in ctx.files.static_files:
+        entries.append((src, static_folder + "/" + _static_destination(src, ctx.attr.static_strip_prefix)))
+    for src in ctx.files.site_files:
+        entries.append((src, src.basename))
 
-    ctx.actions.expand_template(
-        template = ctx.file.template,
-        output = output,
-        substitutions = substitutions,
+    destinations = {}
+    for src, destination in entries:
+        if destination in destinations:
+            fail("Two files would be placed at '%s' in the site: %s and %s" % (destination, destinations[destination], src.short_path))
+        destinations[destination] = src.short_path
+
+    site = ctx.actions.declare_directory(ctx.attr.name)
+    args = ctx.actions.args()
+    args.add(site.path)
+    for src, destination in entries:
+        args.add(src)
+        args.add(destination)
+    ctx.actions.run_shell(
+        inputs = [src for src, _ in entries],
+        outputs = [site],
+        arguments = [args],
+        command = """
+set -eu
+site="$1"
+shift
+while [ "$#" -gt 0 ]; do
+  mkdir -p "$site/$(dirname "$2")"
+  cp "$1" "$site/$2"
+  chmod 644 "$site/$2"
+  shift 2
+done
+""",
+        mnemonic = "ScalaJsSite",
+        progress_message = "Assembling the website %{label}",
     )
+    return [DefaultInfo(files = depset([site]))]
 
-    return [DefaultInfo(files = depset([output]))]
-
-scalajs_html_template = rule(
-    implementation = _scalajs_html_template_impl,
+scalajs_site = rule(
+    implementation = _scalajs_site_impl,
     attrs = {
+        "scalajs_module": attr.label(mandatory = True, allow_single_file = [".js"], doc = "The linked Scala.js module, placed at the site root."),
+        "main_class": attr.string(mandatory = True, doc = "The exported JavaScript name, substituted for {{MAIN_CLASS}} in the template."),
         "template": attr.label(
             default = Label("//bazel/scalajs:default.html.template"),
             allow_single_file = True,
-            doc = "The HTML template file with placeholders (defaults to built-in template)",
+            doc = "The HTML page. {{JS_PATH}} is replaced by the module file name and {{MAIN_CLASS}} by main_class.",
         ),
-        "scalajs_target": attr.label(
-            mandatory = True,
-            doc = "The scalajs_link target that produces the JavaScript file",
-        ),
-        "main_class": attr.string(
-            doc = "The main class name to substitute in the template",
-        ),
-        "substitutions": attr.string_dict(
-            default = {},
-            doc = "Additional substitutions to make in the template",
-        ),
-        "output_name": attr.string(
-            mandatory = True,
-            doc = "The name of the output HTML file",
-        ),
+        "html_output_name": attr.string(default = "index.html", doc = "The file name of the page in the site."),
+        "static_files": attr.label_list(allow_files = True, doc = "Files placed under static_folder."),
+        "static_strip_prefix": attr.string(default = "", doc = "Path prefix removed from static files. Without it, static files are placed by file name."),
+        "static_folder": attr.string(default = "static", doc = "The site folder holding the static files."),
+        "site_files": attr.label_list(allow_files = True, doc = "Extra files (icons, images for the page) placed at the site root by file name."),
     },
-    doc = "Generates an HTML file by substituting the ScalaJS output path and other values into a template",
+    doc = "Assembles a Scala.js application as a static website directory, ready to deploy.",
 )
 
-def run_server(name, scalajs_module, main_class, static_files = [], static_strip_prefix = "", static_folder = "static", template = None, html_output_name = "index.html", **kwargs):
-    """Creates a server target that serves a ScalaJS application with generated HTML.
+def _scalajs_dev_server_impl(ctx):
+    site = ctx.file.site
+    server = ctx.executable._server
+    runner = ctx.actions.declare_file(ctx.attr.name + "_runner.sh")
+    ctx.actions.write(
+        output = runner,
+        is_executable = True,
+        content = """#!/bin/bash
+SITE_DIR="{site}" exec "{server}" "$@"
+""".format(site = site.short_path, server = server.short_path),
+    )
+    runfiles = ctx.runfiles(files = [site]).merge(ctx.attr._server[DefaultInfo].default_runfiles)
+    return [DefaultInfo(executable = runner, runfiles = runfiles)]
+
+scalajs_dev_server = rule(
+    implementation = _scalajs_dev_server_impl,
+    executable = True,
+    attrs = {
+        "site": attr.label(mandatory = True, allow_single_file = True, doc = "The scalajs_site to serve."),
+        "_server": attr.label(default = Label("//bazel/scalajs:server"), executable = True, cfg = "target"),
+    },
+    doc = "Serves a scalajs_site on http://localhost:8080 (PORT overrides the port).",
+)
+
+def run_server(name, scalajs_module, main_class, static_files = [], static_strip_prefix = "", static_folder = "static", template = None, html_output_name = "index.html", site_files = [], **kwargs):
+    """Builds a deployable website for a Scala.js application and a server for it.
+
+    `<name>_site` is the website directory: the page, the JavaScript module at its
+    root, the static files under `static_folder`, and `site_files` at the root.
+    `<name>` serves that same directory with `bazel run`.
 
     Args:
         name: The name of the server target
@@ -59,69 +113,28 @@ def run_server(name, scalajs_module, main_class, static_files = [], static_strip
         static_strip_prefix: A prefix that will be stripped from the list of static files.
         static_folder: A folder that will be created to place the static assets and serve them from.
         template: Optional custom HTML template (uses default if not provided)
-        **kwargs: Additional arguments passed to the server rule
+        html_output_name: The file name of the page.
+        site_files: Extra files placed at the root of the site by file name.
+        **kwargs: Additional arguments passed to both targets (visibility, tags)
     """
-
-    html_target_name = name + "_html"
-
-    html_attrs = {
-        "scalajs_target": scalajs_module,
-        "main_class": main_class,
-        "output_name": html_output_name,
-    }
-
+    site_attrs = {}
     if template:
-        html_attrs["template"] = template
+        site_attrs["template"] = template
 
-    scalajs_html_template(
-        name = html_target_name,
-        **html_attrs
+    scalajs_site(
+        name = name + "_site",
+        scalajs_module = scalajs_module,
+        main_class = main_class,
+        static_files = static_files,
+        static_strip_prefix = static_strip_prefix,
+        static_folder = static_folder,
+        html_output_name = html_output_name,
+        site_files = site_files,
+        **(site_attrs | kwargs)
     )
 
-    # Prepare srcs list with JavaScript module, HTML, and static files
-    srcs = [
-        scalajs_module,
-        ":" + html_target_name,
-    ]
-    if static_files:
-        srcs.extend(static_files)
-
-    # Build static files list for environment variable
-    static_files_env = ""
-    if static_files:
-        static_files_locations = ["$(locations {})".format(f) for f in static_files]
-        static_files_env = ";".join(static_files_locations)
-
-    # Build environment variable assignments
-    env_vars = [
-        "HTML_FILE=$(location :{})".format(html_target_name),
-        "JS_FILE=$(location {})".format(scalajs_module),
-    ]
-
-    if static_files_env:
-        env_vars.append("STATIC_FILES='{}'".format(static_files_env))
-
-    if static_strip_prefix:
-        env_vars.append("STATIC_STRIP_PREFIX='{}'".format(static_strip_prefix))
-
-    if static_folder != "static":
-        env_vars.append("STATIC_FOLDER='{}'".format(static_folder))
-
-    env_assignments = " ".join(env_vars)
-
-    server_target = Label("//bazel/scalajs:server")
-
-    native.genrule(
+    scalajs_dev_server(
         name = name,
-        outs = [name + "_runner.sh"],
-        srcs = srcs,
-        cmd = """
-cat > $@ << 'EOF'
-#!/bin/bash
-{} $(location {})
-EOF
-chmod +x $@
-        """.format(env_assignments, server_target),
-        tools = [server_target],
-        executable = True,
+        site = ":" + name + "_site",
+        **kwargs
     )

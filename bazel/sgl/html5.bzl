@@ -89,13 +89,22 @@ def _html5_scala_type(type_name):
     return "_root_.sgl.html5." + type_name
 
 def _html5_theme_expression(ctx):
+    if ctx.attr.use_provided_canvas and ctx.attr.fullscreen:
+        fail("fullscreen and use_provided_canvas cannot both be set")
     if ctx.attr.use_provided_canvas:
         return "new _root_.sgl.html5.themes.ProvidedCanvasTheme"
     if ctx.attr.fullscreen:
         return "new _root_.sgl.html5.themes.FullScreenTheme"
     return """new _root_.sgl.html5.themes.FixedWindowTheme {
     override val frameSize: (Int, Int) = (%s, %s)
-  }""" % (ctx.attr.canvas_width, ctx.attr.canvas_height)
+    override val centerOnPage: Boolean = %s
+  }""" % (ctx.attr.canvas_width, ctx.attr.canvas_height, _scala_bool(ctx.attr.center_canvas))
+
+_THEME_ATTRS = {
+    "fullscreen": attr.bool(mandatory = False, doc = "Use the HTML5 full-screen theme instead of a fixed-size canvas.", default = False),
+    "use_provided_canvas": attr.bool(mandatory = False, doc = "Use the canvas element as laid out by the hosting page.", default = False),
+    "center_canvas": attr.bool(mandatory = False, doc = "For the fixed-size canvas: style the page body and center the canvas on it. False leaves the page layout to its HTML and CSS.", default = True),
+}
 
 def _html5_keyboard_capture_expression(mode):
     if mode == "global":
@@ -150,8 +159,6 @@ html5_main = rule(
         "asset_pack_manifest_override": attr.string(mandatory = False, doc = "Generated Scala override configuring an HTML5 asset pack manifest.", default = ""),
         "use_screen2d": attr.bool(mandatory = False, default = True),
         "extra_mixins": attr.string_list(mandatory = False, default = [], doc = "Additional Scala traits to mix into the generated HTML5 app object."),
-        "fullscreen": attr.bool(mandatory = False, doc = "Use the HTML5 full-screen theme instead of a fixed-size canvas.", default = False),
-        "use_provided_canvas": attr.bool(mandatory = False, doc = "Use the canvas element as laid out by the hosting page.", default = False),
         "save_component": attr.string(mandatory = False, doc = "Save component mixed into the generated HTML5 main object.", default = "LocalStorageSaveComponent"),
         "keyboard_capture": attr.string(mandatory = False, doc = "Keyboard capture mode: global or canvas_focused.", default = "global", values = ["global", "canvas_focused"]),
         "keyboard_prevent_default": attr.bool(mandatory = False, doc = "Call preventDefault on keyboard events captured by the game.", default = True),
@@ -159,7 +166,7 @@ html5_main = rule(
         "wheel_prevent_default": attr.bool(mandatory = False, doc = "Call preventDefault on wheel events captured by the game.", default = True),
         "touch_prevent_default": attr.bool(mandatory = False, doc = "Call preventDefault on touch events captured by the game.", default = True),
         "touch_stop_propagation": attr.bool(mandatory = False, doc = "Call stopPropagation on touch events captured by the game.", default = True),
-    },
+    } | _THEME_ATTRS,
     doc = "Generate a Main entrypoint for the HTML5 backend of SGL",
 )
 
@@ -171,8 +178,8 @@ def _html5_opengl_main_template_impl(ctx):
         "{{EXPORT_NAME}}": ctx.attr.export_name,
         "{{CORE_ABSTRACT_CLASS}}": _absolute_scala_type(ctx.attr.core_abstract_class),
         "{{EXTRA_MIXINS}}": extra_mixins,
-        "{{CANVAS_WIDTH}}": str(ctx.attr.canvas_width),
-        "{{CANVAS_HEIGHT}}": str(ctx.attr.canvas_height),
+        "{{THEME_EXPRESSION}}": _html5_theme_expression(ctx),
+        "{{ASSET_PACK_MANIFEST_OVERRIDE}}": ctx.attr.asset_pack_manifest_override,
         "{{ASSETS_SERVING_ROOT}}": str(ctx.attr.assets_serving_root),
         "{{TARGET_FPS}}": "Some({})".format(ctx.attr.target_fps) if ctx.attr.target_fps > 0 else "None",
         "{{KEYBOARD_CAPTURE}}": _html5_keyboard_capture_expression(ctx.attr.keyboard_capture),
@@ -199,6 +206,7 @@ html5_opengl_main = rule(
         "canvas_width": attr.int(mandatory = False, default = 800),
         "canvas_height": attr.int(mandatory = False, default = 600),
         "target_fps": attr.int(mandatory = False, default = 0, doc = "Target FPS. Use 0 for requestAnimationFrame."),
+        "asset_pack_manifest_override": attr.string(mandatory = False, doc = "Generated Scala override configuring an HTML5 asset pack manifest.", default = ""),
         "extra_mixins": attr.string_list(mandatory = False, default = [], doc = "Additional Scala traits to mix into the generated HTML5 app object."),
         "keyboard_capture": attr.string(mandatory = False, doc = "Keyboard capture mode: global or canvas_focused.", default = "global", values = ["global", "canvas_focused"]),
         "keyboard_prevent_default": attr.bool(mandatory = False, doc = "Call preventDefault on keyboard events captured by the game.", default = True),
@@ -206,9 +214,24 @@ html5_opengl_main = rule(
         "wheel_prevent_default": attr.bool(mandatory = False, doc = "Call preventDefault on wheel events captured by the game.", default = True),
         "touch_prevent_default": attr.bool(mandatory = False, doc = "Call preventDefault on touch events captured by the game.", default = True),
         "touch_stop_propagation": attr.bool(mandatory = False, doc = "Call stopPropagation on touch events captured by the game.", default = True),
-    },
+    } | _THEME_ATTRS,
     doc = "Generate a Main entrypoint for the HTML5 OpenGL/WebGL backend of SGL",
 )
+
+def _html5_static_files(name, assets, assets_strip_prefix, static_folder, pack_assets):
+    """Returns the site's static files, their strip prefix, and the Scala override for an asset pack."""
+    if not pack_assets:
+        return assets, assets_strip_prefix, ""
+    html5_asset_pack(
+        name = name + "_asset_pack",
+        srcs = assets,
+        assets_strip_prefix = assets_strip_prefix,
+        static_folder = static_folder,
+    )
+    override = """
+  override protected val Html5AssetPackManifestResourceName: Option[String] = Some(\"%s\")
+  override protected val Html5AssetPacksFallbackToServer: Boolean = false""" % (_ASSET_PACK_MANIFEST_NAME)
+    return [":" + name + "_asset_pack"], "", override
 
 def sgl_html5_app(
         name,
@@ -221,6 +244,8 @@ def sgl_html5_app(
         static_folder = "static",
         output_name = "index.js",
         html_output_name = "index.html",
+        html_template = None,
+        site_files = [],
         canvas_width = 800,
         canvas_height = 600,
         use_extension_tiled = False,
@@ -231,12 +256,31 @@ def sgl_html5_app(
         save_component = "LocalStorageSaveComponent",
         fullscreen = False,
         use_provided_canvas = False,
+        center_canvas = True,
         keyboard_capture = "global",
         keyboard_prevent_default = True,
         mouse_prevent_default = True,
         wheel_prevent_default = True,
         touch_prevent_default = True,
         touch_stop_propagation = True):
+    """An SGL game for the browser, drawing with the HTML5 canvas 2D API.
+
+    The macro creates `<name>_site`, the game as a static website directory ready
+    to deploy: the page, the JavaScript module, the assets under `static_folder`
+    (or the asset pack), and `site_files` at the root. `<name>` serves that same
+    directory on http://localhost:8080 with `bazel run`.
+
+    `html_template` replaces the generated page. In it, `{{JS_PATH}}` is the
+    module file name and `{{MAIN_CLASS}}` its exported name; the page imports the
+    module and calls `run` with its canvas element.
+
+    The canvas layout: by default a `canvas_width` x `canvas_height` canvas,
+    centered on a styled body. `center_canvas = False` keeps the fixed size but
+    leaves the page layout to its own HTML and CSS, so the canvas can sit inside
+    any element. `fullscreen` fills the window, and `use_provided_canvas` takes
+    the size the page gives the canvas element.
+    """
+
     full_deps = deps + [
         Label("//core:sgl-core"),
         Label("//backends/html5:sgl-html5"),
@@ -254,21 +298,13 @@ def sgl_html5_app(
     if use_extension_tiled:
         full_deps.append(Label("//extensions:sgl-tiled"))
 
-    asset_pack_manifest_override = ""
-    static_files = assets
-    static_strip_prefix = assets_strip_prefix
-    if pack_assets:
-        html5_asset_pack(
-            name = name + "_asset_pack",
-            srcs = assets,
-            assets_strip_prefix = assets_strip_prefix,
-            static_folder = static_folder,
-        )
-        static_files = [":" + name + "_asset_pack"]
-        static_strip_prefix = ""
-        asset_pack_manifest_override = """
-  override protected val Html5AssetPackManifestResourceName: Option[String] = Some(\"%s\")
-  override protected val Html5AssetPacksFallbackToServer: Boolean = false""" % (_ASSET_PACK_MANIFEST_NAME)
+    static_files, static_strip_prefix, asset_pack_manifest_override = _html5_static_files(
+        name,
+        assets,
+        assets_strip_prefix,
+        static_folder,
+        pack_assets,
+    )
 
     html5_main(
         name = name + "_Main",
@@ -284,6 +320,7 @@ def sgl_html5_app(
         save_component = save_component,
         fullscreen = fullscreen,
         use_provided_canvas = use_provided_canvas,
+        center_canvas = center_canvas,
         keyboard_capture = keyboard_capture,
         keyboard_prevent_default = keyboard_prevent_default,
         mouse_prevent_default = mouse_prevent_default,
@@ -306,7 +343,9 @@ def sgl_html5_app(
         static_files = static_files,
         static_strip_prefix = static_strip_prefix,
         static_folder = static_folder,
+        template = html_template,
         html_output_name = html_output_name,
+        site_files = site_files,
     )
 
 def sgl_html5_opengl_app(
@@ -321,8 +360,14 @@ def sgl_html5_opengl_app(
         static_folder = "static",
         output_name = "index.js",
         html_output_name = "index.html",
+        html_template = None,
+        site_files = [],
         canvas_width = 800,
         canvas_height = 600,
+        pack_assets = False,
+        fullscreen = False,
+        use_provided_canvas = False,
+        center_canvas = True,
         target_fps = 0,
         extra_mixins = [],
         hot_reload = False,
@@ -332,6 +377,24 @@ def sgl_html5_opengl_app(
         wheel_prevent_default = True,
         touch_prevent_default = True,
         touch_stop_propagation = True):
+    """An SGL game for the browser, drawing with WebGL 2.
+
+    The macro creates `<name>_site`, the game as a static website directory ready
+    to deploy: the page, the JavaScript module, the assets under `static_folder`
+    (or the asset pack), and `site_files` at the root. `<name>` serves that same
+    directory on http://localhost:8080 with `bazel run`.
+
+    `html_template` replaces the generated page. In it, `{{JS_PATH}}` is the
+    module file name and `{{MAIN_CLASS}}` its exported name; the page imports the
+    module and calls `run` with its canvas element.
+
+    The canvas layout: by default a `canvas_width` x `canvas_height` canvas,
+    centered on a styled body. `center_canvas = False` keeps the fixed size but
+    leaves the page layout to its own HTML and CSS, so the canvas can sit inside
+    any element. `fullscreen` fills the window, and `use_provided_canvas` takes
+    the size the page gives the canvas element.
+    """
+
     full_deps = deps + [
         Label("//core:sgl-core"),
         Label("//backends/html5:sgl-html5"),
@@ -340,6 +403,14 @@ def sgl_html5_opengl_app(
     if hot_reload:
         # Development builds only: the host page can make the game reload assets.
         extra_mixins = extra_mixins + ["sgl.html5.Html5HotReload"]
+
+    static_files, static_strip_prefix, asset_pack_manifest_override = _html5_static_files(
+        name,
+        assets,
+        assets_strip_prefix,
+        static_folder,
+        pack_assets,
+    )
 
     html5_opengl_main(
         name = name + "_Main",
@@ -350,6 +421,10 @@ def sgl_html5_opengl_app(
         assets_serving_root = static_folder,
         canvas_width = canvas_width,
         canvas_height = canvas_height,
+        asset_pack_manifest_override = asset_pack_manifest_override,
+        fullscreen = fullscreen,
+        use_provided_canvas = use_provided_canvas,
+        center_canvas = center_canvas,
         target_fps = target_fps,
         extra_mixins = extra_mixins,
         keyboard_capture = keyboard_capture,
@@ -371,8 +446,10 @@ def sgl_html5_opengl_app(
         name = name,
         scalajs_module = ":" + name + "_indexjs",
         main_class = export_name,
-        static_files = assets,
-        static_strip_prefix = assets_strip_prefix,
+        static_files = static_files,
+        static_strip_prefix = static_strip_prefix,
         static_folder = static_folder,
+        template = html_template,
         html_output_name = html_output_name,
+        site_files = site_files,
     )

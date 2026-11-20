@@ -12,12 +12,14 @@ trait Html5OpenGLApp extends Html5WindowProvider with Html5OpenGLProvider with H
   this: Application with LoggingProvider =>
 
   val TargetFps: Option[Int] = None
-  val canvasDimension: (Int, Int)
+  /** How the canvas is laid out on the page, as in the HTML5 canvas backend. */
+  val theme: themes.Theme
 
   var htmlCanvas: html.Canvas = null
   private var loopRunning = false
   private var applicationDisposed = false
   private var fallbackInterval: Option[Int] = None
+  private var resizeListener: scala.scalajs.js.Function1[dom.Event, Unit] = null
 
   @JSExport
   def run(canvas: html.Canvas): Unit = {
@@ -25,11 +27,8 @@ trait Html5OpenGLApp extends Html5WindowProvider with Html5OpenGLProvider with H
     loopRunning = true
     htmlCanvas = canvas
     webglCanvas = canvas
-    val pixelRatio = dom.window.devicePixelRatio
-    canvas.width = scala.math.max(1, (canvasDimension._1 * pixelRatio).toInt)
-    canvas.height = scala.math.max(1, (canvasDimension._2 * pixelRatio).toInt)
-    canvas.style.width = s"${canvasDimension._1}px"
-    canvas.style.height = s"${canvasDimension._2}px"
+    theme.init(canvas)
+    themes.CanvasLayout.prepare(canvas, theme)
 
     dom.window.addEventListener("beforeunload", (_: dom.Event) => stop())
     registerInputListeners()
@@ -37,6 +36,17 @@ trait Html5OpenGLApp extends Html5WindowProvider with Html5OpenGLProvider with H
     initOpenGL(canvas.width, canvas.height)
     create()
     resize(canvas.width, canvas.height)
+
+    resizeListener = (_: dom.Event) => {
+      val (oldWidth, oldHeight) = (canvas.width, canvas.height)
+      theme.onResize(canvas)
+      themes.CanvasLayout.prepare(canvas, theme)
+      if(canvas.width != oldWidth || canvas.height != oldHeight) {
+        resizeOpenGL(canvas.width, canvas.height)
+        resize(canvas.width, canvas.height)
+      }
+    }
+    dom.window.addEventListener("resize", resizeListener)
 
     def runScheduler(): Unit = {
       if(!loopRunning) return
@@ -88,6 +98,8 @@ trait Html5OpenGLApp extends Html5WindowProvider with Html5OpenGLProvider with H
     applicationDisposed = true
     fallbackInterval.foreach(dom.window.clearInterval)
     fallbackInterval = None
+    if(resizeListener != null) dom.window.removeEventListener("resize", resizeListener)
+    resizeListener = null
     disposeHtml5Input()
     try pause()
     finally {

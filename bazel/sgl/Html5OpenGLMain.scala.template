@@ -14,7 +14,8 @@ object {{MAIN_CLASS}} extends _root_.sgl.html5.Html5OpenGLApp with {{CORE_ABSTRA
   override protected val Html5TouchPreventDefault: Boolean = {{TOUCH_PREVENT_DEFAULT}}
   override protected val Html5TouchStopPropagation: Boolean = {{TOUCH_STOP_PROPAGATION}}
 
-  override val canvasDimension: (Int, Int) = ({{CANVAS_WIDTH}}, {{CANVAS_HEIGHT}})
+  override val theme: _root_.sgl.html5.themes.Theme = {{THEME_EXPRESSION}}
 
   override protected val Html5AssetsServingRoot: String = "{{ASSETS_SERVING_ROOT}}"
+{{ASSET_PACK_MANIFEST_OVERRIDE}}
 }

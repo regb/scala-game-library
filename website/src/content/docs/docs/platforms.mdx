@@ -35,17 +35,27 @@ a mobile safe area: set `simulated_safe_area_insets` on `sgl_desktop_awt_app`.
 
 ## Web
 
-`sgl_html5_app` and `sgl_html5_opengl_app` compile the core with Scala.js and generate
-`index.html` and `index.js`. `bazel run` serves them on port 8080, or on the port in `PORT`. To
-deploy, copy the generated files and the static asset folder to any static host.
+`sgl_html5_app` and `sgl_html5_opengl_app` compile the core with Scala.js. `bazel run` serves the
+game on port 8080, or on the port in `PORT`. To deploy, build `<name>_site`: it is the same
+directory the server uses, so copy it as it is to any static host.
+
+```bash
+bazel build //:html5_site
+cp -rL bazel-bin/html5_site _site   # e.g. for actions/upload-pages-artifact
+```
 
 Useful options:
 
-- `fullscreen = True` fills the page instead of using a fixed-size canvas. Use
-  `use_provided_canvas = True` to keep the host page's own layout.
+- `html_template` replaces the generated page with your own, and `site_files` adds the files it
+  refers to, such as an icon. The page imports `{{JS_PATH}}` and calls
+  `{{MAIN_CLASS}}.run(canvas)`.
+- By default the canvas has a fixed size and is centered on a dark page. `center_canvas = False`
+  keeps the size but leaves the layout to your page, so the canvas can sit inside any element.
+  `fullscreen = True` fills the page, and `use_provided_canvas = True` takes the size your CSS
+  gives the canvas.
 - `keyboard_capture = "canvas_focused"` only captures keys while the canvas has focus, so the game
   can be embedded in a page with other inputs.
-- `pack_assets = True` (Canvas rule) bundles every asset into one binary pack.
+- `pack_assets = True` bundles every asset into one binary pack.
 
 <Aside type="note" title="iOS">
 There is no native iOS backend yet. A web build can be packaged as an iOS app with
