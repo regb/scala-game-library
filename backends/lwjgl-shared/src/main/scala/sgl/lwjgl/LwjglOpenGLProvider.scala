@@ -214,7 +214,7 @@ trait LwjglOpenGLProvider extends OpenGLProvider {
     }
 
     private def readTextureBytes(path: String): Array[Byte] = {
-      val is = getClass.getClassLoader.getResourceAsStream(path)
+      val is = openDesktopResource(path)
       if(is == null) throw new ResourceNotFoundException(PartsResourcePath(path.split('/').toVector))
       try {
         val out = new ByteArrayOutputStream()

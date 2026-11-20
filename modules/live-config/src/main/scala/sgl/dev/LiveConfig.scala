@@ -34,7 +34,8 @@ object ConfigCodec {
 /** Single-threaded registry. Register, read, update and unsubscribe on the game thread. */
 final class LiveConfig {
   private case class Change(commit: () => Unit, notifyListeners: () => Unit)
-  private val entries = mutable.LinkedHashMap.empty[String, String => Either[String, Change]]
+  private case class Entry(prepare: String => Either[String, Change], reset: () => Change)
+  private val entries = mutable.LinkedHashMap.empty[String, Entry]
   private var updating = false
 
   final class Value[A] private[LiveConfig] (
@@ -71,6 +72,8 @@ final class LiveConfig {
     private[LiveConfig] def prepare(text: String): Either[String, Change] =
       codec.parse(text).flatMap(check).map(change)
 
+    private[LiveConfig] def prepareReset(): Change = change(default)
+
     def set(value: A): Either[String, Unit] = {
       require(!updating, "cannot update values from a change callback")
       check(value).map { checked => applyChanges(Vector(change(checked))) }
@@ -85,7 +88,7 @@ final class LiveConfig {
     require(name.nonEmpty && !entries.contains(name), "value name must be nonempty and unique")
     require(validate(default), "default value failed validation")
     val value = new Value(name, default, codec, validate)
-    entries(name) = value.prepare
+    entries(name) = Entry(value.prepare, () => value.prepareReset())
     value
   }
 
@@ -93,10 +96,32 @@ final class LiveConfig {
   def update(patch: Map[String, String]): Either[Vector[String], Unit] = {
     require(!updating, "cannot update values from a change callback")
     val prepared = patch.toVector.sortBy(_._1).map { case (name, text) =>
-      entries.get(name).toRight("unknown value").flatMap(_(text))
+      entries.get(name).toRight("unknown value").flatMap(_.prepare(text))
         .left.map(error => s"$name: $error")
     }
     val errors = prepared.collect { case Left(error) => error }
+    if(errors.nonEmpty) Left(errors)
+    else {
+      applyChanges(prepared.collect { case Right(change) => change })
+      Right(())
+    }
+  }
+
+  /** Sets every value at once: those `values` names, and the others back to
+    * their defaults. This is what reading a whole settings file means. Like
+    * [[update]], nothing changes unless every name is known and every value is
+    * valid.
+    */
+  def replaceAll(values: Map[String, String]): Either[Vector[String], Unit] = {
+    require(!updating, "cannot update values from a change callback")
+    val unknown = values.keys.toVector.sorted.filterNot(entries.contains).map(name => s"$name: unknown value")
+    val prepared = entries.toVector.map { case (name, entry) =>
+      values.get(name) match {
+        case Some(text) => entry.prepare(text).left.map(error => s"$name: $error")
+        case None => Right(entry.reset())
+      }
+    }
+    val errors = unknown ++ prepared.collect { case Left(error) => error }
     if(errors.nonEmpty) Left(errors)
     else {
       applyChanges(prepared.collect { case Right(change) => change })

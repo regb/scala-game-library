@@ -6,7 +6,7 @@ import scala.util.{Failure, Success}
 import scala.util.control.NonFatal
 
 import sgl.{Application, OpenGLProvider, SystemProvider, WindowProvider}
-import sgl.assets.{AssetRuntime, DrawableAsset, RawImageAsset}
+import sgl.assets.{AssetChange, AssetReloads, AssetRuntime, DrawableAsset, RawImageAsset}
 import sgl.engine.gameobject.render2d.{Render2D, Texture2D}
 import sgl.engine.gameobject.opengl.OpenGLEngine
 import sgl.engine.gameobject.render3d.Renderer
@@ -149,6 +149,24 @@ final class GameContext(
     */
   def whenLoaded[A](loader: Loader[A], onFailure: Throwable => Unit = GameRuntime.rethrow)(body: A => Unit)(using Scope): Unit =
     runtime.whenLoaded(loader, onFailure)(body)
+
+  /** Runs `body` whenever assets change during a hot reload, for as long as
+    * the given scope lives.
+    *
+    * The body runs at the start of a frame, like [[whenLoaded]]. Textures need
+    * no subscription: the renderer swaps their images itself. Use this for
+    * what the game built from data, for example to reload the scene when its
+    * level file changed. Release builds never call it.
+    */
+  def onAssetChange(body: AssetChange => Unit)(using scope: Scope): Unit = {
+    val reloads = engine.assetReloads
+    if(reloads.isEnabled && scope.isActive) {
+      val unsubscribe = reloads.onChange { change =>
+        if(scope.isActive) runtime.whenLoaded(Loader.successful(change), GameRuntime.rethrow)(body)(using scope)
+      }
+      scope.onDestroy(unsubscribe)
+    }
+  }
 }
 
 /** Engine services exposed to systems. */
@@ -157,6 +175,11 @@ trait Engine {
 
   def loadDrawableTexture(asset: DrawableAsset): Loader[Texture2D] = Loader.successful(Texture2D.loaded(asset))
   def loadRawImageTexture(asset: RawImageAsset): Loader[Texture2D] = Loader.successful(Texture2D.loaded(asset))
+
+  /** Notifications of hot-reloaded assets. Disabled unless the app installed
+    * a development hub.
+    */
+  def assetReloads: AssetReloads = AssetReloads.Disabled
 
   def dispose(): Unit = renderer.dispose()
 }
@@ -279,6 +302,7 @@ final class GameRuntime private[gameobject] (
     if(!frameSeconds.isFinite || frameSeconds < 0.0) throw new IllegalArgumentException("Frame delta time must be a finite, non-negative number of seconds")
     // What finished loading since the last frame takes effect here, between
     // two frames and on the game thread.
+    engine.assetReloads.drain()
     pollLoading()
     runContinuations()
     val dt = math.min(frameSeconds, math.max(worldValue.globals.get[MaxDeltaTime].seconds, 0.0))

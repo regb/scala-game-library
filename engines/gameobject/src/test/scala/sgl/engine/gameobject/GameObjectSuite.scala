@@ -938,6 +938,39 @@ class GameObjectSuite extends AnyFunSuite {
     runtime.frame(0.1)
   }
 
+  test("onAssetChange runs at the start of a frame, for as long as its scope lives") {
+    val hub = new sgl.assets.AssetReloadHub()
+    final class ReloadingEngine extends Engine {
+      override val renderer: Renderer = new RecordingRenderer
+      override def assetReloads: sgl.assets.AssetReloads = hub
+    }
+    var seen = Vector.empty[String]
+    object Watching extends Scene {
+      override def load(context: GameContext)(using Scope): Unit =
+        context.onAssetChange(change => seen :+= change.paths.mkString(","))
+    }
+    val runtime = new GameBuilder().setInitialScene(Watching).build(new ReloadingEngine)
+    runtime.startup()
+
+    hub.reloadPaths(Seq("levels/one.txt"))
+    assert(seen.isEmpty)
+    runtime.frame(0.1)
+    assert(seen === Vector("levels/one.txt"))
+
+    runtime.loadScene(new Plain("other"))
+    hub.reloadPaths(Seq("levels/two.txt"))
+    runtime.frame(0.1)
+    assert(seen === Vector("levels/one.txt"))
+
+    // Without a hub, as in release builds, it is never called.
+    var called = false
+    object Release extends Scene {
+      override def load(context: GameContext)(using Scope): Unit = context.onAssetChange(_ => called = true)
+    }
+    runtimeOn(Release).frame(0.1)
+    assert(!called)
+  }
+
   test("scene changes requested by a system happen after rendering") {
     object FirstScene extends Scene {
       override def load(context: GameContext)(using Scope): Unit =

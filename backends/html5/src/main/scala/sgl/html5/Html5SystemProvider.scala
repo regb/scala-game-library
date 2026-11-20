@@ -31,13 +31,46 @@ trait Html5SystemProvider extends SystemProvider with PartsResourcePathProvider 
   private val resourceObjectUrlCache = scala.collection.mutable.Map[(String, String), Loader[String]]()
   private val assetPackCache = scala.collection.mutable.Map[String, Loader[ArrayBuffer]]()
   private var resourcesDisposed = false
-  private lazy val assetPackManifest: Option[Loader[Html5AssetPackManifest]] =
-    Html5AssetPackManifestResourceName.map(loadHtml5AssetPackManifest)
+  private var assetPackManifestCache: Option[Loader[Html5AssetPackManifest]] = None
+  private def assetPackManifest: Option[Loader[Html5AssetPackManifest]] =
+    Html5AssetPackManifestResourceName.map { name =>
+      assetPackManifestCache.getOrElse {
+        val loader = loadHtml5AssetPackManifest(name)
+        assetPackManifestCache = Some(loader)
+        loader
+      }
+    }
 
+  /** The URL of an asset under [[Html5AssetsServingRoot]]. Asset packs are keyed by it. */
   protected def html5AssetUrl(resourceName: String): String = {
     val root = Html5AssetsServingRoot.stripSuffix("/")
     val rel = resourceName.stripPrefix("/")
     if(root.isEmpty) rel else root + "/" + rel
+  }
+
+  /** The URL an asset is fetched from. A hot reload changes it to bypass the
+    * browser cache, or to point at a new asset root.
+    */
+  protected def html5AssetFetchUrl(resourceName: String): String = html5AssetUrl(resourceName)
+
+  /** Called by the game loop before each frame. */
+  protected def html5BeforeFrame(): Unit = ()
+
+  /** Forgets what was fetched for the changed assets, so that the next load
+    * fetches them again. With asset packs, the manifest and every pack are
+    * fetched again.
+    */
+  protected def invalidateHtml5Resources(change: sgl.assets.AssetChange): Unit = resourceObjectUrlCache.synchronized {
+    resourceObjectUrlCache.keys.toVector.filter { case (name, _) => change.affectsPath(name) }.foreach { key =>
+      resourceObjectUrlCache.remove(key).foreach(_.foreach(dom.URL.revokeObjectURL))
+    }
+    resourceDataCache.synchronized {
+      resourceDataCache.keys.toVector.filter(change.affectsPath).foreach(resourceDataCache.remove)
+    }
+    if(Html5AssetPackManifestResourceName.nonEmpty) {
+      assetPackCache.synchronized(assetPackCache.clear())
+      assetPackManifestCache = None
+    }
   }
 
   private def extension(resourceName: String): Option[String] = {
@@ -51,7 +84,7 @@ trait Html5SystemProvider extends SystemProvider with PartsResourcePathProvider 
   private def loadArrayBufferFromServer(resourceName: String): Loader[ArrayBuffer] = {
     val p = new DefaultLoader[ArrayBuffer]()
     val fileReq = new dom.XMLHttpRequest()
-    fileReq.open("GET", html5AssetUrl(resourceName), true)
+    fileReq.open("GET", html5AssetFetchUrl(resourceName), true)
     fileReq.responseType = "arraybuffer"
     fileReq.onreadystatechange = (_: dom.Event) => {
       if(fileReq.readyState == 4) {
@@ -69,7 +102,7 @@ trait Html5SystemProvider extends SystemProvider with PartsResourcePathProvider 
   private def loadTextFromServer(resourceName: String): Loader[String] = {
     val p = new DefaultLoader[String]()
     val rawFile = new dom.XMLHttpRequest()
-    rawFile.open("GET", html5AssetUrl(resourceName), true)
+    rawFile.open("GET", html5AssetFetchUrl(resourceName), true)
     rawFile.onreadystatechange = (_: dom.Event) => {
       if(rawFile.readyState == 4) {
         if(rawFile.status == 200 || rawFile.status == 0) {
@@ -162,6 +195,7 @@ trait Html5SystemProvider extends SystemProvider with PartsResourcePathProvider 
       resourceObjectUrlCache.clear()
       resourceDataCache.clear()
       assetPackCache.clear()
+      assetPackManifestCache = None
     }
   }
 

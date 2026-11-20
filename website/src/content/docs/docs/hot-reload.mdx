@@ -1,0 +1,151 @@
+---
+title: Hot reload
+description: Change images, data, and settings in a running game, without a rebuild or a restart.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+A development build can reload its assets while it runs. Images, text, and JSON files
+change in place, and settings kept in a text asset are applied again. Only changes to
+game or engine code need a Scala rebuild.
+
+Release builds keep a disabled hub. They link none of the reload code.
+
+## What reloads
+
+| Content | How the game sees it |
+| --- | --- |
+| Textures of the GameObject engine | Automatically. A `Texture2D` is a handle, and the renderer swaps the new image under it. Sprites, tilemaps, and materials draw it once it has loaded. |
+| Data such as levels or sheets | Through a `LiveAsset`, which loads again when its assets change |
+| Settings | Through a `SettingsAsset`, which reads a text asset into a `LiveConfig` registry |
+| Anything else | `context.onAssetChange` in the GameObject engine, or `AssetReloads.onChange` |
+
+Assets are named by their path relative to the asset root, as in the generated `Assets`
+object, for example `raw-image/hero.png` or `text/level.txt`.
+
+## Data with LiveAsset
+
+`AssetRuntime`, which every generated `AssetsProvider` extends, creates live assets:
+
+```scala
+val level = liveText(Assets.text.level)(lines => Level.parse(lines))
+level.loader      // the first load, for a preload step
+level.get         // Option[Level], the latest value
+level.onChange(newLevel => rebuild(newLevel))
+level.close()     // stop reloading, for example when the scene ends
+
+// Any loader, loaded again when any of the listed assets changes:
+val sheet = liveAsset(Assets.text.sheet, Assets.rawImage.sheet) {
+  loadSheet(Assets.text.sheet)
+}
+```
+
+A failed reload keeps the previous value and sets `lastError`. When reloads overlap, only
+the latest one is applied. New values are applied, and listeners called, on the game thread.
+
+## Settings
+
+Settings extend [live configuration](/docs/live-configuration/). Register typed values,
+then read them from a text asset:
+
+```scala
+import sgl.dev.{ConfigCodec, LiveConfig, SettingsAsset, SettingsFormat}
+
+val config = new LiveConfig
+val speed = config.register("hero.speed", 120.0, ConfigCodec.double, (v: Double) => v >= 0)
+
+val settings = SettingsAsset(config, this, Assets.text.tuning)                      // name=value lines
+val fromJson = SettingsAsset(config, this, Assets.text.tuning_json, SettingsFormat.json(this))
+settings.loader   // completes once the file has been applied
+speed.get         // read anywhere
+speed.onChange(v => println(s"speed is now $v"))
+```
+
+The asset is the whole configuration: a value it does not name returns to its default. A
+file with an unknown name, a parse error, or an invalid value is rejected as a whole, the
+values stay as they were, and `settings.errors` says why. In JSON, nested objects give dotted
+names: `{"hero": {"speed": 120}}` sets `hero.speed`.
+
+Release builds use the same code and read the file once.
+
+## GameObject scenes
+
+`context.onAssetChange` runs its body at the start of a frame for as long as the scope lives:
+
+```scala
+override def load(context: GameContext)(using Scope): Unit = {
+  context.onAssetChange { change =>
+    if(change.affects(Assets.text.level)) context.runtime.loadScene(new LevelScene)
+  }
+}
+```
+
+The runtime calls `AssetReloads.drain()` before each frame. Games that do not use the
+GameObject engine call it once per frame.
+
+## HTML5
+
+Set `hot_reload = True` on `sgl_html5_app` or `sgl_html5_opengl_app` in development
+targets. The game object then exports `reloadAssets`:
+
+```js
+const report = await game.reloadAssets({
+  paths: ["raw-image/hero.png", "text/tuning.properties"], // omit to reload everything
+  assetRoot: "/assets/v2",                                  // optional new asset root
+});
+// { ok: true, everything: false, paths: [...], failures: [{ name, message }] }
+```
+
+After a reload, assets are fetched with a `sgl-reload` query, which bypasses the browser
+cache; a `version` field sets its value. `assetRoot` points the game at a new asset
+folder, for hosts that publish every version of the assets under a new, immutable URL. It
+must be a path on the page's origin.
+
+A parent window can send the same request with `postMessage`:
+
+```js
+frame.contentWindow.postMessage({ kind: "sgl-reload-assets", id: 1, paths: [...] }, location.origin);
+// The game answers with { kind: "sgl-reload-assets-result", id: 1, ok, everything, paths, failures }.
+```
+
+Only messages from `window.parent`, on the page's own origin, are accepted. Override
+`Html5HotReloadAllowedOrigins` to allow others.
+
+## Desktop
+
+Mix `sgl.desktop.DesktopAssetDirectory` into a development target and set
+`SGL_ASSET_DIRECTORY` to your source asset folder. Assets are read from that folder
+before the classpath, and the files that change there are reloaded. The folder is polled at
+most every 250 ms from `drain()`; no thread is started.
+
+```python
+sgl_desktop_lwjgl_app(
+    name = "desktop-dev",
+    extra_mixins = [
+        "my.game.core.GeneratedAssetsProvider",
+        "sgl.desktop.DesktopAssetDirectory",
+    ],
+    ...
+)
+```
+
+The folder must have the layout of the asset root: keep source assets in folders named
+after their type (`raw-image/`, `text/`) and strip the prefix up to them, as
+`//examples/live-config` does.
+
+## Try the example
+
+```bash
+SGL_ASSET_DIRECTORY=$PWD/examples/live-config/assets bazel run //examples/live-config:desktop-dev
+```
+
+Edit `examples/live-config/assets/text/tuning.properties`, `text/level.txt`, or
+`raw-image/hero.png` while the game runs. The browser version is `html5-dev`, with
+`reloadAssets` on the exported `LiveConfigGame` object.
+
+<Aside type="caution">
+Only the content of existing assets reloads. A new or renamed asset changes the generated
+`Assets` object and needs a rebuild, as does a changed texture atlas layout. Canvas bitmaps,
+fonts, and audio are not swapped in place; load them through a `LiveAsset` to pick up new
+content. Game state is not reset: the game decides what to rebuild from new data.
+</Aside>

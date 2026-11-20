@@ -88,34 +88,34 @@ session and unsubscribe listeners when their consumers are disposed. The file
 adapter retains no open file handle between polls. `close()` is idempotent and
 prevents further polling.
 
+## Settings from an asset
+
+`SettingsAsset` reads a registry from a text asset of the game, in properties or JSON
+format, and applies it again whenever that asset is hot reloaded. It works on every backend,
+including HTML5, and in release builds it reads the asset once. See
+[Hot reload](/docs/hot-reload/#settings).
+
+```scala
+val settings = SettingsAsset(config, this, Assets.text.tuning)
+```
+
+Unlike `update`, a settings file is the whole configuration: names it does not mention
+return to their defaults (`LiveConfig.replaceAll`).
+
 ## Try the example
 
-From the repository root:
+`//examples/live-config` keeps its tuning values in `assets/text/tuning.properties`:
 
 ```bash
-cp examples/live-config/tuning.properties /tmp/sgl-tuning.properties
-SGL_LIVE_CONFIG_FILE=/tmp/sgl-tuning.properties bazel run //examples/live-config:desktop-dev
+SGL_ASSET_DIRECTORY=$PWD/examples/live-config/assets bazel run //examples/live-config:desktop-dev
 ```
 
-Edit `movement.speed` in `/tmp/sgl-tuning.properties` while the red circle moves.
-The next poll updates its speed and prints the new value. Zero pauses movement.
-
-The release variant uses a fixed speed and has no dependency on either module:
-
-```bash
-bazel build //examples/live-config:desktop-release
-bazel query 'deps(//examples/live-config:desktop-release)' | grep '//modules/live-config'
-```
-
-The query should produce no matches. Use the same split in your own build:
-release game code defines ordinary defaults or overridable accessors, while a
-separate development library supplies the registry and adapter. Disabling a
-runtime flag is not enough to exclude dependencies from release artifacts.
+Edit `hero.speed` or `background` in that file while the game runs. The release target,
+`//examples/live-config:desktop`, reads the same file once and links no reload code.
 
 ## Safety and platform scope
 
-This version opens no network listeners, serves no HTTP endpoints, and writes no
-configuration files. Only point it at a local file you trust. Keep secrets out of
-tuning files and do not include the adapter or development module in shipped
-builds. Browser and mobile transports are not provided; they can use the typed
-registry without depending on the JVM adapter.
+The registry and the properties adapter open no network listeners, serve no HTTP
+endpoints, and write no configuration files. Only point the adapter at a local file you
+trust, and keep it, `//modules/live-config-jvm`, out of shipped builds. Keep secrets out of
+tuning files: settings assets ship with the game. In the browser, use `SettingsAsset` with the HTML5 hot reload trigger.

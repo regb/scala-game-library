@@ -227,6 +227,7 @@ def sgl_html5_app(
         pack_assets = False,
         use_screen2d = True,
         extra_mixins = [],
+        hot_reload = False,
         save_component = "LocalStorageSaveComponent",
         fullscreen = False,
         use_provided_canvas = False,
@@ -241,6 +242,9 @@ def sgl_html5_app(
         Label("//backends/html5:sgl-html5"),
         Label("@maven//:org_scala_js_scalajs_dom_sjs1_3"),
     ]
+    if hot_reload:
+        # Development builds only: the host page can make the game reload assets.
+        extra_mixins = extra_mixins + ["sgl.html5.Html5HotReload"]
     if use_screen2d:
         full_deps.extend([
             Label("//engines:sgl-screen2d"),
@@ -321,6 +325,7 @@ def sgl_html5_opengl_app(
         canvas_height = 600,
         target_fps = 0,
         extra_mixins = [],
+        hot_reload = False,
         keyboard_capture = "global",
         keyboard_prevent_default = True,
         mouse_prevent_default = True,
@@ -332,6 +337,9 @@ def sgl_html5_opengl_app(
         Label("//backends/html5:sgl-html5"),
         Label("@maven//:org_scala_js_scalajs_dom_sjs1_3"),
     ]
+    if hot_reload:
+        # Development builds only: the host page can make the game reload assets.
+        extra_mixins = extra_mixins + ["sgl.html5.Html5HotReload"]
 
     html5_opengl_main(
         name = name + "_Main",

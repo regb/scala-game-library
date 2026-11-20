@@ -5,7 +5,7 @@ import scala.collection.mutable
 import org.scalatest.funsuite.AnyFunSuite
 
 import sgl.{OpenGLProvider, PartsResourcePathProvider, SystemProvider, WindowProvider}
-import sgl.assets.{AssetFactory, BinaryAsset, DrawableAsset, TextAsset, TextureFilter}
+import sgl.assets.{AssetChange, AssetFactory, AssetReloadHub, BinaryAsset, DrawableAsset, TextAsset, TextureFilter}
 import sgl.engine.gameobject.opengl.OpenGLRenderer
 import sgl.engine.gameobject.spatial2d._
 import sgl.engine.gameobject.render2d.{Render2DModule, SpriteRenderSystem, SpriteRenderer, SpriteVisual, Texture2D, TileQuad, Tilemap, TilemapRenderSystem}
@@ -397,5 +397,95 @@ class OpenGLRendererSuite extends AnyFunSuite {
     assert(app.deleted == Seq(atlasUpload.texture))
     heroUpload.complete()
     assert(app.deleted == Seq(atlasUpload.texture, heroUpload.texture))
+  }
+
+  test("a hot reload uploads a changed atlas page again and swaps it under every texture cut from it") {
+    val app = new FakeGLApp
+    val hub = new AssetReloadHub()
+    val renderer = new OpenGLRenderer(app, hub)
+    val world = renderWorld()
+    val coinTexture = loadedAfter(app, renderer.loadDrawableTexture(coin))
+    val gemTexture = loadedAfter(app, renderer.loadDrawableTexture(gem))
+    sprite(world, coinTexture, 0f)
+    sprite(world, gemTexture, 1f)
+    val first = app.uploads.head.texture
+
+    // Another file: nothing is uploaded.
+    hub.reload(AssetChange.paths(Seq("drawable-mdpi/other.png")))
+    hub.drain()
+    assert(app.uploads.size == 1)
+
+    val report = hub.reload(AssetChange.paths(Seq(page)))
+    hub.drain()
+    assert(app.uploads.map(_.resourceName) == Seq(page, page))
+    // Until the new page has loaded, the old one is drawn.
+    drawFrame(renderer, world)
+    assert(app.draws.map(_._1) == Seq(first))
+    assert(!report.isLoaded)
+
+    app.uploads.last.complete()
+    val second = app.uploads.last.texture
+    assert(app.deleted == Seq(first))
+    assert(report.value.exists(_.toOption.exists(_.ok)))
+    app.draws.clear()
+    drawFrame(renderer, world)
+    assert(app.draws.map(_._1) == Seq(second))
+  }
+
+  test("a hot reload swaps a standalone texture, and a failed reload keeps the old image") {
+    val app = new FakeGLApp
+    val hub = new AssetReloadHub()
+    val renderer = new OpenGLRenderer(app, hub)
+    val world = renderWorld()
+    val scene = world.createScope("scene")
+    val texture = renderer.loadTexture2D(AssetFactory.rawImage("images/wood.png"))(using scene)
+    app.uploads.head.complete()
+    sprite(world, texture, 0f)
+    val first = app.uploads.head.texture
+
+    val failing = hub.reload(AssetChange.paths(Seq("images/wood.png")))
+    hub.drain()
+    assert(app.uploads.size == 2)
+    app.uploads.last.loader.failure(new RuntimeException("not a PNG"))
+    assert(failing.value.get.get.failures.map(_.name) == Vector("images/wood.png"))
+    drawFrame(renderer, world)
+    assert(app.draws.map(_._1) == Seq(first))
+    assert(app.deleted.isEmpty)
+
+    hub.reload(AssetChange.everything)
+    hub.drain()
+    app.uploads.last.complete()
+    val second = app.uploads.last.texture
+    assert(app.deleted == Seq(first))
+    app.draws.clear()
+    drawFrame(renderer, world)
+    assert(app.draws.map(_._1) == Seq(second))
+
+    // Released with the scope; later changes upload nothing.
+    world.destroyScope(scene)
+    assert(app.deleted == Seq(first, second))
+    hub.reload(AssetChange.everything)
+    hub.drain()
+    assert(app.uploads.size == 3)
+  }
+
+  test("when page reloads overlap only the latest upload is kept, and dispose stops reloading") {
+    val app = new FakeGLApp
+    val hub = new AssetReloadHub()
+    val renderer = new OpenGLRenderer(app, hub)
+    loadedAfter(app, renderer.loadDrawableTexture(coin))
+    hub.reloadAll()
+    hub.drain()
+    hub.reloadAll()
+    hub.drain()
+    val older = app.uploads(1)
+    val newer = app.uploads(2)
+    newer.complete()
+    older.complete()
+    assert(app.deleted == Seq(app.uploads.head.texture, older.texture))
+    renderer.dispose()
+    hub.reloadAll()
+    hub.drain()
+    assert(app.uploads.size == 3)
   }
 }

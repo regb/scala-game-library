@@ -15,7 +15,7 @@ Every example is a Bazel package with a shared `core` library and one target per
 | `//examples/hello-canvas` | Canvas drawing, typed drawables and audio, animation, pointer input, text boxes | `desktop-awt`, `desktop-lwjgl`, `html5`, `html5-opengl`, `desktop-native` |
 | `//examples/hello-scalagl` | Raw OpenGL: shaders, buffers, textures, orbit camera | `desktop-lwjgl`, `html5`, `desktop-native` |
 | `//examples/snake` | A complete small game with safe-area layout and Android wiring | `desktop-awt`, `desktop-awt-safe-area`, `html5`, `desktop-native`, `android-*` |
-| `//examples/live-config` | Live tuning values in development and none in release | `desktop-dev`, `desktop-release` |
+| `//examples/live-config` | Hot reload of an image, a level, and settings in development builds; none of it in release builds | `html5-dev`, `desktop-dev`, `html5`, `desktop`, `headless-test` |
 
 ## GameObject engine
 

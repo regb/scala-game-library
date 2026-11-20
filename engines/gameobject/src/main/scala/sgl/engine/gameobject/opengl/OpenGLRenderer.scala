@@ -2,18 +2,23 @@ package sgl.engine.gameobject.opengl
 
 import scala.collection.mutable
 import scala.util.{Failure, Success}
+import scala.util.control.NonFatal
 
 import sgl.{OpenGLProvider, SystemProvider, WindowProvider}
 import sgl.engine.gameobject.{ClearColor, Color, CompositionError, Scope, World}
 import sgl.engine.gameobject.spatial2d.Spatial2D
-import sgl.assets.{DrawableAsset, RawImageAsset, TextureFilter}
+import sgl.assets.{AssetChange, AssetChangeListener, AssetReloads, DrawableAsset, RawImageAsset, TextureFilter}
 import sgl.engine.gameobject.render2d.{Camera2D, Painter2D, Render2D, Texture2D, TextureSource}
 import sgl.engine.gameobject.render3d._
 import sgl.math.{Mat4, Vec2}
-import sgl.util.Loader
+import sgl.util.{DefaultLoader, Loader}
 
+/** @param reloads hot-reloaded images are uploaded again and swapped under
+  *   the textures that show them. Disabled by default.
+  */
 final class OpenGLRenderer(
-    private val app: OpenGLProvider with SystemProvider with WindowProvider
+    private val app: OpenGLProvider with SystemProvider with WindowProvider,
+    reloads: AssetReloads = AssetReloads.Disabled
 ) extends Renderer {
   private val GL = app.OpenGL
 
@@ -70,15 +75,25 @@ final class OpenGLRenderer(
   private val meshes = mutable.ArrayBuffer.empty[MeshState]
   private val textures = mutable.ArrayBuffer.empty[TextureState]
   private val standaloneLoaders = mutable.ArrayBuffer.empty[Loader[Texture2D]]
+  // The image file behind each standalone texture, and the latest upload of it.
+  private val standaloneResources = mutable.ArrayBuffer.empty[String]
+  private val standaloneGenerations = mutable.ArrayBuffer.empty[Int]
   // Physical pages own the GPU textures and are deleted only on dispose. Logical
   // image views never own a texture, so several drawables can share one page.
   private val pages = mutable.HashMap.empty[PageKey, PageState]
   private val imageViews = mutable.HashMap.empty[TextureSource, ImageView]
+  // Only the latest upload of a page is kept; older ones finishing late are deleted.
+  private val pageGenerations = mutable.HashMap.empty[PageKey, Int]
   private val maxTextureSize: Int = GL.maxTextureSize
   private val materials = mutable.ArrayBuffer.empty[Option[GLMaterial]]
   private var disposed = false
 
   GL.enable(GL.DepthTest)
+
+  private object imageReloads extends AssetChangeListener {
+    override def assetsChanged(change: AssetChange): Unit = reloadImages(change)
+  }
+  private val stopReloading: () => Unit = reloads.subscribe(imageReloads)
 
   // What is created in a scope is released with it.
   private def owned[A](scope: Scope)(create: => A)(release: A => Unit): A = {
@@ -132,19 +147,24 @@ final class OpenGLRenderer(
     MeshReady(vertexArray, vbo, ibo, data.indices.length)
   }
 
-  override def loadTexture2D(asset: DrawableAsset)(using Scope): Texture2D = loadStandalone(GL.loadTexture2D(asset))
-  override def loadTexture2D(asset: RawImageAsset)(using Scope): Texture2D = loadStandalone(GL.loadTexture2D(asset))
+  override def loadTexture2D(asset: DrawableAsset)(using Scope): Texture2D =
+    loadStandalone(asset.bestVariantForDpi(app.Window.logicalPpi).resourceName, GL.loadTexture2D(asset))
+  override def loadTexture2D(asset: RawImageAsset)(using Scope): Texture2D =
+    loadStandalone(asset.resourceName, GL.loadTexture2D(asset))
 
-  private def loadStandalone(loader: => Loader[GLTexture])(using scope: Scope): Texture2D = owned(scope) {
+  private def loadStandalone(resourceName: String, loader: => Loader[GLTexture])(using scope: Scope): Texture2D = owned(scope) {
     val id = textures.size
     val handle = new Texture2D(TextureSource.Standalone(id))
     val loading = loader
     textures += TextureLoading()
+    standaloneResources += resourceName
+    standaloneGenerations += 0
     loading.onLoad {
       case Success(texture) =>
-        if(disposed || textures(id) == TextureReleased) GL.deleteTexture(texture)
+        if(disposed || textures(id) == TextureReleased || standaloneGenerations(id) != 0) GL.deleteTexture(texture)
         else textures(id) = TextureReady(texture)
-      case Failure(cause) => if(textures(id) != TextureReleased) textures(id) = TextureFailed(cause)
+      case Failure(cause) =>
+        if(!disposed && textures(id) != TextureReleased && standaloneGenerations(id) == 0) textures(id) = TextureFailed(cause)
     }
     // Registered after the state update above, so the texture is usable by
     // the time this completes.
@@ -401,17 +421,83 @@ final class OpenGLRenderer(
     case Some(PageReady(texture)) => Loader.successful(texture)
     case Some(PageFailed(cause)) => Loader.failed(cause)
     case Some(PageLoading(loader)) => loader
-    case None =>
-      val loader = GL.loadTexture2DResource(key.resourceName, key.filter, generateMipmaps = !key.atlasPage).map(_.texture)
-      pages(key) = PageLoading(loader)
-      loader.onLoad {
+    case None => uploadPage(key)
+  }
+
+  /** Uploads a page. A page that is already on the GPU keeps its texture until
+    * the new one is ready, which then replaces it. The returned loader
+    * completes once the page state has been updated.
+    */
+  private def uploadPage(key: PageKey): Loader[GLTexture] = {
+    val generation = pageGenerations.getOrElse(key, 0) + 1
+    pageGenerations(key) = generation
+    val loader =
+      try GL.loadTexture2DResource(key.resourceName, key.filter, generateMipmaps = !key.atlasPage).map(_.texture)
+      catch { case NonFatal(cause) => Loader.failed[GLTexture](cause) }
+    val updated = new DefaultLoader[GLTexture]
+    pages.get(key) match {
+      case Some(PageReady(_)) => ()
+      case _ => pages(key) = PageLoading(updated.loader)
+    }
+    loader.onLoad { result =>
+      val current = !disposed && pageGenerations.get(key).contains(generation)
+      result match {
         case Success(texture) =>
-          // An upload can complete after dispose; nothing else owns it then.
-          if(disposed) GL.deleteTexture(texture)
-          else pages(key) = PageReady(texture)
-        case Failure(cause) => if(!disposed) pages(key) = PageFailed(cause)
+          // An upload can complete after dispose, or after a newer upload of
+          // the same page; nothing else owns it then.
+          if(!current) GL.deleteTexture(texture)
+          else {
+            pages.get(key) match {
+              case Some(PageReady(previous)) => GL.deleteTexture(previous)
+              case _ => ()
+            }
+            pages(key) = PageReady(texture)
+          }
+        case Failure(cause) =>
+          // A failed reload keeps the image that was there.
+          if(current && !pages.get(key).exists(_.isInstanceOf[PageReady])) pages(key) = PageFailed(cause)
       }
-      loader
+      updated.complete(result)
+      ()
+    }
+    updated.loader
+  }
+
+  // Runs on the game thread, at the start of a frame.
+  private def reloadImages(change: AssetChange): Unit = {
+    if(disposed) return
+    pages.keys.toVector.foreach { key =>
+      if(key.resourceName.nonEmpty && change.affectsPath(key.resourceName))
+        change.track(key.resourceName, uploadPage(key))
+    }
+    textures.indices.foreach { id =>
+      if(textures(id) != TextureReleased && change.affectsPath(standaloneResources(id)))
+        change.track(standaloneResources(id), reloadStandalone(id))
+    }
+  }
+
+  private def reloadStandalone(id: Int): Loader[Unit] = {
+    val generation = standaloneGenerations(id) + 1
+    standaloneGenerations(id) = generation
+    val loader =
+      try GL.loadTexture2DResource(standaloneResources(id), TextureFilter.Nearest, generateMipmaps = true).map(_.texture)
+      catch { case NonFatal(cause) => Loader.failed[GLTexture](cause) }
+    loader.map { texture =>
+      if(disposed || textures(id) == TextureReleased || standaloneGenerations(id) != generation) GL.deleteTexture(texture)
+      else {
+        textures(id) match {
+          case TextureReady(previous) => GL.deleteTexture(previous)
+          case _ => ()
+        }
+        textures(id) = TextureReady(texture)
+      }
+    }.andThen {
+      case Failure(cause) =>
+        if(!disposed && standaloneGenerations(id) == generation) textures(id) match {
+          case TextureReady(_) | TextureReleased => ()
+          case _ => textures(id) = TextureFailed(cause)
+        }
+    }
   }
 
   private val wholeImage = ImageView(PageKey("", TextureFilter.Nearest, atlasPage = false), 0f, 0f, 1f, 1f)
@@ -510,6 +596,7 @@ final class OpenGLRenderer(
   override def dispose(): Unit = {
     if(disposed) return
     disposed = true
+    stopReloading()
 
     GL.useNoProgram()
     GL.unbindVertexArray()

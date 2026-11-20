@@ -86,6 +86,7 @@ export default defineConfig({
           label: 'Tools',
           items: [
             { label: 'Live configuration', slug: 'docs/live-configuration' },
+            { label: 'Hot reload', slug: 'docs/hot-reload' },
             { label: 'Examples', slug: 'docs/examples' },
           ],
         },

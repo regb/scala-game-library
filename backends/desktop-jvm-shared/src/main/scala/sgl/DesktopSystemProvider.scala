@@ -15,6 +15,12 @@ import scala.concurrent.ExecutionContext
   */
 trait DesktopSystemProvider extends SystemProvider with PartsResourcePathProvider {
 
+  /** Opens an asset file by its path relative to the asset root, or returns
+    * null when there is none. Assets are read from the classpath.
+    */
+  protected[sgl] def openDesktopResource(resourceName: String): java.io.InputStream =
+    getClass.getClassLoader.getResourceAsStream(resourceName)
+
   object DesktopSystem extends System {
 
     override def exit(): Unit = {
@@ -25,7 +31,7 @@ trait DesktopSystemProvider extends SystemProvider with PartsResourcePathProvide
     override def nanoTime: Long = java.lang.System.nanoTime
 
     private def openAsset(resourceName: String) = {
-      val is = getClass.getClassLoader.getResourceAsStream(resourceName)
+      val is = openDesktopResource(resourceName)
       if(is == null) throw new ResourceNotFoundException(PartsResourcePath(resourceName.split('/').toVector))
       is
     }

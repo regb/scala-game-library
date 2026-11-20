@@ -92,6 +92,7 @@ Scala.js with the 2D canvas. `bazel run` serves the game on `http://localhost:80
 | `save_component` | `"LocalStorageSaveComponent"` | Save implementation |
 | `keyboard_capture` | `"global"` | `"global"` or `"canvas_focused"` |
 | `*_prevent_default`, `touch_stop_propagation` | `True` | Browser default handling for keyboard, mouse, wheel, and touch events |
+| `hot_reload` | `False` | Development only: mixes in `Html5HotReload`, so the host page can make the game reload assets. See [Hot reload](/docs/hot-reload/). |
 | `static_folder`, `output_name`, `html_output_name` | `"static"`, `"index.js"`, `"index.html"` | Output layout |
 
 ### sgl_html5_opengl_app

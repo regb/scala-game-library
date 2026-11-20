@@ -3,7 +3,20 @@ package sgl.assets
 import sgl.SystemProvider
 import sgl.util.Loader
 
-final class DrawableAsset private[sgl] (private[sgl] val variants: Vector[DrawableAsset.Variant]) {
+/** A typed asset of the generated `Assets` object.
+  *
+  * An asset is identified by the paths of the files behind it, relative to the
+  * asset root. A hot reload names the files that changed, see [[AssetChange]].
+  */
+sealed trait Asset {
+  private[sgl] def resourceNames: Vector[String]
+}
+
+final class DrawableAsset private[sgl] (private[sgl] val variants: Vector[DrawableAsset.Variant]) extends Asset {
+  // Every density and the atlas page that holds it.
+  private[sgl] override def resourceNames: Vector[String] =
+    variants.flatMap(variant => variant.resourceName +: variant.atlas.map(_.pagePath).toVector).distinct
+
   private[sgl] def variantForDensity(density: String): DrawableAsset.Variant =
     variants.find(_.density == density).orElse(variants.headOption)
       .getOrElse(throw new NoSuchElementException("Drawable asset has no variants"))
@@ -64,37 +77,43 @@ private[sgl] final case class AtlasRegion(
     filter: TextureFilter
 )
 
-final class TextAsset private[sgl] (private[sgl] val resourceName: String) {
+final class TextAsset private[sgl] (private[sgl] val resourceName: String) extends Asset {
+  private[sgl] override def resourceNames: Vector[String] = Vector(resourceName)
   override def equals(other: Any): Boolean = other match { case a: TextAsset => resourceName == a.resourceName; case _ => false }
   override def hashCode(): Int = resourceName.hashCode
   override def toString: String = "TextAsset(<opaque>)"
 }
 
-final class AudioAsset private[sgl] (private[sgl] val resourceName: String) {
+final class AudioAsset private[sgl] (private[sgl] val resourceName: String) extends Asset {
+  private[sgl] override def resourceNames: Vector[String] = Vector(resourceName)
   override def equals(other: Any): Boolean = other match { case a: AudioAsset => resourceName == a.resourceName; case _ => false }
   override def hashCode(): Int = resourceName.hashCode
   override def toString: String = "AudioAsset(<opaque>)"
 }
 
-final class RawImageAsset private[sgl] (private[sgl] val resourceName: String) {
+final class RawImageAsset private[sgl] (private[sgl] val resourceName: String) extends Asset {
+  private[sgl] override def resourceNames: Vector[String] = Vector(resourceName)
   override def equals(other: Any): Boolean = other match { case a: RawImageAsset => resourceName == a.resourceName; case _ => false }
   override def hashCode(): Int = resourceName.hashCode
   override def toString: String = "RawImageAsset(<opaque>)"
 }
 
-final class FontAsset private[sgl] (private[sgl] val resourceName: String) {
+final class FontAsset private[sgl] (private[sgl] val resourceName: String) extends Asset {
+  private[sgl] override def resourceNames: Vector[String] = Vector(resourceName)
   override def equals(other: Any): Boolean = other match { case a: FontAsset => resourceName == a.resourceName; case _ => false }
   override def hashCode(): Int = resourceName.hashCode
   override def toString: String = "FontAsset(<opaque>)"
 }
 
-final class BinaryAsset private[sgl] (private[sgl] val resourceName: String) {
+final class BinaryAsset private[sgl] (private[sgl] val resourceName: String) extends Asset {
+  private[sgl] override def resourceNames: Vector[String] = Vector(resourceName)
   override def equals(other: Any): Boolean = other match { case a: BinaryAsset => resourceName == a.resourceName; case _ => false }
   override def hashCode(): Int = resourceName.hashCode
   override def toString: String = "BinaryAsset(<opaque>)"
 }
 
-final class MultiDpiBitmapAsset private[sgl] (private[sgl] val variants: Vector[DrawableAsset.Variant]) {
+final class MultiDpiBitmapAsset private[sgl] (private[sgl] val variants: Vector[DrawableAsset.Variant]) extends Asset {
+  private[sgl] override def resourceNames: Vector[String] = variants.map(_.resourceName).distinct
   override def equals(other: Any): Boolean = other match { case a: MultiDpiBitmapAsset => variants == a.variants; case _ => false }
   override def hashCode(): Int = variants.hashCode
   override def toString: String = "MultiDpiBitmapAsset(<opaque>)"
@@ -131,5 +150,22 @@ private[sgl] object AssetFactory {
 trait AssetRuntime { self: SystemProvider =>
   def drawableAssetFromUri(uri: String): DrawableAsset
 
+  /** Notifications of changed assets. Disabled unless a development mixin,
+    * such as the HTML5 `Html5HotReload`, installs an [[AssetReloadHub]].
+    */
+  def AssetReloads: sgl.assets.AssetReloads = sgl.assets.AssetReloads.Disabled
+
   final def loadTextAsset(asset: TextAsset): Loader[Array[String]] = System.loadText(asset)
+
+  /** The parsed content of a text asset, parsed again when it changes. */
+  final def liveText[A](asset: TextAsset)(parse: Array[String] => A): LiveAsset[A] =
+    LiveAsset(AssetReloads, asset)(System.loadText(asset).map(parse))
+
+  /** The parsed content of a binary asset, parsed again when it changes. */
+  final def liveBinary[A](asset: BinaryAsset)(parse: Array[Byte] => A): LiveAsset[A] =
+    LiveAsset(AssetReloads, asset)(System.loadBinary(asset).map(parse))
+
+  /** A value loaded by `load`, loaded again when any of `dependsOn` changes. */
+  final def liveAsset[A](dependsOn: Asset*)(load: => Loader[A]): LiveAsset[A] =
+    LiveAsset(AssetReloads, dependsOn*)(load)
 }

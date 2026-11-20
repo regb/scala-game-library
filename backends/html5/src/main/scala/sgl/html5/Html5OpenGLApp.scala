@@ -60,6 +60,7 @@ trait Html5OpenGLApp extends Html5WindowProvider with Html5OpenGLProvider with H
         lastTime = Some(now)
         val captureBatch = beginFrameCapture()
         try {
+          html5BeforeFrame()
           frame((elapsedMillis min 1000.0) / 1000.0)
           completeFrameCapture(captureBatch, captureWebGLFrame(webgl, htmlCanvas.width, htmlCanvas.height))
         } catch {

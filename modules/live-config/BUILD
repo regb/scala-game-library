@@ -6,6 +6,7 @@ scala_library(
     name = "live-config",
     srcs = glob(["src/main/scala/**/*.scala"]),
     visibility = ["//visibility:public"],
+    deps = ["//core:sgl-core"],
 )
 
 scala_test(
@@ -14,6 +15,7 @@ scala_test(
     scalacopts = SGL_SCALACOPTS,
     deps = [
         ":live-config",
+        "//core:sgl-core",
         "@maven//:org_scalatest_scalatest_3",
     ],
 )

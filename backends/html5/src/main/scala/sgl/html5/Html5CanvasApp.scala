@@ -143,6 +143,7 @@ trait Html5CanvasApp extends Html5WindowProvider with Html5SystemProvider with H
         canvas.resetForFrame()
         currentFrameCanvas = Some(canvas)
         try {
+          html5BeforeFrame()
           frame(cappedMillis / 1000.0)
           completeFrameCapture(captureBatch, captureCanvasFrame(htmlCanvas))
         } catch {
