@@ -1,5 +1,5 @@
 load("//bazel/sgl:assets.bzl", "sgl_drawable_assets")
-load("//bazel/sgl:defs.bzl", "sgl_core_library", "sgl_desktop_awt_app", "sgl_desktop_native_app")
+load("//bazel/sgl:defs.bzl", "sgl_core_library", "sgl_desktop_awt_app", "sgl_desktop_metal_app", "sgl_desktop_native_app")
 load("//bazel/tiled:defs.bzl", "sgl_tiled_import")
 
 package(default_visibility = ["//visibility:public"])
@@ -44,6 +44,25 @@ sgl_desktop_awt_app(
     main_class = "Main",
     package = "sgl.examples.screen2d.platformer",
     use_extension_tiled = True,
+    deps = [":core"],
+)
+
+sgl_desktop_metal_app(
+    name = "desktop-metal",
+    assets = [
+        ":assets",
+        ":tiled-assets",
+    ],
+    assets_strip_prefix = "engines/screen2d/examples/platformer/assets",
+    core_abstract_class = "sgl.examples.screen2d.platformer.core.AbstractApp",
+    extra_mixins = ["sgl.examples.screen2d.platformer.core.GeneratedAssetsProvider"],
+    frame_height = 800,
+    frame_width = 600,
+    main_class = "Main",
+    package = "sgl.examples.screen2d.platformer",
+    use_extension_tiled = True,
+    use_screen2d = True,
+    window_title = "SGL Screen2D Platformer Metal",
     deps = [":core"],
 )
 

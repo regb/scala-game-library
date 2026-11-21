@@ -1,5 +1,5 @@
 load("//bazel/sgl:assets.bzl", "sgl_audio_assets", "sgl_raw_image_assets")
-load("//bazel/sgl:defs.bzl", "sgl_core_library", "sgl_desktop_lwjgl_app", "sgl_desktop_native_app", "sgl_html5_opengl_app")
+load("//bazel/sgl:defs.bzl", "sgl_core_library", "sgl_desktop_lwjgl_app", "sgl_desktop_metal_app", "sgl_desktop_native_app", "sgl_html5_opengl_app")
 
 sgl_raw_image_assets(
     name = "images",
@@ -61,6 +61,23 @@ sgl_html5_opengl_app(
     main_class = "Main",
     package = "sgl.examples.hello.scalagl",
     static_folder = "static",
+    deps = [":core"],
+)
+
+sgl_desktop_metal_app(
+    name = "desktop-metal",
+    assets = [
+        ":images",
+        ":audio",
+    ],
+    assets_strip_prefix = "examples/hello-scalagl/assets",
+    core_abstract_class = "sgl.examples.hello.scalagl.core.AbstractApp",
+    extra_mixins = ["sgl.examples.hello.scalagl.core.GeneratedAssetsProvider"],
+    frame_height = 700,
+    frame_width = 1000,
+    main_class = "Main",
+    package = "sgl.examples.hello.scalagl",
+    window_title = "SGL Hello ScalaGL Metal",
     deps = [":core"],
 )
 

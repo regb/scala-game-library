@@ -8,6 +8,7 @@ exports_files(
         "Html5OpenGLMain.scala.template",
         "DesktopAWTMain.scala.template",
         "DesktopLwjglMain.scala.template",
+        "DesktopMetalMain.scala.template",
         "DesktopNativeMain.scala.template",
     ],
     visibility = ["//visibility:private"],
@@ -17,6 +18,11 @@ exports_files([
     "testdata/atlas/coin.png",
     "testdata/atlas/gem.png",
 ])
+
+exports_files(
+    ["generate_ios_app_icons.sh"],
+    visibility = ["//visibility:public"],
+)
 
 sgl_text_assets(
     name = "keyword_text_asset",
