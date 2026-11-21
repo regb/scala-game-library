@@ -565,6 +565,11 @@ h1#_top {
   border-bottom: 1px solid var(--sgl-border);
 }
 
+/* Game art is store feature graphics, about 2:1; show it whole. */
+.show-grid.featured .show-card img {
+  aspect-ratio: 2 / 1;
+}
+
 .show-card .body {
   display: flex;
   flex: 1;

@@ -2,10 +2,7 @@
 import { Code, Icon, TabItem, Tabs } from '@astrojs/starlight/components';
 
 import ShowcaseCard from './ShowcaseCard.astro';
-import { examples, games, repo, studio } from '../data/showcase';
-
-// Every game, then the flagship engine example.
-const featured = [...games, examples[0]];
+import { games, repo, studio } from '../data/showcase';
 
 const platforms = [
   { icon: 'laptop', name: 'Desktop JVM', body: 'AWT for Canvas games, LWJGL for OpenGL 3.3 and OpenAL.', status: 'Stable' },
@@ -122,11 +119,10 @@ bazel run //examples/snake:android-debug`;
     <p class="section-eyebrow">Showcase</p>
     <h2 class="section-title">Built with SGL.</h2>
     <p class="section-lead">
-      Published games from <a href={studio.href}>{studio.name}</a>, the open-source Scalavator,
-      and runnable examples you can start from.
+      Published games from <a href={studio.href}>{studio.name}</a>, and the open-source Scalavator.
     </p>
-    <div class="show-grid">
-      {featured.map((entry) => <ShowcaseCard entry={entry} />)}
+    <div class="show-grid featured">
+      {games.map((entry) => <ShowcaseCard entry={entry} />)}
     </div>
     <div class="hero-actions section-more">
       <a class="sgl-button secondary" href="/showcase/">See the full showcase →</a>

@@ -41,7 +41,7 @@ export const games: ShowcaseEntry[] = [
     tag: 'Arcade · Smart Dino Games',
     body: 'A humorous arcade game: close waves of pop-up windows, faster and faster, before the computer crashes.',
     image: winsmash,
-    imageAlt: 'WinSmash: error dialog windows floating over a blue sky and green field',
+    imageAlt: 'WinSmash: a cartoon hammer smashes an error dialog window next to the game title, over a green field',
     href: 'https://smartdinogames.com/games/winsmash',
     platforms: ['Android'],
   },
