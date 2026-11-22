@@ -4,41 +4,53 @@ import { Code } from '@astrojs/starlight/components';
 
 const hero = Astro.locals.starlightRoute.entry.data.hero;
 
-const code = `trait AbstractApp extends Application {
-  this: CanvasProvider with WindowProvider =>
+const code = `trait AbstractApp extends OpenGLGameObjectApp {
+  override def configure(builder: GameBuilder): Unit =
+    builder
+      .install(UpdateCapabilitiesModule)
+      .install(Render2DModule)
+      .setInitialScene(Arena)
+}
 
-  import Graphics.Color
-  private var x = 0f
-  private def paint(c: Color) = Graphics.defaultPaint.withColor(c)
+final class Ship(obj: TypedObject[Spatial2D & Collider])
+    extends ComponentOf(obj) with Updatable {
+  private val spatial = obj.spatial
+  private val collider = obj.get[Collider] // guaranteed at compile time
 
-  override def frame(dt: Double): Unit = {
+  override def update(context: GameContext)(using Scope): Unit =
     if(Input.isKeyPressed(Input.Keys.Right))
-      x += 240f * dt.toFloat
+      spatial.local = spatial.local.copy(
+        position = spatial.local.position + Vec2(240f * context.dt, 0f)
+      )
+}
 
-    withFrameCanvas { canvas =>
-      val (w, h) = (Window.width.toFloat, Window.height.toFloat)
-      canvas.drawRect(0, 0, w, h, paint(Color.Black))
-      canvas.drawCircle(x, h / 2, 24f, paint(Color.Red))
-    }
+object Arena extends Scene {
+  override def load(context: GameContext)(using Scope): Unit = {
+    context.spawn2D("Camera").attach(new Camera2D(_, Vec2(800f, 600f)))
+    context.spawn2D("Ship")
+      .attach(new Collider(_, 14f)) // omitting this fails to compile
+      .attach(new Ship(_))
+      .attach(new SpriteRenderer(_, SpriteVisual.Triangle(Color(1f, 1f, 1f)), 28f, 34f))
   }
 }`;
 ---
 
 <section class="sgl-hero not-content">
   <div>
-    <a class="hero-pill" href="/docs/">
-      <strong>Pre-release</strong> Scala 3 · Bazel · open source
+    <a class="hero-pill" href="/docs/ai-agents/">
+      <strong>Agent-ready</strong> Code-first · Declarative · Compiler-verified →
     </a>
     <h1>
-      Write your game once.<br />
-      <span class="gradient-text">Ship it everywhere.</span>
+      Code-first games.<br />
+      <span class="gradient-text">Verified by the compiler.</span>
     </h1>
     <p class="tagline">{hero?.tagline}</p>
     <div class="hero-actions">
       <a class="sgl-button primary" href="/docs/getting-started/">Build your first game →</a>
+      <a class="sgl-button secondary" href="/docs/ai-agents/">AI agents & verification</a>
       <a class="sgl-button secondary" href="/docs/">Read the docs</a>
     </div>
-    <div class="hero-command"><span>$</span> bazel run //examples/hello-canvas:desktop-awt</div>
+    <div class="hero-command"><span>$</span> bazel run //engines/gameobject/examples/asteroids:desktop-lwjgl</div>
   </div>
   <div class="hero-code">
     <Code code={code} lang="scala" title="App.scala" />
@@ -47,6 +59,7 @@ const code = `trait AbstractApp extends Application {
       <span>Web (Scala.js)</span>
       <span>Scala Native</span>
       <span>Android</span>
+      <span>Headless OpenGL</span>
     </div>
   </div>
 </section>

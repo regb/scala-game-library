@@ -1,0 +1,126 @@
+---
+title: AI coding agents
+description: Why SGL's code-first, declarative, compiler-verified architecture and headless OpenGL backend form a reliable closed loop for AI-generated game code.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+Most game engines break down when paired with AI coding agents. Scenes live in opaque binary files or inspector trees, asset paths are fragile strings, component wiring fails silently at runtime, and an agent cannot open a window to check whether the game actually rendered or responded to input.
+
+SGL removes those failure modes by construction:
+
+- **100% code-first and plain text.** Game logic, scenes, components, asset manifests, and platform targets live in concise, diffable Scala and Bazel files. There is no hidden editor state.
+- **Declarative composition.** Objects are composed as typed chains (`spawn2D(...).attach(...)`), assets are declared in `BUILD`, and platform entry points are generated from declarative Bazel rules.
+- **Compiler-verified correctness.** Missing providers, broken asset names, duplicate or mis-ordered components, and leaked scene scopes fail at compile time with direct error messages—giving an agent exact repair instructions before a single frame runs.
+- **Deterministic headless verification.** The headless OpenGL backend renders on CPU (Mesa `llvmpipe`) with no display or GPU, accepts synthetic input, steps frames deterministically, and captures RGBA8 frames that tests or multimodal agents can inspect.
+
+## The verification loop
+
+AI-assisted development is only as reliable as its feedback loop. With SGL, an agent can write, verify, and visually inspect a game completely from the terminal:
+
+<Steps>
+
+1. **Load accurate context (Skill + `llms.txt`).**
+   Point your coding agent at the SGL Agent Skill in [`skills/sgl/SKILL.md`](https://github.com/regb/scala-game-library/blob/master/skills/sgl/SKILL.md) and the machine-readable docs at [`/llms.txt`](/llms.txt).
+
+2. **Generate concise, declarative game code.**
+   Declare assets in `BUILD`, compose objects with typed `attach` chains, and wire platforms with Bazel macros.
+
+3. **Let the Scala 3 compiler catch structural bugs (`bazel build`).**
+   Instead of hallucinating broken paths or missing components that explode minutes later at runtime, the compiler immediately pinpoints what is wrong.
+
+4. **Playtest and capture frames headlessly (`bazel test`).**
+   Run `HeadlessOpenGLApp` in a test, send synthetic keyboard/mouse/touch events through `Controller`, step fixed frames with `step(dt)`, and assert on pixels or export PNGs via `DesktopFrameIO.writePng` for visual inspection.
+
+5. **Iterate fast on art and tuning.**
+   Use [hot reload](/docs/hot-reload/) and [live configuration](/docs/live-configuration/) to adjust sprites, levels, and tuning parameters without recompiling Scala.
+
+</Steps>
+
+## Compiler guardrails in practice
+
+Instead of debugging silent runtime bugs, the compiler turns the most common AI-generated game mistakes into immediate, actionable errors:
+
+| Common mistake | What SGL catches at compile time |
+| --- | --- |
+| Typo or renamed sprite/audio file | `Assets.drawable.player` is generated from `BUILD`—a missing asset does not compile. |
+| Attaching a component before its dependency | `Bullet(obj: TypedObject[Collider])` attached before `Collider` fails with *"This object is not known to have a Collider"*. |
+| Attaching the same component twice | Fails with *"This object already has a Collider"*. |
+| Spawning an object that leaks across scene changes | `World` spawn helpers require `(using Scope)` with no default—forgetting it does not compile. |
+| Calling audio or graphics on a backend that lacks it | Providers are declared in trait self-types; incomplete backend wiring fails to compile. |
+| Forgetting to install a renderer or update module | `RequiresGlobals` rejects attaching the component with a `CompositionError` naming the missing module. |
+
+## Headless playtesting and visual checks
+
+The [headless OpenGL backend](/docs/testing/#headless-opengl) closes the "runtime-blindness" gap. An agent can compile a game, send inputs, step frames deterministically, assert on rendered pixels, and write PNG screenshots to inspect visually—with no X11, Wayland, or GPU:
+
+```scala
+import java.nio.file.Paths
+import sgl.{DesktopFrameIO, DesktopSystemProvider, Input}
+import sgl.headless.opengl.HeadlessOpenGLApp
+import sgl.util.NoLoggingProvider
+
+object app extends HeadlessOpenGLApp
+    with MyGameApp
+    with DesktopSystemProvider
+    with NoLoggingProvider {
+  override val frameDimension: (Int, Int) = (320, 240)
+}
+
+app.start()
+try {
+  // Advance and capture initial frame
+  val before = app.captureNextFrame()
+  app.step(1.0 / 60.0)
+
+  // Drive synthetic input for 10 frames
+  app.Controller.keyDown(Input.Keys.Right)
+  for(_ <- 0 until 10) app.step(1.0 / 60.0)
+  app.Controller.keyUp(Input.Keys.Right)
+
+  // Capture and save PNG for pixel assertions or visual inspection
+  val after = app.captureNextFrame()
+  app.step(1.0 / 60.0)
+  after.value.flatMap(_.toOption).foreach { frame =>
+    DesktopFrameIO.writePng(frame, Paths.get("/tmp/after-move.png"))
+  }
+} finally app.stop()
+```
+
+Run headless tests hermetically on Linux without a display:
+
+```bash
+DISPLAY="" WAYLAND_DISPLAY="" EGL_PLATFORM=surfaceless LIBGL_ALWAYS_SOFTWARE=1 \
+  bazel test //engines/gameobject/examples/headless-control:headless-control-integration-test
+```
+
+See [`HeadlessControlIntegrationSuite.scala`](https://github.com/regb/scala-game-library/blob/master/engines/gameobject/examples/headless-control/HeadlessControlIntegrationSuite.scala) for complete assertions over both Canvas and GameObject scenes.
+
+## SGL Agent Skill
+
+This repository ships a reusable [Agent Skill](https://agentskills.io/) at [`skills/sgl/SKILL.md`](https://github.com/regb/scala-game-library/blob/master/skills/sgl/SKILL.md). It packages SGL's core invariants, layer selection, Bazel rules, and headless verification commands in a compact format supported by Claude Code, Codex, Cursor, Gemini CLI, and other Agent Skills-compatible tools.
+
+Install or copy `skills/sgl/` into your agent's skills directory (for example `.claude/skills/sgl/` or your client's project/user skills folder), or fetch it directly from the repository:
+
+```bash
+# Example: copy the skill from a local clone into a project's skills folder
+mkdir -p .agents/skills
+cp -r path/to/scala-game-library/skills/sgl .agents/skills/sgl
+```
+
+## Machine-readable documentation (`llms.txt`)
+
+`libsgl.com` publishes structured Markdown endpoints for coding agents at build time:
+
+| Endpoint | Contents |
+| --- | --- |
+| [`/llms.txt`](/llms.txt) | Compact index of every docs page, key SGL rules, and topic sets |
+| [`/llms-small.txt`](/llms-small.txt) | Abbreviated single-file reference for tight context windows |
+| [`/llms-full.txt`](/llms-full.txt) | Complete documentation in one Markdown file |
+| [`/_llms-txt/gameobject-engine.txt`](/_llms-txt/gameobject-engine.txt) | GameObject engine: typed objects, systems, scenes, and rendering |
+| [`/_llms-txt/core-apis.txt`](/_llms-txt/core-apis.txt) | Core lifecycle, Canvas, OpenGL, input, audio, and typed assets |
+| [`/_llms-txt/build-and-platforms.txt`](/_llms-txt/build-and-platforms.txt) | Bazel rules, backends, Android, and headless testing |
+
+<Aside type="tip" title="Source is the ground truth">
+SGL is pre-0.1 and APIs evolve quickly. In your game workspace, remind agents to check SGL's source and runnable examples (`examples/`, `engines/*/examples/`) at the pinned commit whenever a signature changes.
+</Aside>

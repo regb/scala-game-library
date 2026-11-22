@@ -5,49 +5,73 @@ import ShowcaseCard from './ShowcaseCard.astro';
 import { games, repo, studio } from '../data/showcase';
 
 const platforms = [
-  { icon: 'laptop', name: 'Desktop JVM', body: 'AWT for Canvas games, LWJGL for OpenGL 3.3 and OpenAL.', status: 'Stable' },
-  { icon: 'window', name: 'Web', body: 'Scala.js with the 2D canvas or WebGL 2, and HTML5 audio.', status: 'Stable' },
-  { icon: 'linux', name: 'Native', body: 'Scala Native on SDL2 and OpenGL ES. No JVM at runtime.', status: 'Stable' },
-  { icon: 'mobile-android', name: 'Android', body: 'Kotlin host library; Bazel generates the Gradle project.', status: 'Stable' },
-  { icon: 'apple', name: 'iOS', body: 'No native backend yet. The web build can be packaged with Cordova.', status: 'Experimental', experimental: true },
+  { icon: 'laptop', name: 'Desktop JVM', body: 'AWT for Canvas games, LWJGL for OpenGL 3.3 and OpenAL.', status: 'Supported' },
+  { icon: 'window', name: 'Web', body: 'Scala.js with 2D Canvas or WebGL 2, deployable static sites, and HTML5 audio.', status: 'Supported' },
+  { icon: 'linux', name: 'Native', body: 'Scala Native on SDL2 and OpenGL ES. Native executables with no JVM.', status: 'Supported' },
+  { icon: 'mobile-android', name: 'Android', body: 'Kotlin host library; Bazel generates the Gradle project, APK, and Play bundle.', status: 'Supported' },
+  { icon: 'setting', name: 'Headless OpenGL', body: 'Mesa surfaceless EGL pbuffer for CI tests, synthetic input, and frame capture.', status: 'Supported' },
+  { icon: 'apple', name: 'iOS', body: 'No native backend yet. Web builds can be packaged as apps with Cordova.', status: 'Via Cordova', experimental: true },
+] as const;
+
+const verificationSteps = [
+  {
+    step: '01',
+    title: 'Machine-readable context',
+    body: 'Ship with the repository’s Agent Skill (skills/sgl/SKILL.md) and /llms.txt so agents know exact SGL conventions from turn one.',
+  },
+  {
+    step: '02',
+    title: 'Declarative, concise code',
+    body: 'Assets in BUILD, typed attach chains, and plain-text scenes—zero opaque binary files or inspector state.',
+  },
+  {
+    step: '03',
+    title: 'Compiler guardrails',
+    body: 'Missing providers, broken asset names, duplicate components, and leaked scopes fail at compile time with exact fixes.',
+  },
+  {
+    step: '04',
+    title: 'Headless frame verification',
+    body: 'Drive inputs with Controller, step deterministically on HeadlessOpenGLApp, and assert on pixels or inspect captured PNGs.',
+  },
 ] as const;
 
 const features = [
   {
-    icon: 'puzzle',
-    title: 'Composition, not inheritance trees',
-    body: 'Your game is a trait that names the providers it needs in its self-type. Each backend mixes in the implementations, and the compiler checks the wiring.',
-    href: '/docs/core-concepts/',
-  },
-  {
-    icon: 'document',
-    title: 'Typed, generated assets',
-    body: 'Declare images, audio, fonts, and maps in Bazel. Game code loads Assets.drawable.player instead of a file path, so a typo does not compile.',
-    href: '/docs/assets/',
-  },
-  {
-    icon: 'seti:scala',
-    title: 'Canvas or OpenGL, your call',
-    body: 'A portable 2D Canvas API, a portable OpenGL/WebGL API, and a Canvas renderer implemented on OpenGL that runs the same on every target.',
-    href: '/docs/graphics/',
-  },
-  {
     icon: 'approve-check',
-    title: 'Composition checked at compile time',
-    body: 'The GameObject engine tracks the components on an object in its type. Attaching a component before what it depends on fails to compile.',
+    title: 'Compile-time checked composition',
+    body: 'TypedObject tracks attached components in the object’s type. Attaching a component before its dependency, or attaching duplicates, fails to compile.',
     href: '/docs/gameobject/',
   },
   {
-    icon: 'rocket',
-    title: 'One target per platform',
-    body: 'sgl_desktop_awt_app, sgl_html5_app, sgl_android_app, and other rules generate the entry point for each backend. bazel run starts the game.',
-    href: '/docs/bazel-rules/',
+    icon: 'document',
+    title: 'Typed, declarative assets',
+    body: 'Declare images, atlases, audio, fonts, and Tiled maps in Bazel. Code references Assets.drawable.player—broken paths and typos never reach runtime.',
+    href: '/docs/assets/',
   },
   {
     icon: 'setting',
-    title: 'Tools for development',
-    body: 'A headless OpenGL backend for tests, frame capture on every backend, and opt-in live tuning values that release builds do not depend on.',
+    title: 'Deterministic headless testing',
+    body: 'Run real OpenGL headlessly with no display or GPU, inject synthetic input, step fixed frames, and capture RGBA8 screenshots in bazel test.',
     href: '/docs/testing/',
+  },
+  {
+    icon: 'rocket',
+    title: 'Built for AI coding agents',
+    body: 'Plain-text everything, strict compiler feedback, /llms.txt endpoints, and an official skills/sgl Agent Skill close the generate-compile-verify loop.',
+    href: '/docs/ai-agents/',
+  },
+  {
+    icon: 'puzzle',
+    title: 'Concise, layered architecture',
+    body: 'Every game starts from portable Canvas or OpenGL providers wired via self-types. Add the GameObject or Screen2D engine only when you need one.',
+    href: '/docs/core-concepts/',
+  },
+  {
+    icon: 'seti:scala',
+    title: 'Fast iteration, one-command targets',
+    body: 'Hot reload sprites, levels, and live tuning values without recompiling Scala, then build Desktop, Web, Native, and Android from one BUILD file.',
+    href: '/docs/hot-reload/',
   },
 ] as const;
 
@@ -73,8 +97,7 @@ final class Spin(obj: GameObject2D) extends ComponentOf(obj) with Updatable {
   private val spatial = obj.spatial
 
   override def update(context: GameContext)(using Scope): Unit = {
-    val dt = context.global[DeltaTime].seconds.toFloat
-    spatial.local = spatial.local.copy(rotation = spatial.local.rotation + 2f * dt)
+    spatial.local = spatial.local.copy(rotation = spatial.local.rotation + 2f * context.dt)
   }
 }
 
@@ -83,7 +106,7 @@ object Level extends Scene {
     context.spawn2D("Camera").attach(new Camera2D(_, Vec2(800f, 600f)))
     context.spawn2D("Ship")
       .attach(new Spin(_))
-      .attach(new SpriteRenderer(_, SpriteVisual.Triangle(Color(1f, 1f, 1f, 1f)), 28f, 34f))
+      .attach(new SpriteRenderer(_, SpriteVisual.Triangle(Color(1f, 1f, 1f)), 28f, 34f))
   }
 }`;
 
@@ -104,46 +127,56 @@ const screen2dCode = `trait AbstractApp {
 const quickstartCode = `git clone https://github.com/regb/scala-game-library.git
 cd scala-game-library
 
-# Desktop (JVM)
-bazel run //examples/hello-canvas:desktop-awt
+# Desktop (OpenGL)
+bazel run //engines/gameobject/examples/asteroids:desktop-lwjgl
 
 # Web: serves the Scala.js build on http://localhost:8080
-bazel run //examples/hello-canvas:html5
+bazel run //engines/gameobject/examples/asteroids:html5
 
-# Android: generates the Gradle project and assembles the APK
-bazel run //examples/snake:android-debug`;
+# Verify rendering & input headlessly (no display required)
+bazel test //engines/gameobject/examples/headless-control:headless-control-integration-test`;
 ---
 
 <div class="not-content">
   <section class="landing-section">
-    <p class="section-eyebrow">Showcase</p>
-    <h2 class="section-title">Built with SGL.</h2>
+    <p class="section-eyebrow">Built for Reliability &amp; AI Agents</p>
+    <h2 class="section-title">A closed verification loop for code-first games.</h2>
     <p class="section-lead">
-      Published games from <a href={studio.href}>{studio.name}</a>, and the open-source Scalavator.
+      No opaque binary scenes, no stringly-typed asset lookups, and no runtime guesswork. SGL pairs
+      concise declarative code with Scala 3 compiler guardrails and headless OpenGL frame capture so
+      every change—human-written or AI-generated—is verified from the terminal.
     </p>
-    <div class="show-grid featured">
-      {games.map((entry) => <ShowcaseCard entry={entry} />)}
+    <div class="loop-grid">
+      {verificationSteps.map((item) => (
+        <div class="loop-step">
+          <span class="loop-num">{item.step}</span>
+          <h3>{item.title}</h3>
+          <p>{item.body}</p>
+        </div>
+      ))}
     </div>
     <div class="hero-actions section-more">
-      <a class="sgl-button secondary" href="/showcase/">See the full showcase →</a>
+      <a class="sgl-button primary" href="/docs/ai-agents/">Explore the verification loop →</a>
+      <a class="sgl-button secondary" href={`${repo}/blob/master/skills/sgl/SKILL.md`}>SGL Agent Skill</a>
+      <a class="sgl-button secondary" href="/llms.txt">llms.txt</a>
     </div>
   </section>
 
   <section class="landing-section">
-    <p class="section-eyebrow">Platforms</p>
-    <h2 class="section-title">One codebase. Every target.</h2>
+    <p class="section-eyebrow">Why SGL</p>
+    <h2 class="section-title">Code-first. Declarative. Compiler-verified.</h2>
     <p class="section-lead">
-      SGL is a set of provider APIs with one implementation per platform. Your game depends only
-      on the APIs. Each backend is a Bazel target.
+      SGL puts the type system, build graph, and test runner to work for game reliability—keeping
+      game code concise, diffable, and free of hidden editor state.
     </p>
-    <div class="platform-grid">
-      {platforms.map((p) => (
-        <div class="platform">
-          <Icon name={p.icon} size="1.5rem" />
-          <h3>{p.name}</h3>
-          <p>{p.body}</p>
-          <span class:list={['status', { experimental: 'experimental' in p }]}>{p.status}</span>
-        </div>
+    <div class="feature-grid">
+      {features.map((f) => (
+        <article class="feature">
+          <span class="feature-icon"><Icon name={f.icon} size="1.25rem" /></span>
+          <h3>{f.title}</h3>
+          <p>{f.body}</p>
+          <a href={f.href}>Learn more →</a>
+        </article>
       ))}
     </div>
   </section>
@@ -151,18 +184,18 @@ bazel run //examples/snake:android-debug`;
   <section class="landing-section layers">
     <div>
       <p class="section-eyebrow">Architecture</p>
-      <h2 class="section-title">Start low-level. Add an engine when you need one.</h2>
+      <h2 class="section-title">Start minimal. Opt into an engine when you need one.</h2>
       <p class="section-lead">
-        The core is the same for every game. The engines are optional ways to structure a game on
-        top of it, and you choose at most one.
+        Every game shares the same portable core. Engines are optional, declarative architectures on
+        top of it—choose at most one.
       </p>
       <div class="layer-stack">
         <div class="layer-split">
-          <div class="layer" style="--layer-color: #ff6b3d">
+          <div class="layer" style="--layer-color: var(--sgl-brand-2)">
             <h3>GameObject</h3>
-            <p>Components, systems, scenes. 2D and 3D on OpenGL.</p>
+            <p>Typed components, systems, scenes. 2D and 3D on OpenGL.</p>
           </div>
-          <div class="layer" style="--layer-color: #ffd166">
+          <div class="layer" style="--layer-color: var(--sgl-brand-3)">
             <h3>Screen2D</h3>
             <p>Screen stack and game loop for Canvas games.</p>
           </div>
@@ -179,11 +212,11 @@ bazel run //examples/snake:android-debug`;
     </div>
     <div>
       <Tabs syncKey="landing-layer">
-        <TabItem label="Core Canvas">
-          <Code code={canvasCode} lang="scala" title="App.scala" />
-        </TabItem>
         <TabItem label="GameObject">
           <Code code={gameObjectCode} lang="scala" title="App.scala" />
+        </TabItem>
+        <TabItem label="Core Canvas">
+          <Code code={canvasCode} lang="scala" title="App.scala" />
         </TabItem>
         <TabItem label="Screen2D">
           <Code code={screen2dCode} lang="scala" title="App.scala" />
@@ -193,20 +226,36 @@ bazel run //examples/snake:android-debug`;
   </section>
 
   <section class="landing-section">
-    <p class="section-eyebrow">Why SGL</p>
-    <h2 class="section-title">Designed for Scala.</h2>
+    <p class="section-eyebrow">Showcase</p>
+    <h2 class="section-title">Shipped games built with SGL.</h2>
     <p class="section-lead">
-      SGL is written in Scala, for Scala. It uses traits, self-types, givens, and the type system
-      for game structure, and does not wrap a Java object model.
+      Published games from <a href={studio.href}>{studio.name}</a> (try
+      {' '}<a href="https://smartdinogames.com/games/rat-trap/play/">Rat Trap in your browser</a>),
+      plus the open-source Scalavator and runnable repository examples.
     </p>
-    <div class="feature-grid">
-      {features.map((f) => (
-        <article class="feature">
-          <span class="feature-icon"><Icon name={f.icon} size="1.25rem" /></span>
-          <h3>{f.title}</h3>
-          <p>{f.body}</p>
-          <a href={f.href}>Learn more →</a>
-        </article>
+    <div class="show-grid featured">
+      {games.map((entry) => <ShowcaseCard entry={entry} />)}
+    </div>
+    <div class="hero-actions section-more">
+      <a class="sgl-button secondary" href="/showcase/">See all games &amp; examples →</a>
+    </div>
+  </section>
+
+  <section class="landing-section">
+    <p class="section-eyebrow">Platforms</p>
+    <h2 class="section-title">One codebase. Native on every target.</h2>
+    <p class="section-lead">
+      Game code depends only on typed provider APIs. Each backend is a declarative Bazel target that
+      generates the platform entry point and checks wiring at compile time.
+    </p>
+    <div class="platform-grid">
+      {platforms.map((p) => (
+        <div class="platform">
+          <Icon name={p.icon} size="1.5rem" />
+          <h3>{p.name}</h3>
+          <p>{p.body}</p>
+          <span class:list={['status', { experimental: 'experimental' in p }]}>{p.status}</span>
+        </div>
       ))}
     </div>
   </section>
@@ -214,14 +263,15 @@ bazel run //examples/snake:android-debug`;
   <section class="landing-section quickstart">
     <div>
       <p class="section-eyebrow">Quickstart</p>
-      <h2 class="section-title">Run an example on three platforms.</h2>
+      <h2 class="section-title">Build, run, and verify in three commands.</h2>
       <ol>
-        <li><strong>Install Bazel</strong>Use Bazelisk. The repository pins its Bazel version, and Bazel downloads Scala and the JDK.</li>
-        <li><strong>Run on desktop</strong>A single <code>bazel run</code> compiles the shared core and the AWT backend, then opens a window.</li>
-        <li><strong>Target the web and Android</strong>Build the same core with the HTML5 or Android rule. The game code does not change.</li>
+        <li><strong>Install Bazelisk</strong>The repository pins its Bazel version, and Bazel downloads Scala, the JDK, Scala.js, and Scala Native automatically.</li>
+        <li><strong>Run on desktop or web</strong>A single <code>bazel run</code> compiles the shared core and launches a native window or a local web build.</li>
+        <li><strong>Verify headlessly</strong>Run <code>bazel test</code> to step the game on Mesa headless OpenGL and assert on rendered frames.</li>
       </ol>
       <div class="hero-actions">
         <a class="sgl-button secondary" href="/docs/installation/">Installation guide</a>
+        <a class="sgl-button secondary" href="/docs/ai-agents/">Agent setup</a>
       </div>
     </div>
     <Code code={quickstartCode} lang="bash" title="Terminal" />
@@ -235,10 +285,10 @@ bazel run //examples/snake:android-debug`;
         <span class="callout-icon"><Icon name="rocket" /></span>
         <h3>What's new</h3>
         <ul>
-          <li>The GameObject engine checks composition at compile time with <a href="/docs/gameobject/#composition-checked-by-the-compiler">typed objects</a>.</li>
-          <li>Texture atlases packed at build time with <a href="/docs/assets/#texture-atlases"><code>sgl_texture_atlas</code></a>.</li>
-          <li>A headless OpenGL backend to <a href="/docs/testing/">test games</a> without a window.</li>
-          <li>New documentation site at libsgl.com.</li>
+          <li>New <a href="/docs/ai-agents/">AI coding agents guide</a>, <a href={`${repo}/blob/master/skills/sgl/SKILL.md`}>SGL Agent Skill</a>, and <a href="/llms.txt"><code>llms.txt</code></a> endpoints.</li>
+          <li>Asset and settings <a href="/docs/hot-reload/">hot reload</a> on desktop and HTML5 with zero release overhead.</li>
+          <li>Compile-time checked <a href="/docs/gameobject/#composition-checked-by-the-compiler"><code>TypedObject</code> composition</a> and build-time <a href="/docs/assets/#texture-atlases">texture atlases</a>.</li>
+          <li>A <a href="/docs/testing/">headless OpenGL backend</a> to step games and capture frames without a window.</li>
         </ul>
         <div class="hero-actions">
           <a class="sgl-button secondary" href="/docs/migration/">Migration notes</a>
@@ -261,13 +311,14 @@ bazel run //examples/snake:android-debug`;
   </section>
 
   <section class="landing-section cta">
-    <h2 class="section-title">Build something.</h2>
+    <h2 class="section-title">Build something verified.</h2>
     <p class="section-lead">
-      SGL is pre-release and changes quickly. Expect breaking changes. Issues, questions, and games
-      built with SGL are welcome.
+      SGL is pre-0.1 and evolves quickly—expect breaking changes as the API matures. Issues,
+      feedback, and games built with SGL are always welcome.
     </p>
     <div class="hero-actions">
       <a class="sgl-button primary" href="/docs/getting-started/">Get started</a>
+      <a class="sgl-button secondary" href="/docs/ai-agents/">Use with AI agents</a>
       <a class="sgl-button secondary" href={repo}>Star on GitHub</a>
     </div>
   </section>

@@ -5,13 +5,18 @@ description: What SGL is, how it is organized, and where to start.
 
 import { Aside, Card, CardGrid, LinkCard, Steps } from '@astrojs/starlight/components';
 
-The Scala Game Library (SGL) is a library for writing cross-platform games in Scala. You write the
-game against portable APIs for the application lifecycle, rendering, input, audio, assets, and
-saves. You then build it with a Bazel rule for each platform you want to ship on.
+The Scala Game Library (SGL) is a **code-first, declaratively composed, compiler-verified**
+cross-platform game framework in Scala 3. Everything—game logic, scenes, components, assets, and
+platform targets—lives in concise, plain-text source and Bazel files, with no binary editor state
+and no runtime wiring surprises.
 
-SGL is similar to [libGDX](https://libgdx.com/), but it is written in Scala and designed for Scala,
-and it targets each platform natively through Scala.js and Scala Native. It provides control at the
-level of [SDL](https://www.libsdl.org/), with Scala APIs on top.
+You write one portable core against typed APIs for the application lifecycle, rendering, input,
+audio, assets, and saves, then build it with a Bazel rule for each platform you want to ship on
+(Desktop JVM, Web via Scala.js, Native via Scala Native, Android, and Headless OpenGL).
+
+Because missing providers, broken asset names, and mis-ordered components fail at compile time—and
+games can be stepped and frame-captured headlessly with no display—SGL provides a tight, reliable
+verification loop for both human developers and [AI coding agents](/docs/ai-agents/).
 
 <Aside type="caution" title="Pre-release">
 SGL has not had a release yet and its APIs change often. Use it if you are willing to follow the
