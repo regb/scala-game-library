@@ -1,0 +1,240 @@
+---
+title: Test it without a screen
+description: Play Coin Dash from a test on the headless OpenGL backend - send keys, step frames, read the game state, and look at the pixels.
+sidebar:
+  label: 2. Test it without a screen
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+This tutorial tests the [Coin Dash](/docs/tutorials/coin-dash/) game by playing it. The real game runs
+on the headless OpenGL backend: no window, no GPU, and no waiting for real time to pass. A coding
+agent can check its own work the same way.
+
+The headless backend runs on Linux and uses Mesa. On Debian and Ubuntu:
+
+```bash
+sudo apt-get install libegl1 libgl1-mesa-dri
+```
+
+## The target
+
+The starter's `BUILD.bazel` already has it:
+
+```python title="BUILD.bazel"
+scala_test(
+    name = "game_test",
+    size = "small",
+    srcs = glob(["test/**/*.scala"]),
+    env = {
+        "DISPLAY": "",
+        "EGL_PLATFORM": "surfaceless",
+        "LIBGL_ALWAYS_SOFTWARE": "1",
+        "WAYLAND_DISPLAY": "",
+    },
+    target_compatible_with = ["@platforms//os:linux"],
+    deps = [
+        ":core",
+        "@sgl//backends/desktop-jvm-shared",
+        "@sgl//backends/headless-opengl:sgl-headless-opengl",
+        "@sgl//core:sgl-core",
+        "@sgl//engines:sgl-gameobject",
+    ],
+)
+```
+
+The environment variables select Mesa's software renderer, so the test draws the same pixels on your
+machine and in CI.
+
+## Step 1: run the game and look inside
+
+A test controls the game from the outside, and it should not touch the world while a frame runs.
+Instead, add a **probe** to the game: one more system that copies what the test wants to know at the
+end of each frame. Replace the content of `test/GameTest.scala`:
+
+```scala title="test/GameTest.scala"
+package mygame
+
+import java.nio.file.Paths
+
+import org.scalatest.funsuite.AnyFunSuite
+import sgl.{CapturedFrame, DesktopSystemProvider, Input}
+import sgl.desktop.DesktopFrameIO
+import sgl.engine.gameobject._
+import sgl.headless.opengl.HeadlessOpenGLApp
+import sgl.math.Vec2
+import sgl.util.NoLoggingProvider
+
+/** What the probe saw at the end of a frame of a round. */
+final class Snapshot(val player: Vec2, val coins: Vector[Vec2], val points: Int)
+
+final class TestApp extends HeadlessOpenGLApp with Game with DesktopSystemProvider with NoLoggingProvider {
+  override val frameDimension: (Int, Int) = (800, 600)
+
+  // Written by the game's thread and read by the test. None when no round is running.
+  @volatile var round: Option[Snapshot] = None
+
+  override def configure(builder: GameBuilder): Unit = {
+    super.configure(builder)
+    builder.addSystem(Stage.PreRender, GameSystem("mygame.test-probe") {
+      val world = summon[GameContext].world
+      round = world.index[Player].toVector.headOption.map { player =>
+        new Snapshot(
+          player.collider.position,
+          world.index[Coin].toVector.map(_.collider.position),
+          world.globals.get[Round].points
+        )
+      }
+    })
+  }
+
+  def frames(n: Int): Unit = for(_ <- 0 until n) step(1.0 / 60.0)
+
+  /** Steps until a round is running, and returns its state. */
+  def waitForRound(): Snapshot = {
+    val deadline = java.lang.System.nanoTime() + 10_000_000_000L
+    while(round.isEmpty && java.lang.System.nanoTime() < deadline) frames(1)
+    round.getOrElse(throw new AssertionError("no round started"))
+  }
+
+  /** Holds a key for `n` frames. */
+  def hold(key: Input.Keys.Key, n: Int): Unit = {
+    Controller.keyDown(key)
+    try frames(n)
+    finally {
+      Controller.keyUp(key)
+      frames(1)
+    }
+  }
+}
+
+class GameTest extends AnyFunSuite {
+
+  private def play(body: TestApp => Unit): Unit = {
+    val app = new TestApp
+    app.start()
+    try body(app)
+    finally app.stop()
+  }
+
+  test("a round starts with the player in the center and no points") {
+    play { app =>
+      val s = app.waitForRound()
+      assert(s.player == Vec2(0f, 0f))
+      assert(s.points == 0)
+      assert(s.coins.size == Arena.CoinCount)
+    }
+  }
+}
+```
+
+```bash
+bazel test //:game_test
+```
+
+- `TestApp` mixes the headless backend into your `Game`, like the desktop and web targets mix in
+  theirs. Nothing in the game changes for the test.
+- `step` advances the game by one frame of exactly 1/60 s.
+- `Controller` sends input, as if a player pressed the keys.
+
+## Step 2: play
+
+Add these tests to `GameTest`:
+
+```scala title="test/GameTest.scala"
+  test("holding Right moves the player right") {
+    play { app =>
+      val before = app.waitForRound().player
+      app.hold(Input.Keys.Right, 30)
+      val after = app.waitForRound().player
+      // Half a second at 260 units per second.
+      assert(math.abs(after.x - before.x - 130f) < 10f, s"moved from $before to $after")
+      assert(after.y == before.y)
+    }
+  }
+
+  test("walking into a coin scores a point and moves the coin") {
+    play { app =>
+      var s = app.waitForRound()
+      val target = s.coins.head
+      var frames = 0
+      // Steer towards the first coin, one axis at a time.
+      while(s.points == 0 && frames < 600) {
+        val d = target - s.player
+        val key =
+          if(math.abs(d.x) > 8f) (if(d.x > 0) Input.Keys.Right else Input.Keys.Left)
+          else if(d.y > 0) Input.Keys.Down
+          else Input.Keys.Up
+        app.hold(key, 1)
+        s = app.waitForRound()
+        frames += 1
+      }
+      assert(s.points == 1, s"no coin collected after $frames moves")
+      assert(s.coins.size == Arena.CoinCount)
+      assert(!s.coins.contains(target))
+    }
+  }
+
+  test("the round ends after 30 seconds, and Space starts a new one") {
+    play { app =>
+      app.waitForRound()
+      app.frames(31 * 60)
+      assert(app.round.isEmpty, "the round should be over")
+      app.hold(Input.Keys.Space, 2)
+      assert(app.waitForRound().points == 0)
+    }
+  }
+```
+
+The last one plays 31 seconds of the game in a moment, because the test decides how much time passes.
+
+## Step 3: look at the picture
+
+State can be right while the screen is wrong. Capture a frame, save it, and check a pixel:
+
+```scala title="test/GameTest.scala"
+  test("the player is drawn in the center of the screen") {
+    play { app =>
+      app.waitForRound()
+      val frame = capture(app)
+      save(frame, "start")
+      val (r, g, b) = pixel(frame, 400, 300)
+      assert(b > 200 && b > r, s"expected the blue player, got ($r, $g, $b)")
+    }
+  }
+
+  private def capture(app: TestApp): CapturedFrame = {
+    val pending = app.captureNextFrame()
+    app.frames(1) // the capture completes during this frame
+    pending.value.flatMap(_.toOption).getOrElse(fail("the frame was not captured"))
+  }
+
+  /** Files written here are kept in bazel-testlogs/game_test/test.outputs. */
+  private def save(frame: CapturedFrame, name: String): Unit =
+    sys.env.get("TEST_UNDECLARED_OUTPUTS_DIR").foreach { dir =>
+      DesktopFrameIO.writePng(frame, Paths.get(dir, s"$name.png"))
+    }
+
+  private def pixel(frame: CapturedFrame, x: Int, y: Int): (Int, Int, Int) = {
+    val offset = (y * frame.width + x) * CapturedFrame.BytesPerPixel
+    (frame.rgba(offset) & 0xff, frame.rgba(offset + 1) & 0xff, frame.rgba(offset + 2) & 0xff)
+  }
+```
+
+Run the tests and open the picture. Depending on your Bazel settings, it is a file or inside
+`outputs.zip` in this folder:
+
+```bash
+bazel test //:game_test
+ls bazel-testlogs/game_test/test.outputs/
+```
+
+<Aside type="tip" title="With a coding agent">
+Ask the agent to add a test for each rule it implements, and to look at the saved picture after a
+change to the rendering. See [AI coding agents](/docs/ai-agents/).
+</Aside>
+
+## Next
+
+[Add art and sound](/docs/tutorials/art-and-sound/) replaces the circles with images. The
+[Testing and headless](/docs/testing/) page lists the other ways to test a game.

@@ -1,0 +1,151 @@
+---
+title: Ship it
+description: Put Coin Dash on a static web host, and package it as a desktop jar and a native executable.
+sidebar:
+  label: 4. Ship it
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+The same game builds for the web, for the desktop, and as a native executable. This tutorial packages
+the [Coin Dash](/docs/tutorials/art-and-sound/) project for each.
+
+First check that everything works:
+
+```bash
+bazel build //...
+bazel test //...
+```
+
+## Web
+
+`//:web` is a development server. Next to it, `//:web_site` is the game as a folder of static files:
+
+```bash
+bazel build //:web_site
+mkdir -p dist/web
+cp -rL bazel-bin/web_site/. dist/web
+chmod -R u+w dist/web
+```
+
+```text
+dist/web
+├── index.html
+├── index.js
+└── static/      the images and the sound
+```
+
+`cp -L` copies the files themselves, since Bazel's output folder can contain links, and `chmod` makes
+the copies writable.
+
+Try it with any static server, because browsers do not load modules from `file://`:
+
+```bash
+python3 -m http.server --directory dist/web 8000
+```
+
+Then upload the folder. Any static host works, and all paths in it are relative, so it can also sit in
+a subfolder of a site:
+
+- **itch.io**: zip the *content* of the folder, with `index.html` at the top of the archive, and upload
+  it as an HTML game.
+
+  ```bash
+  (cd dist/web && zip -r ../coin-dash-web.zip .)
+  ```
+
+- **Cloudflare Pages**:
+
+  ```bash
+  npx wrangler pages deploy dist/web --project-name coin-dash
+  ```
+
+- **GitHub Pages, Netlify, or your own server**: publish the folder as it is.
+
+### Your own page
+
+The generated page has only the canvas. To change it, write a template and pass it as `html_template`:
+
+```html title="index.html.template"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Coin Dash</title>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <script type="module">
+    import { {{MAIN_CLASS}} } from "./{{JS_PATH}}";
+    {{MAIN_CLASS}}.run(document.getElementById("game"));
+  </script>
+</body>
+</html>
+```
+
+```python title="BUILD.bazel"
+sgl_html5_opengl_app(
+    name = "web",
+    html_template = "index.html.template",
+    # ... the other attributes as before
+)
+```
+
+The build replaces `{{JS_PATH}}` and `{{MAIN_CLASS}}`. Use `site_files` for an icon or other files of
+the page, and `pack_assets = True` to bundle all assets into one file.
+
+## Desktop
+
+Every desktop target has a `_deploy.jar` with the game, its libraries, and its assets:
+
+```bash
+bazel build //:desktop_deploy.jar
+mkdir -p dist
+cp -f bazel-bin/desktop_deploy.jar dist/coin-dash.jar
+```
+
+Players with Java 17 or newer start it with `java -jar coin-dash.jar`. On macOS, GLFW has to run on the
+first thread: `java -XstartOnFirstThread -jar coin-dash.jar`.
+
+<Aside type="caution" title="One jar per operating system">
+The jar contains the native libraries of the system it was built on. Build it on Linux, Windows, and
+macOS to support all three, for example with a CI matrix.
+</Aside>
+
+## Native executable
+
+The Scala Native target needs clang, SDL2, SDL2_image, and OpenGL ES on the build machine. On Debian
+and Ubuntu:
+
+```bash
+sudo apt-get install clang libsdl2-dev libsdl2-image-dev libgles-dev
+```
+
+```bash
+bazel build //:native
+mkdir -p dist/coin-dash
+cp -fL bazel-bin/native.bin dist/coin-dash/coin-dash
+cp -rL bazel-bin/native.runfiles/_main/assets dist/coin-dash/
+chmod -R u+w dist/coin-dash
+```
+
+The executable looks for `assets` in the current directory, so start it from its own folder:
+
+```bash
+cd dist/coin-dash && ./coin-dash
+```
+
+It needs no Java. Players need the SDL2 and SDL2_image libraries, which the executable loads from the
+system.
+
+## Android
+
+The GameObject engine does not run on Android yet, so Coin Dash cannot be built for it. Games that use
+the Canvas API, with or without the Screen2D engine, can: see [Android](/docs/android/). On phones and
+tablets, Coin Dash would also need touch controls, described in [Input](/docs/input/).
+
+## Next
+
+[A first 3D scene](/docs/tutorials/first-3d-scene/) uses the same engine in 3D.
+[Platforms](/docs/platforms/) lists what each backend supports.

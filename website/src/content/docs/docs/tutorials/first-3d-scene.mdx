@@ -1,0 +1,254 @@
+---
+title: A first 3D scene
+description: A sun, an earth, and a moon with the GameObject engine - meshes, materials, a hierarchy of transforms, and a camera you can turn.
+sidebar:
+  label: 5. A first 3D scene
+---
+
+import { FileTree } from '@astrojs/starlight/components';
+
+You will make a small solar system and turn the camera with the arrow keys. Objects, components,
+systems, and scenes work as in [Make a 2D game](/docs/tutorials/coin-dash/). This one adds meshes,
+materials, and objects that move with others.
+
+## Step 1: a new package
+
+Use a project from the [starter template](https://github.com/regb/sgl-starter-project), such as the
+one from the Coin Dash tutorial. Make the folder `solar/assets` and save three textures in it:
+[sun.png](/tutorials/solar/sun.png), [earth.png](/tutorials/solar/earth.png), and
+[moon.png](/tutorials/solar/moon.png).
+
+<FileTree>
+- BUILD.bazel
+- MODULE.bazel
+- solar/
+  - BUILD.bazel
+  - Solar.scala
+  - assets/
+    - earth.png
+    - moon.png
+    - sun.png
+</FileTree>
+
+```python title="solar/BUILD.bazel"
+load("@sgl//bazel/sgl:assets.bzl", "sgl_raw_image_assets")
+load("@sgl//bazel/sgl:defs.bzl", "sgl_core_library", "sgl_desktop_lwjgl_app", "sgl_html5_opengl_app")
+
+sgl_raw_image_assets(
+    name = "images",
+    srcs = glob(["assets/*.png"]),
+    strip_prefix = "solar/assets",
+)
+
+sgl_core_library(
+    name = "core",
+    srcs = ["Solar.scala"],
+    assets = [":images"],
+    package = "solar",
+    deps = ["@sgl//engines:sgl-gameobject"],
+)
+
+sgl_desktop_lwjgl_app(
+    name = "desktop",
+    core_abstract_class = "solar.Solar",
+    data = [":images"],
+    extra_mixins = ["solar.GeneratedAssetsProvider"],
+    main_class = "Main",
+    package = "solar",
+    window_title = "Solar System",
+    deps = [":core"],
+)
+
+sgl_html5_opengl_app(
+    name = "web",
+    assets = [":images"],
+    assets_strip_prefix = "solar/assets",
+    core_abstract_class = "solar.Solar",
+    export_name = "Solar",
+    extra_mixins = ["solar.GeneratedAssetsProvider"],
+    main_class = "Main",
+    package = "solar",
+    deps = [":core"],
+)
+```
+
+Textures of 3D models are used at their exact size, so they are raw images and not drawables.
+
+## Step 2: the sun
+
+```scala title="solar/Solar.scala"
+package solar
+
+import sgl._
+import sgl.assets.RawImageAsset
+import sgl.engine.gameobject._
+import sgl.engine.gameobject.render2d.Texture2D
+import sgl.engine.gameobject.render3d._
+import sgl.engine.gameobject.spatial3d._
+import sgl.math.{Quaternion, Vec3}
+import sgl.util.Loader
+
+/** The images of the application, for the scene. */
+final class SolarAssets(val sun: RawImageAsset, val earth: RawImageAsset, val moon: RawImageAsset)
+
+trait Solar extends OpenGLGameObjectApp with AssetsProvider {
+
+  override def configure(builder: GameBuilder): Unit = {
+    builder
+      .install(UpdateCapabilitiesModule)
+      .install(Render3DModule)
+      .setGlobal(ClearColor(0.005f, 0.008f, 0.018f, 1f))
+      .setGlobal(new SolarAssets(Assets.rawImage.sun, Assets.rawImage.earth, Assets.rawImage.moon))
+      .setInitialScene(SolarScene)
+  }
+}
+
+final case class Textures(sun: Texture2D, earth: Texture2D, moon: Texture2D)
+
+object SolarScene extends AsyncScene[Textures] {
+
+  override def preload(context: GameContext)(using Scope): Loader[Textures] = {
+    val renderer = context.engine.renderer
+    val assets = context.global[SolarAssets]
+    for {
+      sun <- renderer.whenReady(renderer.loadTexture2D(assets.sun))
+      earth <- renderer.whenReady(renderer.loadTexture2D(assets.earth))
+      moon <- renderer.whenReady(renderer.loadTexture2D(assets.moon))
+    } yield Textures(sun, earth, moon)
+  }
+
+  override def load(context: GameContext, textures: Textures)(using Scope): Unit = {
+    val renderer = context.engine.renderer
+    val sphere = renderer.createMesh(MeshPrimitives.sphere(32, 18))
+    val sunMaterial = renderer.createMaterial(textures.sun, emissive = 1.1f)
+
+    context.spawn3D("Sun", Transform3D(scale = Vec3(1.25f, 1.25f, 1.25f)))
+      .attach(new MeshRenderer(_, sphere, sunMaterial))
+
+    context.spawn3D("Camera", Transform3D(position = Vec3(0f, 0.35f, 8f)))
+      .attach(new Camera3D(_, 55f.toRadians, near = 0.1f, far = 100f))
+  }
+}
+```
+
+```bash
+bazel run //solar:desktop
+```
+
+- A **mesh** is a shape, and a **material** is how it looks. The sun is `emissive`: it shines by itself.
+- The camera is an object like the others. It looks along its own -Z axis, so moving it to `z = 8`
+  puts the sun in front of it.
+- The mesh, the textures, and the materials belong to the scene, and are released with it.
+
+## Step 3: things that turn
+
+```scala title="solar/Solar.scala"
+/** Turns its object around its Y axis. */
+final class Spin(obj: GameObject3D, speed: Float) extends ComponentOf(obj) with Updatable {
+  private val spatial = obj.spatial
+  private var angle = 0f
+
+  override def update(context: GameContext)(using Scope): Unit = {
+    angle += speed * context.dt
+    spatial.local = spatial.local.copy(rotation = Quaternion.rotationY(angle))
+  }
+}
+```
+
+Attach it to the sun with `.attach(new Spin(_, 0.15f))`. Everything that is a child of a turning object
+turns with it, and that is how the earth goes around the sun. The earth also spins, faster, and that
+must not carry the moon along, so the orbits are invisible objects of their own:
+
+```text
+EarthOrbit  (turns, at the sun)
+└─ EarthPosition  (3.2 units away)
+   ├─ Earth  (spins)
+   └─ MoonOrbit  (turns)
+      └─ Moon  (0.92 units away)
+```
+
+```scala title="solar/Solar.scala"
+object SolarScene extends AsyncScene[Textures] {
+
+  override def preload(context: GameContext)(using Scope): Loader[Textures] = {
+    val renderer = context.engine.renderer
+    val assets = context.global[SolarAssets]
+    for {
+      sun <- renderer.whenReady(renderer.loadTexture2D(assets.sun))
+      earth <- renderer.whenReady(renderer.loadTexture2D(assets.earth))
+      moon <- renderer.whenReady(renderer.loadTexture2D(assets.moon))
+    } yield Textures(sun, earth, moon)
+  }
+
+  override def load(context: GameContext, textures: Textures)(using Scope): Unit = {
+    val renderer = context.engine.renderer
+    val sphere = renderer.createMesh(MeshPrimitives.sphere(32, 18))
+    val sunMaterial = renderer.createMaterial(textures.sun, emissive = 1.1f)
+    val earthMaterial = renderer.createMaterial(textures.earth, emissive = 0f)
+    val moonMaterial = renderer.createMaterial(textures.moon, emissive = 0f)
+
+    context.spawn3D("Sun", Transform3D(scale = Vec3(1.25f, 1.25f, 1.25f)))
+      .attach(new Spin(_, 0.15f))
+      .attach(new MeshRenderer(_, sphere, sunMaterial))
+
+    val earthOrbit = context.spawn3D("EarthOrbit")
+      .attach(new Spin(_, 0.55f))
+    val earthPosition = context.spawn3D("EarthPosition", Transform3D(position = Vec3(3.2f, 0f, 0f)))
+      .childOf(earthOrbit)
+    context.spawn3D("Earth", Transform3D(scale = Vec3(0.48f, 0.48f, 0.48f)))
+      .childOf(earthPosition)
+      .attach(new Spin(_, 2.2f))
+      .attach(new MeshRenderer(_, sphere, earthMaterial))
+
+    val moonOrbit = context.spawn3D("MoonOrbit")
+      .childOf(earthPosition)
+      .attach(new Spin(_, 1.9f))
+    context.spawn3D("Moon", Transform3D(position = Vec3(0.92f, 0f, 0f), scale = Vec3(0.16f, 0.16f, 0.16f)))
+      .childOf(moonOrbit)
+      .attach(new MeshRenderer(_, sphere, moonMaterial))
+
+    val cameraPivot = context.spawn3D("CameraPivot")
+      .attach(new TurnWithArrows(_))
+    context.spawn3D("Camera", Transform3D(position = Vec3(0f, 0.35f, 8f)))
+      .childOf(cameraPivot)
+      .attach(new Camera3D(_, 55f.toRadians, near = 0.1f, far = 100f))
+  }
+}
+```
+
+The camera uses the same idea. It is the child of a pivot at the center, so turning the pivot moves
+the camera around the sun. The pivot needs one more component.
+
+## Step 4: turn the camera
+
+```scala title="solar/Solar.scala"
+/** Turns its object with the arrow keys. */
+final class TurnWithArrows(obj: GameObject3D) extends ComponentOf(obj) with Updatable {
+  private val spatial = obj.spatial
+  private var yaw = 0f
+  private var pitch = -0.28f
+
+  override def update(context: GameContext)(using Scope): Unit = {
+    val step = 1.5f * context.dt
+    if(Input.isKeyPressed(Input.Keys.Left)) yaw -= step
+    if(Input.isKeyPressed(Input.Keys.Right)) yaw += step
+    if(Input.isKeyPressed(Input.Keys.Up)) pitch -= step
+    if(Input.isKeyPressed(Input.Keys.Down)) pitch += step
+    pitch = pitch max -1.35f min 1.35f
+    spatial.local = spatial.local.copy(rotation = Quaternion.rotationY(yaw) * Quaternion.rotationX(pitch))
+  }
+}
+```
+
+Run it on the desktop, or in the browser:
+
+```bash
+bazel run //solar:desktop
+bazel run //solar:web     # http://localhost:8080
+```
+
+## Next
+
+- The [Solar System example](https://github.com/regb/scala-game-library/tree/master/engines/gameobject/examples/solar-system)
+  adds mouse control, music, and a headless test.
+- [GameObject engine, 3D](/docs/gameobject/#3d) lists the rest.

@@ -1,0 +1,408 @@
+---
+title: Make a 2D game
+description: Build Coin Dash with the GameObject engine, step by step - objects, components, input, systems, score, and scenes.
+sidebar:
+  label: 1. Make a 2D game
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+You will build Coin Dash: move a player with the arrow keys and collect as many coins as you can in
+30 seconds. It takes about 150 lines of Scala and needs no image files.
+
+## Create the project
+
+Create a project from the [starter template](https://github.com/regb/sgl-starter-project) with
+GitHub's **Use this template** button, or with the GitHub CLI:
+
+```bash
+gh repo create coin-dash --private --clone --template regb/sgl-starter-project
+cd coin-dash
+```
+
+The starter already contains a finished game. You will replace it with your own.
+
+Open `MODULE.bazel` and set the SGL commit these tutorials were checked against:
+
+```python title="MODULE.bazel" {4}
+bazel_dep(name = "sgl.bzl", version = "0.0.0", repo_name = "sgl")
+git_override(
+    module_name = "sgl.bzl",
+    commit = "1ec49a5dba802bbb8b1d32456c6ce67e98507266",
+    remote = "https://github.com/regb/scala-game-library.git",
+)
+```
+
+The `BUILD.bazel` file needs no change. It declares `:core`, the portable game compiled from `game/`,
+and one target per platform.
+
+## Step 1: something on the screen
+
+Replace the whole content of `game/Game.scala`:
+
+```scala title="game/Game.scala"
+package mygame
+
+import sgl._
+import sgl.engine.gameobject._
+import sgl.engine.gameobject.extras._
+import sgl.engine.gameobject.render2d._
+import sgl.engine.gameobject.spatial2d._
+import sgl.math.Vec2
+import sgl.util.DefaultRandomProvider
+
+trait Game extends OpenGLGameObjectApp with DefaultRandomProvider {
+
+  override def configure(builder: GameBuilder): Unit = {
+    builder
+      .install(Render2DModule)
+      .setGlobal(ClearColor(0.07f, 0.08f, 0.14f, 1f))
+      .setInitialScene(PlayScene)
+  }
+}
+
+object Arena {
+  val Width = 800f
+  val Height = 600f
+}
+
+object PlayScene extends Scene {
+  override def load(context: GameContext)(using Scope): Unit = {
+    context.spawn2D("Camera").attach(new Camera2D(_, Vec2(Arena.Width, Arena.Height)))
+
+    context.spawn2D("Player", Transform2D(position = Vec2(0f, 0f)))
+      .attach(new SpriteRenderer(_, SpriteVisual.Circle(Color(0.35f, 0.75f, 1f, 1f)), 36f, 36f, z = 1f))
+  }
+}
+```
+
+Run it:
+
+```bash
+bazel run //:desktop
+```
+
+The first build downloads the toolchains and takes a few minutes. Then a window opens with a blue
+circle in the middle.
+
+- `Game` is the whole application. `configure` installs the parts of the engine the game uses.
+- A **scene** creates the objects of one part of the game. This one creates two.
+- An **object** gets its behavior from the **components** you attach. `spawn2D` returns an object
+  with a position, and each `attach` adds one component.
+- The camera shows 800 by 600 world units, centered on (0, 0). `y` grows downwards.
+
+<Aside type="note">
+In the next steps, each code block shows complete definitions. Add them to `game/Game.scala`, and
+replace a definition that has the same name.
+</Aside>
+
+## Step 2: move the player
+
+Behavior that belongs to one object goes in a component. `Updatable` components are updated once per
+frame:
+
+```scala title="game/Game.scala"
+/** Moves its object with the arrow keys and keeps it inside the arena. */
+final class Player(obj: GameObject2D, val speed: Float) extends ComponentOf(obj) with Updatable {
+  private val spatial = obj.spatial
+
+  override def update(context: GameContext)(using Scope): Unit = {
+    var dx = 0f
+    var dy = 0f
+    if(Input.isKeyPressed(Input.Keys.Left)) dx -= 1f
+    if(Input.isKeyPressed(Input.Keys.Right)) dx += 1f
+    if(Input.isKeyPressed(Input.Keys.Up)) dy -= 1f
+    if(Input.isKeyPressed(Input.Keys.Down)) dy += 1f
+
+    val step = speed * context.dt
+    val p = spatial.local.position + Vec2(dx * step, dy * step)
+    val x = p.x max (18f - Arena.Width / 2) min (Arena.Width / 2 - 18f)
+    val y = p.y max (18f - Arena.Height / 2) min (Arena.Height / 2 - 18f)
+    spatial.local = spatial.local.copy(position = Vec2(x, y))
+  }
+}
+
+object PlayScene extends Scene {
+  override def load(context: GameContext)(using Scope): Unit = {
+    context.spawn2D("Camera").attach(new Camera2D(_, Vec2(Arena.Width, Arena.Height)))
+
+    context.spawn2D("Player", Transform2D(position = Vec2(0f, 0f)))
+      .attach(new Player(_, speed = 260f))
+      .attach(new SpriteRenderer(_, SpriteVisual.Circle(Color(0.35f, 0.75f, 1f, 1f)), 36f, 36f, z = 1f))
+  }
+}
+```
+
+`context.dt` is the time since the last frame, in seconds. Multiplying by it gives the same speed at
+any frame rate.
+
+Updating components is done by a module, so install it:
+
+```scala title="game/Game.scala"
+trait Game extends OpenGLGameObjectApp with DefaultRandomProvider {
+
+  override def configure(builder: GameBuilder): Unit = {
+    builder
+      .install(UpdateCapabilitiesModule)
+      .install(Render2DModule)
+      .setGlobal(ClearColor(0.07f, 0.08f, 0.14f, 1f))
+      .setInitialScene(PlayScene)
+  }
+}
+```
+
+Run the game again and use the arrow keys. If you forget the module, the engine refuses to attach
+`Player` and tells you which one is missing.
+
+## Step 3: coins
+
+The player collects coins by touching them. Both need a circle to compare, so that is one component,
+and `Player` and `Coin` ask for it:
+
+```scala title="game/Game.scala"
+/** A circle used for overlap tests. */
+final class Collider(obj: GameObject2D, val radius: Float) extends ComponentOf(obj) {
+  private val spatial = obj.spatial
+
+  def position: Vec2 = spatial.global.position
+
+  def overlaps(other: Collider): Boolean = {
+    val d = position - other.position
+    val reach = radius + other.radius
+    d.x * d.x + d.y * d.y <= reach * reach
+  }
+}
+
+/** Moves its object with the arrow keys and keeps it inside the arena. */
+final class Player(obj: TypedObject[Spatial2D & Collider], val speed: Float) extends ComponentOf(obj) with Updatable {
+  val collider: Collider = obj.get[Collider]
+  private val spatial = obj.spatial
+
+  override def update(context: GameContext)(using Scope): Unit = {
+    var dx = 0f
+    var dy = 0f
+    if(Input.isKeyPressed(Input.Keys.Left)) dx -= 1f
+    if(Input.isKeyPressed(Input.Keys.Right)) dx += 1f
+    if(Input.isKeyPressed(Input.Keys.Up)) dy -= 1f
+    if(Input.isKeyPressed(Input.Keys.Down)) dy += 1f
+
+    val step = speed * context.dt
+    val p = spatial.local.position + Vec2(dx * step, dy * step)
+    val r = collider.radius
+    val x = p.x max (r - Arena.Width / 2) min (Arena.Width / 2 - r)
+    val y = p.y max (r - Arena.Height / 2) min (Arena.Height / 2 - r)
+    spatial.local = spatial.local.copy(position = Vec2(x, y))
+  }
+}
+
+/** Something to collect. */
+final class Coin(obj: TypedObject[Spatial2D & Collider]) extends ComponentOf(obj) {
+  val collider: Collider = obj.get[Collider]
+  private val spatial = obj.spatial
+
+  def moveTo(position: Vec2): Unit =
+    spatial.local = spatial.local.copy(position = position)
+}
+```
+
+The type `TypedObject[Spatial2D & Collider]` lists what must already be on the object. This is
+checked by the compiler: attach a `Coin` before its `Collider`, and the build fails with
+*"This object is not known to have a Collider"*.
+
+Collecting involves two kinds of objects, so it belongs to neither. Write it as a **system**, which
+runs once per frame over the whole world:
+
+```scala title="game/Game.scala"
+object CoinPickupSystem extends GameSystem {
+  override val id: SystemId = SystemId("mygame.coin-pickup")
+
+  override def run(context: GameContext)(using Scope): Unit = {
+    val coins = context.world.index[Coin]
+    context.world.index[Player].foreach { player =>
+      coins.foreach { coin =>
+        if(player.collider.overlaps(coin.collider))
+          coin.moveTo(Arena.randomPosition(context))
+      }
+    }
+  }
+}
+```
+
+A collected coin moves somewhere else. That needs random numbers, which the game keeps as a
+**global**: a value for the whole world, found by its class.
+
+```scala title="game/Game.scala"
+final case class GameRandom(random: sgl.util.RandomProvider#Random)
+
+object Arena {
+  val Width = 800f
+  val Height = 600f
+  val CoinCount = 3
+
+  /** A random point away from the edges, and from the center where the player starts. */
+  def randomPosition(context: GameContext): Vec2 = {
+    val random = context.global[GameRandom].random
+    def coordinate(halfSize: Float): Float = {
+      val v = 60f + random.nextFloat().toFloat * (halfSize - 60f)
+      if(random.nextBoolean()) v else -v
+    }
+    Vec2(coordinate(Width / 2 - 40f), coordinate(Height / 2 - 100f))
+  }
+}
+
+trait Game extends OpenGLGameObjectApp with DefaultRandomProvider {
+
+  override def configure(builder: GameBuilder): Unit = {
+    builder
+      .install(UpdateCapabilitiesModule)
+      .install(Render2DModule)
+      .setGlobal(ClearColor(0.07f, 0.08f, 0.14f, 1f))
+      .setGlobal(GameRandom(Random.fromSeed(42)))
+      .addSystem(Stage.PostUpdate, CoinPickupSystem)
+      .setInitialScene(PlayScene)
+  }
+}
+
+object PlayScene extends Scene {
+  override def load(context: GameContext)(using Scope): Unit = {
+    context.spawn2D("Camera").attach(new Camera2D(_, Vec2(Arena.Width, Arena.Height)))
+
+    context.spawn2D("Player", Transform2D(position = Vec2(0f, 0f)))
+      .attach(new Collider(_, 18f))
+      .attach(new Player(_, speed = 260f))
+      .attach(new SpriteRenderer(_, SpriteVisual.Circle(Color(0.35f, 0.75f, 1f, 1f)), 36f, 36f, z = 1f))
+
+    for(i <- 0 until Arena.CoinCount) {
+      context.spawn2D(s"Coin-$i", Transform2D(position = Arena.randomPosition(context)))
+        .attach(new Collider(_, 10f))
+        .attach(new Coin(_))
+        .attach(new SpriteRenderer(_, SpriteVisual.Circle(Color(1f, 0.82f, 0.2f, 1f)), 20f, 20f))
+    }
+  }
+}
+```
+
+The system runs in `PostUpdate`, after every `Updatable` has moved. The fixed seed puts the coins in
+the same places in every run, which the tests of the next tutorial use.
+
+## Step 4: score and time
+
+The score and the remaining time belong to one round, so the scene sets them. Globals set by a scene
+go away with it, and the next round starts fresh:
+
+```scala title="game/Game.scala"
+/** The state of one round. */
+final class Round(var points: Int, var secondsLeft: Float)
+
+/** Shows the score and the time left. */
+final class RoundHud(obj: TypedObject[TextOverlay]) extends ComponentOf(obj) with Updatable {
+  private val overlay = obj.get[TextOverlay]
+
+  override def update(context: GameContext)(using Scope): Unit = {
+    val round = context.global[Round]
+    overlay.lines = Vector(s"SCORE ${round.points}  TIME ${round.secondsLeft.max(0f).ceil.toInt}")
+  }
+}
+
+object CoinPickupSystem extends GameSystem {
+  override val id: SystemId = SystemId("mygame.coin-pickup")
+
+  override def run(context: GameContext)(using Scope): Unit = {
+    val coins = context.world.index[Coin]
+    context.world.index[Player].foreach { player =>
+      coins.foreach { coin =>
+        if(player.collider.overlaps(coin.collider)) {
+          context.global[Round].points += 1
+          coin.moveTo(Arena.randomPosition(context))
+        }
+      }
+    }
+  }
+}
+
+object PlayScene extends Scene {
+  override def load(context: GameContext)(using Scope): Unit = {
+    context.setGlobal(new Round(points = 0, secondsLeft = 30f))
+
+    context.spawn2D("Camera").attach(new Camera2D(_, Vec2(Arena.Width, Arena.Height)))
+
+    context.spawn2D("Player", Transform2D(position = Vec2(0f, 0f)))
+      .attach(new Collider(_, 18f))
+      .attach(new Player(_, speed = 260f))
+      .attach(new SpriteRenderer(_, SpriteVisual.Circle(Color(0.35f, 0.75f, 1f, 1f)), 36f, 36f, z = 1f))
+
+    for(i <- 0 until Arena.CoinCount) {
+      context.spawn2D(s"Coin-$i", Transform2D(position = Arena.randomPosition(context)))
+        .attach(new Collider(_, 10f))
+        .attach(new Coin(_))
+        .attach(new SpriteRenderer(_, SpriteVisual.Circle(Color(1f, 0.82f, 0.2f, 1f)), 20f, 20f))
+    }
+
+    context.spawn("Hud")
+      .attach(new TextOverlay(_, Vector("SCORE 0"), x = 16f, y = 16f, scale = 4f))
+      .attach(new RoundHud(_))
+  }
+}
+```
+
+`TextOverlay` has a small built-in font of capital letters, digits, and some punctuation. It comes
+with its own module, installed in the next step.
+
+## Step 5: game over
+
+When the time is up, load another scene. Its objects replace those of `PlayScene`:
+
+```scala title="game/Game.scala"
+/** Ends the round when its time is up. */
+object RoundTimerSystem extends GameSystem {
+  override val id: SystemId = SystemId("mygame.round-timer")
+
+  override def run(context: GameContext)(using Scope): Unit =
+    // There is no round in the game over scene.
+    context.world.globals.getOption[Round].foreach { round =>
+      round.secondsLeft -= context.dt
+      if(round.secondsLeft <= 0f) context.runtime.loadScene(new GameOverScene(round.points))
+    }
+}
+
+/** Starts a new round when Space is pressed. */
+final class PlayAgain(obj: TypedObject[Any]) extends ComponentOf(obj) with Updatable {
+  override def update(context: GameContext)(using Scope): Unit =
+    if(Input.isKeyPressed(Input.Keys.Space)) context.runtime.loadScene(PlayScene)
+}
+
+final class GameOverScene(points: Int) extends Scene {
+  override def load(context: GameContext)(using Scope): Unit = {
+    context.spawn("GameOver")
+      .attach(new TextOverlay(_, Vector("TIME IS UP", s"SCORE $points", "SPACE: PLAY AGAIN"), x = 120f, y = 220f, scale = 5f))
+      .attach(new PlayAgain(_))
+  }
+}
+
+trait Game extends OpenGLGameObjectApp with DefaultRandomProvider {
+
+  override def configure(builder: GameBuilder): Unit = {
+    builder
+      .install(UpdateCapabilitiesModule)
+      .install(Render2DModule)
+      .install(TextOverlayModule)
+      .setGlobal(ClearColor(0.07f, 0.08f, 0.14f, 1f))
+      .setGlobal(GameRandom(Random.fromSeed(42)))
+      .addSystem(Stage.PostUpdate, CoinPickupSystem)
+      .addSystem(Stage.PostUpdate, RoundTimerSystem)
+      .setInitialScene(PlayScene)
+  }
+}
+```
+
+Play a round. The same code also runs in the browser, on `http://localhost:8080`:
+
+```bash
+bazel run //:web
+```
+
+## Next
+
+The starter's `test/GameTest.scala` was written for the starter's own game, so it no longer compiles.
+[Test it without a screen](/docs/tutorials/testing/) replaces it. The
+[GameObject engine](/docs/gameobject/) page explains everything used here in detail.

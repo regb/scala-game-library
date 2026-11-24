@@ -62,6 +62,11 @@ export default defineConfig({
               paths: ['docs/core-concepts', 'docs/graphics', 'docs/input', 'docs/audio', 'docs/assets'],
             },
             {
+              label: 'Tutorials',
+              description: 'A complete 2D game built step by step, its headless tests, assets, packaging, and a 3D scene.',
+              paths: ['docs/tutorials/**'],
+            },
+            {
               label: 'Build and platforms',
               description: 'Bazel rules, backends, Android, headless testing, and AI agent verification.',
               paths: ['docs/installation', 'docs/bazel-rules', 'docs/platforms', 'docs/android', 'docs/testing', 'docs/ai-agents'],
@@ -105,6 +110,17 @@ export default defineConfig({
             { label: 'Your first game', slug: 'docs/getting-started' },
             { label: 'Architecture', slug: 'docs/core-concepts' },
             { label: 'AI coding agents', slug: 'docs/ai-agents' },
+          ],
+        },
+        {
+          label: 'Tutorials',
+          items: [
+            { slug: 'docs/tutorials' },
+            { slug: 'docs/tutorials/coin-dash' },
+            { slug: 'docs/tutorials/testing' },
+            { slug: 'docs/tutorials/art-and-sound' },
+            { slug: 'docs/tutorials/shipping' },
+            { slug: 'docs/tutorials/first-3d-scene' },
           ],
         },
         {

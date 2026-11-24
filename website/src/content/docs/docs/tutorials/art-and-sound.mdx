@@ -1,0 +1,243 @@
+---
+title: Add art and sound
+description: Give Coin Dash images from a texture atlas, a scene that waits for them, and a sound effect, all as typed assets.
+sidebar:
+  label: 3. Add art and sound
+---
+
+import { Aside, FileTree } from '@astrojs/starlight/components';
+
+Assets are declared in the build and become typed values in Scala, so a missing or renamed file is a
+compile error. This tutorial continues [Coin Dash](/docs/tutorials/coin-dash/).
+
+## Step 1: add the files
+
+Save these three files in your project:
+[player.png](/tutorials/coin-dash/player.png), [coin.png](/tutorials/coin-dash/coin.png), and
+[pickup.wav](/tutorials/coin-dash/pickup.wav).
+
+<FileTree>
+- BUILD.bazel
+- MODULE.bazel
+- assets/
+  - sprites/
+    - coin.png
+    - player.png
+  - audio/
+    - pickup.wav
+- game/
+  - Game.scala
+</FileTree>
+
+## Step 2: declare the assets
+
+Add to the top of `BUILD.bazel`:
+
+```python title="BUILD.bazel"
+load("@sgl//bazel/sgl:assets.bzl", "sgl_audio_assets", "sgl_drawable_assets", "sgl_texture_atlas")
+
+sgl_drawable_assets(
+    name = "sprites",
+    srcs = glob(["assets/sprites/*.png"]),
+    source_density = "mdpi",
+    strip_prefix = "assets/sprites",
+    target_densities = ["mdpi"],
+)
+
+# Packs the sprites into one image. The other targets use this instead of :sprites.
+sgl_texture_atlas(
+    name = "sprite_atlas",
+    assets = [":sprites"],
+    max_texture_size = 512,
+)
+
+sgl_audio_assets(
+    name = "audio",
+    srcs = glob(["assets/audio/*.wav"]),
+    strip_prefix = "assets/audio",
+)
+```
+
+Then pass them to the core library and the applications. These are the attributes to add:
+
+```python title="BUILD.bazel"
+sgl_core_library(
+    name = "core",
+    assets = [":sprite_atlas", ":audio"],
+    package = "mygame",
+    # ... srcs and deps as before
+)
+
+sgl_desktop_lwjgl_app(
+    name = "desktop",
+    data = [":sprite_atlas", ":audio"],
+    extra_mixins = ["mygame.GeneratedAssetsProvider"],
+    # ...
+)
+
+sgl_html5_opengl_app(
+    name = "web",
+    assets = [":sprite_atlas", ":audio"],
+    assets_strip_prefix = "assets",
+    extra_mixins = ["mygame.GeneratedAssetsProvider"],
+    # ...
+)
+
+sgl_desktop_native_app(
+    name = "native",
+    assets = [":sprite_atlas", ":audio"],
+    assets_strip_prefix = "assets",
+    extra_mixins = ["mygame.GeneratedAssetsProvider"],
+    # ...
+)
+```
+
+The build now generates an `Assets` object with `Assets.drawable.player`, `Assets.drawable.coin`, and
+`Assets.audio.pickup`. `GeneratedAssetsProvider` gives it to the game.
+
+## Step 3: hand the assets to the scenes
+
+`Assets` and `Audio` are members of the application. `PlayScene` and the systems are outside of it,
+so give them what they need as a global. First add two imports at the top of the file:
+
+```scala
+import sgl.assets.DrawableAsset
+import sgl.util.Loader
+```
+
+```scala title="game/Game.scala"
+/** What the scenes and systems use of the application's assets. */
+final class GameAssets(val player: DrawableAsset, val coin: DrawableAsset, val playPickup: () => Unit)
+
+trait Game extends OpenGLGameObjectApp with DefaultRandomProvider with AssetsProvider {
+  this: AudioProvider =>
+
+  private lazy val pickup = Audio.loadSound(Assets.audio.pickup)
+
+  override def configure(builder: GameBuilder): Unit = {
+    pickup // start loading
+    builder
+      .install(UpdateCapabilitiesModule)
+      .install(Render2DModule)
+      .install(TextOverlayModule)
+      .setGlobal(ClearColor(0.07f, 0.08f, 0.14f, 1f))
+      .setGlobal(GameRandom(Random.fromSeed(42)))
+      .setGlobal(new GameAssets(Assets.drawable.player, Assets.drawable.coin, () => playSound()))
+      .addSystem(Stage.PostUpdate, CoinPickupSystem)
+      .addSystem(Stage.PostUpdate, RoundTimerSystem)
+      .setInitialScene(PlayScene)
+  }
+
+  // Silent if the sound is still loading or could not be loaded.
+  private def playSound(): Unit =
+    pickup.value.flatMap(_.toOption).foreach(_.play())
+
+  override def dispose(): Unit = {
+    pickup.value.flatMap(_.toOption).foreach(_.dispose())
+    super.dispose()
+  }
+}
+```
+
+The self-type `this: AudioProvider =>` says that the game needs audio. Every backend of the starter
+has it; on one without audio, the game would not compile.
+
+<Aside type="caution" title="lazy val">
+The generated assets are mixed in after your trait, so `Assets` is still `null` while the fields of
+`Game` are initialized. Use a `lazy val`, or load in `configure`.
+</Aside>
+
+## Step 4: wait for the images
+
+Loading is asynchronous on every platform. An `AsyncScene` loads first, and appears when everything
+is ready:
+
+```scala title="game/Game.scala"
+/** The images of a round. */
+final case class Sprites(player: Texture2D, coin: Texture2D)
+
+object PlayScene extends AsyncScene[Sprites] {
+
+  override def preload(context: GameContext)(using Scope): Loader[Sprites] = {
+    val assets = context.global[GameAssets]
+    for {
+      player <- context.engine.loadDrawableTexture(assets.player)
+      coin <- context.engine.loadDrawableTexture(assets.coin)
+    } yield Sprites(player, coin)
+  }
+
+  override def load(context: GameContext, sprites: Sprites)(using Scope): Unit = {
+    context.setGlobal(new Round(points = 0, secondsLeft = 30f))
+
+    context.spawn2D("Camera").attach(new Camera2D(_, Vec2(Arena.Width, Arena.Height)))
+
+    context.spawn2D("Player", Transform2D(position = Vec2(0f, 0f)))
+      .attach(new Collider(_, 18f))
+      .attach(new Player(_, speed = 260f))
+      .attach(new SpriteRenderer(_, SpriteVisual.Texture(sprites.player), 36f, 36f, z = 1f))
+
+    for(i <- 0 until Arena.CoinCount) {
+      context.spawn2D(s"Coin-$i", Transform2D(position = Arena.randomPosition(context)))
+        .attach(new Collider(_, 10f))
+        .attach(new Coin(_))
+        .attach(new SpriteRenderer(_, SpriteVisual.Texture(sprites.coin), 20f, 20f))
+    }
+
+    context.spawn("Hud")
+      .attach(new TextOverlay(_, Vector("SCORE 0"), x = 16f, y = 16f, scale = 4f))
+      .attach(new RoundHud(_))
+  }
+}
+```
+
+
+
+## Step 5: play the sound
+
+```scala title="game/Game.scala"
+object CoinPickupSystem extends GameSystem {
+  override val id: SystemId = SystemId("mygame.coin-pickup")
+
+  override def run(context: GameContext)(using Scope): Unit = {
+    val coins = context.world.index[Coin]
+    context.world.index[Player].foreach { player =>
+      coins.foreach { coin =>
+        if(player.collider.overlaps(coin.collider)) {
+          context.global[Round].points += 1
+          context.global[GameAssets].playPickup()
+          coin.moveTo(Arena.randomPosition(context))
+        }
+      }
+    }
+  }
+}
+```
+
+Run `bazel run //:desktop` and collect a coin.
+
+Now rename `coin.png` to `money.png` and build again: the compiler reports that
+`Assets.drawable.coin` does not exist. Rename it back.
+
+## Step 6: update the test
+
+The test application needs the assets too:
+
+```scala title="test/GameTest.scala"
+final class TestApp extends HeadlessOpenGLApp with Game with GeneratedAssetsProvider
+    with DesktopSystemProvider with NoLoggingProvider {
+  // ... the body is unchanged
+}
+```
+
+The tests of [the previous tutorial](/docs/tutorials/testing/) that read the game state still pass.
+The one that looks for a blue player fails, because the player is now an image. Change the pixel it
+expects:
+
+```scala title="test/GameTest.scala"
+      assert(r > 100 && r > b, s"expected the red player, got ($r, $g, $b)")
+```
+
+## Next
+
+[Ship it](/docs/tutorials/shipping/) puts the game on the web. [Assets](/docs/assets/) covers the
+other kinds of assets, densities, and Tiled maps, and [Audio](/docs/audio/) covers music.

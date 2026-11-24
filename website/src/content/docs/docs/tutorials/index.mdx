@@ -1,0 +1,23 @@
+---
+title: Tutorials
+description: Build a complete 2D game with the GameObject engine, test it without a screen, add art and sound, ship it, and make a first 3D scene.
+sidebar:
+  label: Overview
+---
+
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+The first four tutorials build one game, **Coin Dash**, from an empty scene to a deployed website.
+Follow them in order. The last one is independent and makes a small 3D scene.
+
+<CardGrid>
+  <LinkCard title="1. Make a 2D game" href="/docs/tutorials/coin-dash/" description="Objects, components, input, systems, score, and scenes." />
+  <LinkCard title="2. Test it without a screen" href="/docs/tutorials/testing/" description="Play the game from a test: send keys, step frames, read the state and the pixels." />
+  <LinkCard title="3. Add art and sound" href="/docs/tutorials/art-and-sound/" description="Typed assets, a texture atlas, a loading scene, and a sound effect." />
+  <LinkCard title="4. Ship it" href="/docs/tutorials/shipping/" description="A static website, a desktop jar, and a native executable." />
+  <LinkCard title="5. A first 3D scene" href="/docs/tutorials/first-3d-scene/" description="Meshes, materials, a hierarchy of transforms, and a camera you can turn." />
+</CardGrid>
+
+You need [Bazelisk](https://github.com/bazelbuild/bazelisk) and some Scala. If you have never used
+SGL, [Your first game](/docs/getting-started/) is a shorter introduction that uses the Canvas API
+without an engine.
