@@ -113,7 +113,8 @@ and `save_component`, and also produces `<name>_site`. It adds:
 
 ### sgl_desktop_native_app
 
-Scala Native with SDL2.
+Scala Native with SDL2. The targets are tagged `manual`: wildcards such as `//...` skip them, so
+machines without clang and SDL2 can still build everything else. Build them by name.
 
 | Attribute | Default | Description |
 | --- | --- | --- |

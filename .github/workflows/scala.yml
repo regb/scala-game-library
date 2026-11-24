@@ -49,5 +49,9 @@ jobs:
       - name: Build
         run: bazel build //...
 
+      # Native targets are manual, so //... skips them.
+      - name: Build native examples
+        run: bazel build //examples/hello-canvas:desktop-native //examples/hello-scalagl:desktop-native
+
       - name: Test
         run: bazel test //...
