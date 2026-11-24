@@ -8,6 +8,8 @@ object {{MAIN_CLASS}} extends {{BACKEND_APP}} {{SCREEN2D_MIXIN}} with {{CORE_ABS
 
   override val frameDimension: (Int, Int) = ({{FRAME_WIDTH}}, {{FRAME_HEIGHT}})
 
+  override val windowTitle: String = {{WINDOW_TITLE}}
+
   {{SCREEN_FORCE_PPI}}
 
   {{RESOURCE_ROOTS}}
