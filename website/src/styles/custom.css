@@ -865,3 +865,47 @@ h1#_top {
 .cta .hero-actions {
   justify-content: center;
 }
+
+/* Blog -------------------------------------------------------------------- */
+
+.post-list {
+  display: grid;
+  gap: 2rem;
+  max-width: 46rem;
+  margin: 2rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.post-list h2 {
+  margin: 0.2rem 0 0.4rem;
+  font-size: var(--sl-text-xl);
+}
+
+.post-list h2 a {
+  color: var(--sl-color-white);
+  text-decoration: none;
+}
+
+.post-list h2 a:hover {
+  color: var(--sl-color-text-accent);
+}
+
+.post-list p {
+  margin: 0;
+  color: var(--sl-color-gray-2);
+}
+
+.post-list .post-meta,
+.post .post-meta {
+  color: var(--sl-color-gray-3);
+  font-size: var(--sl-text-sm);
+}
+
+.post {
+  max-width: 46rem;
+}
+
+.post canvas {
+  max-width: 100%;
+}

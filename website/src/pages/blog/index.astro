@@ -1,0 +1,38 @@
+---
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+
+import { blogPosts, formatDate } from '../../data/blog';
+
+const posts = await blogPosts();
+---
+
+<StarlightPage
+  frontmatter={{
+    title: 'Blog',
+    description: 'Releases, engineering, and games made with the Scala Game Library.',
+    template: 'splash',
+    editUrl: false,
+    lastUpdated: false,
+    pagefind: false,
+    head: [{ tag: 'link', attrs: { rel: 'alternate', type: 'application/rss+xml', title: 'SGL Blog', href: '/blog/rss.xml' } }],
+  }}
+>
+  <div class="not-content">
+    <div class="page-intro">
+      <p class="section-lead">
+        Releases, engineering, and games made with SGL. Follow it with <a href="/blog/rss.xml">RSS</a>.
+      </p>
+    </div>
+    <ul class="post-list">
+      {posts.map(({ id, data }) => (
+        <li>
+          <p class="post-meta">
+            <time datetime={data.date.toISOString().slice(0, 10)}>{formatDate(data.date)}</time> · {data.category}
+          </p>
+          <h2><a href={`/blog/${id}/`}>{data.title}</a></h2>
+          <p>{data.description}</p>
+        </li>
+      ))}
+    </ul>
+  </div>
+</StarlightPage>

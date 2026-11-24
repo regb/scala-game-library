@@ -14,6 +14,7 @@
   "dependencies": {
     "@astrojs/check": "latest",
     "@astrojs/mdx": "latest",
+    "@astrojs/rss": "4.0.19",
     "@astrojs/starlight": "latest",
     "astro": "latest",
     "starlight-llms-txt": "0.12.0",

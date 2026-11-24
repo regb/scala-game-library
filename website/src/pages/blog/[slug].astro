@@ -1,0 +1,44 @@
+---
+import { render } from 'astro:content';
+import { Aside } from '@astrojs/starlight/components';
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+
+import { blogPosts, formatDate } from '../../data/blog';
+
+export async function getStaticPaths() {
+  return (await blogPosts()).map((post) => ({ params: { slug: post.id }, props: { post } }));
+}
+
+const { post } = Astro.props;
+const { title, description, date, author, category, archived } = post.data;
+const { Content, headings } = await render(post);
+---
+
+<StarlightPage
+  frontmatter={{
+    title,
+    description,
+    template: 'splash',
+    editUrl: false,
+    lastUpdated: false,
+    pagefind: !archived,
+    head: [
+      { tag: 'meta', attrs: { property: 'article:published_time', content: date.toISOString() } },
+      { tag: 'link', attrs: { rel: 'alternate', type: 'application/rss+xml', title: 'SGL Blog', href: '/blog/rss.xml' } },
+    ],
+  }}
+  headings={headings}
+>
+  <div class="post">
+    <p class="post-meta">
+      <a href="/blog/">Blog</a> · <time datetime={date.toISOString().slice(0, 10)}>{formatDate(date)}</time> · {author} · {category}
+    </p>
+    {archived && (
+      <Aside type="caution" title={`Written in ${date.getUTCFullYear()}`}>
+        This article describes an early version of SGL, built with sbt. The code no longer matches the
+        library. To make a game with the current version, follow the <a href="/docs/tutorials/">tutorials</a>.
+      </Aside>
+    )}
+    <Content />
+  </div>
+</StarlightPage>

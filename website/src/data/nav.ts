@@ -13,6 +13,7 @@ export const footerColumns = [
     links: [
       { label: 'Introduction', href: '/docs/' },
       { label: 'Your first game', href: '/docs/getting-started/' },
+      { label: 'Tutorials', href: '/docs/tutorials/' },
       { label: 'AI coding agents', href: '/docs/ai-agents/' },
       { label: 'Choosing an engine', href: '/docs/engines/' },
       { label: 'Examples', href: '/docs/examples/' },
@@ -32,6 +33,7 @@ export const footerColumns = [
     title: 'Project',
     links: [
       { label: 'Showcase', href: '/showcase/' },
+      { label: 'Blog', href: '/blog/' },
       { label: 'Smart Dino Games', href: 'https://smartdinogames.com' },
       { label: 'Community', href: '/community/' },
       { label: 'GitHub', href: repo },
