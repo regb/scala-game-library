@@ -52,6 +52,10 @@ def _scala_native_binary_impl(ctx):
 set -euo pipefail
 self="$0"
 runfiles_dir="${RUNFILES_DIR:-${self}.runfiles}"
+# The script changes directory below, so a relative path must be resolved first.
+if [[ "${runfiles_dir}" != /* ]]; then
+  runfiles_dir="${PWD}/${runfiles_dir}"
+fi
 workspace="_main"
 if [[ ! -d "${runfiles_dir}/${workspace}" ]]; then
   workspace="%s"
