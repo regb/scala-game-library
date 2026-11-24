@@ -7,12 +7,16 @@ def _static_destination(src, strip_prefix):
         fail("static_strip_prefix '%s' not found in file path: %s" % (strip_prefix, path))
     return path[index + len(strip_prefix):].lstrip("/")
 
+def _escape_html(text):
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
+
 def _scalajs_site_impl(ctx):
     js = ctx.file.scalajs_module
     page = ctx.actions.declare_file(ctx.attr.name + "_page/" + ctx.attr.html_output_name)
     substitutions = {
         "{{JS_PATH}}": js.basename,
         "{{MAIN_CLASS}}": ctx.attr.main_class,
+        "{{PAGE_TITLE}}": _escape_html(ctx.attr.page_title),
     }
     ctx.actions.expand_template(template = ctx.file.template, output = page, substitutions = substitutions)
 
@@ -60,10 +64,11 @@ scalajs_site = rule(
     attrs = {
         "scalajs_module": attr.label(mandatory = True, allow_single_file = [".js"], doc = "The linked Scala.js module, placed at the site root."),
         "main_class": attr.string(mandatory = True, doc = "The exported JavaScript name, substituted for {{MAIN_CLASS}} in the template."),
+        "page_title": attr.string(default = "SGL Game", doc = "The page title, HTML-escaped and substituted for {{PAGE_TITLE}} in the template."),
         "template": attr.label(
             default = Label("//bazel/scalajs:default.html.template"),
             allow_single_file = True,
-            doc = "The HTML page. {{JS_PATH}} is replaced by the module file name and {{MAIN_CLASS}} by main_class.",
+            doc = "The HTML page. {{JS_PATH}} is replaced by the module file name, {{MAIN_CLASS}} by main_class, and {{PAGE_TITLE}} by page_title.",
         ),
         "html_output_name": attr.string(default = "index.html", doc = "The file name of the page in the site."),
         "static_files": attr.label_list(allow_files = True, doc = "Files placed under static_folder."),
@@ -98,7 +103,7 @@ scalajs_dev_server = rule(
     doc = "Serves a scalajs_site on http://localhost:8080 (PORT overrides the port).",
 )
 
-def run_server(name, scalajs_module, main_class, static_files = [], static_strip_prefix = "", static_folder = "static", template = None, html_output_name = "index.html", site_files = [], **kwargs):
+def run_server(name, scalajs_module, main_class, static_files = [], static_strip_prefix = "", static_folder = "static", template = None, html_output_name = "index.html", site_files = [], page_title = "SGL Game", **kwargs):
     """Builds a deployable website for a Scala.js application and a server for it.
 
     `<name>_site` is the website directory: the page, the JavaScript module at its
@@ -115,6 +120,7 @@ def run_server(name, scalajs_module, main_class, static_files = [], static_strip
         template: Optional custom HTML template (uses default if not provided)
         html_output_name: The file name of the page.
         site_files: Extra files placed at the root of the site by file name.
+        page_title: The title of the page.
         **kwargs: Additional arguments passed to both targets (visibility, tags)
     """
     site_attrs = {}
@@ -130,6 +136,7 @@ def run_server(name, scalajs_module, main_class, static_files = [], static_strip
         static_folder = static_folder,
         html_output_name = html_output_name,
         site_files = site_files,
+        page_title = page_title,
         **(site_attrs | kwargs)
     )
 

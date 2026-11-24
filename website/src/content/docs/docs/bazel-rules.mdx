@@ -90,7 +90,8 @@ the page, `index.js`, the assets under `static/` (or the asset pack), and `site_
 | `center_canvas` | `True` | Style the page body and center the fixed-size canvas on it. `False` only sizes the canvas and leaves the layout to the page. |
 | `fullscreen` | `False` | Fill the page |
 | `use_provided_canvas` | `False` | Use the size the host page gives the canvas element |
-| `html_template` | generated page | Your own page. `{{JS_PATH}}` is replaced by the module file name and `{{MAIN_CLASS}}` by the exported name. |
+| `html_template` | generated page | Your own page. `{{JS_PATH}}` is replaced by the module file name, `{{MAIN_CLASS}}` by the exported name, and `{{PAGE_TITLE}}` by `page_title`. |
+| `page_title` | `"SGL Game"` | Title of the page |
 | `site_files` | `[]` | Extra files for the page (icon, images), placed at the site root by file name |
 | `use_screen2d` | `True` | Mixes in `Screen2DGameApp` |
 | `pack_assets` | `False` | Bundle all assets into one binary pack |

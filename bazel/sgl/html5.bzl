@@ -245,6 +245,7 @@ def sgl_html5_app(
         output_name = "index.js",
         html_output_name = "index.html",
         html_template = None,
+        page_title = "SGL Game",
         site_files = [],
         canvas_width = 800,
         canvas_height = 600,
@@ -271,8 +272,9 @@ def sgl_html5_app(
     directory on http://localhost:8080 with `bazel run`.
 
     `html_template` replaces the generated page. In it, `{{JS_PATH}}` is the
-    module file name and `{{MAIN_CLASS}}` its exported name; the page imports the
-    module and calls `run` with its canvas element.
+    module file name, `{{MAIN_CLASS}}` its exported name, and `{{PAGE_TITLE}}` the
+    `page_title`; the page imports the module and calls `run` with its canvas
+    element.
 
     The canvas layout: by default a `canvas_width` x `canvas_height` canvas,
     centered on a styled body. `center_canvas = False` keeps the fixed size but
@@ -344,6 +346,7 @@ def sgl_html5_app(
         static_strip_prefix = static_strip_prefix,
         static_folder = static_folder,
         template = html_template,
+        page_title = page_title,
         html_output_name = html_output_name,
         site_files = site_files,
     )
@@ -361,6 +364,7 @@ def sgl_html5_opengl_app(
         output_name = "index.js",
         html_output_name = "index.html",
         html_template = None,
+        page_title = "SGL Game",
         site_files = [],
         canvas_width = 800,
         canvas_height = 600,
@@ -385,8 +389,9 @@ def sgl_html5_opengl_app(
     directory on http://localhost:8080 with `bazel run`.
 
     `html_template` replaces the generated page. In it, `{{JS_PATH}}` is the
-    module file name and `{{MAIN_CLASS}}` its exported name; the page imports the
-    module and calls `run` with its canvas element.
+    module file name, `{{MAIN_CLASS}}` its exported name, and `{{PAGE_TITLE}}` the
+    `page_title`; the page imports the module and calls `run` with its canvas
+    element.
 
     The canvas layout: by default a `canvas_width` x `canvas_height` canvas,
     centered on a styled body. `center_canvas = False` keeps the fixed size but
@@ -450,6 +455,7 @@ def sgl_html5_opengl_app(
         static_strip_prefix = static_strip_prefix,
         static_folder = static_folder,
         template = html_template,
+        page_title = page_title,
         html_output_name = html_output_name,
         site_files = site_files,
     )

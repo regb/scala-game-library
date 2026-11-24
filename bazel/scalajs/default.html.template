@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Scala.js Application</title>
+    <title>{{PAGE_TITLE}}</title>
 </head>
 <body>
   <canvas id="my_canvas"></canvas>
