@@ -162,6 +162,7 @@ class AndroidAdMobAds(
                 return@runOnUiThread
             }
             var earned = false
+            var showFailed = false
             val lifecycle = AdLifecycle({ observer }, "rewarded", rewardedAdUnitId)
             ad.setOnPaidEventListener {
                 lifecycle.paid(it.valueMicros, it.currencyCode, it.precisionType,
@@ -177,9 +178,17 @@ class AndroidAdMobAds(
             ad.fullScreenContentCallback = object : FullScreenContentCallback() {
                 override fun onAdImpression() = lifecycle.impression()
                 override fun onAdDismissedFullScreenContent() = finish()
-                override fun onAdFailedToShowFullScreenContent(error: AdError) = finish(error.code)
+                override fun onAdFailedToShowFullScreenContent(error: AdError) {
+                    showFailed = true
+                    finish(error.code)
+                }
             }
-            ad.show(activity) { earned = true }
+            ad.show(activity) {
+                earned = true
+                // On a slow device AdMob's show can time out (a show failure) and the ad still play:
+                // the player watched it, so the false already given is corrected.
+                if (showFailed) onClosed.apply(true)
+            }
         }
         return true
     }

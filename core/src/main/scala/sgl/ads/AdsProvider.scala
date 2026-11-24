@@ -68,6 +68,12 @@ trait AdsProvider {
       * and the ad might be shown anytime within the next few seconds. The returned
       * Boolean value is whether the ad was loaded or not, and thus whether the
       * ad is going to show or not.
+      *
+      * onClosed is normally called once. The exception is an ad that the
+      * backend reports as failed to show, and that still shows late (AdMob
+      * does this on slow devices): onClosed is called with false, and again
+      * with true if the player then earns the reward. A game should apply
+      * the last value it gets.
       */
     def showRewarded(onClosed: (Boolean) => Unit): Boolean
   }
