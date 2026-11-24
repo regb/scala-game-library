@@ -28,9 +28,9 @@ trait AbstractApp extends Application {
   private val Right = Vec2(1, 0)
   private var userDirection: Vec2 = Right
 
-  private val snakeHeadPaint = defaultPaint.withColor(Color.Green)
-  private val snakePaint = defaultPaint.withColor(Color.Blue)
-  private val applePaint = defaultPaint.withColor(Color.Red)
+  private lazy val snakeHeadPaint = defaultPaint.withColor(Color.Green)
+  private lazy val snakePaint = defaultPaint.withColor(Color.Blue)
+  private lazy val applePaint = defaultPaint.withColor(Color.Red)
 
   override def create(): Unit = {
     reset()

@@ -6,6 +6,14 @@ load(":defs.bzl", "binary_test")
 # (JDK 25 no longer reproduces it). The generator therefore runs on a pinned
 # runtime instead of whichever JDK the machine provides.
 scala_binary(
+    name = "generate_portable_font_atlas",
+    srcs = ["GeneratePortableFontAtlas.java"],
+    main_class = "GeneratePortableFontAtlas",
+    runtime_jdk = "@rules_java//toolchains:remotejdk_17",
+    visibility = ["//visibility:public"],
+)
+
+scala_binary(
     name = "verify_portable_font_atlas",
     srcs = [
         "GeneratePortableFontAtlas.java",

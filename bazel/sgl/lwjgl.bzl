@@ -128,6 +128,10 @@ def sgl_desktop_lwjgl_app(
         srcs = [":" + name + "_Main"],
         deps = full_deps,
         data = data,
+        jvm_flags = select({
+            "@platforms//os:macos": ["-XstartOnFirstThread"],
+            "//conditions:default": [],
+        }),
         scalacopts = SGL_SCALACOPTS,
         main_class = package + ".desktop." + main_class,
     )

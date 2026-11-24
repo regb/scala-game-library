@@ -98,10 +98,9 @@ def _sgl_tiled_import_impl(ctx):
 
     ctx.actions.run_shell(
         inputs = ctx.files.maps + ctx.files.tilesets + ctx.files.images,
-        tools = [ctx.executable._tiled, ctx.attr._tiled_data[DefaultInfo].files, ctx.executable._image_tool],
+        tools = [ctx.executable._image_tool],
         outputs = outputs,
         command = """set -e
-export TILED='{tiled_path}'
 export IMAGE_TOOL='{image_tool_path}'
 python3 - <<'PY'
 import json, os, posixpath, shutil, subprocess, sys
@@ -171,9 +170,29 @@ tileset_references = []
 exported_maps = []
 for line in map_lines:
     map_path, out_path = line.split('|')
-    subprocess.check_call([os.environ['TILED'], '--export-map', '--embed-tilesets', '--detach-templates', '--resolve-types-and-properties', 'json', map_path, out_path])
-    with open(out_path) as f:
+    if not map_path.lower().endswith(('.tmj', '.json')):
+        raise Exception('Portable SGL Tiled import requires JSON .tmj/.json maps: ' + map_path)
+    with open(map_path) as f:
         data = json.load(f)
+    embedded = []
+    for reference in data.get('tilesets', []):
+        if not isinstance(reference.get('source'), str):
+            embedded.append(reference); continue
+        tileset_path = posixpath.normpath(posixpath.join(posixpath.dirname(map_path), reference['source']))
+        with open(tileset_path) as f:
+            tileset = json.load(f)
+        def rebase_images(value):
+            if isinstance(value, dict):
+                if isinstance(value.get('image'), str):
+                    value['image'] = posixpath.normpath(posixpath.join(posixpath.dirname(tileset_path), value['image']))
+                for child in value.values(): rebase_images(child)
+            elif isinstance(value, list):
+                for child in value: rebase_images(child)
+        rebase_images(tileset)
+        tileset['firstgid'] = reference.get('firstgid', 1)
+        embedded.append(tileset)
+    data['tilesets'] = embedded
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
     for ts in data.get('tilesets', []):
         if isinstance(ts.get('image'), str):
             resolved = resolve_ref(ts['image'], out_path, map_path)
@@ -250,7 +269,6 @@ PY
             map_lines = "\n".join(map_lines),
             image_paths = "\n".join([f.short_path for f in ctx.files.images]),
             manifest_path = manifest_file.path,
-            tiled_path = ctx.executable._tiled.path,
             image_tool_path = ctx.executable._image_tool.path,
         ),
         mnemonic = "SglTiledImport",
@@ -283,8 +301,6 @@ _sgl_tiled_import = rule(
         "target_densities": attr.string_list(mandatory = True, allow_empty = False),
         "output_prefix": attr.string(default = "assets"),
         "tile_extrude": attr.bool(default = False, doc = "When enabled, extrude tileset atlas tiles by approximately 1 mdpi pixel, scaled to source_density."),
-        "_tiled": attr.label(default = "@tiled_tool//:tiled_wrapper.sh", executable = True, cfg = "exec", allow_single_file = True),
-        "_tiled_data": attr.label(default = "@tiled_tool//:tiled_extracted", cfg = "exec"),
         "_image_tool": attr.label(default = "//bazel/tools:image_asset_tool", executable = True, cfg = "exec"),
     },
     doc = "Imports a Tiled project into SGL runtime assets, rewriting image paths to asset://drawable/<id> URIs and generating density buckets.",
@@ -293,6 +309,5 @@ _sgl_tiled_import = rule(
 def sgl_tiled_import(name, **kwargs):
     _sgl_tiled_import(
         name = name,
-        target_compatible_with = ["@platforms//os:linux"],
         **kwargs
     )
