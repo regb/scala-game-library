@@ -18,6 +18,9 @@ trait GameSystem {
 }
 
 object GameSystem {
+  /** The condition of a system that is never skipped. */
+  val always: GameContext => Boolean = _ => true
+
   /** A system from a block. The block is given the context and the frame's
     * scope, exactly as `run` is, so it can create objects directly.
     */
@@ -34,8 +37,8 @@ final class Schedule private[gameobject] (entries: Vector[SystemEntry]) {
   private[gameobject] def run(context: GameContext, frameScope: Scope): Unit =
     entries.foreach { entry =>
       entry.scope match {
-        case None => entry.system.run(context)(using frameScope)
-        case Some(scope) => if(scope.isActive) entry.system.run(context)(using scope)
+        case None => if(entry.when(context)) entry.system.run(context)(using frameScope)
+        case Some(scope) => if(scope.isActive && entry.when(context)) entry.system.run(context)(using scope)
       }
     }
 }
@@ -45,6 +48,7 @@ private[gameobject] final case class SystemEntry(
     system: GameSystem,
     after: Set[SystemId] = Set.empty,
     before: Set[SystemId] = Set.empty,
+    when: GameContext => Boolean = GameSystem.always,
     scope: Option[Scope] = None
 )
 

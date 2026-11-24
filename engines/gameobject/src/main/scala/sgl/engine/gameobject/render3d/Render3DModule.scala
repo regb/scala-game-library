@@ -1,6 +1,6 @@
 package sgl.engine.gameobject.render3d
 
-import sgl.engine.gameobject.{GameBuilder, GameContext, GameModule, Globals, RequiresGlobals, Scope, Stage, GameSystem, SystemId, World}
+import sgl.engine.gameobject.{GameSetup, GameContext, GameModule, Globals, RequiresGlobals, Scope, Stage, GameSystem, SystemId, World}
 
 /** Mixed into the components that only do something with [[Render3DModule]]
   * installed: attaching one without it is an error instead of an object that
@@ -25,8 +25,8 @@ object MeshRenderSystem extends GameSystem {
 
 /** Draws the meshes from the active [[Camera3D]], in the Render stage. */
 object Render3DModule extends GameModule {
-  override def install(builder: GameBuilder): Unit = {
-    builder
+  override def install(setup: GameSetup): Unit = {
+    setup
       .setGlobal[Render3DModule.type](this)
       .addSystem(Stage.Render, MeshRenderSystem)
   }

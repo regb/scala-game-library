@@ -287,6 +287,27 @@ They are ordered together with the builder's systems, and the same mistakes thro
 creates goes away with that scope too. One added while its stage is running starts the next time
 the stage runs.
 
+A scene can install a whole module the same way, with `context.install(module)`. Its systems and
+globals last as long as the scene. A module that is already installed in the game, or in that
+scope, is left as it is. Installing one that belongs to another scope throws a `CompositionError`,
+and so does a module with a `Startup` system.
+
+### Pausing systems
+
+`addSystem` takes a condition, asked just before each run. The system is skipped while it is false:
+
+```scala
+final class Paused(var on: Boolean = false)
+
+builder
+  .setGlobal(new Paused)
+  .addSystem(Stage.Update, EnemySystem, when = !_.global[Paused].on)
+  .addSystem(Stage.Update, PauseMenuSystem)
+```
+
+`Updatable` components are all driven by one system, so one that should pause checks in its
+`update`. A skipped system also skips what it draws: leave the ones in `Render` running.
+
 ### Per-object updates
 
 Behavior that is specific to one object can implement `Updatable` or `FixedUpdatable` instead of
@@ -405,6 +426,10 @@ context.runtime.loadScene(Level, whileLoading = Some(LoadingScreen))   // or sho
 
 - The scene that was running keeps running until the new one is ready, and the swap happens
   between two frames. The `SceneLoading` global is present in the meantime.
+- Pass each loading to `context.track(loader)` in `preload`, and a loading screen can show
+  `context.global[SceneLoading].progress`, from 0 to 1. It counts loadings, not bytes. Start and
+  track them all before combining them: in `for { a <- track(...); b <- track(...) }` the second
+  only starts after the first, and the progress steps back.
 - `preload` is given the scope of the new scene. The textures and meshes it creates are released
   with the scene, or at once if the loading fails or another scene is requested first.
 - `preload` cannot create objects: that throws a `CompositionError`. Objects are created in `load`.

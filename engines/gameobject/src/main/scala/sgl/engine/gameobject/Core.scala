@@ -3,6 +3,8 @@ package sgl.engine.gameobject
 import scala.collection.mutable
 import scala.reflect.ClassTag
 
+import sgl.util.Loader
+
 /** Stable identity for a game object. */
 final case class ObjectId(value: Int) extends AnyVal
 
@@ -255,6 +257,19 @@ final class Scope private[gameobject] (val id: ScopeId, val name: String, privat
   // Set while the scene the scope belongs to is preloading: it can own assets
   // but not objects yet.
   private[gameobject] var preloading: Boolean = false
+
+  // What preload counts in its progress. Loadings can be tracked from the
+  // callback of another one, which may run on a loading thread.
+  private val tracked = mutable.ArrayBuffer.empty[Loader[?]]
+  private[gameobject] def track(loader: Loader[?]): Unit =
+    if(preloading && activeValue) tracked.synchronized { tracked += loader }
+
+  /** How many loadings are tracked, and how many of them have completed. */
+  private[gameobject] def trackedCounts: (Int, Int) = {
+    // Loaders have locks of their own, which must not be taken inside this one.
+    val loaders = tracked.synchronized(tracked.toVector)
+    (loaders.size, loaders.count(_.isLoaded))
+  }
 
   /** Registers something to release when the scope is destroyed, after its
     * objects. This is how what is created for a scene, such as a mesh or a

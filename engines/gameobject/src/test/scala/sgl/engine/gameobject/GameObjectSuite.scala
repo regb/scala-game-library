@@ -1114,8 +1114,8 @@ class GameObjectSuite extends AnyFunSuite {
       ran :+= "first"
       if(ran.size == 1) summon[GameContext].addSystem(Stage.Update, GameSystem("added") { ran :+= "added" })
       else if(scope.isActive) runtime.world.destroyScope(scope)
-    }, Set.empty, Set.empty)(using runtime.world.globalScope)
-    runtime.addSystem(Stage.Update, GameSystem("second") { ran :+= "second" }, Set.empty, Set.empty)(using scope)
+    }, Set.empty, Set.empty, GameSystem.always)(using runtime.world.globalScope)
+    runtime.addSystem(Stage.Update, GameSystem("second") { ran :+= "second" }, Set.empty, Set.empty, GameSystem.always)(using scope)
     runtime.frame(0.1)
     assert(ran === Vector("first", "second"))
     runtime.frame(0.1)
@@ -1134,7 +1134,7 @@ class GameObjectSuite extends AnyFunSuite {
     val retired = runtime.world.createScope("retired")
     runtime.world.destroyScope(retired)
     def rejected(stage: Stage, name: String, after: Set[GameSystem] = Set.empty, scope: Scope = global): String =
-      intercept[CompositionError](runtime.addSystem(stage, system(name), after, Set.empty)(using scope)).getMessage
+      intercept[CompositionError](runtime.addSystem(stage, system(name), after, Set.empty, GameSystem.always)(using scope)).getMessage
 
     assert(rejected(Stage.Update, "a").contains("duplicate"))
     assert(rejected(Stage.Update, "c", after = Set(system("b"))).contains("cycle"))
@@ -1153,6 +1153,122 @@ class GameObjectSuite extends AnyFunSuite {
       override def load(context: GameContext, assets: Unit)(using Scope): Unit = ()
     }
     assert(intercept[CompositionError](runtime.loadScene(Eager)).getMessage.contains("preloading"))
+  }
+
+  test("a system is skipped while its condition is false") {
+    final class Paused(var on: Boolean)
+    var ran = Vector.empty[String]
+    val paused = new Paused(false)
+    val running: GameContext => Boolean = !_.global[Paused].on
+    val runtime = new GameBuilder()
+      .setGlobal(paused)
+      .addSystem(Stage.Update, GameSystem("ai") { ran :+= "ai" }, when = running)
+      .addSystem(Stage.Update, GameSystem("menu") { ran :+= "menu"; paused.on = !paused.on }, before = Set(GameSystem("physics") {}))
+      .setInitialScene(new WithSystems((context, scope) =>
+        context.addSystem(Stage.Update, GameSystem("physics") { ran :+= "physics" }, when = running)(using scope)))
+      .build(new TestEngine(new RecordingRenderer))
+    runtime.startup()
+    // The condition is asked just before each run: the menu pauses in between.
+    runtime.frame(0.1)
+    assert(ran === Vector("ai", "menu"))
+    ran = Vector.empty
+    runtime.frame(0.1)
+    assert(ran === Vector("menu", "physics"))
+  }
+
+  private final class Score(val points: Int)
+  // A module with a system, a global, and a module it relies on.
+  private final class ScoreModule(points: Int, requires: Option[GameModule], count: () => Unit) extends GameModule {
+    override def install(setup: GameSetup): Unit = {
+      requires.foreach(setup.install)
+      setup.setGlobal(new Score(points)).addSystem(Stage.Update, GameSystem("score-" + points) { count() })
+    }
+  }
+  private def installing(modules: GameModule*): Scene =
+    new WithSystems((context, scope) => modules.foreach(context.install(_)(using scope)))
+
+  test("a module installed by a scene goes away with it, systems, globals and all") {
+    import sgl.engine.gameobject.render2d.{Render2DModule, SpriteRenderer, SpriteVisual}
+    var ran = 0
+    val inGame = new ScoreModule(1, None, () => ())
+    val inScene = new ScoreModule(2, Some(inGame), () => ran += 1)
+    def level: Scene = new WithSystems((context, scope) => {
+      given Scope = scope
+      context.install(inScene)
+      // Again, or in the game already: left as it is.
+      context.install(inScene)
+      context.install(inGame)
+      context.install(Render2DModule)
+      context.spawn2D("sprite").attach(new SpriteRenderer(_, SpriteVisual.Triangle(Color.White), 1f, 1f))
+    })
+    val runtime = new GameBuilder().install(inGame).install(inGame).setInitialScene(level).build(new TestEngine(new RecordingRenderer))
+    runtime.startup()
+    runtime.frame(0.1)
+    assert(ran === 1 && runtime.world.globals.get[Score].points === 2)
+
+    runtime.loadScene(new Plain("menu"))
+    runtime.frame(0.1)
+    assert(ran === 1 && runtime.world.globals.get[Score].points === 1)
+    assert(!runtime.world.globals.contains[Render2DModule.type])
+
+    // It can be installed again, by this scene or another.
+    runtime.loadScene(level)
+    runtime.loadScene(level)
+    runtime.frame(0.1)
+    assert(ran === 2)
+  }
+
+  test("a module cannot be installed in two scopes, while preloading, or late with a Startup system") {
+    val module = new ScoreModule(1, None, () => ())
+    val runtime = runtimeOn(installing(module))
+    val other = runtime.world.createScope("other")
+    assert(intercept[CompositionError](runtime.install(module)(using other)).getMessage.contains("already installed in scope"))
+
+    object Starting extends GameModule {
+      override def install(setup: GameSetup): Unit = setup.addSystem(Stage.Startup, GameSystem("starting") {})
+    }
+    assert(intercept[CompositionError](runtime.install(Starting)(using other)).getMessage.contains("Startup"))
+
+    object Eager extends AsyncScene[Unit] {
+      override def preload(context: GameContext)(using Scope): sgl.util.Loader[Unit] = {
+        context.install(new ScoreModule(3, None, () => ()))
+        sgl.util.Loader.successful(())
+      }
+      override def load(context: GameContext, assets: Unit)(using Scope): Unit = ()
+    }
+    assert(intercept[CompositionError](runtime.loadScene(Eager)).getMessage.contains("preloading"))
+    assert(runtime.world.globals.get[Score].points === 1)
+  }
+
+  test("a loading screen sees how much of what preload tracks has completed") {
+    val loaders = Vector.fill(4)(new sgl.util.DefaultLoader[Int])
+    object Level extends AsyncScene[Vector[Int]] {
+      override def preload(context: GameContext)(using Scope): sgl.util.Loader[Vector[Int]] =
+        loaders.map(l => context.track(l.loader.fallbackTo(sgl.util.Loader.successful(0))))
+          .foldLeft(sgl.util.Loader.successful(Vector.empty[Int]))((all, next) => all.zip(next).map((a, n) => a :+ n))
+      override def load(context: GameContext, assets: Vector[Int])(using Scope): Unit = {
+        // Not preloading any more: nothing is counted.
+        context.track(sgl.util.Loader.successful(1))
+        context.createObject("level-" + assets.sum)
+      }
+    }
+    val runtime = runtimeOn(new Plain("menu"))
+    runtime.loadScene(Level)
+    def loading = runtime.world.globals.get[SceneLoading]
+    assert((loading.completed, loading.total, loading.progress) === ((0, 4, 0f)))
+    loaders(2).success(5)
+    loaders(0).failure(new IllegalStateException("optional"))
+    assert((loading.completed, loading.total, loading.progress) === ((2, 4, 0.5f)))
+    loaders(1).success(1)
+    loaders(3).success(1)
+    assert(loading.progress === 1f)
+    val seen = loading
+    runtime.frame(0.1)
+    assert(names(runtime) === Vector("level-7") && seen.total === 4)
+
+    // A scene that tracks nothing has no progress to show.
+    runtime.loadScene(new Preloaded("untracked"))
+    assert((loading.total, loading.progress) === ((0, 0f)))
   }
 
   test("onAssetChange runs at the start of a frame, for as long as its scope lives") {

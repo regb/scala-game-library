@@ -58,8 +58,8 @@ object FixedUpdateComponentsSystem extends GameSystem {
   */
 object UpdateCapabilitiesModule extends GameModule {
 
-  override def install(builder: GameBuilder): Unit = {
-    builder
+  override def install(setup: GameSetup): Unit = {
+    setup
       .setGlobal[UpdateCapabilitiesModule.type](this)
       .addSystem(Stage.Update, UpdateComponentsSystem)
       .addSystem(Stage.FixedUpdate, FixedUpdateComponentsSystem)

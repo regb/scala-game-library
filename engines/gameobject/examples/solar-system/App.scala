@@ -32,10 +32,14 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
     // drawn without its texture.
     override def preload(context: GameContext)(using Scope): Loader[BodyTextures] = {
       val renderer = context.engine.renderer
+      // All three start together, and count in the loading progress.
+      val sunReady = context.track(renderer.whenReady(renderer.loadTexture2D(Assets.rawImage.sun)))
+      val earthReady = context.track(renderer.whenReady(renderer.loadTexture2D(Assets.rawImage.earth)))
+      val moonReady = context.track(renderer.whenReady(renderer.loadTexture2D(Assets.rawImage.moon)))
       for {
-        sun <- renderer.whenReady(renderer.loadTexture2D(Assets.rawImage.sun))
-        earth <- renderer.whenReady(renderer.loadTexture2D(Assets.rawImage.earth))
-        moon <- renderer.whenReady(renderer.loadTexture2D(Assets.rawImage.moon))
+        sun <- sunReady
+        earth <- earthReady
+        moon <- moonReady
       } yield BodyTextures(sun, earth, moon)
     }
 

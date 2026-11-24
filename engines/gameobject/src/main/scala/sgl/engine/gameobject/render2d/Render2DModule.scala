@@ -1,6 +1,6 @@
 package sgl.engine.gameobject.render2d
 
-import sgl.engine.gameobject.{Color, GameBuilder, GameContext, GameModule, Globals, RequiresGlobals, Scope, Stage, GameSystem, SystemId, World}
+import sgl.engine.gameobject.{Color, GameSetup, GameContext, GameModule, Globals, RequiresGlobals, Scope, Stage, GameSystem, SystemId, World}
 import sgl.math.Vec2
 
 /** Mixed into the components that only do something with [[Render2DModule]]
@@ -87,8 +87,8 @@ object TilemapRenderSystem extends GameSystem {
   * [[Camera2D]]. Its systems run in the Render stage.
   */
 object Render2DModule extends GameModule {
-  override def install(builder: GameBuilder): Unit = {
-    builder
+  override def install(setup: GameSetup): Unit = {
+    setup
       .setGlobal[Render2DModule.type](this)
       .addSystem(Stage.Render, SpriteRenderSystem)
       .addSystem(Stage.Render, TilemapRenderSystem)

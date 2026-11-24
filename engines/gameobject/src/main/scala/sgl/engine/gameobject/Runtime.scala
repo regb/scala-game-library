@@ -37,8 +37,41 @@ final case class ElapsedTime(seconds: Double)
   */
 final case class MaxDeltaTime(seconds: Double)
 
+/** A feature made of systems and globals. It is installed in the whole game by
+  * a [[GameBuilder]], or in one scene with [[GameContext.install]].
+  */
 trait GameModule {
-  def install(builder: GameBuilder): Unit
+  def install(setup: GameSetup): Unit
+}
+
+/** Where a module installs its parts: the game, or a scope of it. */
+trait GameSetup {
+  /** Installs a module this one relies on. One that is already installed here,
+    * or in the whole game, is left as it is.
+    */
+  def install(module: GameModule): this.type
+
+  def setGlobal[A: ClassTag](value: A): this.type
+
+  /** Adds a system to a stage.
+    *
+    * The systems of a stage run in the order they are added, except that this
+    * one runs after the systems in `after` and before those in `before`,
+    * wherever they are added. A system that is not installed is ignored, so a
+    * system can be ordered against an optional module. Naming a system that is
+    * only in other stages is an error, and so is a cycle. Systems are matched
+    * by their id.
+    *
+    * The system is skipped whenever `when` is false, which is asked just before
+    * each run. This is how to pause a part of the game.
+    */
+  def addSystem(
+      stage: Stage,
+      system: GameSystem,
+      after: Set[GameSystem] = Set.empty,
+      before: Set[GameSystem] = Set.empty,
+      when: GameContext => Boolean = GameSystem.always
+  ): this.type
 }
 
 /** A loadable top-level composition for a World.
@@ -112,7 +145,21 @@ trait AsyncScene[A] {
   * `ElapsedTime` at which the loading started. A loading screen reads it to
   * show what is going on.
   */
-final case class SceneLoading(scene: String, startedAt: Double)
+final class SceneLoading private[gameobject] (val scene: String, val startedAt: Double, scope: Scope) {
+  /** How many loadings `preload` has passed to [[GameContext.track]] so far. */
+  def total: Int = scope.trackedCounts._1
+
+  /** How many of them have completed, whether or not they succeeded. */
+  def completed: Int = scope.trackedCounts._2
+
+  /** The completed part, from 0 to 1. It is 0 as long as nothing is tracked. */
+  def progress: Float = {
+    val (tracked, done) = scope.trackedCounts
+    if(tracked == 0) 0f else done.toFloat / tracked.toFloat
+  }
+
+  override def toString: String = s"SceneLoading($scene, $completed/$total)"
+}
 
 // An AsyncScene with what it loaded is an ordinary scene.
 private final class LoadedScene[A](scene: AsyncScene[A], assets: A) extends Scene {
@@ -144,15 +191,38 @@ final class GameContext private[gameobject] (
     * goes away with it too.
     *
     * It is ordered among the systems already there as with
-    * [[GameBuilder.addSystem]], and after those added before it otherwise.
+    * [[GameSetup.addSystem]], and after those added before it otherwise.
     * Added from a system, it runs from the next time its stage does.
     */
   def addSystem(
       stage: Stage,
       system: GameSystem,
       after: Set[GameSystem] = Set.empty,
-      before: Set[GameSystem] = Set.empty
-  )(using Scope): Unit = runtime.addSystem(stage, system, after, before)
+      before: Set[GameSystem] = Set.empty,
+      when: GameContext => Boolean = GameSystem.always
+  )(using Scope): Unit = runtime.addSystem(stage, system, after, before, when)
+
+  /** Installs a module for as long as the given scope lives: installed by a
+    * scene, its systems and globals go away with it.
+    *
+    * A module that is already installed in the whole game or in this scope is
+    * left as it is. One installed in another scope is an error, since it would
+    * not live as long as this one expects. A module with a `Startup` system can
+    * only be installed in the game.
+    */
+  def install(module: GameModule)(using Scope): Unit = runtime.install(module)
+
+  /** Counts a loading in the progress of the scene being preloaded, which a
+    * loading screen reads from [[SceneLoading]], and returns it.
+    *
+    * Track every loading before combining them: one that only starts once
+    * another is done makes the progress step back when it is added. Outside of
+    * `preload` this does nothing.
+    */
+  def track[A](loader: Loader[A])(using scope: Scope): Loader[A] = {
+    scope.track(loader)
+    loader
+  }
 
   /** The world's global of type `A`, such as `context.global[DeltaTime]`. */
   def global[A: ClassTag]: A = world.globals.get[A]
@@ -216,17 +286,18 @@ trait Engine {
   def dispose(): Unit = renderer.dispose()
 }
 
-final class GameBuilder {
+final class GameBuilder extends GameSetup {
+  private val installed = mutable.HashSet.empty[GameModule]
   private val globalInitializers = mutable.ArrayBuffer.empty[World => Unit]
   private val systemsByStage = mutable.HashMap.empty[Stage, mutable.ArrayBuffer[SystemEntry]]
   private var initialSceneValue: Option[SceneRequest] = None
 
-  def install(module: GameModule): this.type = {
-    module.install(this)
+  override def install(module: GameModule): this.type = {
+    if(installed.add(module)) module.install(this)
     this
   }
 
-  def setGlobal[A: ClassTag](value: A): this.type = {
+  override def setGlobal[A: ClassTag](value: A): this.type = {
     globalInitializers += (_.globals.set(value))
     this
   }
@@ -244,23 +315,15 @@ final class GameBuilder {
     this
   }
 
-  /** Adds a system to a stage.
-    *
-    * The systems of a stage run in the order they are added, except that this
-    * one runs after the systems in `after` and before those in `before`,
-    * wherever they are added. A system that is not installed is ignored, so a
-    * system can be ordered against an optional module. Naming a system that is
-    * only in other stages is an error, reported by `build` as cycles are.
-    * Systems are matched by their id.
-    */
-  def addSystem(
+  override def addSystem(
       stage: Stage,
       system: GameSystem,
-      after: Set[GameSystem] = Set.empty,
-      before: Set[GameSystem] = Set.empty
+      after: Set[GameSystem],
+      before: Set[GameSystem],
+      when: GameContext => Boolean
   ): this.type = {
     systemsByStage.getOrElseUpdate(stage, mutable.ArrayBuffer.empty) +=
-      SystemEntry(system, after.map(_.id), before.map(_.id))
+      SystemEntry(system, after.map(_.id), before.map(_.id), when)
     this
   }
 
@@ -268,18 +331,44 @@ final class GameBuilder {
     val entries = Stage.values.map { stage =>
       stage -> systemsByStage.get(stage).map(_.toVector).getOrElse(Vector.empty)
     }.toMap
-    new GameRuntime(engine, new Schedules(entries), globalInitializers.toVector, initialSceneValue)
+    new GameRuntime(engine, new Schedules(entries), installed.toSet, globalInitializers.toVector, initialSceneValue)
+  }
+}
+
+// Installs for as long as a scope lives.
+private final class ScopedSetup(runtime: GameRuntime)(using scope: Scope) extends GameSetup {
+  override def install(module: GameModule): this.type = {
+    runtime.install(module)
+    this
+  }
+
+  override def setGlobal[A: ClassTag](value: A): this.type = {
+    scope.world.globals.setScoped(value)
+    this
+  }
+
+  override def addSystem(
+      stage: Stage,
+      system: GameSystem,
+      after: Set[GameSystem],
+      before: Set[GameSystem],
+      when: GameContext => Boolean
+  ): this.type = {
+    runtime.addSystem(stage, system, after, before, when)
+    this
   }
 }
 
 final class GameRuntime private[gameobject] (
     val engine: Engine,
     schedules: Schedules,
+    gameModules: Set[GameModule],
     globalInitializers: Vector[World => Unit],
     initialScene: Option[SceneRequest]
 ) {
   private val worldValue: World = createWorld()
   private val context = new GameContext(worldValue, engine, this)
+  private val scopedModules = mutable.HashMap.empty[GameModule, Scope]
   private var currentScene: Option[Scene] = None
   private var currentSceneScope: Option[Scope] = None
   private var elapsedSeconds: Double = 0.0
@@ -342,17 +431,39 @@ final class GameRuntime private[gameobject] (
       stage: Stage,
       system: GameSystem,
       after: Set[GameSystem],
-      before: Set[GameSystem]
+      before: Set[GameSystem],
+      when: GameContext => Boolean
   )(using scope: Scope): Unit = {
-    def reject(reason: String) =
-      throw new CompositionError(s"Cannot add system ${system.id.value} to stage $stage in scope ${scope.name}: $reason")
-    if(scope.world ne worldValue) reject("the scope belongs to a different world")
-    if(!scope.isActive) reject("the scope is no longer active")
-    if(scope.preloading) reject("its scene is preloading, and systems are added in load")
-    if(stage == Stage.Startup) reject("the stage runs once, when the game starts")
-    val entry = SystemEntry(system, after.map(_.id), before.map(_.id), Some(scope))
+    val action = s"add system ${system.id.value} to stage $stage"
+    checkCanExtend(action)
+    if(stage == Stage.Startup) {
+      throw new CompositionError(s"Cannot $action in scope ${scope.name}: the stage runs once, when the game starts")
+    }
+    val entry = SystemEntry(system, after.map(_.id), before.map(_.id), when, Some(scope))
     schedules.add(stage, entry)
     scope.onDestroy(() => schedules.remove(stage, entry))
+  }
+
+  private[gameobject] def install(module: GameModule)(using scope: Scope): Unit =
+    if(!gameModules.contains(module)) {
+      val action = s"install module ${module.getClass.getName.stripSuffix("$")}"
+      checkCanExtend(action)
+      scopedModules.get(module) match {
+        case Some(other) if other eq scope =>
+        case Some(other) =>
+          throw new CompositionError(s"Cannot $action in scope ${scope.name}: it is already installed in scope ${other.name}")
+        case None =>
+          scopedModules(module) = scope
+          scope.onDestroy(() => scopedModules.remove(module))
+          module.install(new ScopedSetup(this))
+      }
+    }
+
+  private def checkCanExtend(action: String)(using scope: Scope): Unit = {
+    def reject(reason: String) = throw new CompositionError(s"Cannot $action in scope ${scope.name}: $reason")
+    if(scope.world ne worldValue) reject("the scope belongs to a different world")
+    if(!scope.isActive) reject("the scope is no longer active")
+    if(scope.preloading) reject("its scene is preloading, and this is done in load")
   }
 
   private[gameobject] def whenLoaded[A](loader: Loader[A], onFailure: Throwable => Unit, release: A => Unit)(body: A => Unit)(using scope: Scope): Unit = {
@@ -522,7 +633,7 @@ final class GameRuntime private[gameobject] (
       try preload.scene.preload(context)(using scope)
       catch { case NonFatal(error) => Loader.failed[A](error) }
     loading = Some(new Loading(name, scope, preload.scene, loader, preload.onFailure))
-    worldValue.globals.set(SceneLoading(name, elapsedSeconds))
+    worldValue.globals.set(new SceneLoading(name, elapsedSeconds, scope))
     // A loader that is already complete does not cost a frame.
     pollLoading()
   }

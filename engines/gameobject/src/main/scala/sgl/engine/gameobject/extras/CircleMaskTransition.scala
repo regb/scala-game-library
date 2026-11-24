@@ -1,6 +1,6 @@
 package sgl.engine.gameobject.extras
 
-import sgl.engine.gameobject.{Color, ComponentOf, GameBuilder, GameContext, GameModule, Globals, RequiresGlobals, Scope, Stage, GameSystem, SystemId, TypedObject, World}
+import sgl.engine.gameobject.{Color, ComponentOf, GameSetup, GameContext, GameModule, Globals, RequiresGlobals, Scope, Stage, GameSystem, SystemId, TypedObject, World}
 import sgl.engine.gameobject.render2d.{Painter2D, Render2D}
 import sgl.math.Vec2
 
@@ -57,8 +57,8 @@ object CircleMaskSystem extends GameSystem {
 
 /** Draws [[CircleMaskTransition]] components over the world. */
 object CircleMaskModule extends GameModule {
-  override def install(builder: GameBuilder): Unit = {
-    builder
+  override def install(setup: GameSetup): Unit = {
+    setup
       .setGlobal[CircleMaskModule.type](this)
       .addSystem(Stage.Render, CircleMaskSystem)
   }
