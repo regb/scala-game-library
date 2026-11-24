@@ -63,8 +63,13 @@ final class MeshRenderer(
 trait Renderer {
   def createMesh(data: MeshData)(using Scope): Mesh
 
-  /** Uploads an image of its own, available as soon as it has loaded. Sprites
-    * that share an atlas page are loaded through the engine instead.
+  /** Loads the image of an asset, for sprites, tiles and materials alike. The
+    * texture can be used right away, and shows its image once it has loaded:
+    * see [[whenReady]].
+    *
+    * An image is uploaded once however many textures show it, and a drawable
+    * packed in an atlas is drawn from its page. The image or page leaves the
+    * GPU with the last texture using it.
     */
   def loadTexture2D(asset: DrawableAsset)(using Scope): Texture2D
   def loadTexture2D(asset: RawImageAsset)(using Scope): Texture2D
@@ -75,8 +80,8 @@ trait Renderer {
     */
   def whenReady(texture: Texture2D): Loader[Texture2D] = Loader.successful(texture)
 
-  /** A material needs an image of its own: a texture that is a region of an
-    * atlas page is rejected.
+  /** A material from any texture. Coordinates of a mesh outside of 0 to 1 are
+    * clamped to the edge of the image, an atlas region included.
     */
   def createMaterial(texture: Texture2D, emissive: Float)(using Scope): Material
 
@@ -91,7 +96,7 @@ trait Renderer {
     */
   def beginFrame(world: World): Unit
 
-  /** Closes a frame: draws what was submitted during the Render stage. */
+  /** Closes a frame: draws what was submitted during the Render stage, 3D first. */
   def endFrame(world: World): Unit = {}
 
   /** Where 2D drawings are submitted during the Render stage. They are drawn
@@ -99,8 +104,10 @@ trait Renderer {
     */
   def render2D: Render2D = Render2D.Discard
 
-  // Meshes are drawn immediately, against the depth buffer.
-  private[gameobject] def drawMeshes(world: World): Unit = {}
+  /** Where 3D drawings are submitted during the Render stage. They are drawn
+    * together when the frame ends, before the 2D ones.
+    */
+  def render3D: Render3D = Render3D.Discard
 
   def dispose(): Unit = {}
 }

@@ -71,12 +71,12 @@ extension (world: World) {
     TypedObject(world.createObject(name)).attachPlain(new Spatial3D(_, transform))
 }
 
-// Creation helpers bound to the scope of a GameContext. Only one overload of a
+// Creation helpers for code that holds a GameContext. Only one overload of a
 // name may declare default arguments, hence the explicit pair.
 extension (context: GameContext) {
-  def spawn3D(name: String): GameObject3D =
-    context.world.spawn3D(name)(using context.scope)
+  def spawn3D(name: String)(using Scope): GameObject3D =
+    context.world.spawn3D(name)
 
-  def spawn3D(name: String, transform: Transform3D): GameObject3D =
-    context.world.spawn3D(name, transform)(using context.scope)
+  def spawn3D(name: String, transform: Transform3D)(using Scope): GameObject3D =
+    context.world.spawn3D(name, transform)
 }

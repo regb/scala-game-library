@@ -89,12 +89,12 @@ extension (world: World) {
     TypedObject(world.createObject(name)).attachPlain(new Spatial2D(_, transform))
 }
 
-// Creation helpers bound to the scope of a GameContext. Only one overload of a
+// Creation helpers for code that holds a GameContext. Only one overload of a
 // name may declare default arguments, hence the explicit pair.
 extension (context: GameContext) {
-  def spawn2D(name: String): GameObject2D =
-    context.world.spawn2D(name)(using context.scope)
+  def spawn2D(name: String)(using Scope): GameObject2D =
+    context.world.spawn2D(name)
 
-  def spawn2D(name: String, transform: Transform2D): GameObject2D =
-    context.world.spawn2D(name, transform)(using context.scope)
+  def spawn2D(name: String, transform: Transform2D)(using Scope): GameObject2D =
+    context.world.spawn2D(name, transform)
 }

@@ -9,7 +9,9 @@ import sgl.assets.{AssetChange, AssetFactory, AssetReloadHub, BinaryAsset, Drawa
 import sgl.engine.gameobject.opengl.OpenGLRenderer
 import sgl.engine.gameobject.spatial2d._
 import sgl.engine.gameobject.render2d.{Render2DModule, SpriteRenderSystem, SpriteRenderer, SpriteVisual, Texture2D, TileQuad, Tilemap, TilemapRenderSystem}
-import sgl.math.Vec2
+import sgl.engine.gameobject.render3d.{Camera3D, MeshData, Render3DModule}
+import sgl.engine.gameobject.spatial3d._
+import sgl.math.{Mat4, Vec2, Vec3}
 import sgl.util.{DefaultLoader, Loader}
 
 class OpenGLRendererSuite extends AnyFunSuite {
@@ -26,6 +28,11 @@ class OpenGLRendererSuite extends AnyFunSuite {
     private var nextTexture = 100
     private var bound = 0
     private var buffer = Array.empty[Float]
+    private var stride = 0
+    var depthWrites = true
+    /** One entry per mesh drawn: the bound texture and the matrices set for it. */
+    val meshDraws = mutable.ArrayBuffer.empty[(Int, Vector[Vector[Float]])]
+    private var matrices = Vector.empty[Vector[Float]]
 
     override val ResourcesRoot: ResourcePath = PartsResourcePath(Vector.empty)
     override val MultiDPIResourcesRoot: ResourcePath = PartsResourcePath(Vector.empty)
@@ -71,6 +78,7 @@ class OpenGLRendererSuite extends AnyFunSuite {
       override def scissor(x: Int, y: Int, width: Int, height: Int): Unit = ()
       override def cullFace(mode: Int): Unit = ()
       override def blendFunc(source: Int, destination: Int): Unit = ()
+      override def depthMask(write: Boolean): Unit = depthWrites = write
       override def clearColor(red: Float, green: Float, blue: Float, alpha: Float): Unit = ()
       override def clear(mask: Int): Unit = ()
       override def createShader(shaderType: Int): Int = 1
@@ -99,11 +107,11 @@ class OpenGLRendererSuite extends AnyFunSuite {
       override def bufferDataShort(target: Int, data: Array[Short], usage: Int): Unit = ()
       override def getAttribLocation(program: Int, name: String): Option[Int] = Some(1)
       override def getUniformLocation(program: Int, name: String): Option[Int] = Some(1)
-      override def uniformMatrix4fv(location: Int, transpose: Boolean, value: Array[Float]): Unit = ()
+      override def uniformMatrix4fv(location: Int, transpose: Boolean, value: Array[Float]): Unit = matrices :+= value.toVector
       override def uniform1i(location: Int, value: Int): Unit = ()
       override def uniform1f(location: Int, value: Float): Unit = ()
       override def enableVertexAttribArray(index: Int): Unit = ()
-      override def vertexAttribPointer(index: Int, size: Int, dataType: Int, normalized: Boolean, stride: Int, offset: Long): Unit = ()
+      override def vertexAttribPointer(index: Int, size: Int, dataType: Int, normalized: Boolean, vertexStride: Int, offset: Long): Unit = stride = vertexStride
       override def genTexture(): Int = 1
       override def activeTexture(texture: Int): Unit = ()
       override def bindTexture(target: Int, texture: Int): Unit = bound = texture
@@ -127,10 +135,13 @@ class OpenGLRendererSuite extends AnyFunSuite {
       }
       override private[sgl] def maxTextureSize: Int = maxTexture
       override def drawArrays(mode: Int, first: Int, count: Int): Unit = {
-        assert(count * 8 == buffer.length)
+        assert(count * (stride / 4) == buffer.length)
         draws += ((bound, buffer))
       }
-      override def drawElements(mode: Int, count: Int, dataType: Int, offset: Long): Unit = ()
+      override def drawElements(mode: Int, count: Int, dataType: Int, offset: Long): Unit = {
+        meshDraws += ((bound, matrices))
+        matrices = Vector.empty
+      }
     }
     override val OpenGL: OpenGL = FakeGL
   }
@@ -167,6 +178,12 @@ class OpenGLRendererSuite extends AnyFunSuite {
     renderer.endFrame(world)
   }
 
+  // A drawable loaded for good, in a scope of its own that is never destroyed.
+  private def load(renderer: OpenGLRenderer, asset: DrawableAsset): Loader[Texture2D] = {
+    val world = new World
+    renderer.whenReady(renderer.loadTexture2D(asset)(using world.globalScope))
+  }
+
   private def loaded(loader: Loader[Texture2D]): Texture2D = {
     assert(loader.isLoaded)
     loader.value.get.get
@@ -175,28 +192,28 @@ class OpenGLRendererSuite extends AnyFunSuite {
   test("drawables on one atlas page share a single upload, even when requested concurrently") {
     val app = new FakeGLApp
     val renderer = new OpenGLRenderer(app)
-    val coinLoader = renderer.loadDrawableTexture(coin)
-    val gemLoader = renderer.loadDrawableTexture(gem)
-    val coinAgain = renderer.loadDrawableTexture(coin)
+    val coinLoader = load(renderer, coin)
+    val gemLoader = load(renderer, gem)
+    val coinAgain = load(renderer, coin)
     assert(app.uploads.map(u => (u.resourceName, u.filter, u.mipmaps)) == Seq((page, TextureFilter.Nearest, false)))
     assert(!coinLoader.isLoaded && !gemLoader.isLoaded)
     app.uploads.head.complete()
     assert(coinLoader.isLoaded && gemLoader.isLoaded && coinAgain.isLoaded)
-    assert(renderer.loadDrawableTexture(gem).isLoaded)
+    assert(load(renderer, gem).isLoaded)
     assert(app.uploads.size == 1)
   }
 
   test("standalone drawables keep loading their own image with mipmaps") {
     val app = new FakeGLApp
     val renderer = new OpenGLRenderer(app)
-    renderer.loadDrawableTexture(standalone)
+    load(renderer, standalone)
     assert(app.uploads.map(u => (u.resourceName, u.mipmaps)) == Seq(("drawable-mdpi/hero.png", true)))
   }
 
   test("atlas pages larger than the device limit fall back to the standalone image") {
     val app = new FakeGLApp(maxTexture = 32)
     val renderer = new OpenGLRenderer(app)
-    renderer.loadDrawableTexture(coin)
+    load(renderer, coin)
     assert(app.uploads.map(u => (u.resourceName, u.mipmaps)) == Seq(("drawable-mdpi/coin.png", true)))
   }
 
@@ -207,7 +224,7 @@ class OpenGLRendererSuite extends AnyFunSuite {
     val scene = world.createScope("scene")
 
     val texture = renderer.loadTexture2D(AssetFactory.rawImage("images/wood.png"))(using scene)
-    val mesh = renderer.createMesh(sgl.engine.gameobject.render3d.MeshData(Array.empty[Float], Array.empty[Short]))(using scene)
+    val mesh = renderer.createMesh(MeshData(Array.empty[Float], Array.empty[Short]))(using scene)
     val material = renderer.createMaterial(texture, emissive = 0f)(using scene)
     assert(mesh.toString == "Mesh(0)" && material.toString == "Material(0)")
     val ready = renderer.whenReady(texture)
@@ -235,20 +252,103 @@ class OpenGLRendererSuite extends AnyFunSuite {
     assert(app.uploads.size == 1)
   }
 
-  test("a material rejects a texture that is a region of an atlas page") {
+  test("an image is uploaded once and leaves with the last texture that shows it") {
     val app = new FakeGLApp
     val renderer = new OpenGLRenderer(app)
     val world = renderWorld()
-    import world.given
-    val coinLoader = renderer.loadDrawableTexture(coin)
-    val heroLoader = renderer.loadDrawableTexture(standalone)
-    app.uploads.foreach(_.complete())
+    val first = world.createScope("first")
+    val second = world.createScope("second")
+    renderer.loadTexture2D(coin)(using first)
+    val gemTexture = renderer.loadTexture2D(gem)(using second)
+    assert(app.uploads.size == 1)
+    app.uploads.head.complete()
 
-    val error = intercept[CompositionError] {
-      renderer.createMaterial(loaded(coinLoader), emissive = 0f)
-    }
-    assert(error.getMessage.contains("atlas page"))
-    renderer.createMaterial(loaded(heroLoader), emissive = 0f)
+    world.destroyScope(first)
+    assert(app.deleted.isEmpty && renderer.whenReady(gemTexture).isLoaded)
+    world.destroyScope(second)
+    assert(app.deleted.toSeq == Seq(app.uploads.head.texture))
+    assert(renderer.whenReady(gemTexture).value.exists(_.isFailure))
+
+    // It is uploaded again for whoever needs it next. One released while it is
+    // still uploading is deleted as it arrives, and does not stand in for a newer one.
+    val third = world.createScope("third")
+    renderer.loadTexture2D(coin)(using third)
+    world.destroyScope(third)
+    val fourth = world.createScope("fourth")
+    val again = renderer.loadTexture2D(coin)(using fourth)
+    app.uploads(1).complete()
+    assert(app.deleted.last == app.uploads(1).texture && !renderer.whenReady(again).isLoaded)
+    app.uploads(2).complete()
+    assert(renderer.whenReady(again).isLoaded && app.deleted.size == 2)
+  }
+
+  // A world with a 3D camera at the origin, looking along -Z.
+  private def world3D(): World = {
+    val world = renderWorld()
+    world.globals.set[Render3DModule.type](Render3DModule)
+    world.spawn3D("camera")(using world.globalScope).attach(new Camera3D(_, 1f, 0.1f, 100f))
+    world
+  }
+
+  test("a material draws the region of an atlas page its texture is, clamped to its edge texels") {
+    val app = new FakeGLApp
+    val renderer = new OpenGLRenderer(app)
+    val world = world3D()
+    import world.given
+    val mesh = renderer.createMesh(MeshData(Array.empty, Array.empty))
+    val coinMaterial = renderer.createMaterial(loadedAfter(app, load(renderer, coin)), emissive = 0f)
+    val heroMaterial = renderer.createMaterial(loadedAfter(app, load(renderer, standalone)), emissive = 0f)
+    renderer.beginFrame(world)
+    renderer.render3D.mesh(mesh, coinMaterial, Mat4.Identity)
+    renderer.render3D.mesh(mesh, heroMaterial, Mat4.Identity)
+    renderer.endFrame(world)
+
+    assert(app.meshDraws.map(_._1) == app.uploads.map(_.texture))
+    assert(app.meshDraws.map(_._2(2).take(8)) == Seq(
+      Vector(2f / 64f, 2f / 32f, 16f / 64f, 16f / 32f, 2.5f / 64f, 2.5f / 32f, 17.5f / 64f, 17.5f / 32f),
+      Vector(0f, 0f, 1f, 1f, 0f, 0f, 1f, 1f)
+    ))
+  }
+
+  test("painted 3D drawings go from the farthest to the closest, after meshes and without writing depth") {
+    val app = new FakeGLApp
+    val renderer = new OpenGLRenderer(app)
+    val world = world3D()
+    var writes = Vector.empty[Boolean]
+    var seen = Vector.empty[(Vec3, Vec3, Vec3)]
+    def at(z: Float, color: Color): Unit =
+      renderer.render3D.painted(Vec3(0f, 0f, z)) { painter =>
+        writes :+= app.depthWrites
+        seen :+= ((painter.camera, painter.right, painter.up))
+        painter.triangle(Vec3(0f, 0f, z), Vec3(1f, 0f, z), Vec3(0f, 1f, z), color)
+      }
+    renderer.beginFrame(world)
+    at(-2f, Color(1f, 0f, 0f))
+    at(-9f, Color(0f, 1f, 0f))
+    at(-5f, Color(0f, 0f, 1f))
+    renderer.endFrame(world)
+
+    assert(app.draws.size == 1)
+    assert(app.draws.head._2.grouped(9).grouped(3).map(_.head(2)).toVector == Vector(-9f, -5f, -2f))
+    assert(writes == Vector(false, false, false) && app.depthWrites)
+    assert(seen.distinct == Vector((Vec3.Zero, Vec3.UnitX, Vec3.UnitY)))
+
+    // Nothing is carried over, and nothing is drawn without a camera.
+    renderer.beginFrame(world)
+    renderer.endFrame(world)
+    val bare = renderWorld()
+    renderer.beginFrame(bare)
+    at(-2f, Color.White)
+    renderer.endFrame(bare)
+    assert(app.draws.size == 1)
+
+    // A failing drawing leaves the renderer usable.
+    renderer.beginFrame(world)
+    renderer.render3D.painted(Vec3.Zero)(_ => throw new IllegalStateException("paint failed"))
+    intercept[IllegalStateException](renderer.endFrame(world))
+    assert(app.depthWrites)
+    renderer.beginFrame(world)
+    renderer.endFrame(world)
   }
 
   test("submitted drawings are composed by z, then screen order, whatever order they arrive in") {
@@ -288,8 +388,8 @@ class OpenGLRendererSuite extends AnyFunSuite {
     val app = new FakeGLApp
     val renderer = new OpenGLRenderer(app)
     val world = renderWorld()
-    val coinTexture = renderer.loadDrawableTexture(coin)
-    val gemTexture = renderer.loadDrawableTexture(gem)
+    val coinTexture = load(renderer, coin)
+    val gemTexture = load(renderer, gem)
     app.uploads.head.complete()
     sprite(world, loaded(coinTexture), 0f)
     sprite(world, loaded(gemTexture), 1f)
@@ -310,7 +410,7 @@ class OpenGLRendererSuite extends AnyFunSuite {
     val app = new FakeGLApp
     val renderer = new OpenGLRenderer(app)
     val world = renderWorld()
-    val coinTexture = renderer.loadDrawableTexture(coin)
+    val coinTexture = load(renderer, coin)
     app.uploads.head.complete()
     // Right half of the coin, mirrored horizontally.
     sprite(world, loaded(coinTexture), 0f, SpriteVisual.Texture(_, u0 = 1f, v0 = 0f, u1 = 0.5f, v1 = 1f))
@@ -324,8 +424,8 @@ class OpenGLRendererSuite extends AnyFunSuite {
     val app = new FakeGLApp
     val renderer = new OpenGLRenderer(app)
     val world = renderWorld()
-    val coinTexture = renderer.loadDrawableTexture(coin)
-    val heroTexture = renderer.loadDrawableTexture(standalone)
+    val coinTexture = load(renderer, coin)
+    val heroTexture = load(renderer, standalone)
     app.uploads.foreach(_.complete())
     sprite(world, loaded(coinTexture), 0f)
     sprite(world, loaded(heroTexture), 1f)
@@ -341,8 +441,8 @@ class OpenGLRendererSuite extends AnyFunSuite {
     val renderer = new OpenGLRenderer(app)
     val world = renderWorld()
     import world.given
-    val coinTexture = loadedAfter(app, renderer.loadDrawableTexture(coin))
-    val gemTexture = renderer.loadDrawableTexture(gem)
+    val coinTexture = loadedAfter(app, load(renderer, coin))
+    val gemTexture = load(renderer, gem)
     val obj = world.spawn2D("map")
     obj.attach(new Tilemap(_, Vector(
       TileQuad(coinTexture, 0f, 0f, 8f, 8f, 0f, 0f, 0.5f, 0.5f, alpha = 0.25f),
@@ -364,8 +464,8 @@ class OpenGLRendererSuite extends AnyFunSuite {
     val renderer = new OpenGLRenderer(app)
     val world = renderWorld()
     import world.given
-    val coinLoader = renderer.loadDrawableTexture(coin)
-    val heroLoader = renderer.loadDrawableTexture(standalone)
+    val coinLoader = load(renderer, coin)
+    val heroLoader = load(renderer, standalone)
     app.uploads.foreach(_.complete())
     val coinTexture = loaded(coinLoader)
     val heroTexture = loaded(heroLoader)
@@ -387,9 +487,9 @@ class OpenGLRendererSuite extends AnyFunSuite {
   test("a shared page is deleted once on dispose, and late uploads are deleted too") {
     val app = new FakeGLApp
     val renderer = new OpenGLRenderer(app)
-    renderer.loadDrawableTexture(coin)
-    renderer.loadDrawableTexture(gem)
-    renderer.loadDrawableTexture(standalone)
+    load(renderer, coin)
+    load(renderer, gem)
+    load(renderer, standalone)
     val atlasUpload = app.uploads.find(_.resourceName == page).get
     val heroUpload = app.uploads.find(_.resourceName != page).get
     atlasUpload.complete()
@@ -404,8 +504,8 @@ class OpenGLRendererSuite extends AnyFunSuite {
     val hub = new AssetReloadHub()
     val renderer = new OpenGLRenderer(app, hub)
     val world = renderWorld()
-    val coinTexture = loadedAfter(app, renderer.loadDrawableTexture(coin))
-    val gemTexture = loadedAfter(app, renderer.loadDrawableTexture(gem))
+    val coinTexture = loadedAfter(app, load(renderer, coin))
+    val gemTexture = loadedAfter(app, load(renderer, gem))
     sprite(world, coinTexture, 0f)
     sprite(world, gemTexture, 1f)
     val first = app.uploads.head.texture
@@ -473,7 +573,7 @@ class OpenGLRendererSuite extends AnyFunSuite {
     val app = new FakeGLApp
     val hub = new AssetReloadHub()
     val renderer = new OpenGLRenderer(app, hub)
-    loadedAfter(app, renderer.loadDrawableTexture(coin))
+    loadedAfter(app, load(renderer, coin))
     hub.reloadAll()
     hub.drain()
     hub.reloadAll()

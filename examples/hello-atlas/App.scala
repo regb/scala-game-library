@@ -23,25 +23,16 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
 
   private final class AtlasScene extends Scene {
     override def load(context: GameContext)(using Scope): Unit = {
-      val engine = context.engine
-      // All four requests start together but share one decode and one upload.
-      val coinLoader = engine.loadDrawableTexture(Assets.drawable.coin)
-      val gemLoader = engine.loadDrawableTexture(Assets.drawable.gem)
-      val heartLoader = engine.loadDrawableTexture(Assets.drawable.heart)
-      val tilesLoader = engine.loadDrawableTexture(Assets.drawable.tiles)
-      val textures = for {
-        coin <- coinLoader
-        gem <- gemLoader
-        heart <- heartLoader
-        tiles <- tilesLoader
-      } yield (coin, gem, heart, tiles)
-      textures.onLoad {
-        case scala.util.Success((coin, gem, heart, tiles)) => populate(context, coin, gem, heart, tiles)
-        case scala.util.Failure(cause) => throw cause
-      }
+      val renderer = context.engine.renderer
+      // All four are regions of one page, which is decoded and uploaded once.
+      val coin = renderer.loadTexture2D(Assets.drawable.coin)
+      val gem = renderer.loadTexture2D(Assets.drawable.gem)
+      val heart = renderer.loadTexture2D(Assets.drawable.heart)
+      val tiles = renderer.loadTexture2D(Assets.drawable.tiles)
+      context.whenLoaded(renderer.whenReady(coin))(_ => populate(context, coin, gem, heart, tiles))
     }
 
-    private def populate(context: GameContext, coin: Texture2D, gem: Texture2D, heart: Texture2D, tiles: Texture2D): Unit = {
+    private def populate(context: GameContext, coin: Texture2D, gem: Texture2D, heart: Texture2D, tiles: Texture2D)(using Scope): Unit = {
       Vector(coin, gem, heart, coin).zipWithIndex.foreach { case (texture, i) =>
         val sprite = context.spawn2D("sprite-" + i, Transform2D(Vec2(-240f + i * 160f, -60f)))
         // The last coin is mirrored and cropped to its left half: UVs stay relative to the image.

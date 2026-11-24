@@ -92,6 +92,7 @@ trait Html5OpenGLProvider extends OpenGLProvider {
     override def disable(capability: Int): Unit = webgl.disable(capability)
     override def cullFace(mode: Int): Unit = webgl.cullFace(mode)
     override def blendFunc(source: Int, destination: Int): Unit = webgl.blendFunc(source, destination)
+    override def depthMask(write: Boolean): Unit = webgl.depthMask(write)
     override def scissor(x: Int, y: Int, width: Int, height: Int): Unit = webgl.scissor(x, y, width, height)
     override def clearColor(red: Float, green: Float, blue: Float, alpha: Float): Unit = webgl.clearColor(red, green, blue, alpha)
     override def clear(mask: Int): Unit = webgl.clear(mask)

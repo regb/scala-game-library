@@ -6,10 +6,10 @@ import scala.util.{Failure, Success}
 import scala.util.control.NonFatal
 
 import sgl.{Application, OpenGLProvider, SystemProvider, WindowProvider}
-import sgl.assets.{AssetChange, AssetReloads, AssetRuntime, DrawableAsset, RawImageAsset}
-import sgl.engine.gameobject.render2d.{Render2D, Texture2D}
+import sgl.assets.{AssetChange, AssetReloads, AssetRuntime, DrawableAsset}
+import sgl.engine.gameobject.render2d.Render2D
 import sgl.engine.gameobject.opengl.OpenGLEngine
-import sgl.engine.gameobject.render3d.Renderer
+import sgl.engine.gameobject.render3d.{Render3D, Renderer}
 import sgl.util.{Loader, LoggingProvider}
 
 /** Color the renderer clears the frame with. */
@@ -96,6 +96,14 @@ trait AsyncScene[A] {
   def preload(context: GameContext)(using Scope): Loader[A]
   def load(context: GameContext, assets: A)(using Scope): Unit
   def unload(context: GameContext)(using Scope): Unit = {}
+
+  /** Gives back what `preload` produced, for the part that is not owned by its
+    * scope, such as a music. Called once for every loading that succeeds:
+    * after the scene is left or, if the scene was abandoned while it was
+    * loading, once the loading has completed.
+    */
+  def release(assets: A): Unit = {}
+
   def pause(context: GameContext)(using Scope): Unit = {}
   def resume(context: GameContext)(using Scope): Unit = {}
 }
@@ -118,15 +126,33 @@ private sealed trait SceneRequest
 private final case class LoadNow(scene: Scene) extends SceneRequest
 private final case class Preload[A](scene: AsyncScene[A], whileLoading: Option[Scene], onFailure: Throwable => Unit) extends SceneRequest
 
-/** Services and scope shared by scenes, systems, and component callbacks. */
-final class GameContext(
+/** Services shared by scenes, systems, and component callbacks.
+  *
+  * What is created through it goes into the given [[Scope]], the one handed
+  * to the scene, system or callback along with the context.
+  */
+final class GameContext private[gameobject] (
     val world: World,
     val engine: Engine,
-    val runtime: GameRuntime,
-    val scope: Scope
+    val runtime: GameRuntime
 ) {
-  def createObject(name: String): sgl.engine.gameobject.GameObject =
-    world.createObject(name)(using scope)
+  def createObject(name: String)(using Scope): GameObject =
+    world.createObject(name)
+
+  /** Adds a system for as long as the given scope lives: added from a scene,
+    * it only runs in that scene. It runs with that scope, so what it creates
+    * goes away with it too.
+    *
+    * It is ordered among the systems already there as with
+    * [[GameBuilder.addSystem]], and after those added before it otherwise.
+    * Added from a system, it runs from the next time its stage does.
+    */
+  def addSystem(
+      stage: Stage,
+      system: GameSystem,
+      after: Set[GameSystem] = Set.empty,
+      before: Set[GameSystem] = Set.empty
+  )(using Scope): Unit = runtime.addSystem(stage, system, after, before)
 
   /** The world's global of type `A`, such as `context.global[DeltaTime]`. */
   def global[A: ClassTag]: A = world.globals.get[A]
@@ -146,9 +172,18 @@ final class GameContext(
     * that did the loading, and only if the given scope is still alive: what a
     * scene asked for is dropped when the scene is left. A failed loading is
     * handed to `onFailure`, which by default throws it out of the frame.
+    *
+    * Something that has to be given back, such as a music, is passed a
+    * `release`: the scope then owns it, and it is released exactly once. That
+    * is when the scope is destroyed or, if the scope was already gone when the
+    * loading completed, right then.
     */
-  def whenLoaded[A](loader: Loader[A], onFailure: Throwable => Unit = GameRuntime.rethrow)(body: A => Unit)(using Scope): Unit =
-    runtime.whenLoaded(loader, onFailure)(body)
+  def whenLoaded[A](
+      loader: Loader[A],
+      onFailure: Throwable => Unit = GameRuntime.rethrow,
+      release: A => Unit = GameRuntime.nothingToRelease
+  )(body: A => Unit)(using Scope): Unit =
+    runtime.whenLoaded(loader, onFailure, release)(body)
 
   /** Runs `body` whenever assets change during a hot reload, for as long as
     * the given scope lives.
@@ -162,7 +197,7 @@ final class GameContext(
     val reloads = engine.assetReloads
     if(reloads.isEnabled && scope.isActive) {
       val unsubscribe = reloads.onChange { change =>
-        if(scope.isActive) runtime.whenLoaded(Loader.successful(change), GameRuntime.rethrow)(body)(using scope)
+        if(scope.isActive) runtime.whenLoaded(Loader.successful(change), GameRuntime.rethrow, GameRuntime.nothingToRelease)(body)(using scope)
       }
       scope.onDestroy(unsubscribe)
     }
@@ -172,9 +207,6 @@ final class GameContext(
 /** Engine services exposed to systems. */
 trait Engine {
   def renderer: Renderer
-
-  def loadDrawableTexture(asset: DrawableAsset): Loader[Texture2D] = Loader.successful(Texture2D.loaded(asset))
-  def loadRawImageTexture(asset: RawImageAsset): Loader[Texture2D] = Loader.successful(Texture2D.loaded(asset))
 
   /** Notifications of hot-reloaded assets. Disabled unless the app installed
     * a development hub.
@@ -233,35 +265,21 @@ final class GameBuilder {
   }
 
   def build(engine: Engine): GameRuntime = {
-    val schedules = Stage.values.map { stage =>
-      val entries = systemsByStage.get(stage).map(_.toVector).getOrElse(Vector.empty)
-      checkStages(stage, entries)
-      stage -> Schedule.build(entries)
+    val entries = Stage.values.map { stage =>
+      stage -> systemsByStage.get(stage).map(_.toVector).getOrElse(Vector.empty)
     }.toMap
-
-    new GameRuntime(engine, schedules, globalInitializers.toVector, initialSceneValue)
-  }
-
-  private def checkStages(stage: Stage, entries: Vector[SystemEntry]): Unit = {
-    val here = entries.map(_.system.id).toSet
-    for(entry <- entries; other <- entry.after ++ entry.before if !here.contains(other)) {
-      val stages = Stage.values.filter(s => systemsByStage.get(s).exists(_.exists(_.system.id == other)))
-      if(stages.nonEmpty) {
-        throw new CompositionError(
-          s"System ${entry.system.id.value} in stage $stage is ordered against ${other.value}, " +
-          s"which is in stage ${stages.mkString(", ")}. Only systems of the same stage can be ordered.")
-      }
-    }
+    new GameRuntime(engine, new Schedules(entries), globalInitializers.toVector, initialSceneValue)
   }
 }
 
 final class GameRuntime private[gameobject] (
     val engine: Engine,
-    schedules: Map[Stage, Schedule],
+    schedules: Schedules,
     globalInitializers: Vector[World => Unit],
     initialScene: Option[SceneRequest]
 ) {
   private val worldValue: World = createWorld()
+  private val context = new GameContext(worldValue, engine, this)
   private var currentScene: Option[Scene] = None
   private var currentSceneScope: Option[Scope] = None
   private var elapsedSeconds: Double = 0.0
@@ -320,9 +338,26 @@ final class GameRuntime private[gameobject] (
     }
   }
 
-  private[gameobject] def whenLoaded[A](loader: Loader[A], onFailure: Throwable => Unit)(body: A => Unit)(using scope: Scope): Unit = {
+  private[gameobject] def addSystem(
+      stage: Stage,
+      system: GameSystem,
+      after: Set[GameSystem],
+      before: Set[GameSystem]
+  )(using scope: Scope): Unit = {
+    def reject(reason: String) =
+      throw new CompositionError(s"Cannot add system ${system.id.value} to stage $stage in scope ${scope.name}: $reason")
+    if(scope.world ne worldValue) reject("the scope belongs to a different world")
+    if(!scope.isActive) reject("the scope is no longer active")
+    if(scope.preloading) reject("its scene is preloading, and systems are added in load")
+    if(stage == Stage.Startup) reject("the stage runs once, when the game starts")
+    val entry = SystemEntry(system, after.map(_.id), before.map(_.id), Some(scope))
+    schedules.add(stage, entry)
+    scope.onDestroy(() => schedules.remove(stage, entry))
+  }
+
+  private[gameobject] def whenLoaded[A](loader: Loader[A], onFailure: Throwable => Unit, release: A => Unit)(body: A => Unit)(using scope: Scope): Unit = {
     if(disposed) throw new IllegalStateException("Game runtime has been disposed")
-    continuations += new Continuation(scope, loader, body, onFailure)
+    continuations += new Continuation(scope, loader, body, onFailure, release)
   }
 
   def frame(frameSeconds: Double): Unit = {
@@ -383,7 +418,7 @@ final class GameRuntime private[gameobject] (
   def pause(): Unit = {
     if(!started || disposed) return
     val scope = currentSceneScope.getOrElse(worldValue.globalScope)
-    currentScene.foreach(_.pause(new GameContext(worldValue, engine, this, scope))(using scope))
+    currentScene.foreach(_.pause(context)(using scope))
     run(Stage.Pause, scope)
   }
 
@@ -394,7 +429,7 @@ final class GameRuntime private[gameobject] (
     if(!started || disposed) return
     fixedAccumulator = 0.0
     val scope = currentSceneScope.getOrElse(worldValue.globalScope)
-    currentScene.foreach(_.resume(new GameContext(worldValue, engine, this, scope))(using scope))
+    currentScene.foreach(_.resume(context)(using scope))
     run(Stage.Resume, scope)
   }
 
@@ -404,17 +439,25 @@ final class GameRuntime private[gameobject] (
     try {
       currentScene.foreach { scene =>
         val scope = currentSceneScope.getOrElse(worldValue.globalScope)
-        scene.unload(new GameContext(worldValue, engine, this, scope))(using scope)
+        scene.unload(context)(using scope)
       }
     } finally {
       currentSceneScope.foreach(worldValue.destroyScope)
       currentSceneScope = None
       currentScene = None
       pendingScene = None
+      loading.foreach(abandon(_))
       loading = None
-      continuations.clear()
-      worldValue.dispose()
-      engine.dispose()
+      try worldValue.dispose()
+      finally {
+        // Every scope is gone: what did load is released, and what is still
+        // loading goes with the application.
+        try runContinuations()
+        finally {
+          continuations.clear()
+          engine.dispose()
+        }
+      }
     }
   }
 
@@ -444,7 +487,7 @@ final class GameRuntime private[gameobject] (
     try {
       currentScene.foreach { oldScene =>
         val oldScope = currentSceneScope.getOrElse(worldValue.globalScope)
-        oldScene.unload(new GameContext(worldValue, engine, this, oldScope))(using oldScope)
+        oldScene.unload(context)(using oldScope)
       }
     } finally {
       val oldScope = currentSceneScope
@@ -459,7 +502,7 @@ final class GameRuntime private[gameobject] (
     currentSceneScope = Some(sceneScope)
     fixedAccumulator = 0.0
     resetFrameGlobals()
-    try scene.load(new GameContext(worldValue, engine, this, sceneScope))(using sceneScope)
+    try scene.load(context)(using sceneScope)
     catch {
       case error: Throwable =>
         currentScene = None
@@ -476,7 +519,7 @@ final class GameRuntime private[gameobject] (
     val scope = worldValue.createScope(name)
     scope.preloading = true
     val loader =
-      try preload.scene.preload(new GameContext(worldValue, engine, this, scope))(using scope)
+      try preload.scene.preload(context)(using scope)
       catch { case NonFatal(error) => Loader.failed[A](error) }
     loading = Some(new Loading(name, scope, preload.scene, loader, preload.onFailure))
     worldValue.globals.set(SceneLoading(name, elapsedSeconds))
@@ -487,8 +530,14 @@ final class GameRuntime private[gameobject] (
   private def cancelLoading(): Unit = loading.foreach { abandoned =>
     loading = None
     worldValue.globals.remove[SceneLoading]
+    abandon(abandoned)
     worldValue.destroyScope(abandoned.scope)
   }
+
+  // The scope is on its way out, so all that is left to do with the assets
+  // when they arrive is to release them.
+  private def abandon[A](abandoned: Loading[A]): Unit =
+    continuations += new Continuation[A](abandoned.scope, abandoned.loader, _ => (), _ => (), abandoned.scene.release)
 
   private def pollLoading(): Unit = loading.foreach(poll(_))
 
@@ -500,6 +549,7 @@ final class GameRuntime private[gameobject] (
     case Some(Success(assets)) =>
       loading = None
       worldValue.globals.remove[SceneLoading]
+      pending.scope.onDestroy(() => pending.scene.release(assets))
       transition {
         try leaveScene()
         catch {
@@ -530,11 +580,12 @@ final class GameRuntime private[gameobject] (
   }
 
   private def run(stage: Stage, scope: Scope): Unit =
-    schedules.getOrElse(stage, Schedule.empty).run(worldValue, engine, this, scope)
+    schedules(stage).run(context, scope)
 
   private def createWorld(): World = {
     val world = new World
     world.globals.set[Render2D](engine.renderer.render2D)
+    world.globals.set[Render3D](engine.renderer.render3D)
     globalInitializers.foreach(_(world))
     if(world.globals.getOption[ClearColor].isEmpty) {
       world.globals.set(ClearColor(0f, 0f, 0f, 1f))
@@ -562,6 +613,9 @@ final class GameRuntime private[gameobject] (
 object GameRuntime {
   /** The default answer to a failed loading: throw it. */
   val rethrow: Throwable => Unit = cause => throw cause
+
+  // Told apart by identity: without a release, a dropped loading is forgotten.
+  private[gameobject] val nothingToRelease: Any => Unit = _ => ()
 }
 
 private final class Loading[A](
@@ -572,14 +626,23 @@ private final class Loading[A](
     val onFailure: Throwable => Unit
 )
 
-private final class Continuation[A](scope: Scope, loader: Loader[A], body: A => Unit, onFailure: Throwable => Unit) {
-  def isDue: Boolean = !scope.isActive || loader.value.nonEmpty
+private final class Continuation[A](
+    scope: Scope,
+    loader: Loader[A],
+    body: A => Unit,
+    onFailure: Throwable => Unit,
+    release: A => Unit
+) {
+  private val owned = release ne GameRuntime.nothingToRelease
 
-  def run(): Unit = {
-    if(scope.isActive) loader.value.foreach {
-      case Success(value) => body(value)
-      case Failure(cause) => onFailure(cause)
-    }
+  def isDue: Boolean = loader.value.nonEmpty || (!scope.isActive && !owned)
+
+  def run(): Unit = loader.value.foreach {
+    case Success(value) if scope.isActive =>
+      if(owned) scope.onDestroy(() => release(value))
+      body(value)
+    case Success(value) => release(value)
+    case Failure(cause) => if(scope.isActive) onFailure(cause)
   }
 }
 

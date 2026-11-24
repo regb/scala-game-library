@@ -73,7 +73,7 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
         // A broken settings file at startup leaves the defaults; it can be fixed while running.
         _ <- settings.loader.fallbackTo(Loader.successful(()))
         _ <- level.loader
-        hero <- context.engine.loadRawImageTexture(Assets.rawImage.hero)
+        hero <- context.engine.renderer.whenReady(context.engine.renderer.loadTexture2D(Assets.rawImage.hero))
       } yield Loaded(settings, level, hero)
     }
 

@@ -102,7 +102,7 @@ final class Player(obj: TypedObject[Spatial2D & Velocity & Collider]) extends Co
 }
 object Player {
 
-  def fireBullet(context: GameContext, ship: Spatial2D): Unit = {
+  def fireBullet(context: GameContext, ship: Spatial2D)(using Scope): Unit = {
     val dir = direction(ship.local.rotation)
     val pos = ship.local.position + dir * 24f
     context.spawn2D("Bullet", Transform2D(position = pos, rotation = ship.local.rotation))

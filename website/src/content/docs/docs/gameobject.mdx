@@ -268,6 +268,25 @@ the order they were added in. A system that is not installed is ignored, so you 
 an optional module. Building the game throws a `CompositionError` when the constraints form a
 cycle, or when they name a system that is only in another stage.
 
+### Systems of a scene
+
+Systems added to the builder run in every scene. A scene adds its own when it loads, and they go
+away with it:
+
+```scala
+object Level extends Scene {
+  override def load(context: GameContext)(using Scope): Unit = {
+    context.addSystem(Stage.Update, EnemySystem)
+    context.addSystem(Stage.Update, InputSystem, before = Set(EnemySystem))
+  }
+}
+```
+
+They are ordered together with the builder's systems, and the same mistakes throw a
+`CompositionError` from `addSystem`. A system runs with the scope it was added in, so what it
+creates goes away with that scope too. One added while its stage is running starts the next time
+the stage runs.
+
 ### Per-object updates
 
 Behavior that is specific to one object can implement `Updatable` or `FixedUpdatable` instead of
@@ -391,6 +410,9 @@ context.runtime.loadScene(Level, whileLoading = Some(LoadingScreen))   // or sho
 - `preload` cannot create objects: that throws a `CompositionError`. Objects are created in `load`.
 - If the loading fails, the current scene stays and the failure is thrown out of the frame. Pass
   `onFailure = cause => ...` to `loadScene` to handle it instead.
+- What `preload` produced and its scope does not own, such as a music, is given back in
+  `release(assets)`. It is called once for each loading that succeeds, even if the scene was
+  abandoned before it appeared.
 - `renderer.whenReady(texture)` completes when a texture's image is loaded, and fails if it could
   not be.
 
@@ -402,10 +424,13 @@ To use something that arrives while a scene is already running, pass its `Loader
 `context.whenLoaded`:
 
 ```scala
-context.whenLoaded(Audio.loadMusic(Assets.audio.theme)) { music =>
+context.whenLoaded(Audio.loadMusic(Assets.audio.theme), release = _.dispose()) { music =>
   music.play()
 }
 ```
+
+With `release`, the scope owns what was loaded: it is released when the scope is destroyed, or as
+soon as it arrives if the scope is already gone.
 
 The block runs on the game thread at the start of a frame, and only if the scene that asked is
 still the current one. Do not create objects from `loader.foreach` or `loader.onLoad`: on some
@@ -488,14 +513,19 @@ takes screen pixels from the top left and goes over every world drawing. The pai
 size, and the `screenSize`. `TextOverlay` and `CircleMaskTransition` are written this way and are
 short examples to read.
 
-Textures are loaded from typed assets through the engine, usually while a scene loads:
+Textures are loaded from typed assets through the renderer, usually while a scene loads:
 
 ```scala
-val texture: Loader[Texture2D] = context.engine.loadDrawableTexture(Assets.drawable.coin)
-context.whenLoaded(texture) { coin =>
+val renderer = context.engine.renderer
+val coin: Texture2D = renderer.loadTexture2D(Assets.drawable.coin)
+context.whenLoaded(renderer.whenReady(coin)) { coin =>
   context.spawn2D("Coin").attach(new SpriteRenderer(_, SpriteVisual.Texture(coin), 32f, 32f))
 }
 ```
+
+A texture belongs to the scope it is loaded in. An image is uploaded once however many textures
+show it, and leaves the GPU with the last of them. An image needed by several scenes in a row stays
+loaded if it is also loaded in the world's global scope.
 
 A scene that should appear with its textures already loaded waits for them in the `preload` of an
 [`AsyncScene`](#scenes-that-load-first).
@@ -525,9 +555,37 @@ val earth = context.spawn3D("Earth", Transform3D(position = Vec3(3.2f, 0f, 0f)))
 earth.setParent(sun)
 ```
 
-`renderer.loadTexture2D` returns a `Texture2D`, the same type sprites use, and uploads the image
-on its own. A material needs such an image: a texture that is a region of an atlas page is
-rejected. `releaseMesh`, `releaseTexture`, and `releaseMaterial` free one before its scope ends,
+`renderer.loadTexture2D` returns a `Texture2D`, the same one sprites use, and a material takes any
+of them, a drawable packed in an atlas included. Texture coordinates outside of 0 to 1 are clamped
+to the edge of the image. `releaseMesh`, `releaseTexture`, and `releaseMaterial` free one before its scope ends,
 and `scope.onDestroy(action)` registers anything else a scene needs to release.
+
+### Drawing your own 3D components
+
+`Render3D` is to 3D what `Render2D` is to 2D: a system in the `Render` stage submits drawings to
+it, and they are drawn when the stage has ended, seen through the active `Camera3D`.
+
+```scala
+override def run(context: GameContext)(using Scope): Unit = {
+  val draw = context.global[Render3D]
+  context.world.index[Forest].foreach { forest =>
+    // Many meshes without an object for each.
+    forest.trees.foreach(tree => draw.mesh(forest.mesh, forest.material, tree))
+  }
+  context.world.index[Smoke].foreach { smoke =>
+    val p = smoke.position
+    // A quad that faces the camera.
+    draw.painted(p) { painter =>
+      val (r, u) = (painter.right * smoke.size, painter.up * smoke.size)
+      painter.image(smoke.texture, p - r + u, p + r + u, p + r - u, p - r - u,
+        color = Color(1f, 1f, 1f, smoke.opacity))
+    }
+  }
+}
+```
+
+Meshes are drawn first and hide one another by depth. `draw.painted(at)` drawings follow, from the
+farthest `at` to the closest, so they can be translucent; meshes in front of them hide them, and
+they are not lit. All 2D drawings come last.
 
 `//engines/gameobject/examples/solar-system` is a complete example.

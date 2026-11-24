@@ -8,9 +8,9 @@ import sgl.{OpenGLProvider, SystemProvider, WindowProvider}
 import sgl.engine.gameobject.{ClearColor, Color, CompositionError, Scope, World}
 import sgl.engine.gameobject.spatial2d.Spatial2D
 import sgl.assets.{AssetChange, AssetChangeListener, AssetReloads, DrawableAsset, RawImageAsset, TextureFilter}
-import sgl.engine.gameobject.render2d.{Camera2D, Painter2D, Render2D, Texture2D, TextureSource}
+import sgl.engine.gameobject.render2d.{Camera2D, Painter2D, Render2D, Texture2D}
 import sgl.engine.gameobject.render3d._
-import sgl.math.{Mat4, Vec2}
+import sgl.math.{Mat4, Vec2, Vec3}
 import sgl.util.{DefaultLoader, Loader}
 
 /** @param reloads hot-reloaded images are uploaded again and swapped under
@@ -33,11 +33,6 @@ final class OpenGLRenderer(
   private final case class MeshFailed(cause: Throwable) extends MeshState
   private case object MeshLoading extends MeshState
   private case object MeshReleased extends MeshState
-  private sealed trait TextureState
-  private final case class TextureReady(texture: GLTexture) extends TextureState
-  private final case class TextureFailed(cause: Throwable) extends TextureState
-  private final case class TextureLoading(loader: Option[Loader[Texture2D]] = None) extends TextureState
-  private case object TextureReleased extends TextureState
   private final case class GLMaterial(texture: Texture2D, emissive: Float)
 
   /** One uploaded image: a standalone drawable or raw image, or a texture-atlas page. */
@@ -47,41 +42,61 @@ final class OpenGLRenderer(
   private final case class PageReady(texture: GLTexture) extends PageState
   private final case class PageFailed(cause: Throwable) extends PageState
 
-  /** Where a logical 2D image lives inside its page: `pageU = uOffset + u * uScale`.
+  /** Where an image lives inside its page: `pageU = uOffset + u * uScale`, kept
+    * between the minimum and maximum, which are the middles of its edge texels
+    * in an atlas.
     *
-    * Standalone images use the identity transform. Sprite and tile UVs stay
-    * relative to the logical image, so crops and flips compose unchanged.
+    * An image that is a page of its own uses the identity. Texture coordinates
+    * stay relative to the image, so crops and flips compose unchanged.
     */
-  private final case class ImageView(page: PageKey, uOffset: Float, vOffset: Float, uScale: Float, vScale: Float) {
+  private final case class ImageView(
+      page: PageKey,
+      uOffset: Float = 0f, vOffset: Float = 0f, uScale: Float = 1f, vScale: Float = 1f,
+      uMin: Float = 0f, vMin: Float = 0f, uMax: Float = 1f, vMax: Float = 1f
+  ) {
     def u(local: Float): Float = uOffset + local * uScale
     def v(local: Float): Float = vOffset + local * vScale
+
+    /** The above for the mesh shader, as the two used columns of a matrix. */
+    val region: Array[Float] = Array(
+      uOffset, vOffset, uScale, vScale,
+      uMin, vMin, uMax, vMax,
+      0f, 0f, 0f, 0f,
+      0f, 0f, 0f, 0f
+    )
   }
   private final case class ResolvedTexture(texture: GLTexture, view: ImageView)
 
   private val program: GLProgram = createProgram()
-  private val program2D: GLProgram = create2DProgram()
+  // A program painting shapes, whose vertices are a position, a color and
+  // texture coordinates.
+  private final class PaintProgram(val program: GLProgram, val positionSize: Int) {
+    val floatsPerVertex: Int = positionSize + 6
+    val position: GL.AttributeLocation = requireAttribute(program, "a_position")
+    val color: GL.AttributeLocation = requireAttribute(program, "a_color")
+    val uv: GL.AttributeLocation = requireAttribute(program, "a_uv")
+    val texture: GLUniformLocation = requireUniform(program, "u_texture")
+    val useTexture: GLUniformLocation = requireUniform(program, "u_useTexture")
+  }
+  private val paint2D = new PaintProgram(createPaintProgram("2D", "vec2", "vec4(a_position, 0.0, 1.0)"), positionSize = 2)
+  private val paint3D = new PaintProgram(createPaintProgram("3D", "vec3", "u_viewProjection * vec4(a_position, 1.0)"), positionSize = 3)
   private val mvpLocation: GLUniformLocation = requireUniform(program, "u_mvp")
   private val modelLocation: GLUniformLocation = requireUniform(program, "u_model")
   private val textureLocation: GLUniformLocation = requireUniform(program, "u_texture")
   private val emissiveLocation: GLUniformLocation = requireUniform(program, "u_emissive")
+  private val regionLocation: GLUniformLocation = requireUniform(program, "u_region")
+  private val viewProjection3DLocation: GLUniformLocation = requireUniform(paint3D.program, "u_viewProjection")
   private val vao2D: GLVertexArray = GL.genVertexArray()
   private val vbo2D: GLBuffer = GL.genBuffer()
-  private val position2DLocation = requireAttribute(program2D, "a_position")
-  private val color2DLocation = requireAttribute(program2D, "a_color")
-  private val uv2DLocation = requireAttribute(program2D, "a_uv")
-  private val texture2DLocation = requireUniform(program2D, "u_texture")
-  private val useTexture2DLocation = requireUniform(program2D, "u_useTexture")
+  // Buffers of the painted 3D drawings, made by the first frame that has any.
+  private var buffers3D: Option[(GLVertexArray, GLBuffer)] = None
 
   private val meshes = mutable.ArrayBuffer.empty[MeshState]
-  private val textures = mutable.ArrayBuffer.empty[TextureState]
-  private val standaloneLoaders = mutable.ArrayBuffer.empty[Loader[Texture2D]]
-  // The image file behind each standalone texture, and the latest upload of it.
-  private val standaloneResources = mutable.ArrayBuffer.empty[String]
-  private val standaloneGenerations = mutable.ArrayBuffer.empty[Int]
-  // Physical pages own the GPU textures and are deleted only on dispose. Logical
-  // image views never own a texture, so several drawables can share one page.
+  // What each texture shows, until it is released.
+  private val textures = mutable.ArrayBuffer.empty[Option[ImageView]]
+  // Pages own the GPU textures, and go with the last texture that shows them.
   private val pages = mutable.HashMap.empty[PageKey, PageState]
-  private val imageViews = mutable.HashMap.empty[TextureSource, ImageView]
+  private val pageUses = mutable.HashMap.empty[PageKey, Int]
   // Only the latest upload of a page is kept; older ones finishing late are deleted.
   private val pageGenerations = mutable.HashMap.empty[PageKey, Int]
   private val maxTextureSize: Int = GL.maxTextureSize
@@ -147,50 +162,31 @@ final class OpenGLRenderer(
     MeshReady(vertexArray, vbo, ibo, data.indices.length)
   }
 
-  override def loadTexture2D(asset: DrawableAsset)(using Scope): Texture2D =
-    loadStandalone(asset.bestVariantForDpi(app.Window.logicalPpi).resourceName, GL.loadTexture2D(asset))
+  override def loadTexture2D(asset: DrawableAsset)(using Scope): Texture2D = loadView(viewOf(asset))
   override def loadTexture2D(asset: RawImageAsset)(using Scope): Texture2D =
-    loadStandalone(asset.resourceName, GL.loadTexture2D(asset))
+    loadView(ImageView(PageKey(asset.resourceName, TextureFilter.Nearest, atlasPage = false)))
 
-  private def loadStandalone(resourceName: String, loader: => Loader[GLTexture])(using scope: Scope): Texture2D = owned(scope) {
+  private def loadView(view: ImageView)(using scope: Scope): Texture2D = owned(scope) {
     val id = textures.size
-    val handle = new Texture2D(TextureSource.Standalone(id))
-    val loading = loader
-    textures += TextureLoading()
-    standaloneResources += resourceName
-    standaloneGenerations += 0
-    loading.onLoad {
-      case Success(texture) =>
-        if(disposed || textures(id) == TextureReleased || standaloneGenerations(id) != 0) GL.deleteTexture(texture)
-        else textures(id) = TextureReady(texture)
-      case Failure(cause) =>
-        if(!disposed && textures(id) != TextureReleased && standaloneGenerations(id) == 0) textures(id) = TextureFailed(cause)
-    }
-    // Registered after the state update above, so the texture is usable by
-    // the time this completes.
-    standaloneLoaders += loading.map(_ => handle)
-    handle
+    textures += Some(view)
+    pageUses(view.page) = pageUses.getOrElse(view.page, 0) + 1
+    if(!pages.contains(view.page)) { val _ = uploadPage(view.page) }
+    new Texture2D(id)
   }(releaseTexture)
 
-  override def whenReady(texture: Texture2D): Loader[Texture2D] = texture.source match {
-    case TextureSource.Standalone(id) => standaloneLoaders(id)
-    case source => loadTexture(source, texture)
+  override def whenReady(texture: Texture2D): Loader[Texture2D] = viewOf(texture) match {
+    case Some(view) => pageLoader(view.page).map(_ => texture)
+    case None => Loader.failed(new IllegalStateException("The texture has been released"))
   }
 
-  override def createMaterial(texture: Texture2D, emissive: Float)(using scope: Scope): Material = {
-    val partOfPage = imageViews.get(texture.source).exists(view => view.uScale != 1f || view.vScale != 1f || view.uOffset != 0f || view.vOffset != 0f)
-    if(partOfPage) {
-      throw new CompositionError(
-        "A material needs an image of its own, and this texture is a region of an atlas page. " +
-          "Load the image with renderer.loadTexture2D instead"
-      )
-    }
-    owned(scope) {
-      val id = materials.size
-      materials += Some(GLMaterial(texture, emissive))
-      new Material(id)
-    }(releaseMaterial)
-  }
+  private def viewOf(texture: Texture2D): Option[ImageView] =
+    if(texture.id >= 0 && texture.id < textures.size) textures(texture.id) else None
+
+  override def createMaterial(texture: Texture2D, emissive: Float)(using scope: Scope): Material = owned(scope) {
+    val id = materials.size
+    materials += Some(GLMaterial(texture, emissive))
+    new Material(id)
+  }(releaseMaterial)
 
   override def releaseMesh(mesh: Mesh): Unit = {
     if(mesh.id < 0 || mesh.id >= meshes.size) return
@@ -204,16 +200,19 @@ final class OpenGLRenderer(
     meshes(mesh.id) = MeshReleased
   }
 
-  // Only an image uploaded on its own is released; atlas pages are shared by
-  // every texture cut from them and stay for the life of the renderer.
-  override def releaseTexture(texture: Texture2D): Unit = texture.source match {
-    case TextureSource.Standalone(id) if id >= 0 && id < textures.size =>
-      textures(id) match {
-        case TextureReady(handle) => GL.deleteTexture(handle)
+  override def releaseTexture(texture: Texture2D): Unit = viewOf(texture).foreach { view =>
+    textures(texture.id) = None
+    val uses = pageUses(view.page) - 1
+    if(uses > 0) pageUses(view.page) = uses
+    else {
+      pageUses.remove(view.page)
+      pages.remove(view.page).foreach {
+        case PageReady(handle) => GL.deleteTexture(handle)
         case _ => ()
       }
-      textures(id) = TextureReleased
-    case _ => ()
+      // An upload still under way is no longer the latest, and is deleted.
+      pageGenerations(view.page) = pageGenerations.getOrElse(view.page, 0) + 1
+    }
   }
 
   override def releaseMaterial(material: Material): Unit = {
@@ -235,9 +234,27 @@ final class OpenGLRenderer(
       queue2D += Queued2D(screen = true, order.toFloat, draw)
   }
 
+  private final case class QueuedMesh(mesh: Mesh, material: Material, transform: Mat4)
+  private final case class Painted3D(at: Vec3, draw: Painter3D => Unit)
+  private val queueMeshes = mutable.ArrayBuffer.empty[QueuedMesh]
+  private val queue3D = mutable.ArrayBuffer.empty[Painted3D]
+
+  override val render3D: Render3D = new Render3D {
+    override def mesh(mesh: Mesh, material: Material, transform: Mat4): Unit =
+      queueMeshes += QueuedMesh(mesh, material, transform)
+    override def painted(at: Vec3)(draw: Painter3D => Unit): Unit =
+      queue3D += Painted3D(at, draw)
+  }
+
+  private def clearQueues(): Unit = {
+    queue2D.clear()
+    queueMeshes.clear()
+    queue3D.clear()
+  }
+
   // Turns points of one space, world or screen, into batched vertices.
   private final class Painter(
-      batch: Batch2D,
+      batch: Batch,
       inWorld: Boolean,
       override val camera: Vec2,
       override val viewport: Vec2,
@@ -277,7 +294,7 @@ final class OpenGLRenderer(
         u0: Float, v0: Float, u1: Float, v1: Float,
         color: Color
     ): Unit =
-      textureForSource(texture.source) match {
+      resolve(texture) match {
         case Some(resolved) =>
           val view = resolved.view
           textured(Some(resolved.texture), a, b, c, d, view.u(u0), view.v(v0), view.u(u1), view.v(v1), color)
@@ -302,8 +319,70 @@ final class OpenGLRenderer(
     }
   }
 
+  // Batches vertices in world units; the shader projects them.
+  private final class WorldPainter(
+      batch: Batch,
+      override val camera: Vec3,
+      override val right: Vec3,
+      override val up: Vec3
+  ) extends Painter3D {
+    private def put(out: Array[Float], index: Int, p: Vec3, color: Color, u: Float, v: Float): Unit = {
+      val offset = index * 9
+      out(offset) = p.x
+      out(offset + 1) = p.y
+      out(offset + 2) = p.z
+      out(offset + 3) = color.red
+      out(offset + 4) = color.green
+      out(offset + 5) = color.blue
+      out(offset + 6) = color.alpha
+      out(offset + 7) = u
+      out(offset + 8) = v
+    }
+
+    override def triangle(a: Vec3, b: Vec3, c: Vec3, color: Color): Unit = {
+      val out = new Array[Float](3 * 9)
+      put(out, 0, a, color, 0f, 0f)
+      put(out, 1, b, color, 0f, 0f)
+      put(out, 2, c, color, 0f, 0f)
+      batch.add(None, out)
+    }
+
+    override def quad(a: Vec3, b: Vec3, c: Vec3, d: Vec3, color: Color): Unit =
+      textured(None, a, b, c, d, 0f, 0f, 0f, 0f, color)
+
+    override def image(
+        texture: Texture2D,
+        a: Vec3, b: Vec3, c: Vec3, d: Vec3,
+        u0: Float, v0: Float, u1: Float, v1: Float,
+        color: Color
+    ): Unit =
+      resolve(texture) match {
+        case Some(resolved) =>
+          val view = resolved.view
+          textured(Some(resolved.texture), a, b, c, d, view.u(u0), view.v(v0), view.u(u1), view.v(v1), color)
+        case None =>
+          textured(None, a, b, c, d, u0, v0, u1, v1, color)
+      }
+
+    private def textured(
+        texture: Option[GLTexture],
+        a: Vec3, b: Vec3, c: Vec3, d: Vec3,
+        u0: Float, v0: Float, u1: Float, v1: Float,
+        color: Color
+    ): Unit = {
+      val out = new Array[Float](6 * 9)
+      put(out, 0, a, color, u0, v0)
+      put(out, 1, b, color, u1, v0)
+      put(out, 2, c, color, u1, v1)
+      put(out, 3, a, color, u0, v0)
+      put(out, 4, c, color, u1, v1)
+      put(out, 5, d, color, u0, v1)
+      batch.add(texture, out)
+    }
+  }
+
   override def beginFrame(world: World): Unit = {
-    queue2D.clear()
+    clearQueues()
     if(disposed) return
 
     val clear = world.globals.getOption[ClearColor]
@@ -312,108 +391,127 @@ final class OpenGLRenderer(
     GL.clear(GL.clearMask(GL.ColorBufferBit, GL.DepthBufferBit))
   }
 
-  override private[gameobject] def drawMeshes(world: World): Unit = {
-    if(disposed) return
+  override def endFrame(world: World): Unit = {
+    try {
+      if(!disposed) {
+        if(queueMeshes.nonEmpty || queue3D.nonEmpty) draw3D(world)
+        if(queue2D.nonEmpty) draw2D(world)
+      }
+    } finally clearQueues()
+  }
 
-    findCamera(world).foreach { camera =>
-      val aspect = app.Window.width.toFloat / scala.math.max(1, app.Window.height).toFloat
-      val projection = Mat4.perspective(camera.fovRadians, aspect, camera.near, camera.far)
-      val viewProjection = projection * camera.viewMatrix
+  private def draw3D(world: World): Unit = findCamera(world).foreach { camera =>
+    val aspect = app.Window.width.toFloat / scala.math.max(1, app.Window.height).toFloat
+    val projection = Mat4.perspective(camera.fovRadians, aspect, camera.near, camera.far)
+    val placed = camera.spatial.globalMatrix.values
+    val viewProjection = projection * camera.viewMatrix
 
+    if(queueMeshes.nonEmpty) {
       GL.useProgram(program)
       GL.activeTexture(GL.Texture0)
       GL.uniform1i(textureLocation, 0)
-
-      world.index[MeshRenderer].foreach { meshRenderer =>
-        drawRenderable(viewProjection, meshRenderer.spatial.globalMatrix, meshRenderer)
-      }
-
+      queueMeshes.foreach(drawMesh(viewProjection, _))
       GL.unbindVertexArray()
       GL.unbindTexture(GL.Texture2D)
       GL.useNoProgram()
     }
+
+    if(queue3D.nonEmpty) {
+      // The columns of the camera's transform are its axes and its position.
+      def column(i: Int) = Vec3(placed(i * 4), placed(i * 4 + 1), placed(i * 4 + 2))
+      val position = column(3)
+      val farthestFirst = queue3D.toVector.sortBy(drawing => -(drawing.at - position).length)
+
+      val (vertexArray, buffer) = buffers3D.getOrElse {
+        val created = (GL.genVertexArray(), GL.genBuffer())
+        buffers3D = Some(created)
+        created
+      }
+      // Meshes hide what is behind them; the drawings themselves blend.
+      GL.depthMask(write = false)
+      try {
+        paintWith(paint3D, vertexArray, buffer) { batch =>
+          GL.uniformMatrix4fv(viewProjection3DLocation, transpose = false, viewProjection.values)
+          val painter = new WorldPainter(batch, position, column(0).normalized, column(1).normalized)
+          farthestFirst.foreach(_.draw(painter))
+        }
+      } finally GL.depthMask(write = true)
+    }
   }
 
-  override def endFrame(world: World): Unit = {
-    if(disposed || queue2D.isEmpty) {
-      queue2D.clear()
-      return
-    }
-
-    GL.disable(GL.DepthTest)
+  // Sets up blending and the vertex layout, shared by 2D and 3D, around `draw`.
+  private def paintWith(paint: PaintProgram, vertexArray: GLVertexArray, buffer: GLBuffer)(draw: Batch => Unit): Unit = {
+    val stride = paint.floatsPerVertex * 4
     GL.enable(GL.Blend)
     GL.blendFunc(GL.SrcAlpha, GL.OneMinusSrcAlpha)
-    GL.useProgram(program2D)
-    GL.bindVertexArray(vao2D)
-    GL.bindBuffer(GL.ArrayBuffer, vbo2D)
-    GL.enableVertexAttribArray(position2DLocation)
-    GL.vertexAttribPointer(position2DLocation, 2, GL.FloatType, normalized = false, 8 * 4, 0L)
-    GL.enableVertexAttribArray(color2DLocation)
-    GL.vertexAttribPointer(color2DLocation, 4, GL.FloatType, normalized = false, 8 * 4, 2L * 4L)
-    GL.enableVertexAttribArray(uv2DLocation)
-    GL.vertexAttribPointer(uv2DLocation, 2, GL.FloatType, normalized = false, 8 * 4, 6L * 4L)
+    GL.useProgram(paint.program)
+    GL.bindVertexArray(vertexArray)
+    GL.bindBuffer(GL.ArrayBuffer, buffer)
+    def attribute(location: GL.AttributeLocation, size: Int, offset: Int): Unit = {
+      GL.enableVertexAttribArray(location)
+      GL.vertexAttribPointer(location, size, GL.FloatType, normalized = false, stride, offset * 4L)
+    }
+    attribute(paint.position, paint.positionSize, 0)
+    attribute(paint.color, 4, paint.positionSize)
+    attribute(paint.uv, 2, paint.positionSize + 4)
     GL.activeTexture(GL.Texture0)
-    GL.uniform1i(texture2DLocation, 0)
+    GL.uniform1i(paint.texture, 0)
 
-    val camera = active2DCamera(world)
-    val cameraPosition = camera.flatMap(_.owner.component[Spatial2D]).map(_.global.position).getOrElse(Vec2(0f, 0f))
-    val viewport = camera.map(_.viewportSize).getOrElse(Vec2(app.Window.width.toFloat, app.Window.height.toFloat))
-
-    val screenSize = Vec2(app.Window.width.toFloat, app.Window.height.toFloat)
-    val batch = new Batch2D
-    val worldPainter = new Painter(batch, inWorld = true, cameraPosition, viewport, screenSize)
-    val screenPainter = new Painter(batch, inWorld = false, cameraPosition, viewport, screenSize)
-    val (screenDrawings, worldDrawings) = queue2D.toVector.partition(_.screen)
-    queue2D.clear()
-    worldDrawings.sortBy(_.key).foreach(_.draw(worldPainter))
-    screenDrawings.sortBy(_.key).foreach(_.draw(screenPainter))
+    val batch = new Batch(paint.floatsPerVertex, paint.useTexture)
+    draw(batch)
     batch.flush()
 
     GL.unbindBuffer(GL.ArrayBuffer)
     GL.unbindVertexArray()
     GL.useNoProgram()
     GL.disable(GL.Blend)
+  }
+
+  private def draw2D(world: World): Unit = {
+    val camera = active2DCamera(world)
+    val cameraPosition = camera.flatMap(_.owner.component[Spatial2D]).map(_.global.position).getOrElse(Vec2(0f, 0f))
+    val viewport = camera.map(_.viewportSize).getOrElse(Vec2(app.Window.width.toFloat, app.Window.height.toFloat))
+
+    val screenSize = Vec2(app.Window.width.toFloat, app.Window.height.toFloat)
+    val (screenDrawings, worldDrawings) = queue2D.toVector.partition(_.screen)
+    GL.disable(GL.DepthTest)
+    paintWith(paint2D, vao2D, vbo2D) { batch =>
+      val worldPainter = new Painter(batch, inWorld = true, cameraPosition, viewport, screenSize)
+      val screenPainter = new Painter(batch, inWorld = false, cameraPosition, viewport, screenSize)
+      worldDrawings.sortBy(_.key).foreach(_.draw(worldPainter))
+      screenDrawings.sortBy(_.key).foreach(_.draw(screenPainter))
+    }
     GL.enable(GL.DepthTest)
   }
 
   private def active2DCamera(world: World): Option[Camera2D] =
     world.index[Camera2D].toVector.filter(_.active).sortBy(-_.priority).headOption
 
-  def loadDrawableTexture(asset: DrawableAsset): Loader[Texture2D] =
-    loadTexture(TextureSource.Drawable(asset), Texture2D.loaded(asset))
-
-  def loadRawImageTexture(asset: RawImageAsset): Loader[Texture2D] =
-    loadTexture(TextureSource.RawImage(asset), Texture2D.loaded(asset))
-
-  private def loadTexture(source: TextureSource, handle: Texture2D): Loader[Texture2D] = {
-    ensureActive()
-    val view = imageViews.getOrElseUpdate(source, resolveView(source))
-    pageLoader(view.page).map(_ => handle)
-  }
-
-  /** Picks the physical image behind a logical texture.
+  /** Picks the image file behind a drawable.
     *
     * Atlas-backed drawable variants use their page unless the device cannot
     * hold it, in which case the standalone image is loaded instead.
     */
-  private def resolveView(source: TextureSource): ImageView = source match {
-    case TextureSource.Standalone(_) => wholeImage
-    case TextureSource.RawImage(asset) =>
-      ImageView(PageKey(asset.resourceName, TextureFilter.Nearest, atlasPage = false), 0f, 0f, 1f, 1f)
-    case TextureSource.Drawable(asset) =>
-      val variant = asset.bestVariantForDpi(app.Window.logicalPpi)
-      variant.atlas match {
-        case Some(region) if region.pageWidth <= maxTextureSize && region.pageHeight <= maxTextureSize =>
-          ImageView(
-            PageKey(region.pagePath, region.filter, atlasPage = true),
-            uOffset = region.x.toFloat / region.pageWidth,
-            vOffset = region.y.toFloat / region.pageHeight,
-            uScale = region.width.toFloat / region.pageWidth,
-            vScale = region.height.toFloat / region.pageHeight
-          )
-        case _ =>
-          ImageView(PageKey(variant.resourceName, TextureFilter.Nearest, atlasPage = false), 0f, 0f, 1f, 1f)
-      }
+  private def viewOf(asset: DrawableAsset): ImageView = {
+    val variant = asset.bestVariantForDpi(app.Window.logicalPpi)
+    variant.atlas match {
+      case Some(region) if region.pageWidth <= maxTextureSize && region.pageHeight <= maxTextureSize =>
+        val width = region.pageWidth.toFloat
+        val height = region.pageHeight.toFloat
+        ImageView(
+          PageKey(region.pagePath, region.filter, atlasPage = true),
+          uOffset = region.x / width,
+          vOffset = region.y / height,
+          uScale = region.width / width,
+          vScale = region.height / height,
+          uMin = (region.x + 0.5f) / width,
+          vMin = (region.y + 0.5f) / height,
+          uMax = (region.x + region.width - 0.5f) / width,
+          vMax = (region.y + region.height - 0.5f) / height
+        )
+      case _ =>
+        ImageView(PageKey(variant.resourceName, TextureFilter.Nearest, atlasPage = false))
+    }
   }
 
   /** Loads each page once, however many logical images or concurrent requests use it. */
@@ -467,68 +565,26 @@ final class OpenGLRenderer(
   private def reloadImages(change: AssetChange): Unit = {
     if(disposed) return
     pages.keys.toVector.foreach { key =>
-      if(key.resourceName.nonEmpty && change.affectsPath(key.resourceName))
-        change.track(key.resourceName, uploadPage(key))
-    }
-    textures.indices.foreach { id =>
-      if(textures(id) != TextureReleased && change.affectsPath(standaloneResources(id)))
-        change.track(standaloneResources(id), reloadStandalone(id))
+      if(change.affectsPath(key.resourceName)) change.track(key.resourceName, uploadPage(key))
     }
   }
 
-  private def reloadStandalone(id: Int): Loader[Unit] = {
-    val generation = standaloneGenerations(id) + 1
-    standaloneGenerations(id) = generation
-    val loader =
-      try GL.loadTexture2DResource(standaloneResources(id), TextureFilter.Nearest, generateMipmaps = true).map(_.texture)
-      catch { case NonFatal(cause) => Loader.failed[GLTexture](cause) }
-    loader.map { texture =>
-      if(disposed || textures(id) == TextureReleased || standaloneGenerations(id) != generation) GL.deleteTexture(texture)
-      else {
-        textures(id) match {
-          case TextureReady(previous) => GL.deleteTexture(previous)
-          case _ => ()
-        }
-        textures(id) = TextureReady(texture)
-      }
-    }.andThen {
-      case Failure(cause) =>
-        if(!disposed && standaloneGenerations(id) == generation) textures(id) match {
-          case TextureReady(_) | TextureReleased => ()
-          case _ => textures(id) = TextureFailed(cause)
-        }
-    }
-  }
-
-  private val wholeImage = ImageView(PageKey("", TextureFilter.Nearest, atlasPage = false), 0f, 0f, 1f, 1f)
-
-  private def textureForSource(source: TextureSource): Option[ResolvedTexture] = source match {
-    case TextureSource.Standalone(id) =>
-      if(id < 0 || id >= textures.size) None
-      else textures(id) match {
-        case TextureReady(texture) => Some(ResolvedTexture(texture, wholeImage))
-        case TextureFailed(cause) => throw cause
-        case _ => None
-      }
-    case _ => pageTextureForSource(source)
-  }
-
-  private def pageTextureForSource(source: TextureSource): Option[ResolvedTexture] =
-    imageViews.get(source).flatMap { view =>
+  private def resolve(texture: Texture2D): Option[ResolvedTexture] =
+    viewOf(texture).flatMap { view =>
       pages.get(view.page) match {
-        case Some(PageReady(texture)) => Some(ResolvedTexture(texture, view))
+        case Some(PageReady(handle)) => Some(ResolvedTexture(handle, view))
         case Some(PageFailed(cause)) => throw cause
         case _ => None
       }
     }
 
-  /** Accumulates consecutive 2D draws that share a texture into one draw call.
+  /** Accumulates consecutive draws that share a texture into one draw call.
     *
-    * Draws are never reordered, so z ordering and blending are unchanged: a
+    * Draws are never reordered, so ordering and blending are unchanged: a
     * batch is flushed whenever the texture changes or it reaches capacity.
     */
-  private final class Batch2D {
-    private val MaxFloats = 6 * 8 * 1024
+  private final class Batch(floatsPerVertex: Int, useTextureLocation: GLUniformLocation) {
+    private val MaxFloats = 6 * floatsPerVertex * 1024
     private var vertices = new Array[Float](MaxFloats)
     private var size = 0
     private var texture: Option[GLTexture] = None
@@ -546,14 +602,14 @@ final class OpenGLRenderer(
       if(size == 0) return
       texture match {
         case Some(t) =>
-          GL.uniform1f(useTexture2DLocation, 1f)
+          GL.uniform1f(useTextureLocation, 1f)
           GL.bindTexture(GL.Texture2D, t)
         case None =>
-          GL.uniform1f(useTexture2DLocation, 0f)
+          GL.uniform1f(useTextureLocation, 0f)
           GL.unbindTexture(GL.Texture2D)
       }
       GL.bufferDataFloat(GL.ArrayBuffer, java.util.Arrays.copyOf(vertices, size), GL.StaticDraw)
-      GL.drawArrays(GL.Triangles, 0, size / 8)
+      GL.drawArrays(GL.Triangles, 0, size / floatsPerVertex)
       size = 0
     }
   }
@@ -569,27 +625,28 @@ final class OpenGLRenderer(
     result
   }
 
-  private def drawRenderable(viewProjection: Mat4, model: Mat4, meshRenderer: MeshRenderer): Unit = {
-    if(meshRenderer.mesh.id < 0 || meshRenderer.mesh.id >= meshes.size) return
-    if(meshRenderer.material.id < 0 || meshRenderer.material.id >= materials.size) return
+  private def drawMesh(viewProjection: Mat4, drawing: QueuedMesh): Unit = {
+    val QueuedMesh(mesh, materialHandle, model) = drawing
+    if(mesh.id < 0 || mesh.id >= meshes.size) return
+    if(materialHandle.id < 0 || materialHandle.id >= materials.size) return
 
-    if(materials(meshRenderer.material.id).isEmpty) return
-    val material = materials(meshRenderer.material.id).get
-
-    meshes(meshRenderer.mesh.id) match {
-      case mesh: MeshReady =>
-        // A texture that is still loading, or was released, draws nothing.
-        textureForSource(material.texture.source).foreach { resolved =>
-          val mvp = viewProjection * model
-          GL.uniformMatrix4fv(mvpLocation, transpose = false, mvp.values)
-          GL.uniformMatrix4fv(modelLocation, transpose = false, model.values)
-          GL.uniform1f(emissiveLocation, material.emissive)
-          GL.bindTexture(GL.Texture2D, resolved.texture)
-          GL.bindVertexArray(mesh.vao)
-          GL.drawElements(GL.Triangles, mesh.indexCount, GL.UnsignedShortType, 0L)
-        }
-      case MeshLoading | MeshReleased =>
-      case MeshFailed(cause) => throw cause
+    materials(materialHandle.id).foreach { material =>
+      meshes(mesh.id) match {
+        case ready: MeshReady =>
+          // A texture that is still loading, or was released, draws nothing.
+          resolve(material.texture).foreach { resolved =>
+            val mvp = viewProjection * model
+            GL.uniformMatrix4fv(mvpLocation, transpose = false, mvp.values)
+            GL.uniformMatrix4fv(modelLocation, transpose = false, model.values)
+            GL.uniformMatrix4fv(regionLocation, transpose = false, resolved.view.region)
+            GL.uniform1f(emissiveLocation, material.emissive)
+            GL.bindTexture(GL.Texture2D, resolved.texture)
+            GL.bindVertexArray(ready.vao)
+            GL.drawElements(GL.Triangles, ready.indexCount, GL.UnsignedShortType, 0L)
+          }
+        case MeshLoading | MeshReleased =>
+        case MeshFailed(cause) => throw cause
+      }
     }
   }
 
@@ -615,12 +672,6 @@ final class OpenGLRenderer(
     }
     meshes.clear()
 
-    textures.foreach {
-      case TextureReady(texture) => GL.deleteTexture(texture)
-      case TextureLoading(_) =>
-      case TextureReleased =>
-      case TextureFailed(_) =>
-    }
     textures.clear()
     materials.clear()
     pages.values.foreach {
@@ -628,11 +679,16 @@ final class OpenGLRenderer(
       case _ => ()
     }
     pages.clear()
-    imageViews.clear()
+    pageUses.clear()
 
     GL.deleteBuffer(vbo2D)
     GL.deleteVertexArray(vao2D)
-    GL.deleteProgram(program2D)
+    buffers3D.foreach { case (vertexArray, buffer) =>
+      GL.deleteBuffer(buffer)
+      GL.deleteVertexArray(vertexArray)
+    }
+    GL.deleteProgram(paint3D.program)
+    GL.deleteProgram(paint2D.program)
     GL.deleteProgram(program)
   }
 
@@ -667,6 +723,9 @@ final class OpenGLRenderer(
 
       uniform sampler2D u_texture;
       uniform float u_emissive;
+      // Where the image is in the texture: offset and scale, then the bounds
+      // its coordinates are clamped to.
+      uniform mat4 u_region;
 
       out vec4 out_color;
 
@@ -674,7 +733,8 @@ final class OpenGLRenderer(
         vec3 light_dir = normalize(vec3(-0.5, 0.4, 1.0));
         float diffuse = max(dot(normalize(v_normal), light_dir), 0.0);
         float light = max(u_emissive, 0.18 + diffuse * 0.9);
-        vec3 color = texture(u_texture, v_uv).rgb * light;
+        vec2 uv = clamp(u_region[0].xy + v_uv * u_region[0].zw, u_region[1].xy, u_region[1].zw);
+        vec3 color = texture(u_texture, uv).rgb * light;
         out_color = vec4(color, 1.0);
       }
     """
@@ -694,17 +754,19 @@ final class OpenGLRenderer(
     shaderProgram
   }
 
-  private def create2DProgram(): GLProgram = {
-    val vertexShaderSource = GL.ShaderHeader + """
+  // Colored or textured shapes, in 2D or 3D depending on their positions.
+  private def createPaintProgram(name: String, positionType: String, projected: String): GLProgram = {
+    val vertexShaderSource = GL.ShaderHeader + s"""
 
-      in vec2 a_position;
+      in $positionType a_position;
       in vec4 a_color;
       in vec2 a_uv;
+      uniform mat4 u_viewProjection;
       out vec4 v_color;
       out vec2 v_uv;
 
       void main() {
-        gl_Position = vec4(a_position, 0.0, 1.0);
+        gl_Position = $projected;
         v_color = a_color;
         v_uv = a_uv;
       }
@@ -731,7 +793,7 @@ final class OpenGLRenderer(
     GL.attachShader(shaderProgram, fragmentShader)
     GL.linkProgram(shaderProgram)
     if(GL.getProgramParameter(shaderProgram, GL.LinkStatus) == 0) {
-      throw new RuntimeException("2D program link failed: " + GL.getProgramInfoLog(shaderProgram))
+      throw new RuntimeException(name + " program link failed: " + GL.getProgramInfoLog(shaderProgram))
     }
     GL.deleteShader(vertexShader)
     GL.deleteShader(fragmentShader)

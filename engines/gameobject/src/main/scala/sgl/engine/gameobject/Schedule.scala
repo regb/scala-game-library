@@ -27,29 +27,75 @@ object GameSystem {
   }
 }
 
-final class Schedule private[gameobject] (systems: Vector[GameSystem]) {
-  def run(world: World, engine: Engine, runtime: sgl.engine.gameobject.GameRuntime, scope: Scope): Unit = {
-    val context = new GameContext(world, engine, runtime, scope)
-    systems.foreach(_.run(context)(using scope))
-  }
+final class Schedule private[gameobject] (entries: Vector[SystemEntry]) {
+  /** Runs the systems, those that belong to a scope with it and the others
+    * with the scope of the frame.
+    */
+  private[gameobject] def run(context: GameContext, frameScope: Scope): Unit =
+    entries.foreach { entry =>
+      entry.scope match {
+        case None => entry.system.run(context)(using frameScope)
+        case Some(scope) => if(scope.isActive) entry.system.run(context)(using scope)
+      }
+    }
 }
 
 /** A system in a stage, and the systems of that stage it runs after and before. */
 private[gameobject] final case class SystemEntry(
     system: GameSystem,
     after: Set[SystemId] = Set.empty,
-    before: Set[SystemId] = Set.empty
+    before: Set[SystemId] = Set.empty,
+    scope: Option[Scope] = None
 )
 
-object Schedule {
-  val empty: Schedule = new Schedule(Vector.empty)
+/** The schedule of every stage. Systems come and go with their scopes; a stage
+  * that is running carries on with the systems it started with.
+  */
+private[gameobject] final class Schedules(initial: Map[Stage, Vector[SystemEntry]]) {
+  private var entries = initial
+  private var built = Schedules.build(initial)
 
+  def apply(stage: Stage): Schedule = built(stage)
+
+  def add(stage: Stage, entry: SystemEntry): Unit = {
+    val updated = entries.updated(stage, entries(stage) :+ entry)
+    built = Schedules.build(updated)
+    entries = updated
+  }
+
+  def remove(stage: Stage, entry: SystemEntry): Unit = {
+    entries = entries.updated(stage, entries(stage).filterNot(_ eq entry))
+    built = built.updated(stage, Schedule.build(entries(stage)))
+  }
+}
+
+private object Schedules {
+  def build(entries: Map[Stage, Vector[SystemEntry]]): Map[Stage, Schedule] = {
+    checkStages(entries)
+    entries.map { case (stage, systems) => stage -> Schedule.build(systems) }
+  }
+
+  private def checkStages(entries: Map[Stage, Vector[SystemEntry]]): Unit =
+    for((stage, systems) <- entries) {
+      val here = systems.map(_.system.id).toSet
+      for(entry <- systems; other <- entry.after ++ entry.before if !here.contains(other)) {
+        val stages = Stage.values.filter(s => entries.get(s).exists(_.exists(_.system.id == other)))
+        if(stages.nonEmpty) {
+          throw new CompositionError(
+            s"System ${entry.system.id.value} in stage $stage is ordered against ${other.value}, " +
+            s"which is in stage ${stages.mkString(", ")}. Only systems of the same stage can be ordered.")
+        }
+      }
+    }
+}
+
+object Schedule {
   private[gameobject] def build(entries: Vector[SystemEntry]): Schedule = {
     val duplicateIds = entries.groupBy(_.system.id).collect { case (id, matches) if matches.size > 1 => id.value }.toVector.sorted
     if(duplicateIds.nonEmpty) {
       throw new CompositionError(s"A schedule cannot contain duplicate system IDs: ${duplicateIds.mkString(", ")}")
     }
-    new Schedule(order(entries).map(_.system))
+    new Schedule(order(entries))
   }
 
   /** Repeatedly takes the earliest added system that has nothing left to wait

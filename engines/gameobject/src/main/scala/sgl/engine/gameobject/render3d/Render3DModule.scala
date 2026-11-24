@@ -1,6 +1,6 @@
 package sgl.engine.gameobject.render3d
 
-import sgl.engine.gameobject.{GameBuilder, GameContext, GameModule, Globals, RequiresGlobals, Scope, Stage, GameSystem, SystemId}
+import sgl.engine.gameobject.{GameBuilder, GameContext, GameModule, Globals, RequiresGlobals, Scope, Stage, GameSystem, SystemId, World}
 
 /** Mixed into the components that only do something with [[Render3DModule]]
   * installed: attaching one without it is an error instead of an object that
@@ -15,7 +15,12 @@ object MeshRenderSystem extends GameSystem {
   override val id: SystemId = SystemId("sgl.engine.gameobject.render3d.meshes")
 
   override def run(context: GameContext)(using Scope): Unit =
-    context.engine.renderer.drawMeshes(context.world)
+    submit(context.world, context.global[Render3D])
+
+  def submit(world: World, draw: Render3D): Unit =
+    world.index[MeshRenderer].foreach { renderer =>
+      draw.mesh(renderer.mesh, renderer.material, renderer.spatial.globalMatrix)
+    }
 }
 
 /** Draws the meshes from the active [[Camera3D]], in the Render stage. */

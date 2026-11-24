@@ -15,7 +15,6 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
   this: AudioProvider =>
 
   private val cameraController = new OrbitCameraController
-  private var ambience: Option[Audio.Music] = None
 
   override def configure(game: GameBuilder): Unit = {
     game
@@ -23,8 +22,6 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
       .setGlobal(ClearColor(0.005f, 0.008f, 0.018f, 1.0f))
       .setGlobal(cameraController)
       .setInitialScene(new SolarSystemScene)
-      .addSystem(Stage.Update, YRotationSystem)
-      .addSystem(Stage.Update, OrbitCameraSystem)
   }
 
   private final case class BodyTextures(sun: Texture2D, earth: Texture2D, moon: Texture2D)
@@ -43,6 +40,10 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
     }
 
     override def load(context: GameContext, textures: BodyTextures)(using Scope): Unit = {
+    // The systems run for as long as the scene.
+    context.addSystem(Stage.Update, YRotationSystem)
+    context.addSystem(Stage.Update, OrbitCameraSystem)
+
     val renderer = context.engine.renderer
     // Meshes, textures and materials belong to the scene's scope: they are
     // released when the scene is unloaded.
@@ -98,12 +99,12 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
 
     // The music is not worth waiting for, and the game runs without it when
     // there is no audio device: it starts whenever it arrives, if the scene
-    // is still there.
-    context.whenLoaded(Audio.loadMusic(Assets.audio.ambience), onFailure = _ => ()) { music =>
+    // is still there. The scene owns it, so it is released with the scene, or
+    // right away if it arrives too late.
+    context.whenLoaded(Audio.loadMusic(Assets.audio.ambience), onFailure = _ => (), release = releaseMusic) { music =>
       music.setVolume(0.55f)
       music.setLooping(true)
       music.play()
-      ambience = Some(music)
     }
 
     Input.setInputProcessor(new InputProcessor with PointerInputProcessor {
@@ -124,9 +125,9 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
     })
     }
 
-    override def unload(context: GameContext)(using Scope): Unit = {
-      ambience.foreach(_.dispose())
-      ambience = None
+    private def releaseMusic(music: Audio.Music): Unit = {
+      music.stop()
+      music.dispose()
     }
   }
 
@@ -135,7 +136,7 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
       name: String,
       transform: Transform3D,
       rotationSpeed: Float = 0f
-  ): SpatialFacade = {
+  )(using Scope): SpatialFacade = {
     val obj = context.spawn3D(name, transform)
     if(rotationSpeed != 0f) obj.attach(new YRotation(_, rotationSpeed))
     SpatialFacade(obj.gameObject, obj.spatial)
@@ -148,20 +149,11 @@ trait AbstractApp extends OpenGLGameObjectApp with AssetsProvider {
       material: Material,
       transform: Transform3D,
       rotationSpeed: Float
-  ): RenderedBody = {
+  )(using Scope): RenderedBody = {
     val obj = context.spawn3D(name, transform)
       .attach(new YRotation(_, rotationSpeed))
       .attach(new MeshRenderer(_, mesh, material))
     RenderedBody(obj.gameObject, obj.spatial, obj.get[YRotation], obj.get[MeshRenderer])
-  }
-
-  override def dispose(): Unit = {
-    ambience.foreach { music =>
-      music.stop()
-      music.dispose()
-    }
-    ambience = None
-    super.dispose()
   }
 }
 

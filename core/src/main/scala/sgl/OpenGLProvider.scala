@@ -93,6 +93,9 @@ trait OpenGLProvider {
     def disable(capability: Capability): Unit
     def cullFace(mode: Face): Unit
     def blendFunc(source: BlendFactor, destination: BlendFactor): Unit
+
+    /** Whether drawing writes to the depth buffer. */
+    def depthMask(write: Boolean): Unit
     def scissor(x: Int, y: Int, width: Int, height: Int): Unit
     def clearColor(red: Float, green: Float, blue: Float, alpha: Float): Unit
     def clear(mask: ClearMask): Unit

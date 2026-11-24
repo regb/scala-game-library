@@ -2,29 +2,15 @@ package sgl.engine.gameobject.render2d
 
 import sgl.engine.gameobject.spatial2d.{GameObject2D, Spatial2D}
 import sgl.engine.gameobject.{Color, ComponentOf, TypedObject}
-import sgl.assets.{DrawableAsset, RawImageAsset}
-
-sealed trait TextureSource
-object TextureSource {
-  private[gameobject] final case class Drawable(asset: DrawableAsset) extends TextureSource
-  private[gameobject] final case class RawImage(asset: RawImageAsset) extends TextureSource
-  // An image uploaded on its own for one scope, by index in the renderer.
-  private[gameobject] final case class Standalone(id: Int) extends TextureSource
-}
+import sgl.math.Vec2
 
 /** A texture, for sprites, tiles and materials alike. It is a handle: what it
   * draws depends on the renderer having loaded it, and nothing is drawn with a
   * texture that was released.
   */
-final class Texture2D private[gameobject] (private[gameobject] val source: TextureSource) {
+final class Texture2D private[gameobject] (private[gameobject] val id: Int) {
   override def toString: String = "Texture2D(<opaque>)"
 }
-
-object Texture2D {
-  private[gameobject] def loaded(asset: DrawableAsset): Texture2D = new Texture2D(TextureSource.Drawable(asset))
-  private[gameobject] def loaded(asset: RawImageAsset): Texture2D = new Texture2D(TextureSource.RawImage(asset))
-}
-import sgl.math.Vec2
 
 final class Camera2D(
     obj: TypedObject[Any],

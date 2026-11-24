@@ -79,6 +79,7 @@ trait LwjglOpenGLProvider extends OpenGLProvider {
     override def disable(capability: Int): Unit = GL11C.glDisable(capability)
     override def cullFace(mode: Int): Unit = GL11C.glCullFace(mode)
     override def blendFunc(source: Int, destination: Int): Unit = GL11C.glBlendFunc(source, destination)
+    override def depthMask(write: Boolean): Unit = GL11C.glDepthMask(write)
     override def scissor(x: Int, y: Int, width: Int, height: Int): Unit = GL11C.glScissor(x, y, width, height)
     override def clearColor(red: Float, green: Float, blue: Float, alpha: Float): Unit = GL11C.glClearColor(red, green, blue, alpha)
     override def clear(mask: Int): Unit = GL11C.glClear(mask)

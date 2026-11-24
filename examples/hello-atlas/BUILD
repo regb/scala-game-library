@@ -1,3 +1,5 @@
+load("@rules_scala//scala:scala.bzl", "scala_test")
+load("//bazel:scala_opts.bzl", "SGL_SCALACOPTS")
 load("//bazel/sgl:assets.bzl", "sgl_drawable_assets", "sgl_texture_atlas")
 load("//bazel/sgl:defs.bzl", "sgl_core_library", "sgl_desktop_lwjgl_app", "sgl_desktop_native_app", "sgl_html5_opengl_app")
 
@@ -70,4 +72,26 @@ sgl_desktop_native_app(
     package = "sgl.examples.hello.atlas",
     use_screen2d = False,
     deps = [":core"],
+)
+
+scala_test(
+    name = "headless-test",
+    srcs = ["AtlasHeadlessSuite.scala"],
+    env = {
+        "DISPLAY": "",
+        "EGL_PLATFORM": "surfaceless",
+        "LIBGL_ALWAYS_SOFTWARE": "1",
+        "WAYLAND_DISPLAY": "",
+    },
+    scalacopts = SGL_SCALACOPTS,
+    target_compatible_with = ["@platforms//os:linux"],
+    deps = [
+        ":core",
+        "//backends/desktop-jvm-shared",
+        "//backends/headless-opengl:sgl-headless-opengl",
+        "//backends/lwjgl-shared:sgl-lwjgl-shared",
+        "//core:sgl-core",
+        "//engines:sgl-gameobject",
+        "@maven//:org_scalatest_scalatest_3",
+    ],
 )

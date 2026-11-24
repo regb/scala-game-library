@@ -856,6 +856,8 @@ class GameObjectSuite extends AnyFunSuite {
     val loader = new sgl.util.DefaultLoader[String]
     var released = 0
     var loadedWith = Option.empty[String]
+    var givenBack = Vector.empty[String]
+    override def release(assets: String): Unit = givenBack :+= assets
     override def preload(context: GameContext)(using scope: Scope): sgl.util.Loader[String] = {
       scope.onDestroy(() => released += 1)
       loader
@@ -993,10 +995,164 @@ class GameObjectSuite extends AnyFunSuite {
     runtime.frame(0.1)
     assert(names(runtime) === Vector("later"))
 
-    runtime.whenLoaded(failing, GameRuntime.rethrow)(_ => fail("a failed loader has no value"))(using runtime.world.globalScope)
+    runtime.whenLoaded(failing, GameRuntime.rethrow, GameRuntime.nothingToRelease)(_ => fail("a failed loader has no value"))(using runtime.world.globalScope)
     failing.failure(new IllegalStateException("load failed"))
     assert(intercept[IllegalStateException](runtime.frame(0.1)).getMessage === "load failed")
     runtime.frame(0.1)
+  }
+
+  test("what whenLoaded is told to release is released once, with its scope or when it arrives too late") {
+    val early = new sgl.util.DefaultLoader[String]
+    val late = new sgl.util.DefaultLoader[String]
+    val never = new sgl.util.DefaultLoader[String]
+    val atExit = new sgl.util.DefaultLoader[String]
+    var released = Vector.empty[String]
+    var used = Vector.empty[String]
+    object Asking extends Scene {
+      override def load(context: GameContext)(using Scope): Unit =
+        Vector(early, late, never, atExit).foreach { loader =>
+          context.whenLoaded(loader, release = (s: String) => released :+= s)(s => used :+= s)
+        }
+    }
+    val runtime = runtimeOn(Asking)
+    early.success("early")
+    runtime.frame(0.1)
+    assert(used === Vector("early") && released.isEmpty)
+
+    runtime.loadScene(new Plain("other"))
+    assert(released === Vector("early"))
+    late.success("late")
+    runtime.frame(0.1)
+    runtime.frame(0.1)
+    assert(used === Vector("early") && released === Vector("early", "late"))
+
+    atExit.success("at exit")
+    runtime.dispose()
+    assert(released === Vector("early", "late", "at exit"))
+    never.success("never")
+    assert(released.size === 3)
+  }
+
+  test("an async scene releases what it loaded, also when it was abandoned") {
+    val runtime = runtimeOn(new Plain("menu"))
+    val abandoned = new Preloaded("abandoned")
+    val shown = new Preloaded("shown")
+    runtime.loadScene(abandoned)
+    runtime.loadScene(shown)
+    abandoned.loader.success("late")
+    shown.loader.success("assets")
+    runtime.frame(0.1)
+    assert(abandoned.givenBack === Vector("late") && abandoned.loadedWith.isEmpty)
+    assert(shown.givenBack.isEmpty)
+    runtime.loadScene(new Plain("other"))
+    assert(shown.givenBack === Vector("assets"))
+
+    val atExit = new Preloaded("at-exit")
+    runtime.loadScene(atExit)
+    atExit.loader.success("assets")
+    runtime.dispose()
+    assert(atExit.givenBack === Vector("assets") && shown.givenBack.size === 1)
+  }
+
+  // A scene that adds systems, in the order given, when it is loaded.
+  private final class WithSystems(add: (GameContext, Scope) => Unit) extends Scene {
+    override def load(context: GameContext)(using scope: Scope): Unit = add(context, scope)
+  }
+
+  test("a system added by a scene runs in that scene only, in the order it asks for") {
+    var ran = Vector.empty[String]
+    def system(name: String) = GameSystem(name) { ran :+= name }
+    def level = new WithSystems((context, scope) => {
+      given Scope = scope
+      context.addSystem(Stage.Update, system("ai"))
+      context.addSystem(Stage.Update, system("input"), before = Set(system("movement")))
+    })
+    val runtime = new GameBuilder()
+      .addSystem(Stage.Update, system("movement"))
+      .setInitialScene(level)
+      .build(new TestEngine(new RecordingRenderer))
+    runtime.startup()
+    runtime.frame(0.1)
+    assert(ran.toSet === Set("input", "movement", "ai") && ran.indexOf("input") < ran.indexOf("movement"))
+
+    ran = Vector.empty
+    runtime.loadScene(new Plain("menu"))
+    runtime.frame(0.1)
+    assert(ran === Vector("movement"))
+
+    // The same scene again adds the same systems again.
+    ran = Vector.empty
+    runtime.loadScene(level)
+    runtime.loadScene(level)
+    runtime.frame(0.1)
+    assert(ran.sorted === Vector("ai", "input", "movement"))
+  }
+
+  test("a system runs with the scope it was added in, until that scope is destroyed") {
+    var wave = Option.empty[Scope]
+    var ran = 0
+    val runtime = runtimeOn(new WithSystems((context, _) => {
+      wave = Some(context.world.createScope("wave"))
+      context.addSystem(Stage.Update, GameSystem("spawner") {
+        ran += 1
+        summon[GameContext].createObject("enemy")
+      })(using wave.get)
+    }))
+    runtime.frame(0.1)
+    assert(runtime.world.objects.forall(_.scope eq wave.get) && ran === 1)
+    runtime.world.destroyScope(wave.get)
+    runtime.frame(0.1)
+    assert(ran === 1 && runtime.world.objects.isEmpty)
+  }
+
+  test("a system added while its stage runs starts with the next run, and one just removed does not run") {
+    var ran = Vector.empty[String]
+    val runtime = new GameBuilder().build(new TestEngine(new RecordingRenderer))
+    val scope = runtime.world.createScope("temporary")
+    runtime.startup()
+    runtime.addSystem(Stage.Update, GameSystem("first") {
+      ran :+= "first"
+      if(ran.size == 1) summon[GameContext].addSystem(Stage.Update, GameSystem("added") { ran :+= "added" })
+      else if(scope.isActive) runtime.world.destroyScope(scope)
+    }, Set.empty, Set.empty)(using runtime.world.globalScope)
+    runtime.addSystem(Stage.Update, GameSystem("second") { ran :+= "second" }, Set.empty, Set.empty)(using scope)
+    runtime.frame(0.1)
+    assert(ran === Vector("first", "second"))
+    runtime.frame(0.1)
+    assert(ran === Vector("first", "second", "first", "added"))
+  }
+
+  test("a system that cannot be added is rejected and leaves the schedule as it was") {
+    var ran = Vector.empty[String]
+    def system(name: String) = GameSystem(name) { ran :+= name }
+    val runtime = new GameBuilder()
+      .addSystem(Stage.Update, system("a"))
+      .addSystem(Stage.Update, system("b"), after = Set(system("c")))
+      .build(new TestEngine(new RecordingRenderer))
+    runtime.startup()
+    val global = runtime.world.globalScope
+    val retired = runtime.world.createScope("retired")
+    runtime.world.destroyScope(retired)
+    def rejected(stage: Stage, name: String, after: Set[GameSystem] = Set.empty, scope: Scope = global): String =
+      intercept[CompositionError](runtime.addSystem(stage, system(name), after, Set.empty)(using scope)).getMessage
+
+    assert(rejected(Stage.Update, "a").contains("duplicate"))
+    assert(rejected(Stage.Update, "c", after = Set(system("b"))).contains("cycle"))
+    // "b" is already ordered against "c" in Update.
+    assert(rejected(Stage.PostUpdate, "c").contains("PostUpdate"))
+    assert(rejected(Stage.Startup, "late").contains("once"))
+    assert(rejected(Stage.Update, "late", scope = retired).contains("no longer active"))
+    runtime.frame(0.1)
+    assert(ran === Vector("a", "b"))
+
+    object Eager extends AsyncScene[Unit] {
+      override def preload(context: GameContext)(using Scope): sgl.util.Loader[Unit] = {
+        context.addSystem(Stage.Update, system("early"))
+        sgl.util.Loader.successful(())
+      }
+      override def load(context: GameContext, assets: Unit)(using Scope): Unit = ()
+    }
+    assert(intercept[CompositionError](runtime.loadScene(Eager)).getMessage.contains("preloading"))
   }
 
   test("onAssetChange runs at the start of a frame, for as long as its scope lives") {
@@ -1103,8 +1259,8 @@ class GameObjectSuite extends AnyFunSuite {
     var renderedObjectNames: Vector[Vector[String]] = Vector.empty
 
     override def createMesh(data: MeshData)(using Scope): Mesh = new Mesh(0)
-    override def loadTexture2D(asset: DrawableAsset)(using Scope): Texture2D = Texture2D.loaded(asset)
-    override def loadTexture2D(asset: RawImageAsset)(using Scope): Texture2D = Texture2D.loaded(asset)
+    override def loadTexture2D(asset: DrawableAsset)(using Scope): Texture2D = new Texture2D(0)
+    override def loadTexture2D(asset: RawImageAsset)(using Scope): Texture2D = new Texture2D(0)
     override def createMaterial(texture: Texture2D, emissive: Float)(using Scope): Material = new Material(0)
     override def releaseMesh(mesh: Mesh): Unit = ()
     override def releaseTexture(texture: Texture2D): Unit = ()

@@ -157,6 +157,17 @@ gameObject.component[Spatial2D].foreach { spatial =>
 - Scenes can load before they appear: see [`AsyncScene`](/docs/gameobject/#scenes-that-load-first).
   Code that created objects from a `Loader` callback should use `context.whenLoaded(loader) { ... }`
   instead, which runs on the game thread and is dropped when the scene is left.
+- `GameContext.scope` was removed. `context.spawn2D`, `spawn3D`, `spawn`, and `createObject` create
+  in the given `Scope`, so a helper that takes a `GameContext` and creates objects needs a
+  `(using Scope)`.
+- `engine.loadDrawableTexture` and `loadRawImageTexture` were removed. Use
+  `renderer.loadTexture2D(asset)`, which needs a `Scope`, and `renderer.whenReady(texture)` for the
+  `Loader`. These textures used to stay loaded for the whole game and are now released with their
+  scope: load the ones to keep in the world's global scope.
+- Materials accept textures from an atlas. `renderer.loadTexture2D` of a packed drawable now draws
+  from its page, which has no mipmaps.
+- `Renderer.drawMeshes` was replaced by submitting meshes to `Render3D`. An implementation of the
+  core `OpenGL` trait needs the new `depthMask`.
 
 ## Web builds
 

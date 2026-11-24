@@ -110,7 +110,7 @@ extension (world: World) {
 }
 
 extension (context: GameContext) {
-  /** Creates an object in the scope of the context, to compose as a chain of `attach`. */
-  def spawn(name: String): TypedObject[Any] =
+  /** Creates an object in the given scope, to compose as a chain of `attach`. */
+  def spawn(name: String)(using Scope): TypedObject[Any] =
     TypedObject(context.createObject(name))
 }
