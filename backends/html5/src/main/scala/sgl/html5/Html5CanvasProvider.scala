@@ -34,18 +34,8 @@ trait Html5CanvasProvider extends CanvasProvider {
     // Load an image resource which comes from resources for a given dpi.
     // If the path is for drawable-mdpi, the dpi will be mdpi, it's the role
     // of this function to make sure the bitmap is scaled if it needs to.
-    private def imageMimeType(resourceName: String): String = html5ResourceExtension(resourceName) match {
-      case Some("jpg") => "image/jpeg"
-      case Some("jpeg") => "image/jpeg"
-      case Some("png") => "image/png"
-      case Some("gif") => "image/gif"
-      case Some("webp") => "image/webp"
-      case Some("svg") => "image/svg+xml"
-      case _ => "application/octet-stream"
-    }
-
     private def tryLoadImageDpi(resourceName: String, dpi: String): Loader[Bitmap] = {
-      html5ResourceObjectUrl(resourceName, imageMimeType(resourceName)).flatMap { url =>
+      html5ResourceObjectUrl(resourceName, html5ImageMimeType(resourceName)).flatMap { url =>
         val p = new DefaultLoader[Bitmap]()
         val img = dom.document.createElement("img").asInstanceOf[HTMLImageElement]
         img.addEventListener("load", (_: dom.Event) => {

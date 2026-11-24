@@ -188,6 +188,23 @@ trait Html5SystemProvider extends SystemProvider with PartsResourcePathProvider 
     })
   }
 
+  protected def html5ImageMimeType(resourceName: String): String = html5ResourceExtension(resourceName) match {
+    case Some("jpg") => "image/jpeg"
+    case Some("jpeg") => "image/jpeg"
+    case Some("png") => "image/png"
+    case Some("gif") => "image/gif"
+    case Some("webp") => "image/webp"
+    case Some("svg") => "image/svg+xml"
+    case _ => "application/octet-stream"
+  }
+
+  /** A URL to load an image from: in the asset packs when there are any, on
+    * the server otherwise.
+    */
+  protected def html5ImageUrl(resourceName: String): Loader[String] =
+    if(Html5AssetPackManifestResourceName.isEmpty) Loader.successful(html5AssetFetchUrl(resourceName))
+    else html5ResourceObjectUrl(resourceName, html5ImageMimeType(resourceName))
+
   protected def disposeHtml5Resources(): Unit = resourceObjectUrlCache.synchronized {
     if(!resourcesDisposed) {
       resourcesDisposed = true

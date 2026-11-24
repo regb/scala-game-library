@@ -191,7 +191,10 @@ trait Html5OpenGLProvider extends OpenGLProvider {
       img.addEventListener("error", (_: dom.Event) => {
         promise.failure(new RuntimeException("Could not load texture " + html5AssetUrl(resourceName)))
       })
-      img.src = html5AssetFetchUrl(resourceName)
+      html5ImageUrl(resourceName).onLoad {
+        case scala.util.Success(url) => img.src = url
+        case scala.util.Failure(error) => promise.failure(error)
+      }
       promise.loader
     }
 

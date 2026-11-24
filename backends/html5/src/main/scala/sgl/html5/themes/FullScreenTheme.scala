@@ -29,13 +29,20 @@ class FullScreenTheme extends Theme {
     canvas.style.left = "0"
     canvas.style.top = "0"
 
-    canvas.width = dom.window.innerWidth.toInt
-    canvas.height = dom.window.innerHeight.toInt
+    fillWindow(canvas)
   }
 
   override def onResize(canvas: html.Canvas): Unit = {
+    fillWindow(canvas)
+  }
+
+  // The CSS size too: the app pins it after laying out the canvas, and without
+  // a new one the canvas would keep its first size.
+  private def fillWindow(canvas: html.Canvas): Unit = {
     canvas.width = dom.window.innerWidth.toInt
     canvas.height = dom.window.innerHeight.toInt
+    canvas.style.width = s"${canvas.width}px"
+    canvas.style.height = s"${canvas.height}px"
   }
 
 }

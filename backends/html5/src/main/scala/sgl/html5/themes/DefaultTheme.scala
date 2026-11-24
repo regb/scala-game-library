@@ -132,6 +132,11 @@ trait DefaultTheme extends Theme {
       canvas.height = h
     }
 
+    // The CSS size too: the app pins it after laying out the canvas, and without
+    // a new one the canvas would keep its first size.
+    canvas.style.width = s"${canvas.width}px"
+    canvas.style.height = s"${canvas.height}px"
+
     val left: Int = (windowWidth - canvas.width)/2
     val top: Int = (windowHeight - canvas.height)/2
     if(left == 0)
