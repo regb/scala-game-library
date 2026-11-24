@@ -42,6 +42,8 @@ def _scala_native_binary_impl(ctx):
         outputs = [native_output, workdir],
         executable = ctx.executable.linker,
         arguments = [args],
+        # clang finds the system linker through PATH.
+        use_default_shell_env = True,
         mnemonic = "ScalaNativeLink",
         progress_message = "Linking Scala Native binary %s" % ctx.label,
     )
