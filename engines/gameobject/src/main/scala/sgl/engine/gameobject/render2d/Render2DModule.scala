@@ -1,7 +1,6 @@
 package sgl.engine.gameobject.render2d
 
 import sgl.engine.gameobject.{Color, GameSetup, GameContext, GameModule, Globals, RequiresGlobals, Scope, Stage, GameSystem, SystemId, World}
-import sgl.math.Vec2
 
 /** Mixed into the components that only do something with [[Render2DModule]]
   * installed: attaching one without it is an error instead of an object that
@@ -29,7 +28,7 @@ object SpriteRenderSystem extends GameSystem {
   private def paint(sprite: SpriteRenderer, painter: Painter2D): Unit = {
     val halfWidth = sprite.width / 2f
     val halfHeight = sprite.height / 2f
-    def at(x: Float, y: Float): Vec2 = sprite.spatial.transformPoint(Vec2(x, y))
+    val at = sprite.spatial.globalAffine
 
     sprite.visual match {
       case SpriteVisual.Texture(texture, u0, v0, u1, v1) =>
@@ -67,7 +66,7 @@ object TilemapRenderSystem extends GameSystem {
   def submit(world: World, draw: Render2D): Unit =
     world.index[Tilemap].foreach { tilemap =>
       draw.world(tilemap.z) { painter =>
-        def at(x: Float, y: Float): Vec2 = tilemap.spatial.transformPoint(Vec2(x, y))
+        val at = tilemap.spatial.globalAffine
         // Quads are painted in order, which keeps overlapping translucent
         // tiles looking the way the map lists them.
         tilemap.quads.foreach { quad =>

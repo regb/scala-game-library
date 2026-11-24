@@ -231,16 +231,14 @@ trait NativeOpenGLProvider extends OpenGLProvider {
       GLES3.glDeleteBuffers(1, b)
     }
 
-    override def bufferDataFloat(target: BufferTarget, data: Array[Float], usage: BufferUsage): Unit = {
-      val bytes: CSize = (data.length * 4).toUInt
-      val nativeData = stdlib.malloc(bytes).asInstanceOf[Ptr[CFloat]]
-      var i = 0
-      while(i < data.length) {
-        nativeData(i) = data(i)
-        i += 1
-      }
-      GLES3.glBufferData(target.toUInt, bytes, nativeData.asInstanceOf[Ptr[Byte]], usage.toUInt)
-      stdlib.free(nativeData.asInstanceOf[Ptr[Byte]])
+    override def bufferDataFloat(target: BufferTarget, data: Array[Float], usage: BufferUsage): Unit =
+      bufferDataFloat(target, data, data.length, usage)
+
+    // The data is copied by the call, straight from the array.
+    override def bufferDataFloat(target: BufferTarget, data: Array[Float], length: Int, usage: BufferUsage): Unit = {
+      val bytes: CSize = (length * 4).toUInt
+      val start = if(length == 0) null else data.at(0).asInstanceOf[Ptr[Byte]]
+      GLES3.glBufferData(target.toUInt, bytes, start, usage.toUInt)
     }
 
     override def bufferDataShort(target: BufferTarget, data: Array[Short], usage: BufferUsage): Unit = {
@@ -288,6 +286,13 @@ trait NativeOpenGLProvider extends OpenGLProvider {
       GLES3.glGenTextures(1, texture)
       (!texture).toInt
     }
+    override lazy val maxTextureUnits: Int = {
+      val value = stackalloc[CInt]()
+      // GL_MAX_TEXTURE_IMAGE_UNITS
+      GLES3.glGetIntegerv(0x8872.toUInt, value)
+      !value
+    }
+    override def textureUnit(index: Int): TextureUnit = Texture0 + index
     override def activeTexture(texture: TextureUnit): Unit = GLES3.glActiveTexture(texture.toUInt)
     override def bindTexture(target: TextureTarget, texture: Texture): Unit = GLES3.glBindTexture(target.toUInt, texture.toUInt)
     override def unbindTexture(target: TextureTarget): Unit = GLES3.glBindTexture(target.toUInt, 0.toUInt)

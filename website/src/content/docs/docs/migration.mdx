@@ -165,12 +165,12 @@ gameObject.component[Spatial2D].foreach { spatial =>
   `Loader`. These textures used to stay loaded for the whole game and are now released with their
   scope: load the ones to keep in the world's global scope.
 - Materials accept textures from an atlas. `renderer.loadTexture2D` of a packed drawable now draws
-  from its page, which has no mipmaps.
+  from its page.
 - `GameModule.install` takes a `GameSetup` instead of a `GameBuilder`, so that a module can also be
   installed in a scene: change the parameter type. Installing a module twice in the game now has no
   effect the second time. `SceneLoading` is no longer a case class.
 - `Renderer.drawMeshes` was replaced by submitting meshes to `Render3D`. An implementation of the
-  core `OpenGL` trait needs the new `depthMask`.
+  core `OpenGL` trait needs the new `depthMask`, `textureUnit`, and `maxTextureUnits`.
 
 ## Web builds
 

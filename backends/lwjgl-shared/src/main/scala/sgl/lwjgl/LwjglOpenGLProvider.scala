@@ -109,6 +109,15 @@ trait LwjglOpenGLProvider extends OpenGLProvider {
     override def unbindBuffer(target: BufferTarget): Unit = GL15C.glBindBuffer(target, 0)
     override def deleteBuffer(buffer: Buffer): Unit = GL15C.glDeleteBuffers(buffer)
     override def bufferDataFloat(target: Int, data: Array[Float], usage: Int): Unit = GL15C.glBufferData(target, data, usage)
+
+    // Off the heap, and kept from one upload to the next.
+    private var uploadBuffer = org.lwjgl.BufferUtils.createFloatBuffer(0)
+    override def bufferDataFloat(target: Int, data: Array[Float], length: Int, usage: Int): Unit = {
+      if(uploadBuffer.capacity < length) uploadBuffer = org.lwjgl.BufferUtils.createFloatBuffer(math.max(length, uploadBuffer.capacity * 2))
+      val _ = uploadBuffer.clear()
+      uploadBuffer.put(data, 0, length).flip()
+      GL15C.glBufferData(target, uploadBuffer, usage)
+    }
     override def bufferDataShort(target: Int, data: Array[Short], usage: Int): Unit = GL15C.glBufferData(target, data, usage)
 
     override def getAttribLocation(program: Program, name: String): Option[AttributeLocation] = {
@@ -126,6 +135,8 @@ trait LwjglOpenGLProvider extends OpenGLProvider {
     override def vertexAttribPointer(index: Int, size: Int, dataType: Int, normalized: Boolean, stride: Int, offset: Long): Unit = GL20C.glVertexAttribPointer(index, size, dataType, normalized, stride, offset)
 
     override def genTexture(): Texture = GL11C.glGenTextures()
+    override lazy val maxTextureUnits: Int = GL11C.glGetInteger(GL20C.GL_MAX_TEXTURE_IMAGE_UNITS)
+    override def textureUnit(index: Int): TextureUnit = Texture0 + index
     override def activeTexture(texture: TextureUnit): Unit = GL13C.glActiveTexture(texture)
     override def bindTexture(target: TextureTarget, texture: Texture): Unit = GL11C.glBindTexture(target, texture)
     override def unbindTexture(target: TextureTarget): Unit = GL11C.glBindTexture(target, 0)

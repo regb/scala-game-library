@@ -23,12 +23,16 @@ class OpenGLRendererSuite extends AnyFunSuite {
     }
     val uploads = mutable.ArrayBuffer.empty[Upload]
     val deleted = mutable.ArrayBuffer.empty[Int]
-    /** One entry per draw call: the bound texture (0 when none) and the uploaded vertices. */
+    /** One entry per consecutive vertices of a texture (0 when none), without their slot. */
     val draws = mutable.ArrayBuffer.empty[(Int, Array[Float])]
     private var nextTexture = 100
     private var bound = 0
     private var buffer = Array.empty[Float]
     private var stride = 0
+    var bufferUploads = 0
+    var drawCalls = 0
+    private val units = new Array[Int](8)
+    private var unit = 0
     var depthWrites = true
     /** One entry per mesh drawn: the bound texture and the matrices set for it. */
     val meshDraws = mutable.ArrayBuffer.empty[(Int, Vector[Vector[Float]])]
@@ -103,7 +107,10 @@ class OpenGLRendererSuite extends AnyFunSuite {
       override def bindBuffer(target: Int, buffer: Int): Unit = ()
       override def unbindBuffer(target: Int): Unit = ()
       override def deleteBuffer(buffer: Int): Unit = ()
-      override def bufferDataFloat(target: Int, data: Array[Float], usage: Int): Unit = buffer = data.clone()
+      override def bufferDataFloat(target: Int, data: Array[Float], usage: Int): Unit = {
+        buffer = data.clone()
+        bufferUploads += 1
+      }
       override def bufferDataShort(target: Int, data: Array[Short], usage: Int): Unit = ()
       override def getAttribLocation(program: Int, name: String): Option[Int] = Some(1)
       override def getUniformLocation(program: Int, name: String): Option[Int] = Some(1)
@@ -113,9 +120,14 @@ class OpenGLRendererSuite extends AnyFunSuite {
       override def enableVertexAttribArray(index: Int): Unit = ()
       override def vertexAttribPointer(index: Int, size: Int, dataType: Int, normalized: Boolean, vertexStride: Int, offset: Long): Unit = stride = vertexStride
       override def genTexture(): Int = 1
-      override def activeTexture(texture: Int): Unit = ()
-      override def bindTexture(target: Int, texture: Int): Unit = bound = texture
-      override def unbindTexture(target: Int): Unit = bound = 0
+      override val maxTextureUnits: Int = 16
+      override def textureUnit(index: Int): Int = index
+      override def activeTexture(texture: Int): Unit = unit = texture
+      override def bindTexture(target: Int, texture: Int): Unit = {
+        units(unit) = texture
+        bound = units(0)
+      }
+      override def unbindTexture(target: Int): Unit = bindTexture(target, 0)
       override def deleteTexture(texture: Int): Unit = deleted += texture
       override def texParameteri(target: Int, parameter: Int, value: Int): Unit = ()
       override def createTextureImage2D(width: Int, height: Int, rgba: Array[Byte]): TextureImage = fail("Renderer should load physical images")
@@ -135,8 +147,17 @@ class OpenGLRendererSuite extends AnyFunSuite {
       }
       override private[sgl] def maxTextureSize: Int = maxTexture
       override def drawArrays(mode: Int, first: Int, count: Int): Unit = {
-        assert(count * (stride / 4) == buffer.length)
-        draws += ((bound, buffer))
+        val floats = stride / 4
+        assert((first + count) * floats <= buffer.length)
+        drawCalls += 1
+        // Split by the slot each vertex ends with, which is then dropped.
+        var rest = buffer.slice(first * floats, (first + count) * floats).grouped(floats).toVector
+        while(rest.nonEmpty) {
+          val slot = rest.head.last.toInt
+          val (run, next) = rest.span(_.last.toInt == slot)
+          draws += ((if(slot == 0) 0 else units(slot - 1), run.flatMap(_.init).toArray))
+          rest = next
+        }
       }
       override def drawElements(mode: Int, count: Int, dataType: Int, offset: Long): Unit = {
         meshDraws += ((bound, matrices))
@@ -434,6 +455,42 @@ class OpenGLRendererSuite extends AnyFunSuite {
     val atlasTexture = app.uploads.find(_.resourceName == page).get.texture
     val heroPage = app.uploads.find(_.resourceName == "drawable-mdpi/hero.png").get.texture
     assert(app.draws.map(_._1) == Seq(atlasTexture, heroPage, atlasTexture))
+    // Uploaded once, and drawn by one call that reads both textures.
+    assert(app.bufferUploads == 1 && app.drawCalls == 1 && app.draws.forall(_._2.length == 6 * 8))
+
+    // More shapes than the batch starts with, then few again.
+    app.draws.clear()
+    renderer.beginFrame(world)
+    (0 until 5000).foreach { i =>
+      renderer.render2D.world(i.toFloat)(_.triangle(Vec2(i.toFloat, 0f), Vec2(0f, 0f), Vec2(0f, 0f), Color.White))
+    }
+    renderer.endFrame(world)
+    assert(app.draws.map(_._2.length) == Seq(5000 * 3 * 8))
+    assert(app.draws.head._2.grouped(24).map(_(0)).toVector == Vector.tabulate(5000)(i => i / 200f * 2f))
+    app.draws.clear()
+    drawFrame(renderer, world)
+    assert(app.draws.map(_._2.length) == Seq(48, 48, 48))
+  }
+
+  test("a draw call mixes as many textures as it has slots for, then another one starts") {
+    val app = new FakeGLApp
+    val renderer = new OpenGLRenderer(app)
+    val world = renderWorld()
+    val textures = Vector.tabulate(10)(i => load(renderer, AssetFactory.drawable(Vector("mdpi" -> s"drawable-mdpi/$i.png"))))
+    app.uploads.foreach(_.complete())
+    // 0 to 9, a shape without texture, then 0 to 9 again.
+    val order = (0 until 10).toVector ++ Vector(-1) ++ (0 until 10)
+    renderer.beginFrame(world)
+    order.zipWithIndex.foreach { case (i, z) =>
+      renderer.render2D.world(z.toFloat) { painter =>
+        val p = Vec2(0f, 0f)
+        if(i < 0) painter.triangle(p, p, p, Color.White) else painter.image(loaded(textures(i)), p, p, p, p)
+      }
+    }
+    renderer.endFrame(world)
+    assert(app.draws.map(_._1) == order.map(i => if(i < 0) 0 else app.uploads(i).texture))
+    // 0 to 7, then 8, 9, none and 0 to 5, then 6 to 9.
+    assert(app.drawCalls == 3 && app.bufferUploads == 1)
   }
 
   test("overlapping translucent tilemap quads keep painter order while sharing one draw") {

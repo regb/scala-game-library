@@ -672,6 +672,18 @@ class GameObjectSuite extends AnyFunSuite {
     }
   }
 
+  test("the affine of an object transforms points as transformPoint does, shear included") {
+    val world = new World
+    import world.given
+    val root = world.spawn2D("root", Transform2D(Vec2(3f, -2f), 0.7f, Vec2(2f, 0.5f)))
+    val middle = world.spawn2D("middle", Transform2D(Vec2(-1f, 4f), -1.9f, Vec2(-1f, 3f))).childOf(root)
+    val leaf = world.spawn2D("leaf", Transform2D(Vec2(0.5f, 0.25f), 2.4f)).childOf(middle)
+    for(obj <- Vector(root, middle, leaf); point <- Vector(Vec2(0f, 0f), Vec2(1f, 0f), Vec2(-2f, 5f))) {
+      val difference = obj.spatial.globalAffine(point.x, point.y) - obj.transformPoint(point)
+      assert(math.abs(difference.x) < 1e-4f && math.abs(difference.y) < 1e-4f)
+    }
+  }
+
   test("schedules reject duplicate system IDs") {
     val first = GameSystem("duplicate") {}
     val second = GameSystem("duplicate") {}

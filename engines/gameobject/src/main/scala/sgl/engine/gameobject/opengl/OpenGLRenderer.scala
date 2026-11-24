@@ -68,15 +68,22 @@ final class OpenGLRenderer(
   private final case class ResolvedTexture(texture: GLTexture, view: ImageView)
 
   private val program: GLProgram = createProgram()
-  // A program painting shapes, whose vertices are a position, a color and
-  // texture coordinates.
+  // Textures one draw of shapes can mix.
+  private val textureSlots: Int = scala.math.min(8, GL.maxTextureUnits)
+
+  // A program painting shapes, whose vertices are a position, a color, texture
+  // coordinates, and the slot of their texture: 0 for none, then from 1.
   private final class PaintProgram(val program: GLProgram, val positionSize: Int) {
-    val floatsPerVertex: Int = positionSize + 6
+    val floatsPerVertex: Int = positionSize + 7
     val position: GL.AttributeLocation = requireAttribute(program, "a_position")
     val color: GL.AttributeLocation = requireAttribute(program, "a_color")
     val uv: GL.AttributeLocation = requireAttribute(program, "a_uv")
-    val texture: GLUniformLocation = requireUniform(program, "u_texture")
-    val useTexture: GLUniformLocation = requireUniform(program, "u_useTexture")
+    val slot: GL.AttributeLocation = requireAttribute(program, "a_slot")
+    val batch = new Batch(floatsPerVertex)
+
+    GL.useProgram(program)
+    (0 until textureSlots).foreach(i => GL.uniform1i(requireUniform(program, s"u_texture$i"), i))
+    GL.useNoProgram()
   }
   private val paint2D = new PaintProgram(createPaintProgram("2D", "vec2", "vec4(a_position, 0.0, 1.0)"), positionSize = 2)
   private val paint3D = new PaintProgram(createPaintProgram("3D", "vec3", "u_viewProjection * vec4(a_position, 1.0)"), positionSize = 3)
@@ -260,8 +267,9 @@ final class OpenGLRenderer(
       override val viewport: Vec2,
       override val screenSize: Vec2
   ) extends Painter2D {
-    private def put(out: Array[Float], index: Int, p: Vec2, color: Color, u: Float, v: Float): Unit = {
-      val offset = index * 8
+    private def put(p: Vec2, color: Color, u: Float, v: Float): Unit = {
+      val out = batch.vertices
+      val offset = batch.next()
       if(inWorld) {
         out(offset) = ((p.x - camera.x) / viewport.x) * 2f
         out(offset + 1) = -((p.y - camera.y) / viewport.y) * 2f
@@ -275,14 +283,14 @@ final class OpenGLRenderer(
       out(offset + 5) = color.alpha
       out(offset + 6) = u
       out(offset + 7) = v
+      out(offset + 8) = batch.slot
     }
 
     override def triangle(a: Vec2, b: Vec2, c: Vec2, color: Color): Unit = {
-      val out = new Array[Float](3 * 8)
-      put(out, 0, a, color, 0f, 0f)
-      put(out, 1, b, color, 0f, 0f)
-      put(out, 2, c, color, 0f, 0f)
-      batch.add(None, out)
+      batch.begin(None, 3)
+      put(a, color, 0f, 0f)
+      put(b, color, 0f, 0f)
+      put(c, color, 0f, 0f)
     }
 
     override def quad(a: Vec2, b: Vec2, c: Vec2, d: Vec2, color: Color): Unit =
@@ -308,14 +316,13 @@ final class OpenGLRenderer(
         u0: Float, v0: Float, u1: Float, v1: Float,
         color: Color
     ): Unit = {
-      val out = new Array[Float](6 * 8)
-      put(out, 0, a, color, u0, v0)
-      put(out, 1, b, color, u1, v0)
-      put(out, 2, c, color, u1, v1)
-      put(out, 3, a, color, u0, v0)
-      put(out, 4, c, color, u1, v1)
-      put(out, 5, d, color, u0, v1)
-      batch.add(texture, out)
+      batch.begin(texture, 6)
+      put(a, color, u0, v0)
+      put(b, color, u1, v0)
+      put(c, color, u1, v1)
+      put(a, color, u0, v0)
+      put(c, color, u1, v1)
+      put(d, color, u0, v1)
     }
   }
 
@@ -326,8 +333,9 @@ final class OpenGLRenderer(
       override val right: Vec3,
       override val up: Vec3
   ) extends Painter3D {
-    private def put(out: Array[Float], index: Int, p: Vec3, color: Color, u: Float, v: Float): Unit = {
-      val offset = index * 9
+    private def put(p: Vec3, color: Color, u: Float, v: Float): Unit = {
+      val out = batch.vertices
+      val offset = batch.next()
       out(offset) = p.x
       out(offset + 1) = p.y
       out(offset + 2) = p.z
@@ -337,14 +345,14 @@ final class OpenGLRenderer(
       out(offset + 6) = color.alpha
       out(offset + 7) = u
       out(offset + 8) = v
+      out(offset + 9) = batch.slot
     }
 
     override def triangle(a: Vec3, b: Vec3, c: Vec3, color: Color): Unit = {
-      val out = new Array[Float](3 * 9)
-      put(out, 0, a, color, 0f, 0f)
-      put(out, 1, b, color, 0f, 0f)
-      put(out, 2, c, color, 0f, 0f)
-      batch.add(None, out)
+      batch.begin(None, 3)
+      put(a, color, 0f, 0f)
+      put(b, color, 0f, 0f)
+      put(c, color, 0f, 0f)
     }
 
     override def quad(a: Vec3, b: Vec3, c: Vec3, d: Vec3, color: Color): Unit =
@@ -370,14 +378,13 @@ final class OpenGLRenderer(
         u0: Float, v0: Float, u1: Float, v1: Float,
         color: Color
     ): Unit = {
-      val out = new Array[Float](6 * 9)
-      put(out, 0, a, color, u0, v0)
-      put(out, 1, b, color, u1, v0)
-      put(out, 2, c, color, u1, v1)
-      put(out, 3, a, color, u0, v0)
-      put(out, 4, c, color, u1, v1)
-      put(out, 5, d, color, u0, v1)
-      batch.add(texture, out)
+      batch.begin(texture, 6)
+      put(a, color, u0, v0)
+      put(b, color, u1, v0)
+      put(c, color, u1, v1)
+      put(a, color, u0, v0)
+      put(c, color, u1, v1)
+      put(d, color, u0, v1)
     }
   }
 
@@ -454,12 +461,11 @@ final class OpenGLRenderer(
     attribute(paint.position, paint.positionSize, 0)
     attribute(paint.color, 4, paint.positionSize)
     attribute(paint.uv, 2, paint.positionSize + 4)
-    GL.activeTexture(GL.Texture0)
-    GL.uniform1i(paint.texture, 0)
+    attribute(paint.slot, 1, paint.positionSize + 6)
 
-    val batch = new Batch(paint.floatsPerVertex, paint.useTexture)
-    draw(batch)
-    batch.flush()
+    paint.batch.clear()
+    draw(paint.batch)
+    paint.batch.flush()
 
     GL.unbindBuffer(GL.ArrayBuffer)
     GL.unbindVertexArray()
@@ -578,42 +584,106 @@ final class OpenGLRenderer(
       }
     }
 
-  /** Accumulates consecutive draws that share a texture into one draw call.
+  /** Accumulates the shapes of a frame, which are uploaded together. A draw
+    * call covers consecutive shapes as long as they share a few textures.
     *
-    * Draws are never reordered, so ordering and blending are unchanged: a
-    * batch is flushed whenever the texture changes or it reaches capacity.
+    * Shapes are never reordered, so ordering and blending are unchanged. The
+    * arrays grow to what a frame needs and are kept for the next.
     */
-  private final class Batch(floatsPerVertex: Int, useTextureLocation: GLUniformLocation) {
-    private val MaxFloats = 6 * floatsPerVertex * 1024
-    private var vertices = new Array[Float](MaxFloats)
+  private final class Batch(floatsPerVertex: Int) {
+    private var values = new Array[Float](6 * floatsPerVertex * 1024)
     private var size = 0
-    private var texture: Option[GLTexture] = None
+    // Each run is drawn by one call. Its textures are the ones from its first
+    // up to the first of the next, in slot order.
+    private val textures = mutable.ArrayBuffer.empty[GLTexture]
+    private var runs = 0
+    private var runStarts = new Array[Int](64)
+    private var runFirstTextures = new Array[Int](64)
+    private var lastTexture: Option[GLTexture] = None
 
-    def add(nextTexture: Option[GLTexture], data: Array[Float]): Unit = {
-      if(data.isEmpty) return
-      if(size > 0 && (nextTexture != texture || size + data.length > MaxFloats)) flush()
-      texture = nextTexture
-      if(size + data.length > vertices.length) vertices = java.util.Arrays.copyOf(vertices, size + data.length)
-      System.arraycopy(data, 0, vertices, size, data.length)
-      size += data.length
+    /** Slot of the texture of the shape being written. */
+    var slot: Float = 0f
+
+    /** The array vertices are written to, valid until the next `begin`. */
+    def vertices: Array[Float] = values
+
+    def clear(): Unit = {
+      size = 0
+      runs = 0
+      textures.clear()
+      lastTexture = None
+      slot = 0f
+    }
+
+    /** Starts a shape of that many vertices, each of which is then written at
+      * the index returned by `next`.
+      */
+    def begin(texture: Option[GLTexture], vertexCount: Int): Unit = {
+      val needed = size + vertexCount * floatsPerVertex
+      if(needed > values.length) values = java.util.Arrays.copyOf(values, scala.math.max(needed, values.length * 2))
+      if(runs == 0) startRun()
+      // Most shapes have the texture of the one before.
+      if(texture != lastTexture) {
+        lastTexture = texture
+        texture match {
+          case None => slot = 0f
+          case Some(wanted) =>
+            var i = runFirstTextures(runs - 1)
+            while(i < textures.size && textures(i) != wanted) i += 1
+            if(i == textures.size) {
+              if(i - runFirstTextures(runs - 1) == textureSlots) startRun()
+              textures += wanted
+            }
+            slot = (i - runFirstTextures(runs - 1) + 1).toFloat
+        }
+      }
+    }
+
+    private def startRun(): Unit = {
+      if(runs == runStarts.length) {
+        runStarts = java.util.Arrays.copyOf(runStarts, runs * 2)
+        runFirstTextures = java.util.Arrays.copyOf(runFirstTextures, runs * 2)
+      }
+      runStarts(runs) = size / floatsPerVertex
+      runFirstTextures(runs) = textures.size
+      runs += 1
+    }
+
+    def next(): Int = {
+      val offset = size
+      size += floatsPerVertex
+      offset
     }
 
     def flush(): Unit = {
-      if(size == 0) return
-      texture match {
-        case Some(t) =>
-          GL.uniform1f(useTextureLocation, 1f)
-          GL.bindTexture(GL.Texture2D, t)
-        case None =>
-          GL.uniform1f(useTextureLocation, 0f)
+      if(size > 0) {
+        GL.bufferDataFloat(GL.ArrayBuffer, values, size, GL.StaticDraw)
+        var run = 0
+        while(run < runs) {
+          val last = run + 1 == runs
+          val first = runFirstTextures(run)
+          val end = if(last) textures.size else runFirstTextures(run + 1)
+          var i = first
+          while(i < end) {
+            GL.activeTexture(GL.textureUnit(i - first))
+            GL.bindTexture(GL.Texture2D, textures(i))
+            i += 1
+          }
+          val vertexEnd = if(last) size / floatsPerVertex else runStarts(run + 1)
+          GL.drawArrays(GL.Triangles, runStarts(run), vertexEnd - runStarts(run))
+          run += 1
+        }
+        // A bound texture could not be deleted or drawn into freely.
+        var unit = scala.math.min(textures.size, textureSlots) - 1
+        while(unit >= 0) {
+          GL.activeTexture(GL.textureUnit(unit))
           GL.unbindTexture(GL.Texture2D)
+          unit -= 1
+        }
       }
-      GL.bufferDataFloat(GL.ArrayBuffer, java.util.Arrays.copyOf(vertices, size), GL.StaticDraw)
-      GL.drawArrays(GL.Triangles, 0, size / floatsPerVertex)
-      size = 0
+      clear()
     }
   }
-
 
   private def findCamera(world: World): Option[Camera3D] = {
     var result: Option[Camera3D] = None
@@ -761,28 +831,38 @@ final class OpenGLRenderer(
       in $positionType a_position;
       in vec4 a_color;
       in vec2 a_uv;
+      in float a_slot;
       uniform mat4 u_viewProjection;
       out vec4 v_color;
       out vec2 v_uv;
+      flat out float v_slot;
 
       void main() {
         gl_Position = $projected;
         v_color = a_color;
         v_uv = a_uv;
+        v_slot = a_slot;
       }
     """
 
-    val fragmentShaderSource = GL.ShaderHeader + """
+    // Textures have no mipmaps in use, so naming the level changes nothing, and
+    // it lets them be read in a branch.
+    val samplers = (0 until textureSlots).map(i => s"uniform sampler2D u_texture$i;").mkString("\n      ")
+    val branches = (0 until textureSlots)
+      .map(i => s"if(slot == ${i + 1}) texel = textureLod(u_texture$i, v_uv, 0.0);").mkString("\n        else ")
+    val fragmentShaderSource = GL.ShaderHeader + s"""
 
       in vec4 v_color;
       in vec2 v_uv;
-      uniform sampler2D u_texture;
-      uniform float u_useTexture;
+      flat in float v_slot;
+      $samplers
       out vec4 out_color;
 
       void main() {
-        vec4 tex = texture(u_texture, v_uv);
-        out_color = mix(v_color, tex * v_color, u_useTexture);
+        int slot = int(v_slot + 0.5);
+        vec4 texel = vec4(1.0);
+        $branches
+        out_color = texel * v_color;
       }
     """
 

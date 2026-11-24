@@ -126,6 +126,12 @@ trait OpenGLProvider {
     def unbindBuffer(target: BufferTarget): Unit
     def deleteBuffer(buffer: Buffer): Unit
     def bufferDataFloat(target: BufferTarget, data: Array[Float], usage: BufferUsage): Unit
+
+    /** Uploads the first `length` elements of `data`, for an array that is
+      * larger than what it holds and is used again every frame.
+      */
+    def bufferDataFloat(target: BufferTarget, data: Array[Float], length: Int, usage: BufferUsage): Unit =
+      bufferDataFloat(target, java.util.Arrays.copyOf(data, length), usage)
     def bufferDataShort(target: BufferTarget, data: Array[Short], usage: BufferUsage): Unit
 
     def getAttribLocation(program: Program, name: String): Option[AttributeLocation]
@@ -138,6 +144,13 @@ trait OpenGLProvider {
 
     def genTexture(): Texture
     def activeTexture(texture: TextureUnit): Unit
+
+    /** The texture unit of that index, from 0 to `maxTextureUnits - 1`. */
+    def textureUnit(index: Int): TextureUnit
+
+    /** How many textures a fragment shader can read in one draw. */
+    def maxTextureUnits: Int
+
     def bindTexture(target: TextureTarget, texture: Texture): Unit
     def unbindTexture(target: TextureTarget): Unit
     def deleteTexture(texture: Texture): Unit

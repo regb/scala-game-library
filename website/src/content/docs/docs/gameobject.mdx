@@ -556,7 +556,7 @@ A scene that should appear with its textures already loaded waits for them in th
 [`AsyncScene`](#scenes-that-load-first).
 
 Drawables packed with [`sgl_texture_atlas`](/docs/assets/#texture-atlases) are drawn from shared
-pages, and consecutive draws on the same page are batched.
+pages, and consecutive draws are batched, even across a few textures.
 
 ## 3D
 

@@ -9,7 +9,7 @@ import dom.html
 
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters._
-import js.typedarray.{Float32Array, Uint16Array}
+import js.typedarray.Uint16Array
 
 trait Html5OpenGLProvider extends OpenGLProvider {
   this: Html5SystemProvider with Html5WindowProvider =>
@@ -121,7 +121,9 @@ trait Html5OpenGLProvider extends OpenGLProvider {
     override def bindBuffer(target: BufferTarget, buffer: Buffer): Unit = webgl.bindBuffer(target, buffer)
     override def unbindBuffer(target: BufferTarget): Unit = webgl.bindBuffer(target, null)
     override def deleteBuffer(buffer: Buffer): Unit = webgl.deleteBuffer(buffer)
-    override def bufferDataFloat(target: BufferTarget, data: Array[Float], usage: BufferUsage): Unit = webgl.bufferData(target, new Float32Array(data.toJSArray), usage)
+    override def bufferDataFloat(target: BufferTarget, data: Array[Float], usage: BufferUsage): Unit = webgl.bufferData(target, js.typedarray.floatArray2Float32Array(data), usage)
+    override def bufferDataFloat(target: BufferTarget, data: Array[Float], length: Int, usage: BufferUsage): Unit =
+      webgl.bufferData(target, js.typedarray.floatArray2Float32Array(data).subarray(0, length), usage)
     override def bufferDataShort(target: BufferTarget, data: Array[Short], usage: BufferUsage): Unit = webgl.bufferData(target, new Uint16Array(data.map(s => s.toInt & 0xffff).toJSArray), usage)
 
     override def getAttribLocation(program: Program, name: String): Option[AttributeLocation] = {
@@ -132,13 +134,16 @@ trait Html5OpenGLProvider extends OpenGLProvider {
       val location = webgl.getUniformLocation(program, name).asInstanceOf[dom.WebGLUniformLocation]
       if(location == null) None else Some(location)
     }
-    override def uniformMatrix4fv(location: UniformLocation, transpose: Boolean, value: Array[Float]): Unit = webgl.uniformMatrix4fv(location, transpose, new Float32Array(value.toJSArray))
+    override def uniformMatrix4fv(location: UniformLocation, transpose: Boolean, value: Array[Float]): Unit = webgl.uniformMatrix4fv(location, transpose, js.typedarray.floatArray2Float32Array(value))
     override def uniform1i(location: UniformLocation, value: Int): Unit = webgl.uniform1i(location, value)
     override def uniform1f(location: UniformLocation, value: Float): Unit = webgl.uniform1f(location, value)
     override def enableVertexAttribArray(index: AttributeLocation): Unit = webgl.enableVertexAttribArray(index)
     override def vertexAttribPointer(index: AttributeLocation, size: Int, dataType: DataType, normalized: Boolean, stride: Int, offset: Long): Unit = webgl.vertexAttribPointer(index, size, dataType, normalized, stride, offset.toDouble)
 
     override def genTexture(): Texture = webgl.createTexture().asInstanceOf[dom.WebGLTexture]
+    override lazy val maxTextureUnits: Int =
+      webgl.getParameter(WebGLRenderingContext.MAX_TEXTURE_IMAGE_UNITS).asInstanceOf[Int]
+    override def textureUnit(index: Int): TextureUnit = Texture0 + index
     override def activeTexture(texture: TextureUnit): Unit = webgl.activeTexture(texture)
     override def bindTexture(target: TextureTarget, texture: Texture): Unit = webgl.bindTexture(target, texture)
     override def unbindTexture(target: TextureTarget): Unit = webgl.bindTexture(target, null)

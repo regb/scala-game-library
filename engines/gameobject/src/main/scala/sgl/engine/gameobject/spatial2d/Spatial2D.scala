@@ -33,6 +33,31 @@ object Transform2D {
   val Identity: Transform2D = Transform2D()
 }
 
+/** A whole chain of transforms as one, for transforming many points of an
+  * object: (px, py) goes to (a * px + c * py + x, b * px + d * py + y).
+  */
+private[gameobject] final class Affine2D(a: Float, b: Float, c: Float, d: Float, x: Float, y: Float) {
+  def apply(px: Float, py: Float): Vec2 = Vec2(a * px + c * py + x, b * px + d * py + y)
+
+  /** The transform that first applies `local`, then this one. */
+  def after(local: Transform2D): Affine2D = {
+    val cosine = scala.math.cos(local.rotation).toFloat
+    val sine = scala.math.sin(local.rotation).toFloat
+    val (la, lb) = (cosine * local.scale.x, sine * local.scale.x)
+    val (lc, ld) = (-sine * local.scale.y, cosine * local.scale.y)
+    val (lx, ly) = (local.position.x, local.position.y)
+    new Affine2D(
+      a * la + c * lb, b * la + d * lb,
+      a * lc + c * ld, b * lc + d * ld,
+      a * lx + c * ly + x, b * lx + d * ly + y
+    )
+  }
+}
+
+private[gameobject] object Affine2D {
+  val Identity: Affine2D = new Affine2D(1f, 0f, 0f, 1f, 0f, 0f)
+}
+
 /** Optional 2D spatial capability. Non-spatial game objects do not need one. */
 final class Spatial2D private[spatial2d] (override val owner: GameObject, var local: Transform2D)
     extends Component with Hierarchy[Spatial2D] {
@@ -42,6 +67,13 @@ final class Spatial2D private[spatial2d] (override val owner: GameObject, var lo
     * introduce affine shear.
     */
   def global: Transform2D = parent.map(_.global.combine(local)).getOrElse(local)
+
+  /** [[transformPoint]] for many points at once. */
+  private[gameobject] def globalAffine: Affine2D =
+    (parent match {
+      case Some(above) => above.globalAffine
+      case None => Affine2D.Identity
+    }).after(local)
 
   /** Transforms a local point through the complete parent chain without losing
     * affine shear caused by non-uniform parent scale and child rotation.
