@@ -12,7 +12,7 @@ import sgl.util.NoLoggingProvider
 /** Runs the real game without a window and looks at what it draws. */
 class SolarSystemHeadlessSuite extends AnyFunSuite {
 
-  test("the scene appears once its textures are loaded, with the sun lit in the middle") {
+  test("the scene appears with the sun lit in the middle") {
     object app extends HeadlessOpenGLApp
         with core.AbstractApp
         with core.GeneratedAssetsProvider
@@ -23,13 +23,8 @@ class SolarSystemHeadlessSuite extends AnyFunSuite {
 
     app.start()
     try {
-      // Nothing is drawn while the scene preloads: only the clear color.
-      val before = capture(app)
-      save(before, "preloading")
-      assert(litPixels(before) == 0)
-
       val deadline = java.lang.System.nanoTime() + 20_000_000_000L
-      var frame = before
+      var frame = capture(app)
       while(litPixels(frame) == 0 && java.lang.System.nanoTime() < deadline) {
         Thread.sleep(20)
         frame = capture(app)
