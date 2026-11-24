@@ -9,13 +9,13 @@ SGL game code should load **typed generated assets**, not public resource paths 
 Asset files are declared in Bazel, passed to `sgl_core_library`, and exposed through a generated `Assets` object.
 
 ```python
-load("//bazel/sgl:defs.bzl", "sgl_core_library")
-load("//bazel/sgl:assets.bzl", "sgl_audio_assets", "sgl_drawable_assets")
+load("@sgl//bazel/sgl:defs.bzl", "sgl_core_library")
+load("@sgl//bazel/sgl:assets.bzl", "sgl_audio_assets", "sgl_drawable_assets")
 
 sgl_drawable_assets(
     name = "drawables",
     srcs = ["assets/drawable-xhdpi/character.png"],
-    strip_prefix = "examples/hello-canvas/assets/drawable-xhdpi",
+    strip_prefix = "my/game/assets/drawable-xhdpi",
     source_density = "xhdpi",
     target_densities = ["mdpi", "xhdpi"],
 )
@@ -23,7 +23,7 @@ sgl_drawable_assets(
 sgl_audio_assets(
     name = "audio",
     srcs = glob(["assets/audio/*.wav"]),
-    strip_prefix = "examples/hello-canvas/assets/audio",
+    strip_prefix = "my/game/assets/audio",
 )
 
 sgl_core_library(
@@ -80,7 +80,16 @@ Use one typed rule per asset kind:
 - `sgl_audio_assets`: music and sound files loaded with `Audio.loadMusic` / `Audio.loadSound`.
 - `sgl_font_assets`: font files loaded with `Graphics.Font.load`.
 
-Most rules have a single `strip_prefix`: it is stripped from source paths to derive stable typed names. `sgl_drawable_assets` can instead use a prefix per supplied density. SGL packages files under backend-specific internal namespaces such as `drawable-mdpi/`, `audio/`, `text/`, `binary/`, `raw-image/`, and `font/`. Density resizing and Tiled extrusion support PNG and JPEG; WebP inputs must remain at their source density without extrusion.
+Most rules have a single `strip_prefix`: it is stripped from source paths to derive stable typed names. The path starts at the root of your Bazel module (the folder with `MODULE.bazel`), not at the `BUILD` file, and a source outside the prefix fails the build. Without a prefix, the whole path becomes the name.
+
+| `BUILD` file | Source file | `strip_prefix` |
+| --- | --- | --- |
+| `BUILD` | `assets/audio/beep.wav` | `"assets/audio"` |
+| `my/game/BUILD` | `my/game/assets/audio/beep.wav` | `"my/game/assets/audio"` |
+
+Both give `Assets.audio.beep`. The examples on this page are for a `BUILD` file in `my/game`.
+
+`sgl_drawable_assets` can instead use a prefix per supplied density. SGL packages files under backend-specific internal namespaces such as `drawable-mdpi/`, `audio/`, `text/`, `binary/`, `raw-image/`, and `font/`. Density resizing and Tiled extrusion support PNG and JPEG; WebP inputs must remain at their source density without extrusion.
 
 For example:
 
@@ -112,8 +121,8 @@ sgl_drawable_assets(
         "xhdpi": glob(["assets/drawable-xhdpi/drawable/*.png"]),
     },
     density_strip_prefixes = {
-        "mdpi": "assets/drawable-mdpi/drawable",
-        "xhdpi": "assets/drawable-xhdpi/drawable",
+        "mdpi": "my/game/assets/drawable-mdpi/drawable",
+        "xhdpi": "my/game/assets/drawable-xhdpi/drawable",
     },
 )
 ```
@@ -127,7 +136,7 @@ Use the original `srcs`, `source_density`, and `target_densities` form when SGL 
 `sgl_texture_atlas` packs drawables into shared texture pages at build time, so the GameObject OpenGL renderer can draw many small images from one GPU texture. Game code does not change: it keeps using `Assets.drawable.coin`, and the renderer finds the image's region on its page.
 
 ```python
-load("//bazel/sgl:assets.bzl", "sgl_drawable_assets", "sgl_texture_atlas")
+load("@sgl//bazel/sgl:assets.bzl", "sgl_drawable_assets", "sgl_texture_atlas")
 
 sgl_drawable_assets(
     name = "sprites",
@@ -174,6 +183,10 @@ the backend:
 | `sgl_html5_app`, `sgl_html5_opengl_app`, `sgl_desktop_native_app` | Pass `assets` and `assets_strip_prefix`, and the files are copied next to the app |
 | `sgl_android_app` | Pass `assets`. Drawables go to `res/drawable-*`, and everything else to `assets/`. |
 
+`assets_strip_prefix` is the path of the packaged files, also from the module root: the package of
+the asset rules, then `assets` (their `output_prefix`), wherever your source files are. For asset
+rules in the root `BUILD` file it is `"assets"`.
+
 ```python
 sgl_html5_app(
     name = "html5",
@@ -193,11 +206,11 @@ sgl_html5_app(
 Use `sgl_tiled_import` for authored Tiled projects. It rewrites map and tileset image references to typed drawable asset URIs and emits both text map assets and drawable image assets for `sgl_core_library`. The pinned Tiled build tool currently runs on Linux and requires `xvfb-run`; image resizing and tile extrusion use SGL's hermetic Java asset tool rather than system ImageMagick.
 
 ```python
-load("//bazel/tiled:defs.bzl", "sgl_tiled_import")
+load("@sgl//bazel/tiled:defs.bzl", "sgl_tiled_import")
 
 sgl_tiled_import(
     name = "tiled-assets",
-    project_root = "engines/screen2d/examples/platformer/tiled",
+    project_root = "my/game/tiled",
     maps = glob(["tiled/maps/*.tmj"]),
     tilesets = glob(["tiled/tilesets/*.tsj"]),
     images = glob(["tiled/images/**/*.png"]),
@@ -208,5 +221,5 @@ sgl_tiled_import(
 
 Game code loads the imported map with `System.loadText(Assets.text.<map>)`. The Tiled
 extensions resolve the rewritten image URIs back to `DrawableAsset`s with `drawableAssetFromUri`.
-`extensions/tiled-gameobject` then builds `Tilemap` and `SpriteRenderer` objects. See
-`//engines/screen2d/examples/platformer` for a complete example.
+`@sgl//extensions:sgl-tiled-gameobject` then builds `Tilemap` and `SpriteRenderer` objects. See
+`//engines/screen2d/examples/platformer` in the SGL repository for a complete example.
