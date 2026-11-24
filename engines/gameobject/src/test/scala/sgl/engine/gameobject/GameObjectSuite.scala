@@ -677,8 +677,69 @@ class GameObjectSuite extends AnyFunSuite {
     val second = GameSystem("duplicate") {}
 
     intercept[CompositionError] {
-      Schedule.build(Vector(first, second))
+      Schedule.build(Vector(SystemEntry(first), SystemEntry(second)))
     }
+  }
+
+  // Runs one frame of systems named after their ids and returns the order they ran in.
+  private def updateOrder(configure: (GameBuilder, String => GameSystem) => Unit): Vector[String] = {
+    var ran = Vector.empty[String]
+    val builder = new GameBuilder()
+    configure(builder, name => GameSystem(name) { ran :+= name })
+    val runtime = builder.build(new TestEngine(new RecordingRenderer))
+    runtime.startup()
+    runtime.frame(1.0 / 60.0)
+    ran
+  }
+
+  test("systems without constraints run in the order they are added") {
+    assert(updateOrder { (builder, system) =>
+      Seq("c", "a", "b").foreach(name => builder.addSystem(Stage.Update, system(name)))
+    } == Vector("c", "a", "b"))
+  }
+
+  test("a system runs after and before the systems it names, wherever they are added") {
+    assert(updateOrder { (builder, system) =>
+      builder
+        .addSystem(Stage.Update, system("camera"), after = Set(system("movement")))
+        .addSystem(Stage.Update, system("other"))
+        .addSystem(Stage.Update, system("movement"))
+        .addSystem(Stage.Update, system("last"))
+        .addSystem(Stage.Update, system("input"), before = Set(system("movement")))
+    } == Vector("other", "last", "input", "movement", "camera"))
+  }
+
+  test("ordering against a system that is not installed is ignored") {
+    assert(updateOrder { (builder, system) =>
+      builder
+        .addSystem(Stage.Update, system("a"), after = Set(system("absent")), before = Set(system("absent too")))
+        .addSystem(Stage.Update, system("b"))
+    } == Vector("a", "b"))
+  }
+
+  test("a cycle in the order of systems names the systems in it") {
+    val error = intercept[CompositionError](updateOrder { (builder, system) =>
+      builder
+        .addSystem(Stage.Update, system("outside"), after = Set(system("a")))
+        .addSystem(Stage.Update, system("a"), after = Set(system("c")))
+        .addSystem(Stage.Update, system("b"), after = Set(system("a")))
+        .addSystem(Stage.Update, system("c"), after = Set(system("b")))
+    })
+    assert(error.getMessage.endsWith("a -> b -> c -> a"))
+
+    val itself = intercept[CompositionError](updateOrder { (builder, system) =>
+      builder.addSystem(Stage.Update, system("a"), before = Set(system("a")))
+    })
+    assert(itself.getMessage.endsWith("a -> a"))
+  }
+
+  test("ordering against a system of another stage is an error") {
+    val error = intercept[CompositionError](updateOrder { (builder, system) =>
+      builder
+        .addSystem(Stage.Update, system("camera"), after = Set(system("collision")))
+        .addSystem(Stage.PostUpdate, system("collision"))
+    })
+    assert(error.getMessage.contains("collision") && error.getMessage.contains("PostUpdate"))
   }
 
   test("a system written as a block creates objects in the scope of the frame") {

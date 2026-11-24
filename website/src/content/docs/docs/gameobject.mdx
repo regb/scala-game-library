@@ -252,6 +252,22 @@ steps start over on resume, so the time spent in the background is not simulated
 For small systems, `GameSystem("game.spawner") { ... }` creates one from a block that receives a given
 `GameContext` and a given `Scope`, so it can spawn objects directly.
 
+### Order within a stage
+
+The systems of a stage run in the order they are added, which follows the order modules are
+installed in. A system that depends on another one says so when it is added, instead of relying on
+that order:
+
+```scala
+builder.addSystem(Stage.Update, CameraFollowSystem, after = Set(UpdateComponentsSystem))
+```
+
+`after` and `before` take systems of the same stage, so keep a `GameSystem("...") { ... }` in a `val`
+if others are ordered against it. Systems without constraints keep
+the order they were added in. A system that is not installed is ignored, so you can order against
+an optional module. Building the game throws a `CompositionError` when the constraints form a
+cycle, or when they name a system that is only in another stage.
+
 ### Per-object updates
 
 Behavior that is specific to one object can implement `Updatable` or `FixedUpdatable` instead of
@@ -457,7 +473,7 @@ object SparkRenderSystem extends GameSystem {
       draw.world(z = 5f) { painter =>
         val p = spark.global.position
         painter.quad(p + Vec2(-2f, -2f), p + Vec2(2f, -2f), p + Vec2(2f, 2f), p + Vec2(-2f, 2f),
-          (1f, 0.8f, 0.2f, spark.life))
+          Color(1f, 0.8f, 0.2f, spark.life))
       }
     }
   }

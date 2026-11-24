@@ -186,7 +186,7 @@ trait Engine {
 
 final class GameBuilder {
   private val globalInitializers = mutable.ArrayBuffer.empty[World => Unit]
-  private val systemsByStage = mutable.HashMap.empty[Stage, mutable.ArrayBuffer[GameSystem]]
+  private val systemsByStage = mutable.HashMap.empty[Stage, mutable.ArrayBuffer[SystemEntry]]
   private var initialSceneValue: Option[SceneRequest] = None
 
   def install(module: GameModule): this.type = {
@@ -212,18 +212,46 @@ final class GameBuilder {
     this
   }
 
-  def addSystem(stage: Stage, system: GameSystem): this.type = {
-    systemsByStage.getOrElseUpdate(stage, mutable.ArrayBuffer.empty) += system
+  /** Adds a system to a stage.
+    *
+    * The systems of a stage run in the order they are added, except that this
+    * one runs after the systems in `after` and before those in `before`,
+    * wherever they are added. A system that is not installed is ignored, so a
+    * system can be ordered against an optional module. Naming a system that is
+    * only in other stages is an error, reported by `build` as cycles are.
+    * Systems are matched by their id.
+    */
+  def addSystem(
+      stage: Stage,
+      system: GameSystem,
+      after: Set[GameSystem] = Set.empty,
+      before: Set[GameSystem] = Set.empty
+  ): this.type = {
+    systemsByStage.getOrElseUpdate(stage, mutable.ArrayBuffer.empty) +=
+      SystemEntry(system, after.map(_.id), before.map(_.id))
     this
   }
 
   def build(engine: Engine): GameRuntime = {
     val schedules = Stage.values.map { stage =>
-      val configuredSystems = systemsByStage.get(stage).map(_.toVector).getOrElse(Vector.empty)
-      stage -> Schedule.build(configuredSystems)
+      val entries = systemsByStage.get(stage).map(_.toVector).getOrElse(Vector.empty)
+      checkStages(stage, entries)
+      stage -> Schedule.build(entries)
     }.toMap
 
     new GameRuntime(engine, schedules, globalInitializers.toVector, initialSceneValue)
+  }
+
+  private def checkStages(stage: Stage, entries: Vector[SystemEntry]): Unit = {
+    val here = entries.map(_.system.id).toSet
+    for(entry <- entries; other <- entry.after ++ entry.before if !here.contains(other)) {
+      val stages = Stage.values.filter(s => systemsByStage.get(s).exists(_.exists(_.system.id == other)))
+      if(stages.nonEmpty) {
+        throw new CompositionError(
+          s"System ${entry.system.id.value} in stage $stage is ordered against ${other.value}, " +
+          s"which is in stage ${stages.mkString(", ")}. Only systems of the same stage can be ordered.")
+      }
+    }
   }
 }
 
