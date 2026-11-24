@@ -23,6 +23,7 @@ bazel run //engines/gameobject/benchmarks -- --compare /tmp/before.tsv
 | `--seconds s` | 5 | How long each scenario is measured |
 | `--warmup s` | 4 | How long it runs before that, for the JIT |
 | `--runs n` | 1 | Run each scenario this many times and keep the fastest, on a machine that is not quiet |
+| `--cpus list` | any | Run on these CPUs only, as for `taskset -c`. On a processor with fast and slow cores, name the fast ones: `cat /sys/devices/cpu_core/cpus` |
 | `--software` | off | Render on the CPU with Mesa, to compare without a GPU |
 | `--save file`, `--compare file` | | Write the results, or show the change from saved ones |
 | `--screenshots dir` | | Save what each scenario draws, to check that it is what it says |

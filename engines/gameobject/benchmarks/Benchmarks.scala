@@ -26,6 +26,7 @@ object Benchmarks {
       seconds: Double = 5.0,
       warmup: Double = 4.0,
       runs: Int = 1,
+      cpus: Option[String] = None,
       software: Boolean = false,
       save: Option[String] = None,
       compare: Option[String] = None,
@@ -70,6 +71,7 @@ object Benchmarks {
     case "--seconds" :: value :: rest if value.toDoubleOption.nonEmpty => parse(rest, options.copy(seconds = value.toDouble))
     case "--warmup" :: value :: rest if value.toDoubleOption.nonEmpty => parse(rest, options.copy(warmup = value.toDouble))
     case "--runs" :: value :: rest if value.toIntOption.exists(_ > 0) => parse(rest, options.copy(runs = value.toInt))
+    case "--cpus" :: value :: rest => parse(rest, options.copy(cpus = Some(value)))
     case "--scenarios" :: value :: rest => parse(rest, options.copy(scenarios = value.split(',').toVector))
     case "--screenshots" :: value :: rest => parse(rest, options.copy(screenshots = Some(value)))
     case "--save" :: value :: rest => parse(rest, options.copy(save = Some(value)))
@@ -142,10 +144,12 @@ object Benchmarks {
     try {
       val javaBinary = new File(java.lang.System.getProperty("java.home"), "bin/java").getPath
       // A fixed heap, so that how often it is collected can be compared.
-      val builder = new ProcessBuilder(javaBinary, "-Xms1g", "-Xmx1g", "-cp", java.lang.System.getProperty("java.class.path"),
+      val pinned = options.cpus.toVector.flatMap(cpus => Vector("taskset", "-c", cpus))
+      val command = pinned ++ Vector(javaBinary, "-Xms1g", "-Xmx1g", "-cp", java.lang.System.getProperty("java.class.path"),
         "sgl.benchmarks.gameobject.Benchmarks", "--child",
         scenario.name, options.count.toString, options.warmup.toString, options.seconds.toString, output.getPath,
         options.screenshots.map(userPath(_).resolve(s"${scenario.name}.png").toString).getOrElse(""))
+      val builder = new ProcessBuilder(command.asJava)
       val environment = builder.environment()
       environment.put("EGL_PLATFORM", "surfaceless")
       if(options.software) environment.put("LIBGL_ALWAYS_SOFTWARE", "1")
