@@ -56,7 +56,7 @@ trait NativeAudioProvider extends AudioProvider {
         private[NativeAudio] val owner: Sound,
         private[NativeAudio] var remainingRepeats: Int,
         private[NativeAudio] var infinite: Boolean,
-        private[NativeAudio] val volume: Float,
+        private[NativeAudio] var volume: Float,
     ) {
       private[NativeAudio] var active = true
     }
@@ -124,21 +124,37 @@ trait NativeAudioProvider extends AudioProvider {
 
       private[NativeAudio] def owns(playback: Playback): Boolean = ownedPlaybacks.contains(playback)
       private[NativeAudio] def remove(playback: Playback): Unit = ownedPlaybacks -= playback
-      private def queueAudio(device: SDL_AudioDeviceID, volume: Float): Boolean = {
+      private def queueAudio(device: SDL_AudioDeviceID, volume: Float, from: UInt = 0.toUInt): Boolean = {
+        val start = data.audioBuffer + from
+        val length = data.audioLength - from
         val clampedVolume = scala.math.max(0f, scala.math.min(1f, volume))
         if(clampedVolume >= 1f) {
-          SDL_QueueAudio(device, data.audioBuffer.asInstanceOf[Ptr[Byte]], data.audioLength) == 0
+          SDL_QueueAudio(device, start.asInstanceOf[Ptr[Byte]], length) == 0
         } else {
-          val mixed = stdlib.calloc(data.audioLength.toUSize, 1.toUSize).asInstanceOf[Ptr[UByte]]
+          val mixed = stdlib.calloc(length.toUSize, 1.toUSize).asInstanceOf[Ptr[UByte]]
           if(mixed == null) false
           else {
-            NativeAudioBindings.SDL_MixAudioFormat(mixed, data.audioBuffer, data.audioSpec.format, data.audioLength, (clampedVolume * 128f).toInt)
-            val queued = SDL_QueueAudio(device, mixed.asInstanceOf[Ptr[Byte]], data.audioLength) == 0
+            NativeAudioBindings.SDL_MixAudioFormat(mixed, start, data.audioSpec.format, length, (clampedVolume * 128f).toInt)
+            val queued = SDL_QueueAudio(device, mixed.asInstanceOf[Ptr[Byte]], length) == 0
             stdlib.free(mixed.asInstanceOf[Ptr[Byte]])
             queued
           }
         }
       }
+
+      /** Plays what is left at another volume. What was queued is mixed already,
+        * so it is replaced from where it has come to.
+        */
+      private[NativeAudio] def changeVolume(playback: Playback, volume: Float): Unit =
+        if(ownedPlaybacks.contains(playback) && playback.volume != volume) {
+          playback.volume = volume
+          val left = NativeAudioBindings.SDL_GetQueuedAudioSize(playback.device)
+          if(left > 0.toUInt && left <= data.audioLength) {
+            SDL_ClearQueuedAudio(playback.device)
+            if(!queueAudio(playback.device, volume, data.audioLength - left))
+              logger.warning("Failed to queue SDL audio: " + fromCString(SDL_GetError()))
+          }
+        }
 
       private[NativeAudio] def queueNext(playback: Playback): Boolean = queueAudio(playback.device, playback.volume)
     }
@@ -219,7 +235,10 @@ trait NativeAudioProvider extends AudioProvider {
         current = None
         paused = false
       }
-      override def setVolume(volume: Float): Unit = this.volume = volume
+      override def setVolume(volume: Float): Unit = {
+        this.volume = volume
+        current.filter(_.active).foreach(sound.changeVolume(_, volume))
+      }
       override def setLooping(isLooping: Boolean): Unit = {
         looping = isLooping
         current.filter(_.active).foreach { playback =>
