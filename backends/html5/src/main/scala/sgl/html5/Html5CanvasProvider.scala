@@ -349,7 +349,7 @@ trait Html5CanvasProvider extends CanvasProvider {
     case class Html5TextLayout(text: String, layoutWidth: Int, context: Ctx2D, paint: Paint) extends AbstractTextLayout {
 
       paint.prepareContext(context)
-      private val wrapped = TextWrapping.wrap(text, layoutWidth, value => context.measureText(value).width.toFloat)
+      private val wrapped = TextWrapping.wrap(text, layoutWidth.toFloat, value => context.measureText(value).width.toFloat)
 
       override val lines: Vector[String] = wrapped.lines
       val rows: Seq[String] = lines

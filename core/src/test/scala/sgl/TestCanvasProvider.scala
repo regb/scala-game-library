@@ -87,7 +87,7 @@ trait TestCanvasProvider extends CanvasProvider {
 
     final class TestTextLayout(val text: String, val layoutWidth: Int, val paint: Paint) extends AbstractTextLayout {
       private def measure(value: String): Float = value.length * paint.font.size / 2f
-      private val wrapped = TextWrapping.wrap(text, layoutWidth, measure)
+      private val wrapped = TextWrapping.wrap(text, layoutWidth.toFloat, measure)
       override val lines: Vector[String] = wrapped.lines
       override val overflowed: Boolean = wrapped.overflowed
       override val lineCount: Int = lines.size

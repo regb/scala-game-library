@@ -328,7 +328,7 @@ trait AWTCanvasProvider extends CanvasProvider {
       private val portableScale = PortableFont.scale(paint.font.size)
       private def measuredWidth(value: String): Float =
         if(paint.font.portable) portableMeasure(value, paint.font) else textMetrics.stringWidth(value).toFloat
-      private val wrapped = TextWrapping.wrap(text, layoutWidth, measuredWidth)
+      private val wrapped = TextWrapping.wrap(text, layoutWidth.toFloat, measuredWidth)
 
       override val lines: Vector[String] = wrapped.lines
       val rows: Seq[String] = lines

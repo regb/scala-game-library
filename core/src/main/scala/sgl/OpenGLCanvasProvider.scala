@@ -224,7 +224,7 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
 
       override def renderText(text: String, width: Int, paint: Paint): TextLayout = {
         require(width > 0, "Text layout width must be positive")
-        val wrapped = TextWrapping.wrap(text, width, value => measure(value, paint.font))
+        val wrapped = TextWrapping.wrap(text, width.toFloat, value => measure(value, paint.font))
         new OpenGLTextLayout(wrapped.lines, width, paint, wrapped.overflowed)
       }
 
