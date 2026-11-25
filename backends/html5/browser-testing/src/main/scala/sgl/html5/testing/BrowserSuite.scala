@@ -26,8 +26,13 @@ import org.scalatest.funsuite.AnyFunSuite
 abstract class BrowserSuite extends AnyFunSuite with BeforeAndAfterAll {
   private var started: Option[Browser] = None
 
+  /** Whether pages play audio before the user did anything, which browsers do
+    * not let them.
+    */
+  protected def allowAutoplay: Boolean = true
+
   def browser: Browser = started.getOrElse {
-    val launched = Browser.launch()
+    val launched = Browser.launch(allowAutoplay)
     started = Some(launched)
     launched
   }

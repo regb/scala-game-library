@@ -63,7 +63,12 @@ object Browser {
     onPath.nextOption().orElse(Some(macOS).filter(new File(_).canExecute))
   }
 
-  def launch(): Browser = {
+  /** Starts a browser.
+    *
+    * @param allowAutoplay whether pages play audio before the user did anything,
+    *   which browsers do not let them
+    */
+  def launch(allowAutoplay: Boolean = true): Browser = {
     val chosen = sys.env.get("SGL_BROWSER").filter(_.nonEmpty)
     val bundled = if(chosen.isEmpty) bundle else None
     val executable = chosen.orElse(bundled.map(_.resolve("chrome-headless-shell").toString)).orElse(installed).getOrElse(throw new IllegalStateException(
@@ -77,7 +82,8 @@ object Browser {
       // that does not let Chrome make its own.
       "--no-sandbox", "--disable-dev-shm-usage",
       "--use-angle=swiftshader", "--enable-unsafe-swiftshader",
-      "--mute-audio", "--autoplay-policy=no-user-gesture-required",
+      "--mute-audio",
+      s"--autoplay-policy=${if(allowAutoplay) "no-user-gesture-required" else "document-user-activation-required"}",
       "--no-first-run", "--no-default-browser-check", "--disable-extensions", "--disable-background-networking",
       // Tabs run at full speed although they are never in front.
       "--disable-background-timer-throttling", "--disable-renderer-backgrounding", "--disable-backgrounding-occluded-windows",

@@ -4,6 +4,7 @@ package html5
 import org.scalajs.dom
 import dom.{HTMLAudioElement, HTMLSourceElement}
 
+import scala.scalajs.js
 import scala.util.{Failure, Success}
 
 import sgl.util._
@@ -25,6 +26,23 @@ trait Html5AudioProvider extends AudioProvider {
   val GuardAutoPlay = true
 
   object Html5Audio extends Audio {
+
+    private implicit val LogTag: Logger.Tag = Logger.Tag("sgl-html5-audio")
+
+    // Browsers refuse with a promise that fails, which would be an uncaught error.
+    private def start(audio: HTMLAudioElement)(onRefused: => Unit): Unit = {
+      val started = audio.play().asInstanceOf[js.Any]
+      // Old browsers return nothing.
+      if(!js.isUndefined(started)) {
+        val _ = started.asInstanceOf[js.Promise[Unit]].`catch`[Unit] { (error: scala.Any) =>
+          // Being paused before it started is not a refusal.
+          if(error.asInstanceOf[js.Dynamic].name.asInstanceOf[String] != "AbortError") {
+            logger.warning(s"The browser did not play audio: $error")
+            onRefused
+          }
+        }
+      }
+    }
 
     class SoundTagInstance(
         val loader: Loader[HTMLAudioElement],
@@ -102,7 +120,7 @@ trait Html5AudioProvider extends AudioProvider {
               audio.onended = (_: dom.Event) => {
                 if(tag.loop > 0) {
                   tag.loop -= 1
-                  val _ = audio.play()
+                  start(audio)(pool.returnTag(tag))
                 } else if(tag.loop == 0) {
                   audio.onended = null
                   pool.returnTag(tag)
@@ -111,7 +129,7 @@ trait Html5AudioProvider extends AudioProvider {
               audio.volume = volume
               audio.loop = loop < 0
               audio.playbackRate = rate
-              val _ = audio.play()
+              start(audio)(pool.returnTag(tag))
             }
           case Failure(_) => pool.returnTag(tag)
         }
@@ -146,7 +164,7 @@ trait Html5AudioProvider extends AudioProvider {
       }
       override def pause(id: PlayedSound): Unit = if(activeTags.contains(id)) id.loader.foreach(_.pause())
       override def resume(id: PlayedSound): Unit = if(activeTags.contains(id)) {
-        id.loader.foreach(audio => { val _ = audio.play(); () })
+        id.loader.foreach(audio => start(audio)(pool.returnTag(id)))
       }
       override def endLoop(id: PlayedSound): Unit = if(activeTags.contains(id)) {
         id.loop = 0
@@ -171,19 +189,25 @@ trait Html5AudioProvider extends AudioProvider {
       */
     class Html5Music(audio: HTMLAudioElement) extends AbstractMusic {
       private var disposed = false
+      // Whether it is to play once it can.
+      private var waiting = false
 
       override def play(): Unit = {
         if(disposed) throw new IllegalStateException("Trying to play disposed music")
-        if(GuardAutoPlay)
-          onInitialUserInteraction(() => if(!disposed) { val _ = audio.play(); () })
-        else {
-          val _ = audio.play()
-        }
+        if(GuardAutoPlay) {
+          waiting = true
+          onInitialUserInteraction(() => if(waiting) {
+            waiting = false
+            start(audio)(())
+          })
+        } else start(audio)(())
       }
       override def pause(): Unit = {
+        waiting = false
         audio.pause()
       }
       override def stop(): Unit = {
+        waiting = false
         audio.pause()
         audio.currentTime = 0.0
       }
@@ -196,6 +220,7 @@ trait Html5AudioProvider extends AudioProvider {
       override def dispose(): Unit = {
         if(disposed) return
         disposed = true
+        waiting = false
         audio.pause()
         audio.onended = null
         if(audio.parentNode != null) audio.parentNode.removeChild(audio)

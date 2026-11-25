@@ -3,6 +3,8 @@ package html5
 
 import sgl.util.LoggingProvider
 
+import scala.scalajs.js
+
 import org.scalajs.dom
 import dom.html
 
@@ -68,7 +70,8 @@ trait Html5InputProvider {
   private var removeInputListeners: () => Unit = () => ()
 
   // The function registered here will be called either immediately if the user already
-  // interacted with the page, or on the initial interaction.
+  // interacted with the page, or on the initial interaction: the first one that lets the
+  // browser play audio. The start of a touch does not, nor does Escape.
   def onInitialUserInteraction(f: () => Unit): Unit = {
     if(hasUserInteracted) f() else {
       actionsOnUserInteraction.append(() => f())
@@ -76,12 +79,19 @@ trait Html5InputProvider {
   }
 
   private def triggerUserInteraction(): Unit = {
-    if(!hasUserInteracted) {
+    if(!hasUserInteracted && countsAsInteraction) {
       hasUserInteracted = true
       for(f <- actionsOnUserInteraction) {
         f()
       }
+      actionsOnUserInteraction.clear()
     }
+  }
+
+  // Browsers from before 2024 may not tell, for which any input counts.
+  private def countsAsInteraction: Boolean = {
+    val activation = dom.window.navigator.asInstanceOf[js.Dynamic].userActivation
+    js.isUndefined(activation) || activation.hasBeenActive.asInstanceOf[Boolean]
   }
 
   def registerInputListeners(): Unit = {
