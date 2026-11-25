@@ -55,6 +55,8 @@ while [ "$#" -gt 0 ]; do
 done
 """,
         mnemonic = "ScalaJsSite",
+        # The shell tools come from PATH, which NixOS needs passed in.
+        use_default_shell_env = True,
         progress_message = "Assembling the website %{label}",
     )
     return [DefaultInfo(files = depset([site]))]
