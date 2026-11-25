@@ -1,6 +1,7 @@
 package sgl.benchmarks.gameobject
 package core
 
+import _root_.sgl.{OpenGLCanvasProvider, OpenGLProvider, SystemProvider, WindowProvider}
 import _root_.sgl.engine.gameobject._
 import _root_.sgl.engine.gameobject.render2d._
 import _root_.sgl.engine.gameobject.render3d._
@@ -22,7 +23,13 @@ final class Setup(val count: Int, val coin: Texture2D, val gem: Texture2D, val h
   }
 }
 
-final class Scenario(val name: String, val description: String)(val populate: (Setup, GameContext) => Scope ?=> Unit)
+sealed trait Scenario {
+  def name: String
+  def description: String
+}
+
+/** Populates a scene of the GameObject engine. */
+final class EngineScenario(val name: String, val description: String)(val populate: (Setup, GameContext) => Scope ?=> Unit) extends Scenario
 
 final class Velocity(obj: GameObject2D, var value: Vec2) extends ComponentOf(obj) {
   val spatial: Spatial2D = obj.spatial
@@ -70,27 +77,27 @@ object Scenarios {
 
   private def velocity(i: Int): Vec2 = Vec2(((i * 37) % 200 - 100).toFloat, ((i * 53) % 200 - 100).toFloat)
 
-  val all: Vector[Scenario] = Vector(
-    new Scenario("empty", "nothing: the cost of a frame")((_, _) => ()),
+  val all: Vector[EngineScenario] = Vector(
+    new EngineScenario("empty", "nothing: the cost of a frame")((_, _) => ()),
 
-    new Scenario("sprites", "static sprites sharing an atlas page")((setup, context) =>
+    new EngineScenario("sprites", "static sprites sharing an atlas page")((setup, context) =>
       (0 until setup.count).foreach(i => sprite(setup, context, i, setup.coin))),
 
-    new Scenario("sprites-moving", "the same, moved by one system")((setup, context) => {
+    new EngineScenario("sprites-moving", "the same, moved by one system")((setup, context) => {
       context.addSystem(Stage.Update, MovementSystem)
       (0 until setup.count).foreach(i => sprite(setup, context, i, setup.coin).attach(new Velocity(_, velocity(i))))
     }),
 
-    new Scenario("sprites-updatable", "the same, each moved by an Updatable component")((setup, context) =>
+    new EngineScenario("sprites-updatable", "the same, each moved by an Updatable component")((setup, context) =>
       (0 until setup.count).foreach { i =>
         val obj = sprite(setup, context, i, setup.coin).attach(new Velocity(_, velocity(i)))
         obj.attach(new SelfMoving(_, obj.get[Velocity]))
       }),
 
-    new Scenario("sprites-unbatched", "static sprites alternating between two textures, so that none share a draw")((setup, context) =>
+    new EngineScenario("sprites-unbatched", "static sprites alternating between two textures, so that none share a draw")((setup, context) =>
       (0 until setup.count).foreach(i => sprite(setup, context, i, if(i % 2 == 0) setup.coin else setup.heart))),
 
-    new Scenario("hierarchy", "sprites in chains of 10, below roots that move")((setup, context) => {
+    new EngineScenario("hierarchy", "sprites in chains of 10, below roots that move")((setup, context) => {
       context.addSystem(Stage.Update, MovementSystem)
       (0 until setup.count).grouped(10).foreach { chain =>
         val root = sprite(setup, context, chain.head, setup.coin).attach(new Velocity(_, velocity(chain.head)))
@@ -102,7 +109,7 @@ object Scenarios {
       }
     }),
 
-    new Scenario("tilemap", "as many tiles in a single tilemap")((setup, context) => {
+    new EngineScenario("tilemap", "as many tiles in a single tilemap")((setup, context) => {
       val quads = (0 until setup.count).map { i =>
         val at = setup.place(i)
         TileQuad(setup.coin, at.x, at.y, 10f, 10f, 0f, 0f, 1f, 1f)
@@ -110,7 +117,7 @@ object Scenarios {
       context.spawn2D("map").attach(new Tilemap(_, quads))
     }),
 
-    new Scenario("churn", "static sprites, with 1% destroyed and replaced every frame")((setup, context) => {
+    new EngineScenario("churn", "static sprites, with 1% destroyed and replaced every frame")((setup, context) => {
       val sprites = Array.tabulate(setup.count)(i => sprite(setup, context, i, setup.coin).gameObject)
       var next = 0
       context.addSystem(Stage.Update, GameSystem("benchmark.churn") {
@@ -123,7 +130,7 @@ object Scenarios {
       })
     }),
 
-    new Scenario("scopes", "static sprites, with 10 empty scopes created and destroyed every frame")((setup, context) => {
+    new EngineScenario("scopes", "static sprites, with 10 empty scopes created and destroyed every frame")((setup, context) => {
       (0 until setup.count).foreach(i => sprite(setup, context, i, setup.coin))
       context.addSystem(Stage.Update, GameSystem("benchmark.scopes") {
         val world = summon[GameContext].world
@@ -131,7 +138,7 @@ object Scenarios {
       })
     }),
 
-    new Scenario("meshes", "static meshes of 96 triangles")((setup, context) => {
+    new EngineScenario("meshes", "static meshes of 96 triangles")((setup, context) => {
       val mesh = context.engine.renderer.createMesh(MeshPrimitives.sphere(8, 6))
       val material = context.engine.renderer.createMaterial(setup.coin, emissive = 0.2f)
       (0 until setup.count).foreach { i =>
@@ -141,7 +148,7 @@ object Scenarios {
       }
     }),
 
-    new Scenario("particles-3d", "camera-facing quads painted with Render3D")((setup, context) => {
+    new EngineScenario("particles-3d", "camera-facing quads painted with Render3D")((setup, context) => {
       context.setGlobal(setup)
       context.addSystem(Stage.Render, ParticlesSystem)
     })
@@ -155,13 +162,15 @@ final class FrameTimes {
   var renderEnded: Long = 0L
 }
 
-trait BenchmarkApp extends OpenGLGameObjectApp with AssetsProvider {
-  def scenario: Scenario
-  def count: Int
-  def now(): Long
-
+trait Measured {
   val times = new FrameTimes
   @volatile var ready: Boolean = false
+  protected def now(): Long = java.lang.System.nanoTime()
+}
+
+trait BenchmarkApp extends OpenGLGameObjectApp with AssetsProvider with Measured {
+  def scenario: EngineScenario
+  def count: Int
 
   private object BenchmarkScene extends AsyncScene[Setup] {
     override def preload(context: GameContext)(using Scope): Loader[Setup] = {
@@ -195,5 +204,65 @@ trait BenchmarkApp extends OpenGLGameObjectApp with AssetsProvider {
       .addSystem(Stage.Render, renderEnded, after = Set(Scenarios.ParticlesSystem))
       .setGlobal(ClearColor(0.05f, 0.05f, 0.08f, 1f))
       .setInitialScene(BenchmarkScene)
+  }
+}
+
+/** Draws with the Canvas API, on its OpenGL implementation. */
+final case class CanvasScenario(name: String, description: String) extends Scenario
+
+object CanvasScenarios {
+  val Sprites: CanvasScenario = CanvasScenario("canvas-sprites", "bitmaps of one image, drawn with the Canvas API")
+  val Mixed: CanvasScenario = CanvasScenario("canvas-mixed", "the same, alternating between two images")
+  val Saved: CanvasScenario = CanvasScenario("canvas-saved", "the same as canvas-sprites, each translated in its own withSave")
+  val Shapes: CanvasScenario = CanvasScenario("canvas-shapes", "rectangles alternating with bitmaps")
+  val all: Vector[CanvasScenario] = Vector(Sprites, Mixed, Saved, Shapes)
+}
+
+trait CanvasBenchmarkApp extends OpenGLCanvasProvider with AssetsProvider with Measured {
+  this: OpenGLProvider & WindowProvider & SystemProvider =>
+
+  def scenario: CanvasScenario
+  def count: Int
+
+  private var bitmaps = Option.empty[(Graphics.Bitmap, Graphics.Bitmap)]
+
+  override def create(): Unit = {
+    val (coin, gem) = (Graphics.loadImage(Assets.drawable.coin), Graphics.loadImage(Assets.drawable.gem))
+    coin.zip(gem).foreach { loaded =>
+      bitmaps = Some(loaded)
+      ready = true
+    }
+  }
+
+  override def frame(dt: Double): Unit = {
+    times.started = now()
+    times.renderStarted = times.started
+    withFrameCanvas { canvas =>
+      bitmaps.foreach { case (coin, gem) => drawAll(canvas, coin, gem) }
+      times.renderEnded = now()
+    }
+  }
+
+  private def drawAll(canvas: Graphics.Canvas, coin: Graphics.Bitmap, gem: Graphics.Bitmap): Unit = {
+    val columns = math.max(1, math.ceil(math.sqrt(count.toDouble)).toInt)
+    val step = 1000f / columns
+    def draw(bitmap: Graphics.Bitmap, x: Float, y: Float): Unit =
+      canvas.drawBitmap(bitmap, x, y, 12f, 12f, 0, 0, bitmap.width, bitmap.height, 1f)
+    val paint = Graphics.defaultPaint.withColor(Graphics.Color.rgb(200, 80, 40))
+    var i = 0
+    while(i < count) {
+      val (x, y) = ((i % columns) * step, (i / columns) * step)
+      scenario match {
+        case CanvasScenarios.Mixed => draw(if(i % 2 == 0) coin else gem, x, y)
+        case CanvasScenarios.Saved =>
+          canvas.withSave {
+            canvas.translate(x, y)
+            draw(coin, 0f, 0f)
+          }
+        case CanvasScenarios.Shapes => if(i % 2 == 0) draw(coin, x, y) else canvas.drawRect(x, y, 10f, 10f, paint)
+        case _ => draw(coin, x, y)
+      }
+      i += 1
+    }
   }
 }

@@ -3,8 +3,6 @@ package sgl
 import sgl.assets.{DrawableAsset, FontAsset}
 import sgl.util.Loader
 
-import scala.collection.mutable.ArrayBuffer
-
 /** Implements the Canvas API with the portable [[OpenGLProvider]] API.
   *
   * The renderer uses top-left pixel coordinates, CPU-side affine transforms,
@@ -29,7 +27,11 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
 
       override def release(): Unit = if(!released) {
         released = true
-        runOnOpenGLThread(OpenGL.deleteTexture(image.texture))
+        runOnOpenGLThread {
+          // It may have been drawn in this frame already.
+          if(active) flush()
+          OpenGL.deleteTexture(image.texture)
+        }
       }
     }
     override type Bitmap = OpenGLBitmap
@@ -111,10 +113,13 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
         val savedClip = clip
         try body
         finally {
-          flush()
           transform = savedTransform
-          clip = savedClip
-          applyClip(savedClip)
+          if(clip != savedClip) {
+            // What was drawn so far was drawn in the other clip.
+            flush()
+            clip = savedClip
+            applyClip(savedClip)
+          }
         }
       }
 
@@ -158,27 +163,24 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
         val v0 = sourceY.toFloat / bitmap.height
         val u1 = (sourceX + sourceWidth).toFloat / bitmap.width
         val v1 = (sourceY + sourceHeight).toFloat / bitmap.height
-        useTexture(Some(bitmap.texture))
-        addQuad(destinationX, destinationY, destinationWidth, destinationHeight, u0, v0, u1, v1,
+        addQuad(Some(bitmap.texture), destinationX, destinationY, destinationWidth, destinationHeight, u0, v0, u1, v1,
           OpenGLColor(255, 255, 255, scala.math.round(alpha * 255f)))
       }
 
       override def drawRect(x: Float, y: Float, width: Float, height: Float, paint: Paint): Unit = {
-        useTexture(None)
-        addQuad(x, y, width, height, 0f, 0f, 0f, 0f, paint.color)
+        addQuad(None, x, y, width, height, 0f, 0f, 0f, 0f, paint.color)
       }
 
       override def drawOval(x: Float, y: Float, width: Float, height: Float, paint: Paint): Unit = {
-        useTexture(None)
         val segments = 40
         var segment = 0
         while(segment < segments) {
           val angle0 = segment.toDouble * scala.math.Pi * 2.0 / segments
           val angle1 = (segment + 1).toDouble * scala.math.Pi * 2.0 / segments
           addTriangle(
-            (x, y, 0f, 0f),
-            (x + scala.math.cos(angle0).toFloat * width / 2f, y + scala.math.sin(angle0).toFloat * height / 2f, 0f, 0f),
-            (x + scala.math.cos(angle1).toFloat * width / 2f, y + scala.math.sin(angle1).toFloat * height / 2f, 0f, 0f),
+            x, y,
+            x + scala.math.cos(angle0).toFloat * width / 2f, y + scala.math.sin(angle0).toFloat * height / 2f,
+            x + scala.math.cos(angle1).toFloat * width / 2f, y + scala.math.sin(angle1).toFloat * height / 2f,
             paint.color
           )
           segment += 1
@@ -192,9 +194,8 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
         if(length > 0f) {
           val nx = -dy / length * 0.5f
           val ny = dx / length * 0.5f
-          useTexture(None)
-          addTriangle((x1 + nx, y1 + ny, 0f, 0f), (x1 - nx, y1 - ny, 0f, 0f), (x2 - nx, y2 - ny, 0f, 0f), paint.color)
-          addTriangle((x1 + nx, y1 + ny, 0f, 0f), (x2 - nx, y2 - ny, 0f, 0f), (x2 + nx, y2 + ny, 0f, 0f), paint.color)
+          addTriangle(x1 + nx, y1 + ny, x1 - nx, y1 - ny, x2 - nx, y2 - ny, paint.color)
+          addTriangle(x1 + nx, y1 + ny, x2 - nx, y2 - ny, x2 + nx, y2 + ny, paint.color)
         }
       }
 
@@ -230,7 +231,7 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
       private def drawGlyphs(value: String, x: Float, baselineY: Float, paint: Paint): Unit = {
         val face = PortableFont.face(paint.font.isBold)
         val scale = PortableFont.scale(paint.font.size)
-        useTexture(Some(fontTexture(face, paint.font.isBold)))
+        val texture = Some(fontTexture(face, paint.font.isBold))
         var cursorX = x
         PortableFont.foreachCodePoint(value) { codePoint =>
           val glyph = face.glyph(codePoint)
@@ -240,6 +241,7 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
             val u1 = (glyph.x + glyph.width).toFloat / face.atlasWidth
             val v1 = (glyph.y + glyph.height).toFloat / face.atlasHeight
             addQuad(
+              texture,
               cursorX + glyph.bearingX * scale,
               baselineY + glyph.bearingY * scale,
               glyph.width * scale,
@@ -253,6 +255,7 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
       }
 
       private def addQuad(
+          texture: Option[OpenGL.Texture],
           x: Float,
           y: Float,
           width: Float,
@@ -263,33 +266,34 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
           v1: Float,
           color: Color
       ): Unit = {
-        addTriangle((x, y, u0, v0), (x, y + height, u0, v1), (x + width, y + height, u1, v1), color)
-        addTriangle((x, y, u0, v0), (x + width, y + height, u1, v1), (x + width, y, u1, v0), color)
+        batch.begin(texture, 6)
+        addVertex(x, y, u0, v0, color)
+        addVertex(x, y + height, u0, v1, color)
+        addVertex(x + width, y + height, u1, v1, color)
+        addVertex(x, y, u0, v0, color)
+        addVertex(x + width, y + height, u1, v1, color)
+        addVertex(x + width, y, u1, v0, color)
       }
 
-      private def addTriangle(
-          first: (Float, Float, Float, Float),
-          second: (Float, Float, Float, Float),
-          third: (Float, Float, Float, Float),
-          color: Color
-      ): Unit = {
-        addVertex(first, color)
-        addVertex(second, color)
-        addVertex(third, color)
-        if(vertices.length >= MaxBatchFloats) flush()
+      private def addTriangle(x0: Float, y0: Float, x1: Float, y1: Float, x2: Float, y2: Float, color: Color): Unit = {
+        batch.begin(None, 3)
+        addVertex(x0, y0, 0f, 0f, color)
+        addVertex(x1, y1, 0f, 0f, color)
+        addVertex(x2, y2, 0f, 0f, color)
       }
 
-      private def addVertex(vertex: (Float, Float, Float, Float), color: Color): Unit = {
-        val point = transform(vertex._1, vertex._2)
-        vertices += point._1 / frameWidth * 2f - 1f
-        vertices += 1f - point._2 / frameHeight * 2f
-        vertices += vertex._3
-        vertices += vertex._4
-        vertices += color.red / 255f
-        vertices += color.green / 255f
-        vertices += color.blue / 255f
-        vertices += color.alpha / 255f
-        vertices += (if(batchTexture.isDefined) 1f else 0f)
+      private def addVertex(x: Float, y: Float, u: Float, v: Float, color: Color): Unit = {
+        val out = batch.values
+        val offset = batch.next()
+        out(offset) = transform.x(x, y) / frameWidth * 2f - 1f
+        out(offset + 1) = 1f - transform.y(x, y) / frameHeight * 2f
+        out(offset + 2) = u
+        out(offset + 3) = v
+        out(offset + 4) = color.red / 255f
+        out(offset + 5) = color.green / 255f
+        out(offset + 6) = color.blue / 255f
+        out(offset + 7) = color.alpha / 255f
+        out(offset + 8) = batch.slot
       }
     }
     override type Canvas = OpenGLCanvas
@@ -301,9 +305,9 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
   override val Graphics: OpenGLCanvasGraphics.type = OpenGLCanvasGraphics
 
   private val VertexFloats = 9
-  private val MaxBatchFloats = VertexFloats * 6 * 256
-  private val vertices = ArrayBuffer.empty[Float]
-  private var batchTexture: Option[OpenGL.Texture] = None
+  // Once there is an OpenGL context to ask.
+  private lazy val textureSlots = scala.math.min(VertexBatch.MaxSlots, OpenGL.maxTextureUnits)
+  private lazy val batch = new VertexBatch[OpenGL.Texture](VertexFloats, textureSlots)
   private var frameWidth = 1f
   private var frameHeight = 1f
   private var active = false
@@ -311,7 +315,6 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
   private var program: OpenGL.Program = _
   private var vertexArray: OpenGL.VertexArray = _
   private var vertexBuffer: OpenGL.Buffer = _
-  private var whiteTexture: OpenGL.Texture = _
   private var regularFontTexture: Option[OpenGL.Texture] = None
   private var boldFontTexture: Option[OpenGL.Texture] = None
 
@@ -321,8 +324,7 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
     active = true
     frameWidth = Window.width.toFloat
     frameHeight = Window.height.toFloat
-    vertices.clear()
-    batchTexture = None
+    batch.clear()
     Graphics.canvas.reset()
 
     OpenGL.viewport(0, 0, Window.width, Window.height)
@@ -356,7 +358,6 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
   final def disposeOpenGLCanvas(): Unit = if(initialized) {
     OpenGL.deleteBuffer(vertexBuffer)
     OpenGL.deleteVertexArray(vertexArray)
-    OpenGL.deleteTexture(whiteTexture)
     regularFontTexture.foreach(OpenGL.deleteTexture)
     boldFontTexture.foreach(OpenGL.deleteTexture)
     regularFontTexture = None
@@ -370,28 +371,18 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
       in vec2 a_position;
       in vec2 a_texcoord;
       in vec4 a_color;
-      in float a_textured;
-      out vec2 v_texcoord;
+      in float a_slot;
+      out vec2 v_uv;
       out vec4 v_color;
-      out float v_textured;
+      flat out float v_slot;
       void main() {
         gl_Position = vec4(a_position, 0.0, 1.0);
-        v_texcoord = a_texcoord;
+        v_uv = a_texcoord;
         v_color = a_color;
-        v_textured = a_textured;
+        v_slot = a_slot;
       }
     """)
-    val fragmentShader = compileShader(OpenGL.FragmentShader, OpenGL.ShaderHeader + """
-      in vec2 v_texcoord;
-      in vec4 v_color;
-      in float v_textured;
-      uniform sampler2D u_texture;
-      out vec4 out_color;
-      void main() {
-        vec4 sampled = texture(u_texture, v_texcoord);
-        out_color = v_color * mix(vec4(1.0), sampled, step(0.5, v_textured));
-      }
-    """)
+    val fragmentShader = compileShader(OpenGL.FragmentShader, VertexBatch.fragmentShader(OpenGL.ShaderHeader, textureSlots))
 
     program = OpenGL.createProgram()
     OpenGL.attachShader(program, vertexShader)
@@ -402,7 +393,6 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
     OpenGL.deleteShader(vertexShader)
     OpenGL.deleteShader(fragmentShader)
 
-    whiteTexture = OpenGL.createTextureImage2D(1, 1, Array[Byte](-1, -1, -1, -1)).texture
     vertexArray = OpenGL.genVertexArray()
     vertexBuffer = OpenGL.genBuffer()
     OpenGL.bindVertexArray(vertexArray)
@@ -411,12 +401,12 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
     configureAttribute("a_position", 2, stride, 0L)
     configureAttribute("a_texcoord", 2, stride, 2L * 4L)
     configureAttribute("a_color", 4, stride, 4L * 4L)
-    configureAttribute("a_textured", 1, stride, 8L * 4L)
-    OpenGL.getUniformLocation(program, "u_texture").foreach { location =>
-      OpenGL.useProgram(program)
-      OpenGL.uniform1i(location, 0)
-      OpenGL.useNoProgram()
+    configureAttribute("a_slot", 1, stride, 8L * 4L)
+    OpenGL.useProgram(program)
+    (0 until textureSlots).foreach { i =>
+      OpenGL.getUniformLocation(program, s"u_texture$i").foreach(OpenGL.uniform1i(_, i))
     }
+    OpenGL.useNoProgram()
     OpenGL.unbindBuffer(OpenGL.ArrayBuffer)
     OpenGL.unbindVertexArray()
     initialized = true
@@ -454,25 +444,20 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
     }
   }
 
-  private def useTexture(texture: Option[OpenGL.Texture]): Unit = {
-    if(texture != batchTexture) {
-      flush()
-      batchTexture = texture
-    }
-  }
-
-  private def flush(): Unit = if(vertices.nonEmpty) {
+  private def flush(): Unit = if(!batch.isEmpty) {
     OpenGL.bindVertexArray(vertexArray)
     OpenGL.bindBuffer(OpenGL.ArrayBuffer, vertexBuffer)
-    OpenGL.bufferDataFloat(OpenGL.ArrayBuffer, vertices.toArray, OpenGL.StaticDraw)
-    batchTexture match {
-      case Some(texture) =>
-        OpenGL.activeTexture(OpenGL.Texture0)
-        OpenGL.bindTexture(OpenGL.Texture2D, texture)
-      case None => OpenGL.bindTexture(OpenGL.Texture2D, whiteTexture)
+    OpenGL.bufferDataFloat(OpenGL.ArrayBuffer, batch.values, batch.length, OpenGL.StaticDraw)
+    var unit = batch.foreachRun { (unit, texture) =>
+      OpenGL.activeTexture(OpenGL.textureUnit(unit))
+      OpenGL.bindTexture(OpenGL.Texture2D, texture)
+    } { (first, count) => OpenGL.drawArrays(OpenGL.Triangles, first, count) } - 1
+    while(unit >= 0) {
+      OpenGL.activeTexture(OpenGL.textureUnit(unit))
+      OpenGL.unbindTexture(OpenGL.Texture2D)
+      unit -= 1
     }
-    OpenGL.drawArrays(OpenGL.Triangles, 0, vertices.length / VertexFloats)
-    vertices.clear()
+    batch.clear()
   }
 
   private def applyClip(clip: Option[Clip]): Unit = clip match {
@@ -496,9 +481,11 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
   }
 
   private final case class Transform(a: Float, b: Float, c: Float, d: Float, tx: Float, ty: Float) {
-    def apply(x: Float, y: Float): (Float, Float) = (a * x + c * y + tx, b * x + d * y + ty)
-    def translate(x: Float, y: Float): Transform = copy(tx = a * x + c * y + tx, ty = b * x + d * y + ty)
-    def scale(x: Float, y: Float): Transform = Transform(a * x, b * x, c * y, d * y, tx, ty)
+    def x(px: Float, py: Float): Float = a * px + c * py + tx
+    def y(px: Float, py: Float): Float = b * px + d * py + ty
+    def apply(px: Float, py: Float): (Float, Float) = (x(px, py), y(px, py))
+    def translate(dx: Float, dy: Float): Transform = copy(tx = x(dx, dy), ty = y(dx, dy))
+    def scale(sx: Float, sy: Float): Transform = Transform(a * sx, b * sx, c * sy, d * sy, tx, ty)
     def rotate(theta: Float): Transform = {
       val cosine = scala.math.cos(theta).toFloat
       val sine = scala.math.sin(theta).toFloat

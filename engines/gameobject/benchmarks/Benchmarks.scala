@@ -56,12 +56,14 @@ object Benchmarks {
       }
   }
 
+  private val scenarios: Vector[core.Scenario] = core.Scenarios.all ++ core.CanvasScenarios.all
+
   private def scenarioNamed(name: String): core.Scenario =
-    core.Scenarios.all.find(_.name == name).getOrElse(throw new IllegalArgumentException(s"No scenario named $name"))
+    scenarios.find(_.name == name).getOrElse(throw new IllegalArgumentException(s"No scenario named $name"))
 
   private def parse(args: List[String], options: Options): Either[String, Options] = args match {
     case Nil =>
-      val unknown = options.scenarios.filterNot(name => core.Scenarios.all.exists(_.name == name))
+      val unknown = options.scenarios.filterNot(name => scenarios.exists(_.name == name))
       if(unknown.nonEmpty) Left(s"Unknown scenarios: ${unknown.mkString(", ")}. --list shows them.")
       else if(options.count < 1 || options.seconds <= 0 || options.warmup < 0) Left("--count and --seconds must be positive")
       else Right(options)
@@ -90,9 +92,9 @@ object Benchmarks {
   // ---- The parent: one child process per scenario ----
 
   private def runAll(options: Options): Unit = {
-    val scenarios = core.Scenarios.all.filter(s => options.scenarios.isEmpty || options.scenarios.contains(s.name))
+    val selected = scenarios.filter(s => options.scenarios.isEmpty || options.scenarios.contains(s.name))
     if(options.list) {
-      scenarios.foreach(s => println(f"${s.name}%-20s ${s.description}"))
+      selected.foreach(s => println(f"${s.name}%-20s ${s.description}"))
       return
     }
     // Read first, so that a wrong path does not cost a run.
@@ -102,7 +104,7 @@ object Benchmarks {
       println(f"Warning: the machine is busy (load ${machine.getSystemLoadAverage}%.1f on ${machine.getAvailableProcessors} cores): times will be noisy.")
     }
     var header = false
-    val results = scenarios.flatMap { scenario =>
+    val results = selected.flatMap { scenario =>
       // Whatever else the machine does only makes a run slower.
       (1 to options.runs).flatMap(_ => runChild(scenario, options)).maxByOption(_._2("fps")).map { case (renderer, result) =>
         if(!header) {
@@ -125,7 +127,7 @@ object Benchmarks {
       })
       println(s"Saved to ${userPath(path)}")
     }
-    if(results.size < scenarios.size) java.lang.System.exit(1)
+    if(results.size < selected.size) java.lang.System.exit(1)
   }
 
   private def load(path: Path): Map[(String, Int), Result] =
@@ -165,16 +167,31 @@ object Benchmarks {
   // ---- The child: measures one scenario ----
 
   private def measure(measured: core.Scenario, things: Int, warmup: Double, seconds: Double, screenshot: Option[String]): (String, Vector[(String, Double)]) = {
-    object app extends HeadlessOpenGLApp
-        with core.BenchmarkApp
-        with core.GeneratedAssetsProvider
-        with DesktopSystemProvider
-        with NoLoggingProvider {
-      override val frameDimension: (Int, Int) = (1000, 1000)
-      override def scenario: core.Scenario = measured
-      override def count: Int = things
-      override def now(): Long = java.lang.System.nanoTime()
+    val app: HeadlessOpenGLApp & core.Measured = measured match {
+      case engineScenario: core.EngineScenario =>
+        object app extends HeadlessOpenGLApp
+            with core.BenchmarkApp
+            with core.GeneratedAssetsProvider
+            with DesktopSystemProvider
+            with NoLoggingProvider {
+          override val frameDimension: (Int, Int) = (1000, 1000)
+          override def scenario: core.EngineScenario = engineScenario
+          override def count: Int = things
+        }
+        app
+      case canvasScenario: core.CanvasScenario =>
+        object app extends HeadlessOpenGLApp
+            with core.CanvasBenchmarkApp
+            with core.GeneratedAssetsProvider
+            with DesktopSystemProvider
+            with NoLoggingProvider {
+          override val frameDimension: (Int, Int) = (1000, 1000)
+          override def scenario: core.CanvasScenario = canvasScenario
+          override def count: Int = things
+        }
+        app
     }
+    def now(): Long = java.lang.System.nanoTime()
     val dt = 1.0 / 60.0
     def frame(): Unit = {
       app.step(dt)
@@ -183,14 +200,14 @@ object Benchmarks {
 
     app.start()
     try {
-      val deadline = app.now() + 30_000_000_000L
+      val deadline = now() + 30_000_000_000L
       while(!app.ready) {
-        if(app.now() > deadline) throw new IllegalStateException("The benchmark scene did not load")
+        if(now() > deadline) throw new IllegalStateException("The benchmark scene did not load")
         Thread.sleep(5)
         app.step(dt)
       }
-      val warm = app.now() + (warmup * 1e9).toLong
-      while(app.now() < warm) frame()
+      val warm = now() + (warmup * 1e9).toLong
+      while(now() < warm) frame()
       val error = GL11C.glGetError()
       if(error != GL11C.GL_NO_ERROR) throw new IllegalStateException(s"OpenGL error $error")
       screenshot.foreach { path =>
@@ -220,14 +237,14 @@ object Benchmarks {
       var frames = 0
       var update, submit, draw, gpu = 0L
       val (alloc0, gcs0, gcMillis0, cpu0) = (allocated, collections, collectionMillis, os.getProcessCpuTime)
-      val start = app.now()
+      val start = now()
       val end = start + (seconds * 1e9).toLong
       var before = start
       while(before < end) {
         app.step(dt)
-        val drawn = app.now()
+        val drawn = now()
         GL11C.glFinish()
-        val finished = app.now()
+        val finished = now()
         val times = app.times
         update += times.renderStarted - times.started
         submit += times.renderEnded - times.renderStarted
