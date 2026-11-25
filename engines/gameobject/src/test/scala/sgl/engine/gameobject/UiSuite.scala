@@ -118,16 +118,10 @@ class UiSuite extends AnyFunSuite {
     assert(ui.button(UiBox(0f, 60f, 100f, 40f), "after"))
   }
 
-  private final class Log extends Painter2D {
+  private final class Log extends FakePainter2D {
     val calls = scala.collection.mutable.ArrayBuffer.empty[String]
-    override def camera: Vec2 = Vec2(0f, 0f)
-    override def viewport: Vec2 = Vec2(100f, 100f)
-    override def screenSize: Vec2 = Vec2(100f, 100f)
-    override def triangle(a: Vec2, b: Vec2, c: Vec2, color: Color): Unit = fail("No triangles")
     override def quad(a: Vec2, b: Vec2, c: Vec2, d: Vec2, color: Color): Unit =
       calls += s"quad ${a.x} ${a.y} ${c.x - a.x} ${c.y - a.y}"
-    override def image(t: Texture2D, a: Vec2, b: Vec2, c: Vec2, d: Vec2, u0: Float, v0: Float, u1: Float, v1: Float, color: Color): Unit =
-      fail("No images")
     override def clip(position: Vec2, size: Vec2)(body: => Unit): Unit = {
       calls += s"clip ${position.x} ${position.y} ${size.x} ${size.y}"
       body

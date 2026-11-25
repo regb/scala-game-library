@@ -549,6 +549,42 @@ class OpenGLRendererSuite extends AnyFunSuite {
     assert(drawn() == 1)
   }
 
+  test("shapes that are off the screen are not drawn") {
+    val app = new FakeGLApp
+    val renderer = new OpenGLRenderer(app)
+    val world = renderWorld()
+    val loading = load(renderer, standalone)
+    app.uploads.foreach(_.complete())
+    val texture = loaded(loading)
+    // On a screen of 200 by 100.
+    def drawn(draw: Painter2D => Unit): Int = {
+      app.draws.clear()
+      renderer.beginFrame(world)
+      renderer.render2D.screen()(draw)
+      renderer.endFrame(world)
+      app.draws.map(_._2.length / (6 * 8)).sum
+    }
+    val shapes = Vector[(Painter2D, Float, Float) => Unit](
+      (painter, x, y) => painter.sprite(texture, x, y, 10f, 20f),
+      (painter, x, y) => painter.rect(x - 5f, y - 10f, 10f, 20f, Color.White),
+      (painter, x, y) => painter.rect(x + 5f, y + 10f, -10f, -20f, Color.White),
+      (painter, x, y) => painter.shaded(texture, x - 5f, y - 10f, 10f, 20f, Color.White, Color.White, Color.White, Color.White),
+      (painter, x, y) => painter.line(x, y - 10f, x, y + 10f, 10f, Color.White)
+    )
+    for(shape <- shapes) {
+      val near = Vector((-4f, 50f), (204f, 50f), (100f, -9f), (100f, 109f))
+      val off = Vector((-6f, 50f), (206f, 50f), (100f, -11f), (100f, 111f))
+      assert(drawn(painter => near.foreach((x, y) => shape(painter, x, y))) == 4)
+      assert(drawn(painter => off.foreach((x, y) => shape(painter, x, y))) == 0)
+    }
+    // Turned, it is twice as wide.
+    val turned = (scala.math.Pi / 2).toFloat
+    assert(drawn(_.sprite(texture, -6f, 50f, 10f, 20f, turned)) == 1)
+    assert(drawn(_.sprite(texture, 100f, -6f, 10f, 20f, turned)) == 0)
+    // One larger than the screen has all of its corners off it.
+    assert(drawn(_.rect(-100f, -100f, 1000f, 1000f, Color.White)) == 1)
+  }
+
   test("an image that failed to load is an error even where the camera does not show it") {
     val app = new FakeGLApp
     val renderer = new OpenGLRenderer(app)
@@ -650,7 +686,8 @@ class OpenGLRendererSuite extends AnyFunSuite {
     }
     renderer.endFrame(world)
     assert(app.draws.map(_._2.length) == Seq(5000 * 3 * 8))
-    assert(app.draws.head._2.grouped(24).map(_(0)).toVector == Vector.tabulate(5000)(i => i / 200f * 2f))
+    val drawn = app.draws.head._2.grouped(24).map(_(0)).toVector
+    assert(drawn.size == 5000 && drawn.zipWithIndex.forall { case (x, i) => scala.math.abs(x - i / 100f) < 0.0001f })
     app.draws.clear()
     drawFrame(renderer, world)
     assert(app.draws.map(_._2.length) == Seq(48, 48, 48))
@@ -808,6 +845,76 @@ class OpenGLRendererSuite extends AnyFunSuite {
     hub.reload(AssetChange.everything)
     hub.drain()
     assert(app.uploads.size == 3)
+  }
+
+  private def painted(app: FakeGLApp, renderer: OpenGLRenderer, world: World)(draw: render2d.Painter2D => Unit): Vector[Vector[Float]] = {
+    app.draws.clear()
+    renderer.beginFrame(world)
+    renderer.render2D.screen()(draw)
+    renderer.endFrame(world)
+    app.draws.toVector.flatMap(_._2.grouped(8).map(_.toVector))
+  }
+  private def close(a: Vector[Vector[Float]], b: Vector[Vector[Float]]): Boolean =
+    a.size == b.size && a.flatten.zip(b.flatten).forall { case (x, y) => scala.math.abs(x - y) < 0.0001f }
+
+  test("sprites and shaded rectangles are the images they stand for") {
+    val app = new FakeGLApp
+    val renderer = new OpenGLRenderer(app)
+    val world = renderWorld()
+    val loading = load(renderer, standalone)
+    // Colors alone, until the image has loaded.
+    val unloaded = painted(app, renderer, world)(_.rect(1f, 2f, 3f, 4f, Color.White))
+    assert(unloaded.size == 6)
+    app.uploads.foreach(_.complete())
+    val texture = loaded(loading)
+    val color = Color(1f, 0.5f, 0.25f, 0.5f)
+    def corners(a: (Float, Float), b: (Float, Float), c: (Float, Float), d: (Float, Float)) = painted(app, renderer, world)(
+      _.image(texture, Vec2(a._1, a._2), Vec2(b._1, b._2), Vec2(c._1, c._2), Vec2(d._1, d._2), 0.25f, 0f, 0.75f, 1f, color)
+    )
+    assert(close(
+      painted(app, renderer, world)(_.sprite(texture, 20f, 10f, 8f, 4f, 0f, color, 0.25f, 0f, 0.75f, 1f)),
+      corners((16f, 8f), (24f, 8f), (24f, 12f), (16f, 12f))
+    ))
+    // A quarter turn, clockwise on the screen.
+    assert(close(
+      painted(app, renderer, world)(_.sprite(texture, 20f, 10f, 8f, 4f, (scala.math.Pi / 2).toFloat, color, 0.25f, 0f, 0.75f, 1f)),
+      corners((22f, 6f), (22f, 14f), (18f, 14f), (18f, 6f))
+    ))
+    assert(close(
+      painted(app, renderer, world)(_.shaded(texture, 16f, 8f, 8f, 4f, color, color, color, color, 0.25f, 0f, 0.75f, 1f)),
+      corners((16f, 8f), (24f, 8f), (24f, 12f), (16f, 12f))
+    ))
+    val four = Vector(Color.White, Color(1f, 0f, 0f), Color(0f, 1f, 0f), Color(0f, 0f, 1f))
+    val shades = painted(app, renderer, world)(_.shaded(texture, 0f, 0f, 1f, 1f, four(0), four(1), four(2), four(3))).map(_.slice(2, 5))
+    assert(shades == Vector(0, 1, 2, 0, 2, 3).map(i => Vector(four(i).red, four(i).green, four(i).blue)))
+  }
+
+  test("a baked drawing is painted again once its image has loaded, and goes with its scope") {
+    val app = new FakeGLApp
+    val renderer = new OpenGLRenderer(app)
+    val world = renderWorld()
+    val scope = world.createScope("baked")
+    val loading = load(renderer, standalone)
+    var paintings = 0
+    var texture: Texture2D = null
+    val baked = renderer.bake2D { painter =>
+      paintings += 1
+      painter.sprite(texture, 0f, 0f, 2f, 2f)
+    }(using scope)
+    texture = renderer.loadTexture2D(standalone)(using world.globalScope)
+    def frame(): Unit = { val _ = painted(app, renderer, world)(_.baked(baked)) }
+    frame(); frame()
+    assert(paintings == 1)
+    app.uploads.foreach(_.complete())
+    val _ = loaded(loading)
+    frame(); frame()
+    assert(paintings == 2)
+    baked.invalidate()
+    frame()
+    assert(paintings == 3)
+    world.destroyScope(scope)
+    frame()
+    assert(paintings == 3)
   }
 
   test("when page reloads overlap only the latest upload is kept, and dispose stops reloading") {

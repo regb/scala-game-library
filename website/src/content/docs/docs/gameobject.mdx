@@ -585,6 +585,23 @@ A texture belongs to the scope it is loaded in. An image is uploaded once howeve
 show it, and leaves the GPU with the last of them. An image needed by several scenes in a row stays
 loaded if it is also loaded in the world's global scope.
 
+For games that draw tens of thousands of things a frame, `sprite`, `rect`, `line`, and `shaded` (a
+color for each corner) take numbers instead of points and allocate nothing. `additive { ... }` adds
+what it paints to what is below, for light and sparks, in the same draw calls as the rest.
+
+What seldom changes can stay on the GPU. A baked drawing is painted once, then drawn for little more
+than a draw call, wherever and however tinted:
+
+```scala
+val chunk: Baked2D = renderer.bake2D { painter =>
+  tiles.foreach(tile => painter.sprite(tile.texture, tile.x, tile.y, 32f, 32f))
+}
+draw.world(z = 0f)(painter => painter.baked(chunk, tint = Color(1f, 1f, 1f, 0.5f)))
+```
+
+It is painted when it is first drawn, again when its images are loaded or reloaded, and after
+`chunk.invalidate()`. Like a texture it belongs to the scope it is created in.
+
 A scene that should appear with its textures already loaded waits for them in the `preload` of an
 [`AsyncScene`](#scenes-that-load-first).
 

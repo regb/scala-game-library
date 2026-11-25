@@ -22,8 +22,14 @@ private[sgl] final class VertexBatch[T](val floatsPerVertex: Int, slots: Int) {
   private var runFirstTextures = new Array[Int](64)
   private var lastTexture: Option[T] = None
   private var currentSlot = 0f
+  // What is done between two draw calls, and the run it is done before.
+  private val actions = mutable.ArrayBuffer.empty[() => Unit]
+  private val actionRuns = mutable.ArrayBuffer.empty[Int]
+  // Whether the next shape starts a run, whatever its texture is.
+  private var cut = false
 
-  def isEmpty: Boolean = size == 0
+  /** Whether there is nothing to draw and nothing to do. */
+  def isEmpty: Boolean = size == 0 && actions.isEmpty
 
   /** The array vertices are written to, valid until the next `begin`. */
   def values: Array[Float] = valuesArray
@@ -40,6 +46,18 @@ private[sgl] final class VertexBatch[T](val floatsPerVertex: Int, slots: Int) {
     textures.clear()
     lastTexture = None
     currentSlot = 0f
+    actions.clear()
+    actionRuns.clear()
+    cut = false
+  }
+
+  /** Does something after the shapes so far are drawn, and before the ones to
+    * come, which are then drawn by another call.
+    */
+  def between(action: () => Unit): Unit = {
+    actions += action
+    actionRuns += runsCount
+    cut = true
   }
 
   /** Starts a shape of that many vertices, each of which is then written at the
@@ -48,9 +66,14 @@ private[sgl] final class VertexBatch[T](val floatsPerVertex: Int, slots: Int) {
   def begin(texture: Option[T], vertexCount: Int): Unit = {
     val needed = size + vertexCount * floatsPerVertex
     if(needed > valuesArray.length) valuesArray = java.util.Arrays.copyOf(valuesArray, scala.math.max(needed, valuesArray.length * 2))
-    if(runsCount == 0) startRun()
+    if(runsCount == 0 || cut) {
+      cut = false
+      startRun()
+      lastTexture = None
+      currentSlot = 0f
+    }
     // Most shapes have the texture of the one before.
-    if(texture != lastTexture) {
+    if((texture ne lastTexture) && texture != lastTexture) {
       lastTexture = texture
       texture match {
         case None => currentSlot = 0f
@@ -84,12 +107,18 @@ private[sgl] final class VertexBatch[T](val floatsPerVertex: Int, slots: Int) {
 
   /** Goes through the draw calls: `bind` is given each texture and its unit,
     * counted from 0, and `draw` then the first vertex and how many there are.
-    * Returns how many texture units were used.
+    * What is to be done in between is done in between. Returns how many texture
+    * units were used by the calls.
     */
   def foreachRun(bind: (Int, T) => Unit)(draw: (Int, Int) => Unit): Int = {
     var used = 0
     var run = 0
+    var action = 0
     while(run < runsCount) {
+      while(action < actions.size && actionRuns(action) == run) {
+        actions(action)()
+        action += 1
+      }
       val last = run + 1 == runsCount
       val first = runFirstTextures(run)
       val end = if(last) textures.size else runFirstTextures(run + 1)
@@ -103,6 +132,10 @@ private[sgl] final class VertexBatch[T](val floatsPerVertex: Int, slots: Int) {
       draw(runStarts(run), vertexEnd - runStarts(run))
       run += 1
     }
+    while(action < actions.size) {
+      actions(action)()
+      action += 1
+    }
     used
   }
 }
@@ -111,10 +144,17 @@ private[sgl] object VertexBatch {
   /** Textures a draw call can mix. More would cost every pixel a longer choice. */
   val MaxSlots: Int = 8
 
+  /** Added to the slot of vertices that are added to what is below them. */
+  val AdditiveSlots: Float = 16f
+
   /** The fragment shader of batched shapes. It takes `v_color`, `v_uv` and a flat
     * `v_slot`, and reads the samplers `u_texture0` and so on.
+    *
+    * With `additive`, colors come out multiplied by their alpha, to be blended
+    * with (One, OneMinusSrcAlpha): what it does depends on the alpha that is
+    * left, so that shapes which cover and shapes which add share draw calls.
     */
-  def fragmentShader(header: String, slots: Int): String = {
+  def fragmentShader(header: String, slots: Int, additive: Boolean = false): String = {
     // Textures have no mipmaps in use, so naming the level changes nothing, and
     // it lets them be read in a branch.
     val samplers = (0 until slots).map(i => s"uniform sampler2D u_texture$i;").mkString("\n      ")
@@ -130,9 +170,10 @@ private[sgl] object VertexBatch {
 
       void main() {
         int slot = int(v_slot + 0.5);
+        ${if(additive) s"float covers = slot >= ${AdditiveSlots.toInt} ? 0.0 : 1.0;\n        if(slot >= ${AdditiveSlots.toInt}) slot -= ${AdditiveSlots.toInt};" else ""}
         vec4 texel = vec4(1.0);
         $branches
-        out_color = texel * v_color;
+        ${if(additive) "vec4 color = texel * v_color;\n        out_color = vec4(color.rgb * color.a, color.a * covers);" else "out_color = texel * v_color;"}
       }
     """
   }

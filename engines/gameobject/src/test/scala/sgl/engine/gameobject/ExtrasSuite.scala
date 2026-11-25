@@ -86,19 +86,13 @@ class ExtrasSuite extends AnyFunSuite {
     assertThrows[CompositionError](sprite.attach(new SpriteAnimation(_, Animation(Vector(color(0)), 1.0))))
   }
 
-  private final class Quads extends Painter2D {
+  private final class Quads extends FakePainter2D {
     val quads = scala.collection.mutable.ArrayBuffer.empty[(Vec2, Float, Color)]
-    override def camera: Vec2 = Vec2(0f, 0f)
-    override def viewport: Vec2 = Vec2(100f, 100f)
-    override def screenSize: Vec2 = Vec2(100f, 100f)
-    override def triangle(a: Vec2, b: Vec2, c: Vec2, color: Color): Unit = fail("No triangles")
     override def quad(a: Vec2, b: Vec2, c: Vec2, d: Vec2, color: Color): Unit =
       quads += (((a + c) * 0.5f, b.x - a.x, color))
     override def image(t: Texture2D, a: Vec2, b: Vec2, c: Vec2, d: Vec2, u0: Float, v0: Float, u1: Float, v1: Float, color: Color): Unit =
       images += t
     val images = scala.collection.mutable.ArrayBuffer.empty[Texture2D]
-    override def clip(position: Vec2, size: Vec2)(body: => Unit): Unit = body
-    override def text(value: String, position: Vec2, size: Float, color: Color, bold: Boolean): Unit = fail("No text")
   }
 
   private def painted(particles: Particles): Vector[(Vec2, Float, Color)] = {

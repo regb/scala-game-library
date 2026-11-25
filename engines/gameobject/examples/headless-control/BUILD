@@ -5,6 +5,7 @@ scala_test(
     name = "headless-control-integration-test",
     srcs = [
         "HeadlessControlIntegrationSuite.scala",
+        "PainterHeadlessSuite.scala",
         "PortableCanvasFontConformanceSuite.scala",
     ],
     env = {

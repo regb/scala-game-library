@@ -2,7 +2,7 @@ package sgl.engine.gameobject.render3d
 
 import sgl.assets.{DrawableAsset, RawImageAsset}
 import sgl.engine.gameobject.{ComponentOf, Scope, World}
-import sgl.engine.gameobject.render2d.{Render2D, Texture2D}
+import sgl.engine.gameobject.render2d.{Baked2D, Painter2D, Render2D, Texture2D}
 import sgl.engine.gameobject.spatial3d.{GameObject3D, Spatial3D}
 import sgl.geometry.Mat4
 import sgl.util.Loader
@@ -85,9 +85,16 @@ trait Renderer {
     */
   def createMaterial(texture: Texture2D, emissive: Float)(using Scope): Material
 
+  /** Keeps a drawing on the GPU, to be drawn with `Painter2D.baked`. Its points
+    * are in the space of the drawing it is drawn in, before the offset. It
+    * cannot draw another baked drawing.
+    */
+  def bake2D(draw: Painter2D => Unit)(using Scope): Baked2D
+
   def releaseMesh(mesh: Mesh): Unit
   def releaseTexture(texture: Texture2D): Unit
   def releaseMaterial(material: Material): Unit
+  def releaseBaked(baked: Baked2D): Unit
 
   def resize(width: Int, height: Int): Unit = {}
 
