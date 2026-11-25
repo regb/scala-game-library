@@ -30,6 +30,12 @@ final case class FixedDeltaTime(seconds: Double, maxStepsPerFrame: Int = 8)
 
 final case class ElapsedTime(seconds: Double)
 
+/** How far the frame is between the last fixed step and the next one, from 0
+  * to 1. What moves in fixed steps is drawn smoothly by interpolating between
+  * where it was before the last step and where it is now by this much.
+  */
+final case class FixedStepProgress(value: Float)
+
 /** Longest time a single frame is allowed to stand for. A frame that took
   * longer, because of a hitch or a return from the background, is seen by the
   * game as this long: `DeltaTime` is capped and `ElapsedTime` advances by the
@@ -502,6 +508,7 @@ final class GameRuntime private[gameobject] (
         }
       }
       worldValue.globals.set(DeltaTime(dt))
+      worldValue.globals.set(FixedStepProgress(if(fixedStep > 0.0) (fixedAccumulator / fixedStep).toFloat else 1f))
 
       run(Stage.Update, frameScope)
       run(Stage.PostUpdate, frameScope)
@@ -713,6 +720,7 @@ final class GameRuntime private[gameobject] (
   private def resetFrameGlobals(): Unit = {
     worldValue.globals.set(DeltaTime(0.0))
     worldValue.globals.set(ElapsedTime(elapsedSeconds))
+    worldValue.globals.set(FixedStepProgress(0f))
   }
 
   private def ensureRunning(): Unit = {

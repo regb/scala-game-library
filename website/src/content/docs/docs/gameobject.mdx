@@ -249,6 +249,10 @@ frame slows the simulation down for a moment instead of replaying every missed s
 own delta time is capped too, by the `MaxDeltaTime` global (0.25 s by default): a longer frame is
 seen by the game as that long.
 
+The `FixedStepProgress` global tells how far the frame is between the last fixed step and the next
+one, from 0 to 1. Draw what moves in fixed steps that much of the way from where it was before the
+last step to where it is now, and it moves smoothly at any frame rate.
+
 Two more stages run outside of a frame: `Pause` when the application leaves the foreground and
 `Resume` when it comes back, which is where a game saves its state or stops its music. The current
 scene is told first, through its `pause` and `resume` methods. Fixed

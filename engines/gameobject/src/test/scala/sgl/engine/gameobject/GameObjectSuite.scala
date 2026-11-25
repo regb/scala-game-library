@@ -792,6 +792,18 @@ class GameObjectSuite extends AnyFunSuite {
     assert(steps === 4)
   }
 
+  test("a frame knows how far it is between two fixed steps") {
+    var seen = Vector.empty[Float]
+    val runtime = new GameBuilder()
+      .setGlobal(FixedDeltaTime(0.1))
+      .addSystem(Stage.Render, GameSystem("record") { seen :+= summon[GameContext].global[FixedStepProgress].value })
+      .build(new TestEngine(new RecordingRenderer))
+    runtime.startup()
+    assert(runtime.world.globals.get[FixedStepProgress].value === 0f)
+    Vector(0.025, 0.05, 0.05, 0.225).foreach(runtime.frame)
+    assert(seen.zip(Vector(0.25f, 0.75f, 0.25f, 0.5f)).forall { case (a, b) => (a - b).abs < 0.001f }, seen)
+  }
+
   test("a frame longer than MaxDeltaTime is seen as that long") {
     var seen = Vector.empty[Float]
     val runtime = new GameBuilder()
