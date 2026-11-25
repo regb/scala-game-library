@@ -2,7 +2,6 @@ import { repo } from './showcase';
 
 export const navLinks = [
   { label: 'Docs', href: '/docs/' },
-  { label: 'AI Agents', href: '/docs/ai-agents/' },
   { label: 'Showcase', href: '/showcase/' },
   { label: 'Community', href: '/community/' },
 ];
