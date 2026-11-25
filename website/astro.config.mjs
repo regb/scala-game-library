@@ -38,6 +38,7 @@ export default defineConfig({
             'SGL is a code-first, declaratively composed, compiler-verified game framework in Scala 3. Typed assets, compile-time checked GameObject composition, and headless OpenGL testing make one concise game core reliable to build—by hand or with AI coding agents—and ship via Bazel to desktop JVM, web (Scala.js), native binaries (Scala Native), and Android.',
           details: [
             'SGL is pre-release (before 0.1) and its API changes often. When the docs and the code disagree, the code wins: read the SGL source and its examples (`examples/`, `engines/*/examples/`) at the commit your project pins.',
+            'To make a new game, follow https://libsgl.com/start.md.',
             'A reusable Agent Skill is maintained in the repository at `skills/sgl/SKILL.md`.',
             '',
             'Rules that matter when writing SGL code:',
@@ -73,6 +74,8 @@ export default defineConfig({
             },
           ],
           optionalLinks: [
+            { label: 'Start a game', url: 'https://libsgl.com/start.md', description: 'Instructions for agents: create, build, and test a new game from the starter template' },
+            { label: 'Starter template', url: 'https://github.com/regb/sgl-starter-project', description: 'A small finished game with desktop, web, and native targets, a headless test, and an AGENTS.md' },
             { label: 'SGL Agent Skill', url: 'https://github.com/regb/scala-game-library/blob/master/skills/sgl/SKILL.md', description: 'Reusable Agent Skill (SKILL.md) with SGL invariants and the headless verification loop' },
             { label: 'Source code', url: 'https://github.com/regb/scala-game-library', description: 'The SGL repository, including runnable examples' },
             { label: 'Examples', url: 'https://github.com/regb/scala-game-library/tree/master/examples', description: 'Core API examples, each with desktop, web, and native targets' },

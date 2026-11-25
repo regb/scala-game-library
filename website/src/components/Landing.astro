@@ -17,7 +17,7 @@ const verificationSteps = [
   {
     step: '01',
     title: 'Machine-readable context',
-    body: 'Ship with the repository’s Agent Skill (skills/sgl/SKILL.md) and /llms.txt so agents know exact SGL conventions from turn one.',
+    body: 'One prompt points an agent at /start.md: a tested project template, its AGENTS.md, the SGL Agent Skill, and /llms.txt.',
   },
   {
     step: '02',
@@ -158,7 +158,7 @@ bazel test //engines/gameobject/examples/headless-control:headless-control-integ
     <div class="hero-actions section-more">
       <a class="sgl-button primary" href="/docs/ai-agents/">Explore the verification loop →</a>
       <a class="sgl-button secondary" href={`${repo}/blob/master/skills/sgl/SKILL.md`}>SGL Agent Skill</a>
-      <a class="sgl-button secondary" href="/llms.txt">llms.txt</a>
+      <a class="sgl-button secondary" href="https://github.com/regb/sgl-starter-project">Project template</a>
     </div>
   </section>
 

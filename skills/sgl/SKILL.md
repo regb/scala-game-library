@@ -10,6 +10,8 @@ SGL is a code-first, declaratively composed, compiler-verified game framework in
 
 Documentation index for agents: `https://libsgl.com/llms.txt` (full reference: `https://libsgl.com/llms-full.txt`). SGL is pre-0.1 and evolves quickly: when docs and source disagree, **the SGL source and examples at the pinned commit win**.
 
+To start a new game project, follow `https://libsgl.com/start.md`, which uses the template at `https://github.com/regb/sgl-starter-project`. In a game project, SGL labels are prefixed with `@sgl` (`//core:sgl-core` is `@sgl//core:sgl-core`).
+
 ## Choose the Right Layer
 
 Pick **at most one** engine on top of `//core:sgl-core`:

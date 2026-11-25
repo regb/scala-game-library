@@ -242,13 +242,16 @@ h1#_top {
 }
 
 .hero-command {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
+  display: grid;
+  gap: 0.35rem;
   margin-top: 1.5rem;
   color: var(--sl-color-gray-3);
   font-family: var(--sl-font-mono);
   font-size: var(--sl-text-xs);
+}
+
+.hero-command a {
+  color: inherit;
 }
 
 .hero-command span {

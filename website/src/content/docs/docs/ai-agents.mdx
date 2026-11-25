@@ -14,6 +14,19 @@ SGL removes those failure modes by construction:
 - **Compiler-verified correctness.** Missing providers, broken asset names, duplicate or mis-ordered components, and leaked scene scopes fail at compile time with direct error messages—giving an agent exact repair instructions before a single frame runs.
 - **Deterministic headless verification.** The headless OpenGL backend renders on CPU (Mesa `llvmpipe`) with no display or GPU, accepts synthetic input, steps frames deterministically, and captures RGBA8 frames that tests or multimodal agents can inspect.
 
+## Start a game with one prompt
+
+Give your agent this prompt, and add what the game should be:
+
+```text
+Make a game with SGL: follow https://libsgl.com/start.md
+```
+
+[`start.md`](/start.md) has the agent create a project from the
+[starter template](https://github.com/regb/sgl-starter-project), check that it builds and passes its
+test, and then build your game in small, tested steps. The template has a finished 2D game, desktop,
+web, and native targets, a headless test that captures a frame, and an `AGENTS.md` with the rules.
+
 ## The verification loop
 
 AI-assisted development is only as reliable as its feedback loop. With SGL, an agent can write, verify, and visually inspect a game completely from the terminal:
