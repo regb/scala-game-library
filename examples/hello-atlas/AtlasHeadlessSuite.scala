@@ -11,7 +11,7 @@ import _root_.sgl.engine.gameobject.render2d.Texture2D
 import _root_.sgl.engine.gameobject.render3d._
 import _root_.sgl.engine.gameobject.spatial3d._
 import _root_.sgl.headless.opengl.HeadlessOpenGLApp
-import _root_.sgl.math.{Mat4, Vec3}
+import _root_.sgl.geometry.{Mat4, Vec3}
 import _root_.sgl.util.{Loader, NoLoggingProvider}
 
 /** Draws atlas regions in 3D, on meshes and with a game's own drawings. */

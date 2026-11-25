@@ -17,10 +17,16 @@ legacyUpdate((dt * 1000.0).toLong)
 ## Current conventions
 
 - The core is shared by all games. Engines are optional architectures on top of it.
-- 2D/3D math lives under `sgl.math`.
+- Vectors, matrices, shapes, and collisions live in `sgl.geometry`.
 - GameObject engine packages use `sgl.engine.gameobject`.
 - GameObject 2D rendering is OpenGL-backed.
 - Static files should be declared with typed asset rules and consumed by `sgl_core_library`.
+
+## sgl.math is now sgl.geometry
+
+`sgl.math` hid `scala.math` in files that import `sgl._`, so `math.sin` did not compile. Replace
+`sgl.math` with `sgl.geometry` in imports, and `math.Vec2` and similar names with `geometry.Vec2`.
+`import scala.math` next to `import sgl._` is no longer needed.
 
 ## Resource paths to typed assets
 
@@ -170,7 +176,8 @@ gameObject.component[Spatial2D].foreach { spatial =>
   installed in a scene: change the parameter type. Installing a module twice in the game now has no
   effect the second time. `SceneLoading` is no longer a case class.
 - `Renderer.drawMeshes` was replaced by submitting meshes to `Render3D`. An implementation of the
-  core `OpenGL` trait needs the new `depthMask`, `textureUnit`, and `maxTextureUnits`.
+  core `OpenGL` trait needs the new `depthMask`, `textureUnit`, `maxTextureUnits`, `One`, and
+  `blendFuncSeparate`.
 
 ## Web builds
 

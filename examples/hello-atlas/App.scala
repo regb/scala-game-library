@@ -5,7 +5,7 @@ import _root_.sgl.engine.gameobject.Scope
 import _root_.sgl.engine.gameobject.spatial2d._
 import _root_.sgl.engine.gameobject.render2d.{Render2DModule, SpriteRenderer, SpriteVisual, Texture2D, TileQuad, Tilemap}
 import _root_.sgl.engine.gameobject.{ClearColor, GameBuilder, GameContext, OpenGLGameObjectApp, Scene}
-import _root_.sgl.math.Vec2
+import _root_.sgl.geometry.Vec2
 
 /** Draws typed drawables that the build packed into one texture atlas.
   *

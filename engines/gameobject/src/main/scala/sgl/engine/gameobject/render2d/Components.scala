@@ -2,7 +2,7 @@ package sgl.engine.gameobject.render2d
 
 import sgl.engine.gameobject.spatial2d.{GameObject2D, Spatial2D}
 import sgl.engine.gameobject.{Color, ComponentOf, TypedObject}
-import sgl.math.Vec2
+import sgl.geometry.Vec2
 
 /** A texture, for sprites, tiles and materials alike. It is a handle: what it
   * draws depends on the renderer having loaded it, and nothing is drawn with a

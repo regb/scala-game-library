@@ -6,7 +6,7 @@ import sgl.assets.{DrawableAsset, RawImageAsset}
 import sgl.engine.gameobject.render2d.Texture2D
 import sgl.engine.gameobject.render3d.{Material, Mesh, MeshData, Renderer}
 import sgl.engine.gameobject.spatial2d._
-import sgl.math.Vec2
+import sgl.geometry.Vec2
 
 class GameObjectSuite extends AnyFunSuite {
 
@@ -421,7 +421,7 @@ class GameObjectSuite extends AnyFunSuite {
     child.clearParent()
     assert(child.global.position === Vec2(1f, 2f))
 
-    val parent3D = world.spawn3D("parent3D", Transform3D(position = sgl.math.Vec3(1f, 2f, 3f)))
+    val parent3D = world.spawn3D("parent3D", Transform3D(position = sgl.geometry.Vec3(1f, 2f, 3f)))
     val child3D = world.spawn3D("child3D").childOf(parent3D)
     assert(child3D.globalMatrix.values.toSeq === parent3D.spatial.local.matrix.values.toSeq)
   }
@@ -429,7 +429,7 @@ class GameObjectSuite extends AnyFunSuite {
   test("a 3D camera's view follows its transform and its parents") {
     import sgl.engine.gameobject.render3d.{Camera3D, Render3DModule}
     import sgl.engine.gameobject.spatial3d._
-    import sgl.math.{Mat4, Quaternion, Vec3}
+    import sgl.geometry.{Mat4, Quaternion, Vec3}
     val world = new World
     import world.given
     world.globals.set[Render3DModule.type](Render3DModule)

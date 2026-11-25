@@ -1,4 +1,4 @@
-package sgl.math
+package sgl.geometry
 
 final case class Mat4(values: Array[Float]) {
   def *(that: Mat4): Mat4 = Mat4.multiply(this, that)

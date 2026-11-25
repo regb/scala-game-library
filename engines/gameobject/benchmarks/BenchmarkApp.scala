@@ -6,7 +6,7 @@ import _root_.sgl.engine.gameobject.render2d._
 import _root_.sgl.engine.gameobject.render3d._
 import _root_.sgl.engine.gameobject.spatial2d._
 import _root_.sgl.engine.gameobject.spatial3d._
-import _root_.sgl.math.{Vec2, Vec3}
+import _root_.sgl.geometry.{Vec2, Vec3}
 import _root_.sgl.util.Loader
 
 /** What every benchmark is built from: the scene's textures, and how many

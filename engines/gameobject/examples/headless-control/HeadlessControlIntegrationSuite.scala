@@ -7,7 +7,7 @@ import sgl.engine.gameobject.extras._
 import sgl.engine.gameobject.render2d._
 import sgl.engine.gameobject.spatial2d._
 import sgl.headless.opengl.HeadlessOpenGLApp
-import sgl.math.Vec2
+import sgl.geometry.Vec2
 import sgl.util.NoLoggingProvider
 
 class HeadlessControlIntegrationSuite extends AnyFunSuite {

@@ -1,7 +1,7 @@
 package sgl.engine.gameobject.spatial2d
 
 import sgl.engine.gameobject.{Component, ComponentOf, GameContext, GameObject, Hierarchy, Scope, TypedObject, World}
-import sgl.math.Vec2
+import sgl.geometry.Vec2
 
 // The 2D spatial layer. Everything here is written against the public API of
 // the core package: it is the reference for how a game can add its own kind of

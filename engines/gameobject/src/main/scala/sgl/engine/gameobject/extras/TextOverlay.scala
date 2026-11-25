@@ -2,7 +2,7 @@ package sgl.engine.gameobject.extras
 
 import sgl.engine.gameobject.{Color, ComponentOf, GameSetup, GameContext, GameModule, Globals, RequiresGlobals, Scope, Stage, GameSystem, SystemId, TypedObject, World}
 import sgl.engine.gameobject.render2d.{Painter2D, Render2D}
-import sgl.math.Vec2
+import sgl.geometry.Vec2
 
 // A drawable written the way a game would write its own: a component, a
 // system in the Render stage submitting to Render2D, and a module. Nothing

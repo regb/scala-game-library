@@ -1,7 +1,7 @@
 package sgl.engine.gameobject.spatial3d
 
 import sgl.engine.gameobject.{Component, ComponentOf, GameContext, GameObject, Hierarchy, Scope, TypedObject, World}
-import sgl.math.{Mat4, Quaternion, Vec3}
+import sgl.geometry.{Mat4, Quaternion, Vec3}
 
 // The 3D spatial layer, written against the public API of the core package.
 // See the spatial2d package for the 2D counterpart.

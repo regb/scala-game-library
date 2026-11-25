@@ -6,7 +6,7 @@ import _root_.sgl.engine.gameobject.render2d._
 import _root_.sgl.engine.gameobject.render3d._
 import _root_.sgl.engine.gameobject.spatial2d._
 import _root_.sgl.engine.gameobject.spatial3d._
-import _root_.sgl.math.{Mat4, Vec2, Vec3}
+import _root_.sgl.geometry.{Mat4, Vec2, Vec3}
 import _root_.sgl.util.Loader
 
 /** Sprites red, green, red, then a green mesh with a translucent blue quad over it. */

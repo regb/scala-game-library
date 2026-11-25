@@ -1,4 +1,4 @@
-package sgl.math
+package sgl.geometry
 
 /** an AABB Rect.
   *

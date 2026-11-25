@@ -10,7 +10,7 @@ import sgl.engine.gameobject.spatial2d.Spatial2D
 import sgl.assets.{AssetChange, AssetChangeListener, AssetReloads, DrawableAsset, RawImageAsset, TextureFilter}
 import sgl.engine.gameobject.render2d.{Camera2D, Painter2D, Render2D, Texture2D}
 import sgl.engine.gameobject.render3d._
-import sgl.math.{Mat4, Vec2, Vec3}
+import sgl.geometry.{Mat4, Vec2, Vec3}
 import sgl.util.{DefaultLoader, Loader}
 
 /** @param reloads hot-reloaded images are uploaded again and swapped under

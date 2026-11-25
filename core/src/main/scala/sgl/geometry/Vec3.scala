@@ -1,4 +1,4 @@
-package sgl.math
+package sgl.geometry
 
 final case class Vec3(x: Float, y: Float, z: Float) {
   def +(that: Vec3): Vec3 = Vec3(x + that.x, y + that.y, z + that.z)

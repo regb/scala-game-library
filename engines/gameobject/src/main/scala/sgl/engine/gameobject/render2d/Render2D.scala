@@ -1,7 +1,7 @@
 package sgl.engine.gameobject.render2d
 
 import sgl.engine.gameobject.Color
-import sgl.math.Vec2
+import sgl.geometry.Vec2
 
 /** Where systems draw in 2D.
   *

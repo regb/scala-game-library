@@ -4,7 +4,7 @@ import _root_.sgl.engine.gameobject.{GameObject, Scope, World}
 import _root_.sgl.engine.gameobject.spatial2d._
 import _root_.sgl.assets.DrawableAsset
 import _root_.sgl.engine.gameobject.render2d.{SpriteRenderer, SpriteVisual, Texture2D, Tilemap, TileQuad}
-import _root_.sgl.math.Vec2
+import _root_.sgl.geometry.Vec2
 import _root_.sgl.tiled.{ImageLayer, TileLayer, TiledMap, TiledMapObject}
 
 /** Small GameObject integration for engine-independent Tiled data.

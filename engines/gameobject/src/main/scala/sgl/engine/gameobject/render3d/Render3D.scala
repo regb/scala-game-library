@@ -2,7 +2,7 @@ package sgl.engine.gameobject.render3d
 
 import sgl.engine.gameobject.Color
 import sgl.engine.gameobject.render2d.Texture2D
-import sgl.math.{Mat4, Vec3}
+import sgl.geometry.{Mat4, Vec3}
 
 /** Where systems draw in 3D, the counterpart of `Render2D`.
   *

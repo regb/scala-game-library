@@ -2,7 +2,7 @@ package sgl.engine.gameobject.extras
 
 import sgl.engine.gameobject.{Color, ComponentOf, GameSetup, GameContext, GameModule, Globals, RequiresGlobals, Scope, Stage, GameSystem, SystemId, TypedObject, World}
 import sgl.engine.gameobject.render2d.{Painter2D, Render2D}
-import sgl.math.Vec2
+import sgl.geometry.Vec2
 
 /** Covers the world with `color` except for a disc around `worldCenter`: an
   * iris transition when the radius is animated. It goes over everything drawn

@@ -8,7 +8,7 @@ package tiled
 //       It might make sense to extract these functionalities into a PhysicsTiledMap class or
 //       a subpackage, or something else? And leave this file as a pure dependency-less syntax
 //       representation of the tiled map data.
-import sgl.math.{Vec2, Rect, Circle, Ellipse, Polygon}
+import sgl.geometry.{Vec2, Rect, Circle, Ellipse, Polygon}
 
 case class MissingLayer(container: String, layerType: String, name: String)
     extends RuntimeException(s"Missing $layerType layer '$name' in $container")

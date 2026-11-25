@@ -2,7 +2,7 @@ package sgl
 
 /** Immutable distances from the edges of a region, in pixels.
   *
-  * Unlike the mutable geometry types in sgl.math, Insets never change after
+  * Unlike the mutable geometry types in sgl.geometry, Insets never change after
   * construction, so passing an instance across the provider boundary or
   * caching it is always safe.
   */

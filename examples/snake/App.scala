@@ -2,7 +2,7 @@ package sgl.examples.snake
 package core
 
 import _root_.sgl._
-import _root_.sgl.math._
+import _root_.sgl.geometry._
 import _root_.sgl.proxy.{PlatformProxy, ProxiedGameApp, WiredProxyPlatform}
 
 object Wiring {

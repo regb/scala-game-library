@@ -1,6 +1,6 @@
 package sgl
 
-import sgl.math.Point
+import sgl.geometry.Point
 
 class Camera {
   var x: Int = 0

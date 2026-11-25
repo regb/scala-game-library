@@ -7,7 +7,7 @@ import sgl.engine.gameobject.extras.{TextOverlay, TextOverlayModule}
 import sgl.engine.gameobject.render2d._
 import sgl.engine.gameobject.spatial2d._
 import sgl.assets.LiveAsset
-import sgl.math.Vec2
+import sgl.geometry.Vec2
 import sgl.util.Loader
 
 /** A game whose sprite, level, and settings are data.

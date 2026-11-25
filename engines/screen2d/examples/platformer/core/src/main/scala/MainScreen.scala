@@ -2,7 +2,7 @@ package sgl.examples.screen2d.platformer
 package core
 
 import sgl._
-import sgl.math._
+import sgl.geometry._
 import util._
 import sgl.util.metrics.InstrumentationProvider
 import tiled._

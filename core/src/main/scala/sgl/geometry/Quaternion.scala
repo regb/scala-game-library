@@ -1,4 +1,4 @@
-package sgl.math
+package sgl.geometry
 
 final case class Quaternion(x: Float, y: Float, z: Float, w: Float) {
   def *(that: Quaternion): Quaternion = Quaternion(

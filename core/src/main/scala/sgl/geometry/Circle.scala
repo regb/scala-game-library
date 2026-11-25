@@ -1,4 +1,4 @@
-package sgl.math
+package sgl.geometry
 
 case class Circle(x: Float, y: Float, radius: Float) {
   require(radius >= 0)

@@ -1,4 +1,4 @@
-package sgl.math
+package sgl.geometry
 
 class Polygon(val vertices: Vector[Vec2]) {
   require(vertices.size > 2)

@@ -1,4 +1,4 @@
-package sgl.math
+package sgl.geometry
 
 case class Line(xa: Float, ya: Float, xb: Float, yb: Float) {
 

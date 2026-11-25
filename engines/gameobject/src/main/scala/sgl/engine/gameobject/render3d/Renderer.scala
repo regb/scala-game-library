@@ -4,7 +4,7 @@ import sgl.assets.{DrawableAsset, RawImageAsset}
 import sgl.engine.gameobject.{ComponentOf, Scope, World}
 import sgl.engine.gameobject.render2d.{Render2D, Texture2D}
 import sgl.engine.gameobject.spatial3d.{GameObject3D, Spatial3D}
-import sgl.math.Mat4
+import sgl.geometry.Mat4
 import sgl.util.Loader
 
 /** A mesh uploaded to the renderer. */

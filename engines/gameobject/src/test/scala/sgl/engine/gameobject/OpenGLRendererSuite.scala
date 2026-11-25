@@ -11,7 +11,7 @@ import sgl.engine.gameobject.spatial2d._
 import sgl.engine.gameobject.render2d.{Render2DModule, SpriteRenderSystem, SpriteRenderer, SpriteVisual, Texture2D, TileQuad, Tilemap, TilemapRenderSystem}
 import sgl.engine.gameobject.render3d.{Camera3D, MeshData, Render3DModule}
 import sgl.engine.gameobject.spatial3d._
-import sgl.math.{Mat4, Vec2, Vec3}
+import sgl.geometry.{Mat4, Vec2, Vec3}
 import sgl.util.{DefaultLoader, Loader}
 
 class OpenGLRendererSuite extends AnyFunSuite {
