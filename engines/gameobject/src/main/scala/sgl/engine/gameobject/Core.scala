@@ -249,6 +249,28 @@ object Globals {
 final class Scope private[gameobject] (val id: ScopeId, val name: String, private[gameobject] val world: World) {
   private var activeValue = true
 
+  // The objects of the scope in creation order, linked through themselves so
+  // that each one enters and leaves at no cost.
+  private var firstObject: GameObject = null
+  private var lastObject: GameObject = null
+
+  private[gameobject] def add(obj: GameObject): Unit = {
+    obj.previousInScope = lastObject
+    if(lastObject == null) firstObject = obj else lastObject.nextInScope = obj
+    lastObject = obj
+  }
+
+  private[gameobject] def remove(obj: GameObject): Unit = {
+    if(obj.previousInScope == null) firstObject = obj.nextInScope else obj.previousInScope.nextInScope = obj.nextInScope
+    if(obj.nextInScope == null) lastObject = obj.previousInScope else obj.nextInScope.previousInScope = obj.previousInScope
+    obj.previousInScope = null
+    obj.nextInScope = null
+  }
+
+  // Not the ones whose destroy hooks are running.
+  private[gameobject] def liveObjects: Vector[GameObject] =
+    Iterator.iterate(firstObject)(_.nextInScope).takeWhile(_ != null).filter(_.isAlive).toVector
+
   private val destroyActions = mutable.ArrayBuffer.empty[() => Unit]
 
   def isActive: Boolean = activeValue
@@ -367,8 +389,11 @@ final class GameObject private[gameobject] (
   private[gameobject] val components = new ComponentSet(this, world)
   private var aliveValue = true
 
-  def isAlive: Boolean = aliveValue
+  // Kept by the scope.
+  private[gameobject] var previousInScope: GameObject = null
+  private[gameobject] var nextInScope: GameObject = null
 
+  def isAlive: Boolean = aliveValue
 
   private[gameobject] def markDestroyed(): Unit = aliveValue = false
 
@@ -444,6 +469,7 @@ final class World {
     val obj = new GameObject(ObjectId(nextObjectId), name, scope, this)
     nextObjectId += 1
     objectsById(obj.id.value) = obj
+    scope.add(obj)
     obj
   }
 
@@ -468,6 +494,7 @@ final class World {
     }
     components.foreach { case (key, component) => removeComponent(key, component) }
     objectsById.remove(obj.id.value)
+    obj.scope.remove(obj)
     failure.foreach(throw _)
   }
 
@@ -478,7 +505,7 @@ final class World {
   def destroyScope(scope: Scope): Unit = {
     if(scope.world ne this) throw new CompositionError("Cannot destroy a scope belonging to another world")
     if(!scope.isActive) return
-    val objectsFailure = destroyAll(objects.filter(_.scope eq scope))
+    val objectsFailure = destroyAll(scope.liveObjects)
     val actionsFailure = scope.runDestroyActions()
     if(scope ne globalScope) {
       scope.deactivate()
