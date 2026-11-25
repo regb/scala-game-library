@@ -22,19 +22,8 @@ cd coin-dash
 
 The starter already contains a finished game. You will replace it with your own.
 
-Open `MODULE.bazel` and set the SGL commit these tutorials were checked against:
-
-```python title="MODULE.bazel" {4}
-bazel_dep(name = "sgl.bzl", version = "0.0.0", repo_name = "sgl")
-git_override(
-    module_name = "sgl.bzl",
-    commit = "2754f07816b805105e7e33b65d345fb3190a6458",
-    remote = "https://github.com/regb/scala-game-library.git",
-)
-```
-
-The `BUILD.bazel` file needs no change. It declares `:core`, the portable game compiled from `game/`,
-and one target per platform.
+You do not need to change the build. `MODULE.bazel` pins the version of SGL, and `BUILD.bazel`
+declares `:core`, the portable game compiled from `game/`, and one target per platform.
 
 ## Step 1: something on the screen
 
