@@ -23,9 +23,9 @@ class ProvidedCanvasTheme extends Theme {
   override def preserveCanvasCssSize: Boolean = true
 
   private def updateCanvasSizeFromLayout(canvas: html.Canvas): Unit = {
-    val rect = canvas.getBoundingClientRect()
-    val width = math.max(1, rect.width.toInt)
-    val height = math.max(1, rect.height.toInt)
+    val content = ContentBox.of(canvas)
+    val width = math.max(1, content.width.toInt)
+    val height = math.max(1, content.height.toInt)
     canvas.width = width
     canvas.height = height
   }

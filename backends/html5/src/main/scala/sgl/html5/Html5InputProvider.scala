@@ -8,6 +8,8 @@ import dom.html
 
 import scala.collection.mutable
 
+import themes.ContentBox
+
 /** Controls where the HTML5 backend listens for keyboard events.
   *
   * The default keeps the historical standalone-game behavior: keyboard events
@@ -51,7 +53,10 @@ trait Html5InputProvider {
 
   protected def Html5GlobalKeyboardTarget: dom.EventTarget = dom.document
   protected def Html5ReleaseMouseOnLeave: Boolean = false
-  protected def Html5ReleaseMouseOnWindowMouseUp: Boolean = false
+  /** Whether a button pressed on the canvas is released to the game when the
+    * player lets go of it elsewhere on the page.
+    */
+  protected def Html5ReleaseMouseOnWindowMouseUp: Boolean = true
   protected def onHtml5WindowBlur(): Unit = ()
   protected def onHtml5WindowFocus(): Unit = ()
 
@@ -353,8 +358,8 @@ private[html5] object Html5DomInputAdapter {
 
   /*
    * The actual coordinates need to be translated to canvas coordinates.
-   * First offset them by the canvas top-left coordinates, then adapt them to
-   * the canvas backing-store size. The event contains CSS coordinates, while the
+   * First make them relative to what is drawn of the canvas, inside of its
+   * border and padding, then adapt them to the canvas backing-store size. The event contains CSS coordinates, while the
    * canvas internal size can differ from its CSS size, especially on high-DPI
    * displays.
    */
@@ -363,10 +368,12 @@ private[html5] object Html5DomInputAdapter {
 
   private def cursorPosition(canvas: html.Canvas, clientX: Int, clientY: Int): (Int, Int) = {
     val rect = canvas.getBoundingClientRect()
-    val scaleX = canvas.width.toDouble / rect.width
-    val scaleY = canvas.height.toDouble / rect.height
-    val x = ((clientX - rect.left) * scaleX).toInt
-    val y = ((clientY - rect.top) * scaleY).toInt
+    val content = ContentBox.of(canvas)
+    // How much CSS transforms scale the canvas, which the rectangle includes.
+    val shownX = rect.width / canvas.offsetWidth
+    val shownY = rect.height / canvas.offsetHeight
+    val x = (((clientX - rect.left) / shownX - content.left) * canvas.width / content.width).toInt
+    val y = (((clientY - rect.top) / shownY - content.top) * canvas.height / content.height).toInt
     (x, y)
   }
 

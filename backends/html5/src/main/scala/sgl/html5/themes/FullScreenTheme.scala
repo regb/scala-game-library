@@ -41,8 +41,7 @@ class FullScreenTheme extends Theme {
   private def fillWindow(canvas: html.Canvas): Unit = {
     canvas.width = dom.window.innerWidth.toInt
     canvas.height = dom.window.innerHeight.toInt
-    canvas.style.width = s"${canvas.width}px"
-    canvas.style.height = s"${canvas.height}px"
+    CanvasLayout.setCssSize(canvas, canvas.width, canvas.height)
   }
 
 }

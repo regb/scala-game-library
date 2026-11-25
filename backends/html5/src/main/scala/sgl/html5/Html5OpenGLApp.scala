@@ -110,7 +110,6 @@ trait Html5OpenGLApp extends Html5WindowProvider with Html5OpenGLProvider with H
 
   override protected def Html5GlobalKeyboardTarget: dom.EventTarget = dom.window
   override protected def Html5ReleaseMouseOnLeave: Boolean = true
-  override protected def Html5ReleaseMouseOnWindowMouseUp: Boolean = true
   override protected def onHtml5WindowBlur(): Unit = pause()
   override protected def onHtml5WindowFocus(): Unit = resume()
 }

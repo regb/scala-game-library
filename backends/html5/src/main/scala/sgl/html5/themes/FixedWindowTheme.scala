@@ -40,8 +40,7 @@ trait FixedWindowTheme extends Theme {
       canvas.style.padding = "0"
       canvas.style.position = "absolute"
     } else {
-      canvas.style.width = s"${frameSize._1}px"
-      canvas.style.height = s"${frameSize._2}px"
+      CanvasLayout.setCssSize(canvas, frameSize._1, frameSize._2)
       canvas.style.setProperty("user-select", "none")
     }
 
