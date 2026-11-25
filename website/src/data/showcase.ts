@@ -18,6 +18,8 @@ export interface ShowcaseEntry {
   image: ImageMetadata;
   imageAlt: string;
   href: string;
+  /** Optional direct external action button shown at the bottom of the card. */
+  cta?: { label: string; href: string };
   platforms: string[];
 }
 
@@ -29,6 +31,7 @@ export const games: ShowcaseEntry[] = [
     image: ratTrap,
     imageAlt: 'Rat Trap: a grey rat next to a mousetrap with cheese, beside the game logo',
     href: 'https://smartdinogames.com/games/rat-trap',
+    cta: { label: 'Play on smartdinogames.com ↗', href: 'https://smartdinogames.com/games/rat-trap/play/' },
     platforms: ['Android', 'Web trial'],
   },
   {
@@ -38,6 +41,7 @@ export const games: ShowcaseEntry[] = [
     image: winsmash,
     imageAlt: 'WinSmash: a cartoon hammer smashes an error dialog window next to the game title, over a green field',
     href: 'https://smartdinogames.com/games/winsmash',
+    cta: { label: 'View on smartdinogames.com ↗', href: 'https://smartdinogames.com/games/winsmash' },
     platforms: ['Android'],
   },
   {
@@ -47,6 +51,7 @@ export const games: ShowcaseEntry[] = [
     image: scalavator,
     imageAlt: 'Scalavator: a red spring-shaped hero jumps between grassy platforms under a sunset sky, with a bee flying nearby',
     href: 'https://github.com/regb/scalavator',
+    cta: { label: 'Source on GitHub ↗', href: 'https://github.com/regb/scalavator' },
     platforms: ['Android', 'Web', 'Desktop'],
   },
 ];

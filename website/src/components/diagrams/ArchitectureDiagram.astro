@@ -1,0 +1,130 @@
+---
+interface Props {
+  variant: 'layers' | 'linearization';
+}
+
+const { variant } = Astro.props;
+---
+
+{variant === 'layers' ? (
+  <figure class="sgl-diagram not-content">
+    <svg viewBox="0 0 720 330" width="720" height="330" role="img" aria-label="SGL layered architecture diagram showing Game Core depending on optional engines and SGL Core provider traits, implemented by platform backends and wired by Bazel rules.">
+      <defs>
+        <marker id="arr-down" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--sl-color-gray-3)" />
+        </marker>
+        <marker id="arr-up" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--sl-color-accent)" />
+        </marker>
+      </defs>
+
+      <!-- Game Core -->
+      <rect x="20" y="14" width="680" height="58" rx="10" fill="var(--sgl-surface)" stroke="var(--sl-color-accent)" stroke-width="1.5" />
+      <text x="40" y="39" fill="var(--sl-color-white)" font-size="14" font-weight="700" font-family="var(--sl-font)">Your Game Core</text>
+      <text x="172" y="39" fill="var(--sl-color-accent)" font-size="12" font-family="var(--sl-font-mono)">sgl_core_library</text>
+      <text x="40" y="59" fill="var(--sl-color-gray-2)" font-size="12" font-family="var(--sl-font)">AbstractApp trait · self-type providers · generated Assets.* · zero backend imports</text>
+
+      <!-- Arrows down to Engines / Core -->
+      <line x1="200" y1="72" x2="200" y2="98" stroke="var(--sl-color-gray-3)" stroke-width="1.5" marker-end="url(#arr-down)" />
+      <line x1="520" y1="72" x2="520" y2="98" stroke="var(--sl-color-gray-3)" stroke-width="1.5" marker-end="url(#arr-down)" />
+      <text x="360" y="90" text-anchor="middle" fill="var(--sl-color-gray-3)" font-size="11" font-family="var(--sl-font)">optional engine (choose at most one)</text>
+
+      <!-- Engines row -->
+      <rect x="20" y="102" width="326" height="54" rx="10" fill="var(--sgl-surface)" stroke="var(--sgl-brand-2)" stroke-width="1.5" />
+      <text x="38" y="125" fill="var(--sl-color-white)" font-size="13.5" font-weight="700" font-family="var(--sl-font)">GameObject</text>
+      <text x="136" y="125" fill="var(--sl-color-gray-3)" font-size="11.5" font-family="var(--sl-font-mono)">//engines:sgl-gameobject</text>
+      <text x="38" y="144" fill="var(--sl-color-gray-2)" font-size="11.5" font-family="var(--sl-font)">TypedObject, systems, scenes, 2D/3D OpenGL</text>
+
+      <rect x="374" y="102" width="326" height="54" rx="10" fill="var(--sgl-surface)" stroke="var(--sgl-brand-3)" stroke-width="1.5" />
+      <text x="392" y="125" fill="var(--sl-color-white)" font-size="13.5" font-weight="700" font-family="var(--sl-font)">Screen2D</text>
+      <text x="472" y="125" fill="var(--sl-color-gray-3)" font-size="11.5" font-family="var(--sl-font-mono)">//engines:sgl-screen2d</text>
+      <text x="392" y="144" fill="var(--sl-color-gray-2)" font-size="11.5" font-family="var(--sl-font)">GameScreen stack, Viewport, Canvas loop</text>
+
+      <!-- Arrows down to Core -->
+      <line x1="183" y1="156" x2="183" y2="180" stroke="var(--sl-color-gray-3)" stroke-width="1.5" marker-end="url(#arr-down)" />
+      <line x1="537" y1="156" x2="537" y2="180" stroke="var(--sl-color-gray-3)" stroke-width="1.5" marker-end="url(#arr-down)" />
+
+      <!-- SGL Core -->
+      <rect x="20" y="184" width="680" height="54" rx="10" fill="var(--sgl-surface)" stroke="var(--sgl-border)" stroke-width="1.5" />
+      <rect x="20" y="184" width="4" height="54" rx="2" fill="var(--sl-color-accent)" />
+      <text x="38" y="207" fill="var(--sl-color-white)" font-size="14" font-weight="700" font-family="var(--sl-font)">SGL Core</text>
+      <text x="118" y="207" fill="var(--sl-color-gray-3)" font-size="11.5" font-family="var(--sl-font-mono)">//core:sgl-core</text>
+      <text x="38" y="226" fill="var(--sl-color-gray-2)" font-size="11.5" font-family="var(--sl-font)">Application · CanvasProvider · OpenGLProvider · AudioProvider · WindowProvider · Input · Loader · Save</text>
+
+      <!-- Arrows UP from Backends (implement providers) -->
+      <line x1="120" y1="264" x2="120" y2="242" stroke="var(--sl-color-accent)" stroke-width="1.5" marker-end="url(#arr-up)" />
+      <line x1="360" y1="264" x2="360" y2="242" stroke="var(--sl-color-accent)" stroke-width="1.5" marker-end="url(#arr-up)" />
+      <line x1="600" y1="264" x2="600" y2="242" stroke="var(--sl-color-accent)" stroke-width="1.5" marker-end="url(#arr-up)" />
+      <text x="240" y="256" text-anchor="middle" fill="var(--sl-color-accent)" font-size="11" font-family="var(--sl-font)">Bazel app rules mix in backend providers</text>
+
+      <!-- Backends row -->
+      <g font-family="var(--sl-font)" font-size="12" font-weight="600" text-anchor="middle">
+        <rect x="20" y="268" width="106" height="44" rx="8" fill="var(--sgl-surface)" stroke="var(--sgl-border)" />
+        <text x="73" y="294" fill="var(--sl-color-white)">Desktop AWT</text>
+
+        <rect x="135" y="268" width="106" height="44" rx="8" fill="var(--sgl-surface)" stroke="var(--sgl-border)" />
+        <text x="188" y="294" fill="var(--sl-color-white)">LWJGL</text>
+
+        <rect x="250" y="268" width="106" height="44" rx="8" fill="var(--sgl-surface)" stroke="var(--sgl-border)" />
+        <text x="303" y="294" fill="var(--sl-color-white)">HTML5 / JS</text>
+
+        <rect x="365" y="268" width="106" height="44" rx="8" fill="var(--sgl-surface)" stroke="var(--sgl-border)" />
+        <text x="418" y="294" fill="var(--sl-color-white)">Scala Native</text>
+
+        <rect x="480" y="268" width="106" height="44" rx="8" fill="var(--sgl-surface)" stroke="var(--sgl-border)" />
+        <text x="533" y="294" fill="var(--sl-color-white)">Android</text>
+
+        <rect x="595" y="268" width="105" height="44" rx="8" fill="var(--sgl-surface)" stroke="var(--sgl-border)" />
+        <text x="647" y="294" fill="var(--sl-color-white)">Headless GL</text>
+      </g>
+    </svg>
+    <figcaption>Game code depends downward on Core (and at most one engine). Backend rules supply provider implementations and generate each platform entry point.</figcaption>
+  </figure>
+) : (
+  <figure class="sgl-diagram not-content">
+    <svg viewBox="0 0 720 175" width="720" height="175" role="img" aria-label="Scala trait initialization order diagram showing Backend App initializes first, then your AbstractApp trait, then System and GeneratedAssetsProvider, and finally create() runs once everything is initialized.">
+      <defs>
+        <marker id="arr-lin" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--sl-color-gray-3)" />
+        </marker>
+      </defs>
+
+      <!-- Step 1: Backend -->
+      <rect x="14" y="24" width="142" height="72" rx="9" fill="var(--sgl-surface)" stroke="var(--sgl-border)" stroke-width="1.5" />
+      <text x="26" y="47" fill="var(--sl-color-gray-3)" font-size="10.5" font-family="var(--sl-font-mono)">1 · BACKEND</text>
+      <text x="26" y="67" fill="var(--sl-color-white)" font-size="12.5" font-weight="700" font-family="var(--sl-font-mono)">AWTApp / LWJGL</text>
+      <text x="26" y="84" fill="var(--sl-color-gray-2)" font-size="11" font-family="var(--sl-font)">Window, Graphics</text>
+
+      <line x1="156" y1="60" x2="176" y2="60" stroke="var(--sl-color-gray-3)" stroke-width="1.5" marker-end="url(#arr-lin)" />
+
+      <!-- Step 2: AbstractApp -->
+      <rect x="180" y="24" width="166" height="72" rx="9" fill="var(--sgl-surface)" stroke="var(--sl-color-accent)" stroke-width="1.5" />
+      <text x="192" y="47" fill="var(--sl-color-accent)" font-size="10.5" font-family="var(--sl-font-mono)">2 · YOUR TRAIT</text>
+      <text x="192" y="67" fill="var(--sl-color-white)" font-size="12.5" font-weight="700" font-family="var(--sl-font-mono)">AbstractApp</text>
+      <text x="192" y="84" fill="var(--sl-color-gray-2)" font-size="11" font-family="var(--sl-font)">Assets is still null here!</text>
+
+      <line x1="346" y1="60" x2="366" y2="60" stroke="var(--sl-color-gray-3)" stroke-width="1.5" marker-end="url(#arr-lin)" />
+
+      <!-- Step 3: Extra mixins -->
+      <rect x="370" y="24" width="174" height="72" rx="9" fill="var(--sgl-surface)" stroke="var(--sgl-brand-2)" stroke-width="1.5" />
+      <text x="382" y="47" fill="var(--sgl-brand-2)" font-size="10.5" font-family="var(--sl-font-mono)">3 · EXTRA MIXINS</text>
+      <text x="382" y="67" fill="var(--sl-color-white)" font-size="12" font-weight="700" font-family="var(--sl-font-mono)">GeneratedAssets...</text>
+      <text x="382" y="84" fill="var(--sl-color-gray-2)" font-size="11" font-family="var(--sl-font)">System &amp; Assets ready</text>
+
+      <line x1="544" y1="60" x2="564" y2="60" stroke="var(--sl-color-gray-3)" stroke-width="1.5" marker-end="url(#arr-lin)" />
+
+      <!-- Step 4: create() -->
+      <rect x="568" y="24" width="138" height="72" rx="9" fill="var(--sgl-surface)" stroke="var(--sgl-brand-3)" stroke-width="1.5" />
+      <text x="580" y="47" fill="var(--sgl-brand-3)" font-size="10.5" font-family="var(--sl-font-mono)">4 · LIFECYCLE</text>
+      <text x="580" y="67" fill="var(--sl-color-white)" font-size="12.5" font-weight="700" font-family="var(--sl-font-mono)">create()</text>
+      <text x="580" y="84" fill="var(--sl-color-gray-2)" font-size="11" font-family="var(--sl-font)">Safe to load assets</text>
+
+      <!-- Annotation callout bar -->
+      <rect x="14" y="114" width="692" height="44" rx="8" fill="var(--sgl-surface)" stroke="var(--sgl-border)" stroke-dasharray="4 3" />
+      <text x="28" y="140" fill="var(--sl-color-gray-2)" font-size="12" font-family="var(--sl-font)">
+        Load assets inside <tspan fill="var(--sl-color-white)" font-family="var(--sl-font-mono)">create()</tspan> or a <tspan fill="var(--sl-color-white)" font-family="var(--sl-font-mono)">lazy val</tspan> — never a plain <tspan fill="var(--sl-color-accent)" font-family="var(--sl-font-mono)">val</tspan> in step 2.
+      </text>
+    </svg>
+    <figcaption>Generated entry points initialize traits left to right. Deferring asset loads to <code>create()</code> or <code>lazy val</code> guarantees <code>System</code> and <code>Assets</code> are initialized.</figcaption>
+  </figure>
+)}

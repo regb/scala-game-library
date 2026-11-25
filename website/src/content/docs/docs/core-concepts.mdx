@@ -4,11 +4,14 @@ description: Providers, self-types, the application lifecycle, generated entry p
 ---
 
 import { Aside } from '@astrojs/starlight/components';
+import ArchitectureDiagram from '../../../components/diagrams/ArchitectureDiagram.astro';
 
 SGL games are composed statically with Scala traits. The game declares the platform services it
 needs. A backend supplies them, and Bazel generates the object that combines the two.
 
 ## Layers
+
+<ArchitectureDiagram variant="layers" />
 
 | Layer | Bazel targets | Contents |
 | --- | --- | --- |
@@ -88,6 +91,8 @@ object Main extends sgl.awt.AWTApp
 
 Use `extra_mixins` to add traits such as the generated assets provider or
 `sgl.OpenGLCanvasProvider`.
+
+<ArchitectureDiagram variant="linearization" />
 
 <Aside type="caution" title="Initialization order">
 Scala initializes traits in linearization order. The main backend trait comes before your game,

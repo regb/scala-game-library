@@ -1,0 +1,101 @@
+---
+interface Props {
+  variant: 'typed' | 'stages';
+}
+
+const { variant } = Astro.props;
+---
+
+{variant === 'typed' ? (
+  <figure class="sgl-diagram not-content">
+    <svg viewBox="0 0 720 190" width="720" height="190" role="img" aria-label="Compile-time TypedObject composition chain showing spawn2D producing Spatial2D, attaching Collider to produce Spatial2D & Collider, and attaching Bullet succeeding while omitting Collider fails to compile.">
+      <defs>
+        <marker id="arr-typed" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--sl-color-gray-3)" />
+        </marker>
+      </defs>
+
+      <!-- Node 1 -->
+      <rect x="14" y="18" width="186" height="68" rx="9" fill="var(--sgl-surface)" stroke="var(--sgl-border)" stroke-width="1.5" />
+      <text x="26" y="42" fill="var(--sl-color-white)" font-size="12" font-weight="700" font-family="var(--sl-font-mono)">context.spawn2D("B")</text>
+      <text x="26" y="64" fill="var(--sl-color-gray-2)" font-size="11.5" font-family="var(--sl-font-mono)">TypedObject[Spatial2D]</text>
+
+      <line x1="200" y1="52" x2="226" y2="52" stroke="var(--sl-color-gray-3)" stroke-width="1.5" marker-end="url(#arr-typed)" />
+
+      <!-- Node 2 -->
+      <rect x="230" y="18" width="224" height="68" rx="9" fill="var(--sgl-surface)" stroke="var(--sgl-brand-2)" stroke-width="1.5" />
+      <text x="242" y="42" fill="var(--sl-color-white)" font-size="12" font-weight="700" font-family="var(--sl-font-mono)">.attach(new Collider(_, 4f))</text>
+      <text x="242" y="64" fill="var(--sgl-brand-2)" font-size="11.5" font-family="var(--sl-font-mono)">TypedObject[Spatial2D &amp; Collider]</text>
+
+      <line x1="454" y1="52" x2="480" y2="52" stroke="var(--sl-color-gray-3)" stroke-width="1.5" marker-end="url(#arr-typed)" />
+
+      <!-- Node 3 -->
+      <rect x="484" y="18" width="222" height="68" rx="9" fill="var(--sgl-surface)" stroke="var(--sgl-brand-3)" stroke-width="1.5" />
+      <text x="496" y="42" fill="var(--sl-color-white)" font-size="12" font-weight="700" font-family="var(--sl-font-mono)">.attach(new Bullet(_))</text>
+      <text x="496" y="64" fill="var(--sgl-brand-3)" font-size="11.5" font-family="var(--sl-font-mono)">requires TypedObject[Collider] ✓</text>
+
+      <!-- Error path -->
+      <rect x="14" y="110" width="692" height="60" rx="9" fill="var(--sgl-surface)" stroke="var(--sl-color-accent)" stroke-width="1.5" stroke-dasharray="5 3" />
+      <text x="28" y="135" fill="var(--sl-color-accent)" font-size="12" font-weight="700" font-family="var(--sl-font-mono)">✗ Compile error if Collider is missing or attached after Bullet:</text>
+      <text x="28" y="156" fill="var(--sl-color-gray-2)" font-size="12" font-family="var(--sl-font-mono)">"This object is not known to have a Collider"  ·  duplicate attach: "This object already has a Collider"</text>
+    </svg>
+    <figcaption>Each <code>attach</code> widens the object’s intersection type with zero runtime overhead. Missing or duplicate components are caught by the Scala 3 compiler.</figcaption>
+  </figure>
+) : (
+  <figure class="sgl-diagram not-content">
+    <svg viewBox="0 0 720 185" width="720" height="185" role="img" aria-label="GameObject frame stage pipeline diagram showing Startup once, then each frame running PreUpdate, FixedUpdate (0 to N steps), Update, PostUpdate, PreRender, and Render, plus Pause and Resume lifecycle stages.">
+      <defs>
+        <marker id="arr-stage" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--sl-color-gray-3)" />
+        </marker>
+      </defs>
+
+      <!-- Per-frame container -->
+      <rect x="14" y="14" width="692" height="100" rx="10" fill="var(--sgl-surface)" stroke="var(--sgl-border)" stroke-width="1.5" />
+      <text x="28" y="34" fill="var(--sl-color-accent)" font-size="11" font-weight="700" font-family="var(--sl-font)" letter-spacing="0.08em">EVERY FRAME (IN ORDER)</text>
+
+      <!-- 6 stages -->
+      <g font-family="var(--sl-font-mono)" font-size="11.5" font-weight="600" text-anchor="middle">
+        <rect x="26" y="48" width="96" height="48" rx="7" fill="var(--sl-color-black)" stroke="var(--sgl-border)" />
+        <text x="74" y="76" fill="var(--sl-color-white)">PreUpdate</text>
+
+        <line x1="122" y1="72" x2="136" y2="72" stroke="var(--sl-color-gray-3)" stroke-width="1.4" marker-end="url(#arr-stage)" />
+
+        <rect x="140" y="48" width="110" height="48" rx="7" fill="var(--sl-color-black)" stroke="var(--sgl-brand-2)" />
+        <text x="195" y="69" fill="var(--sl-color-white)">FixedUpdate</text>
+        <text x="195" y="86" fill="var(--sgl-brand-2)" font-size="10">0..N fixed steps</text>
+
+        <line x1="250" y1="72" x2="264" y2="72" stroke="var(--sl-color-gray-3)" stroke-width="1.4" marker-end="url(#arr-stage)" />
+
+        <rect x="268" y="48" width="84" height="48" rx="7" fill="var(--sl-color-black)" stroke="var(--sgl-border)" />
+        <text x="310" y="76" fill="var(--sl-color-white)">Update</text>
+
+        <line x1="352" y1="72" x2="366" y2="72" stroke="var(--sl-color-gray-3)" stroke-width="1.4" marker-end="url(#arr-stage)" />
+
+        <rect x="370" y="48" width="100" height="48" rx="7" fill="var(--sl-color-black)" stroke="var(--sgl-border)" />
+        <text x="420" y="76" fill="var(--sl-color-white)">PostUpdate</text>
+
+        <line x1="470" y1="72" x2="484" y2="72" stroke="var(--sl-color-gray-3)" stroke-width="1.4" marker-end="url(#arr-stage)" />
+
+        <rect x="488" y="48" width="92" height="48" rx="7" fill="var(--sl-color-black)" stroke="var(--sgl-border)" />
+        <text x="534" y="76" fill="var(--sl-color-white)">PreRender</text>
+
+        <line x1="580" y1="72" x2="594" y2="72" stroke="var(--sl-color-gray-3)" stroke-width="1.4" marker-end="url(#arr-stage)" />
+
+        <rect x="598" y="48" width="96" height="48" rx="7" fill="var(--sl-color-black)" stroke="var(--sl-color-accent)" />
+        <text x="646" y="69" fill="var(--sl-color-white)">Render</text>
+        <text x="646" y="86" fill="var(--sl-color-accent)" font-size="10">clear → draw</text>
+      </g>
+
+      <!-- Outside-frame stages -->
+      <rect x="14" y="128" width="218" height="42" rx="8" fill="var(--sgl-surface)" stroke="var(--sgl-border)" />
+      <text x="28" y="153" fill="var(--sl-color-white)" font-size="11.5" font-family="var(--sl-font-mono)">Startup</text>
+      <text x="86" y="153" fill="var(--sl-color-gray-2)" font-size="11.5" font-family="var(--sl-font)">runs once at boot</text>
+
+      <rect x="246" y="128" width="460" height="42" rx="8" fill="var(--sgl-surface)" stroke="var(--sgl-border)" />
+      <text x="260" y="153" fill="var(--sl-color-white)" font-size="11.5" font-family="var(--sl-font-mono)">Pause / Resume</text>
+      <text x="372" y="153" fill="var(--sl-color-gray-2)" font-size="11.5" font-family="var(--sl-font)">runs on foreground/background transitions</text>
+    </svg>
+    <figcaption>Systems run in stage order every frame. Within a stage, declare explicit <code>before</code> / <code>after</code> constraints instead of relying on install order.</figcaption>
+  </figure>
+)}

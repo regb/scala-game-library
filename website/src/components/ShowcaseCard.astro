@@ -10,12 +10,19 @@ interface Props {
 const { entry } = Astro.props;
 ---
 
-<a class="show-card" href={entry.href}>
-  <Image src={entry.image} alt={entry.imageAlt} widths={[480, 800]} sizes="(min-width: 72rem) 22rem, 100vw" />
+<article class="show-card">
+  <a class="show-card-media" href={entry.href} target="_blank" rel="noopener noreferrer">
+    <Image src={entry.image} alt={entry.imageAlt} widths={[480, 800]} sizes="(min-width: 72rem) 22rem, 100vw" />
+  </a>
   <div class="body">
     <span class="tag">{entry.tag}</span>
-    <h3>{entry.title}</h3>
+    <h3><a href={entry.href} target="_blank" rel="noopener noreferrer">{entry.title}</a></h3>
     <p>{entry.body}</p>
     <div class="meta">{entry.platforms.map((platform) => <span>{platform}</span>)}</div>
+    {entry.cta && (
+      <a class="show-card-cta" href={entry.cta.href} target="_blank" rel="noopener noreferrer">
+        {entry.cta.label}
+      </a>
+    )}
   </div>
-</a>
+</article>

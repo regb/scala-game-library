@@ -1,0 +1,75 @@
+---
+title: Why SGL
+description: How SGL compares with Indigo, libGDX, and Godot, why SGL builds with Bazel, and when SGL is the right fit for a project.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+SGL is designed around a specific set of engineering bets: **everything is plain-text code**, **composition and assets are verified by the compiler**, **games can be tested headlessly without a display**, and **one core compiles natively to desktop, web, native binaries, and Android**.
+
+That combination is a strong fit for some projects and the wrong fit for others. This page lays out the trade-offs directly.
+
+## Comparing with Indigo, libGDX, and Godot
+
+| | SGL | [Indigo](https://indigoengine.io/) | [libGDX](https://libgdx.com/) | [Godot](https://godotengine.org/) |
+| --- | --- | --- | --- | --- |
+| **Language** | Scala 3 | Scala 3 | Java (usable from Scala) | GDScript, C#, C++ |
+| **Workflow** | 100% code-first, plain text | 100% code-first, plain text | Code-first | Visual editor + scripts |
+| **Programming style** | Pragmatic core + declaratively composed `GameObject` engine | Purely functional (immutable model, Elm-style updates) | Imperative, unopinionated OOP | Node tree + imperative scripts |
+| **Targets** | Desktop JVM, Web (Scala.js), Native (Scala Native), Android, Headless OpenGL | Web (Scala.js / WebGL), Desktop via Electron | Desktop JVM, Android, iOS, Web (GWT / TeaVM) | Desktop, Web, Android, iOS, consoles |
+| **Asset & wiring safety** | Compile-time typed `Assets.*`, self-type providers, `TypedObject` checks | Strong Scala types; runtime asset loading | Runtime paths & reflection/wiring | Editor-managed resources + runtime paths |
+| **Build system** | Bazel (Bzlmod) | sbt / Mill | Gradle | Godot editor / export templates |
+| **Maturity** | Pre-0.1 (breaking changes expected) | Active, 2D-focused | Very mature (10+ years) | Very mature, production standard |
+
+### When to choose Indigo
+
+Choose **Indigo** if you want **pure functional programming** all the way down—immutable game state, stateless frame functions, and pixel-art-friendly 2D tooling with sbt or Mill. SGL does not enforce pure FP: its core APIs are pragmatic and imperative where hardware is imperative, and it invests heavily in native multi-runtime backends (JVM, Scala.js, Scala Native, and Android) plus compile-time typed composition in the GameObject engine.
+
+### When to choose libGDX
+
+Choose **libGDX** if you need **long-term API stability**, a mature 3D stack, or a large third-party ecosystem of Java plugins and tutorials today. SGL takes inspiration from libGDX and SDL, but is written natively in Scala 3—replacing string asset paths, runtime wiring, and GWT/bridge layers with compile-time typed assets, `TypedObject` component checks, and native Scala.js / Scala Native compilation.
+
+### When to choose Godot
+
+Choose **Godot** if you want a **visual scene editor**, built-in animation/UI/physics editors, or are collaborating closely with artists and level designers who live in a GUI. SGL has no visual editor by design: keeping every scene, asset declaration, and build target in plain-text code makes diffs clean, builds hermetic, and games easy to verify with automated tests and [AI coding agents](/docs/ai-agents/).
+
+## Why Bazel?
+
+At first glance, Bazel looks unusual for a game library. SGL uses Bazel because cross-platform game builds are **multi-language, multi-toolchain, asset-processing pipelines**—which is exactly what Bazel solves cleanly:
+
+- **Zero manual toolchain setup.** Install [Bazelisk](https://github.com/bazelbuild/bazelisk) once; Bazel downloads the pinned Scala 3 compiler, JDK 17, Scala.js, and Scala Native toolchains automatically.
+- **Typed assets generated at build time.** `sgl_drawable_assets`, `sgl_audio_assets`, `sgl_text_assets`, and `sgl_font_assets` scan declared files and generate `Assets.drawable.*` handles before Scala compiles. Renaming or deleting an asset breaks the build instead of crashing at runtime.
+- **Build-time asset processing.** Multi-DPI image resizing, deterministic `sgl_texture_atlas` packing, and `sgl_tiled_import` map rewriting happen automatically in the build graph and are cached between runs.
+- **One command per platform.** `sgl_desktop_awt_app`, `sgl_desktop_lwjgl_app`, `sgl_html5_app`, `sgl_html5_opengl_app`, `sgl_desktop_native_app`, and `sgl_android_app` generate each backend's entry point and verify provider wiring at compile time.
+- **Hermetic headless tests.** `bazel test //...` runs pure unit tests and Mesa software-rendered `HeadlessOpenGLApp` integration tests reproducibly on CI or in an agent sandbox.
+
+<Aside type="note" title="No sbt or Mill build">
+SGL is built exclusively with Bazel. Maintaining parallel sbt/Mill plugins for asset codegen, density resizing, atlas packing, Android Gradle generation, and four Scala backends would duplicate the entire build pipeline.
+</Aside>
+
+## Platform and engine matrix
+
+Not every engine runs on every backend yet. Check the matrix before starting a project:
+
+| Backend | Core Canvas | Core OpenGL | Screen2D | GameObject |
+| --- | --- | --- | --- | --- |
+| **Desktop JVM (AWT)** | Yes | — | Yes | — |
+| **Desktop JVM (LWJGL)** | Yes (via `OpenGLCanvasProvider`) | Yes | — | Yes |
+| **Web (Scala.js)** | Yes | Yes (WebGL 2) | Yes | Yes |
+| **Scala Native (SDL2)** | Yes | Yes (OpenGL ES 3) | Yes | Yes |
+| **Android (Kotlin host)** | Yes | Not yet | Yes | Not yet |
+| **Headless OpenGL (Mesa)** | Yes (via `OpenGLCanvasProvider`) | Yes | — | Yes |
+| **iOS** | Via Web + Cordova | Via Web + Cordova | Via Web + Cordova | Via Web + Cordova |
+
+## Is SGL right for your project?
+
+**SGL is a strong fit if:**
+- You prefer code, Git diffs, and compiler checks over visual editors and binary scene files.
+- You want a concise game core that targets desktop, web, native, or Android from one repository.
+- You rely on automated tests, headless frame capture, or [AI coding agents](/docs/ai-agents/) and want the compiler and test suite to catch mistakes early.
+- You are comfortable tracking a pre-0.1 library and adapting to breaking changes listed in [Migration notes](/docs/migration/).
+
+**Look elsewhere for now if:**
+- You need a frozen, backward-compatible API without occasional refactors.
+- You need a built-in visual scene editor, built-in physics engine, or native iOS/console exporters today.
+- You want the GameObject engine specifically on Android right now (use Core Canvas or Screen2D for Android games today).

@@ -241,21 +241,132 @@ h1#_top {
   border-color: var(--sl-color-gray-4);
 }
 
-.hero-command {
-  display: grid;
-  gap: 0.35rem;
+/* Copyable CLI / agent command ------------------------------------------- */
+
+.sgl-cli {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 100%;
   margin-top: 1.5rem;
-  color: var(--sl-color-gray-3);
+  border: 1px solid var(--sgl-border);
+  border-radius: 0.6rem;
+  padding: 0.55rem 0.6rem 0.55rem 0.9rem;
+  background: var(--sgl-surface);
+}
+
+.sgl-cli-body {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.sgl-cli .cli-label {
+  color: var(--sl-color-accent);
+  font-family: var(--sl-font);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sgl-cli code {
+  overflow-x: auto;
+  color: var(--sl-color-gray-2);
   font-family: var(--sl-font-mono);
   font-size: var(--sl-text-xs);
+  white-space: nowrap;
 }
 
-.hero-command a {
+.sgl-cli code a {
   color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
-.hero-command span {
+.sgl-cli .prompt {
   color: var(--sl-color-accent);
+  user-select: none;
+}
+
+.sgl-cli .copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  border: 1px solid var(--sgl-border);
+  border-radius: 0.45rem;
+  padding: 0.3rem 0.55rem;
+  background: var(--sl-color-black);
+  color: var(--sl-color-gray-2);
+  font-family: var(--sl-font);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.sgl-cli .copy-btn:hover {
+  border-color: var(--sl-color-accent);
+  color: var(--sl-color-white);
+}
+
+.sgl-cli .copy-btn .icon-check {
+  display: none;
+}
+
+.sgl-cli .copy-btn.copied {
+  border-color: var(--sl-color-accent);
+  color: var(--sl-color-accent);
+}
+
+.sgl-cli .copy-btn.copied .icon-copy {
+  display: none;
+}
+
+.sgl-cli .copy-btn.copied .icon-check {
+  display: inline;
+}
+
+.sgl-cli.compact {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.75rem;
+  padding: 0.35rem 0.4rem 0.35rem 0.65rem;
+  gap: 0.5rem;
+}
+
+.sgl-cli.compact code {
+  margin-top: 0;
+  font-size: 0.72rem;
+}
+
+.sgl-cli.compact .copy-label {
+  display: none;
+}
+
+/* Inline SVG diagrams ---------------------------------------------------- */
+
+.sgl-diagram {
+  margin: 1.5rem 0;
+  border: 1px solid var(--sgl-border);
+  border-radius: var(--sgl-radius);
+  padding: 1rem 1rem 0.85rem;
+  background: color-mix(in srgb, var(--sgl-surface), transparent 35%);
+}
+
+.sgl-diagram svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.sgl-diagram figcaption {
+  margin-top: 0.65rem;
+  color: var(--sl-color-gray-3);
+  font-size: var(--sl-text-xs);
+  line-height: 1.5;
+  text-align: center;
 }
 
 .hero-code {
@@ -677,11 +788,45 @@ h1#_top {
   font-weight: 600;
 }
 
+.show-card-media {
+  display: block;
+}
+
 .show-card h3 {
   margin: 0.7rem 0 0.3rem;
   color: var(--sl-color-white);
   font-size: var(--sl-text-base);
   font-weight: 700;
+}
+
+.show-card h3 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.show-card h3 a:hover {
+  color: var(--sl-color-accent);
+}
+
+.show-card-cta {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  margin-top: 0.85rem;
+  border: 1px solid var(--sgl-border);
+  border-radius: 0.5rem;
+  padding: 0.38rem 0.75rem;
+  background: var(--sl-color-black);
+  color: var(--sl-color-accent);
+  font-size: var(--sl-text-xs);
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.show-card-cta:hover {
+  border-color: var(--sl-color-accent);
+  background: var(--sl-color-accent-low);
 }
 
 .show-card p {

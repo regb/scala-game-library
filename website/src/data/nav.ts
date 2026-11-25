@@ -11,6 +11,7 @@ export const footerColumns = [
     title: 'Learn',
     links: [
       { label: 'Introduction', href: '/docs/' },
+      { label: 'Why SGL', href: '/docs/why-sgl/' },
       { label: 'Your first game', href: '/docs/getting-started/' },
       { label: 'Tutorials', href: '/docs/tutorials/' },
       { label: 'AI coding agents', href: '/docs/ai-agents/' },

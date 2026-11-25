@@ -4,6 +4,7 @@ description: Worlds, objects, components, systems, stages, scenes, and compositi
 ---
 
 import { Aside, Steps } from '@astrojs/starlight/components';
+import GameObjectPipeline from '../../../components/diagrams/GameObjectPipeline.astro';
 
 The GameObject engine (`//engines:sgl-gameobject`, package `sgl.engine.gameobject`) arranges a
 game as **objects** that carry **components**, **systems** that run in ordered **stages**, and
@@ -91,6 +92,8 @@ Override `onDestroy()` to release what a component holds on other objects. It is
 owner and its siblings are still attached.
 
 ## Composition checked by the compiler
+
+<GameObjectPipeline variant="typed" />
 
 A component that needs other components on its object asks for them in the type of its constructor
 parameter, and reads them with `get`, which the type guarantees to succeed:
@@ -222,6 +225,8 @@ object CollisionSystem extends GameSystem {
 
 Each frame runs these stages in order. `FixedUpdate` runs zero or more times so that it advances
 in steps of `FixedDeltaTime` (default 1/60 s):
+
+<GameObjectPipeline variant="stages" />
 
 <Steps>
 

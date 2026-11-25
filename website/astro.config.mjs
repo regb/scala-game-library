@@ -18,7 +18,12 @@ export default defineConfig({
       head: [
         { tag: 'meta', attrs: { property: 'og:type', content: 'website' } },
         { tag: 'meta', attrs: { property: 'og:site_name', content: 'SGL — Scala Game Library' } },
-        { tag: 'meta', attrs: { name: 'twitter:card', content: 'summary' } },
+        { tag: 'meta', attrs: { property: 'og:image', content: 'https://libsgl.com/og-image.png' } },
+        { tag: 'meta', attrs: { property: 'og:image:width', content: '1200' } },
+        { tag: 'meta', attrs: { property: 'og:image:height', content: '630' } },
+        { tag: 'meta', attrs: { property: 'og:image:alt', content: 'SGL — Code-first games. Verified by the compiler.' } },
+        { tag: 'meta', attrs: { name: 'twitter:card', content: 'summary_large_image' } },
+        { tag: 'meta', attrs: { name: 'twitter:image', content: 'https://libsgl.com/og-image.png' } },
         { tag: 'link', attrs: { rel: 'preconnect', href: 'https://fonts.googleapis.com' } },
         { tag: 'link', attrs: { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: true } },
         {
@@ -48,7 +53,7 @@ export default defineConfig({
             '- Build and run with Bazel: `bazel build //...`, `bazel test //...`, and `bazel run` on an application target (for example `:desktop-lwjgl` or `:html5`, which serves on http://localhost:8080).',
             '- To verify rendering and input without a display, use the headless OpenGL backend and frame capture (see the AI coding agents and Testing pages).',
           ].join('\n'),
-          promote: ['docs/index', 'docs/ai-agents', 'docs/installation', 'docs/getting-started', 'docs/core-concepts'],
+          promote: ['docs/index', 'docs/why-sgl', 'docs/ai-agents', 'docs/installation', 'docs/getting-started', 'docs/core-concepts'],
           demote: ['index', 'showcase', 'community', 'docs/migration'],
           exclude: ['index', 'showcase', 'community', 'docs/migration', 'docs/live-configuration'],
           customSets: [
@@ -109,6 +114,7 @@ export default defineConfig({
           label: 'Start here',
           items: [
             { label: 'Introduction', slug: 'docs' },
+            { label: 'Why SGL', slug: 'docs/why-sgl' },
             { label: 'Installation', slug: 'docs/installation' },
             { label: 'Your first game', slug: 'docs/getting-started' },
             { label: 'Architecture', slug: 'docs/core-concepts' },
