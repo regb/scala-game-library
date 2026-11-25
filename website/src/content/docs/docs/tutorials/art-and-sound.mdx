@@ -160,9 +160,12 @@ object PlayScene extends AsyncScene[Sprites] {
 
   override def preload(context: GameContext)(using Scope): Loader[Sprites] = {
     val assets = context.global[GameAssets]
+    val renderer = context.engine.renderer
+    val player = renderer.loadTexture2D(assets.player)
+    val coin = renderer.loadTexture2D(assets.coin)
     for {
-      player <- context.engine.loadDrawableTexture(assets.player)
-      coin <- context.engine.loadDrawableTexture(assets.coin)
+      _ <- renderer.whenReady(player)
+      _ <- renderer.whenReady(coin)
     } yield Sprites(player, coin)
   }
 
