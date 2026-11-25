@@ -9,6 +9,9 @@ trait InputProbe extends Application {
     Input.setInputProcessor(new InputProcessor {
       override def keyDown(key: Input.Keys.Key): Boolean = report(s"key down $key")
       override def keyUp(key: Input.Keys.Key): Boolean = report(s"key up $key")
+      override def keyRepeated(key: Input.Keys.Key): Boolean = report(s"key repeated $key")
+      // One that has no use for this one, which is for the page then.
+      override def textInput(text: String): Boolean = report(s"typed $text") && text != "'"
       override def mouseScrolled(amountX: Float, amountY: Float, unit: Input.ScrollUnits.ScrollUnit): Boolean =
         report(s"scrolled $amountX $amountY $unit")
       override def mouseDown(x: Int, y: Int, button: Input.MouseButtons.MouseButton): Boolean = report(s"mouse down $button $x $y")

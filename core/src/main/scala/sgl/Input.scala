@@ -380,6 +380,31 @@ object Input {
     case object Backspace extends Key
     case object LeftShift extends Key
     case object RightShift extends Key
+    case object LeftControl extends Key
+    case object RightControl extends Key
+    case object LeftAlt extends Key
+    /** The right alt key, which many keyboards call AltGr. */
+    case object RightAlt extends Key
+    case object Tab extends Key
+    case object Delete extends Key
+    case object Home extends Key
+    case object End extends Key
+    case object PageUp extends Key
+    case object PageDown extends Key
+
+    sealed trait FunctionKey extends Key
+    case object F1 extends FunctionKey
+    case object F2 extends FunctionKey
+    case object F3 extends FunctionKey
+    case object F4 extends FunctionKey
+    case object F5 extends FunctionKey
+    case object F6 extends FunctionKey
+    case object F7 extends FunctionKey
+    case object F8 extends FunctionKey
+    case object F9 extends FunctionKey
+    case object F10 extends FunctionKey
+    case object F11 extends FunctionKey
+    case object F12 extends FunctionKey
 
     case object Left extends Key
     case object Up extends Key

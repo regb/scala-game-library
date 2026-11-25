@@ -34,6 +34,14 @@ class KeyboardTest extends BrowserSuite {
     lines
   }
 
+  /** What was typed in the game since the last time. */
+  private def text(page: Page): Vector[String] = {
+    settle(page)
+    val lines = page.console.filter(_.startsWith("typed ")).map(_.stripPrefix("typed ")).toVector
+    page.clear()
+    lines
+  }
+
   private def focus(page: Page, selector: String): Vector[String] = {
     val (x, y) = page.box(selector).at(0.5, 0.5)
     page.mouse.click(x, y)
@@ -91,6 +99,86 @@ class KeyboardTest extends BrowserSuite {
         page.keyboard.down(Key.Enter)
         page.keyboard.down(Key.NumpadEnter)
         assert(keys(page) == Vector("key down Enter", "key down NumpadEnter"))
+      }
+    }
+
+    test(s"$site: the keys that edit, modifiers and function keys") {
+      withGame(site) { page =>
+        val _ = focus(page, "#game")
+        val pressed = Vector(
+          Key.LeftControl, Key.RightControl, Key.LeftAlt, Key.RightAlt, Key.Delete, Key.Home, Key.End, Key.PageUp, Key.PageDown,
+          Key.function(1), Key.function(10)
+        )
+        pressed.foreach { key =>
+          page.keyboard.down(key)
+          page.keyboard.up(key)
+        }
+        assert(keys(page).filter(_.startsWith("key down")).map(_.stripPrefix("key down ")) == Vector(
+          "LeftControl", "RightControl", "LeftAlt", "RightAlt", "Delete", "Home", "End", "PageUp", "PageDown", "F1", "F10"
+        ))
+        assert(text(page).isEmpty)
+      }
+    }
+
+    test(s"$site: the browser keeps its own keys") {
+      withGame(site) { page =>
+        val _ = focus(page, "#game")
+        val _ = page.evaluate("window.kept = []; window.addEventListener('keydown', e => window.kept.push(e.key + ' ' + e.defaultPrevented)); 0")
+        Vector(Key.function(11), Key.function(12), Key.function(4)).foreach { key =>
+          page.keyboard.down(key)
+          page.keyboard.up(key)
+        }
+        assert(page.evaluate("window.kept.join()").string == "F11 false,F12 false,F4 true")
+        assert(keys(page) == Vector("key down F4", "key up F4"))
+        // Out of the game.
+        assert(page.evaluate("document.activeElement.id").string == "game")
+        page.keyboard.down(Key.Tab)
+        page.keyboard.up(Key.Tab)
+        assert(page.evaluate("document.activeElement.id").string != "game")
+        assert(keys(page).isEmpty)
+      }
+    }
+
+    test(s"$site: text is what is typed, and not what is a shortcut") {
+      withGame(site) { page =>
+        val _ = focus(page, "#game")
+        page.keyboard.typeLetter('a')
+        page.keyboard.typeCharacter("A", Key.letter('a'), modifiers = 8)
+        page.keyboard.typeCharacter("é", Key("é", "Digit2", 50))
+        page.keyboard.typeCharacter("\ud83c\udf19", Key.letter('m'))
+        page.keyboard.typeCharacter(" ", Key.Space)
+        assert(text(page) == Vector("a", "A", "é", "\ud83c\udf19", " "))
+        for(modifier <- Vector(1, 2, 4, 3)) page.keyboard.typeCharacter("x", Key.letter('x'), modifiers = modifier)
+        Vector(Key.Enter, Key.Backspace, Key.Left, Key.LeftShift).foreach { key =>
+          page.keyboard.down(key)
+          page.keyboard.up(key)
+        }
+        assert(text(page).isEmpty)
+      }
+    }
+
+    test(s"$site: what the game does not use of what is typed is for the page") {
+      withGame(site) { page =>
+        val _ = focus(page, "#game")
+        val _ = page.evaluate("window.kept = []; window.addEventListener('keydown', e => window.kept.push(e.key + ' ' + e.defaultPrevented)); 0")
+        page.keyboard.typeCharacter("'", Key.Quote)
+        page.keyboard.typeCharacter("ü", Key.Quote)
+        assert(page.evaluate("window.kept.join()").string == "' false,ü true")
+        assert(text(page) == Vector("'", "ü"))
+      }
+    }
+
+    test(s"$site: a key that is held goes down once, and repeats") {
+      withGame(site) { page =>
+        val _ = focus(page, "#game")
+        page.keyboard.down(Key.Backspace)
+        page.keyboard.repeat(Key.Backspace)
+        page.keyboard.repeat(Key.Backspace)
+        page.keyboard.up(Key.Backspace)
+        assert(keys(page) == Vector("key down Backspace", "key repeated Backspace", "key repeated Backspace", "key up Backspace"))
+        page.keyboard.typeCharacter("a", Key.letter('a'), repeats = 1)
+        settle(page)
+        assert(page.console.take(5).toVector == Vector("key down A", "typed a", "key repeated A", "typed a", "key up A"))
       }
     }
 

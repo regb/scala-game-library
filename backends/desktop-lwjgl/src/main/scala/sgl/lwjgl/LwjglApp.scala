@@ -107,6 +107,28 @@ trait LwjglApp extends LwjglGlfwWindowProvider with LwjglRenderThreadDispatcher 
         case GLFW_KEY_BACKSPACE => Some(Input.Keys.Backspace)
         case GLFW_KEY_LEFT_SHIFT => Some(Input.Keys.LeftShift)
         case GLFW_KEY_RIGHT_SHIFT => Some(Input.Keys.RightShift)
+        case GLFW_KEY_LEFT_CONTROL => Some(Input.Keys.LeftControl)
+        case GLFW_KEY_RIGHT_CONTROL => Some(Input.Keys.RightControl)
+        case GLFW_KEY_LEFT_ALT => Some(Input.Keys.LeftAlt)
+        case GLFW_KEY_RIGHT_ALT => Some(Input.Keys.RightAlt)
+        case GLFW_KEY_TAB => Some(Input.Keys.Tab)
+        case GLFW_KEY_DELETE => Some(Input.Keys.Delete)
+        case GLFW_KEY_HOME => Some(Input.Keys.Home)
+        case GLFW_KEY_END => Some(Input.Keys.End)
+        case GLFW_KEY_PAGE_UP => Some(Input.Keys.PageUp)
+        case GLFW_KEY_PAGE_DOWN => Some(Input.Keys.PageDown)
+        case GLFW_KEY_F1 => Some(Input.Keys.F1)
+        case GLFW_KEY_F2 => Some(Input.Keys.F2)
+        case GLFW_KEY_F3 => Some(Input.Keys.F3)
+        case GLFW_KEY_F4 => Some(Input.Keys.F4)
+        case GLFW_KEY_F5 => Some(Input.Keys.F5)
+        case GLFW_KEY_F6 => Some(Input.Keys.F6)
+        case GLFW_KEY_F7 => Some(Input.Keys.F7)
+        case GLFW_KEY_F8 => Some(Input.Keys.F8)
+        case GLFW_KEY_F9 => Some(Input.Keys.F9)
+        case GLFW_KEY_F10 => Some(Input.Keys.F10)
+        case GLFW_KEY_F11 => Some(Input.Keys.F11)
+        case GLFW_KEY_F12 => Some(Input.Keys.F12)
         case GLFW_KEY_B => Some(Input.Keys.B)
         case GLFW_KEY_C => Some(Input.Keys.C)
         case GLFW_KEY_E => Some(Input.Keys.E)
@@ -148,8 +170,14 @@ trait LwjglApp extends LwjglGlfwWindowProvider with LwjglRenderThreadDispatcher 
         } else if(action == GLFW_RELEASE) {
           pressedKeys -= k
           Input.inputProcessor.keyUp(k)
+        } else if(action == GLFW_REPEAT && pressedKeys.contains(k)) {
+          Input.inputProcessor.keyRepeated(k)
         }
       }
+    })
+
+    glfwSetCharCallback(window, (_, codePoint) => {
+      if(!Character.isISOControl(codePoint)) Input.inputProcessor.textInput(new String(Character.toChars(codePoint)))
     })
 
     glfwSetCursorPosCallback(window, (_, x, y) => {

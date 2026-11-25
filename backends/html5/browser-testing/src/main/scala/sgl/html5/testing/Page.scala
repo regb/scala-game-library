@@ -134,6 +134,8 @@ final class Page private[testing] (devTools: DevTools) extends AutoCloseable {
 
   object keyboard {
     def down(key: Key): Unit = event("rawKeyDown", key)
+    /** A key that is down repeats. */
+    def repeat(key: Key): Unit = event("rawKeyDown", key, "autoRepeat" -> true)
     def up(key: Key): Unit = event("keyUp", key)
     /** Presses a letter, which is typed in what has the focus. */
     def typeLetter(c: Char): Unit = {
@@ -142,11 +144,23 @@ final class Page private[testing] (devTools: DevTools) extends AutoCloseable {
         "key" -> key.key, "code" -> key.code, "windowsVirtualKeyCode" -> key.keyCode)
       up(key)
     }
-    private def event(kind: String, key: Key): Unit = {
-      val _ = devTools.send("Input.dispatchKeyEvent", "type" -> kind,
+    /** Presses a key that types a character, and repeats it some times.
+      *
+      * @param key the key, where it is on an American keyboard
+      * @param modifiers alt is 1, control 2, meta 4 and shift 8, added up
+      */
+    def typeCharacter(c: String, key: Key, modifiers: Int = 0, repeats: Int = 0): Unit = {
+      for(i <- 0 to repeats) {
+        val _ = devTools.send("Input.dispatchKeyEvent", "type" -> "keyDown", "text" -> c, "autoRepeat" -> (i > 0),
+          "modifiers" -> modifiers, "key" -> c, "code" -> key.code, "windowsVirtualKeyCode" -> key.keyCode)
+      }
+      up(key)
+    }
+    private def event(kind: String, key: Key, more: (String, Any)*): Unit = {
+      val _ = devTools.send("Input.dispatchKeyEvent", (Vector("type" -> kind,
         "key" -> key.key, "code" -> key.code, "windowsVirtualKeyCode" -> key.keyCode,
         // The numeric keypad is not a location to the protocol.
-        "location" -> (if(key.location == 3) 0 else key.location), "isKeypad" -> (key.location == 3))
+        "location" -> (if(key.location == 3) 0 else key.location), "isKeypad" -> (key.location == 3)) ++ more)*)
     }
   }
 
@@ -179,5 +193,18 @@ object Key {
   val NumpadEnter: Key = Key("Enter", "NumpadEnter", 13, location = 3)
   val LeftShift: Key = Key("Shift", "ShiftLeft", 16, location = 1)
   val RightShift: Key = Key("Shift", "ShiftRight", 16, location = 2)
+  val LeftControl: Key = Key("Control", "ControlLeft", 17, location = 1)
+  val RightControl: Key = Key("Control", "ControlRight", 17, location = 2)
+  val LeftAlt: Key = Key("Alt", "AltLeft", 18, location = 1)
+  val RightAlt: Key = Key("Alt", "AltRight", 18, location = 2)
+  val Tab: Key = Key("Tab", "Tab", 9)
+  val Backspace: Key = Key("Backspace", "Backspace", 8)
+  val Delete: Key = Key("Delete", "Delete", 46)
+  val Home: Key = Key("Home", "Home", 36)
+  val End: Key = Key("End", "End", 35)
+  val PageUp: Key = Key("PageUp", "PageUp", 33)
+  val PageDown: Key = Key("PageDown", "PageDown", 34)
+  val Quote: Key = Key("'", "Quote", 222)
+  def function(number: Int): Key = Key(s"F$number", s"F$number", 111 + number)
   def letter(c: Char): Key = Key(c.toLower.toString, s"Key${c.toUpper}", c.toUpper.toInt)
 }

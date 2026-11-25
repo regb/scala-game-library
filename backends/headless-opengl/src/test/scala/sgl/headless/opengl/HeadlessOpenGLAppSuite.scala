@@ -59,6 +59,29 @@ class HeadlessOpenGLAppSuite extends AnyFunSuite {
     } finally app.stop()
   }
 
+  test("a controller types text, and repeats the keys that are down") {
+    var seen = Vector.empty[String]
+    object app extends HeadlessOpenGLApp with Application with DesktopSystemProvider with NoLoggingProvider {
+      override val frameDimension: (Int, Int) = (8, 6)
+      override def create(): Unit = Input.setInputProcessor(new InputProcessor {
+        override def keyDown(key: Input.Keys.Key): Boolean = { seen :+= s"down $key"; true }
+        override def keyRepeated(key: Input.Keys.Key): Boolean = { seen :+= s"repeated $key"; true }
+        override def textInput(text: String): Boolean = { seen :+= s"typed $text"; true }
+      })
+      override def frame(dt: Double): Unit = ()
+      override def dispose(): Unit = Input.clearInputProcessor()
+    }
+    app.start()
+    try {
+      app.Controller.keyRepeated(Input.Keys.Backspace)
+      app.Controller.keyDown(Input.Keys.Backspace)
+      app.Controller.keyRepeated(Input.Keys.Backspace)
+      app.Controller.textInput("é")
+      app.step(1.0 / 60.0)
+      assert(seen == Vector("down Backspace", "repeated Backspace", "typed é"))
+    } finally app.stop()
+  }
+
   test("the clipboard of a window that is not shown is its own") {
     object app extends HeadlessOpenGLApp with Application with DesktopSystemProvider with NoLoggingProvider {
       override val frameDimension: (Int, Int) = (8, 6)

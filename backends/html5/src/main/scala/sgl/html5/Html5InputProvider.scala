@@ -41,6 +41,13 @@ trait Html5InputProvider {
   /** Whether keyboard events captured by the game should prevent browser defaults. */
   protected val Html5KeyboardPreventDefault: Boolean = true
 
+  /** Keys that are for the browser, which the game is not told of: by default the
+    * ones that move the focus, reload the page, show it on the full screen and
+    * open the developer tools.
+    */
+  protected val Html5BrowserKeys: Set[Input.Keys.Key] =
+    Set(Input.Keys.Tab, Input.Keys.F5, Input.Keys.F11, Input.Keys.F12)
+
   /** Whether mouse events captured by the game should prevent browser defaults. */
   protected val Html5MousePreventDefault: Boolean = true
 
@@ -102,6 +109,7 @@ trait Html5InputProvider {
       onUserInteraction = () => triggerUserInteraction(),
       globalKeyboardTarget = Html5GlobalKeyboardTarget,
       keyboardPreventDefault = Html5KeyboardPreventDefault,
+      browserKeys = Html5BrowserKeys,
       mousePreventDefault = Html5MousePreventDefault,
       wheelPreventDefault = Html5WheelPreventDefault,
       touchPreventDefault = Html5TouchPreventDefault,
@@ -127,6 +135,7 @@ private[html5] object Html5DomInputAdapter {
     onUserInteraction: () => Unit = () => (),
     globalKeyboardTarget: dom.EventTarget = dom.document,
     keyboardPreventDefault: Boolean = true,
+    browserKeys: Set[Input.Keys.Key] = Set.empty,
     mousePreventDefault: Boolean = true,
     wheelPreventDefault: Boolean = true,
     touchPreventDefault: Boolean = true,
@@ -328,20 +337,29 @@ private[html5] object Html5DomInputAdapter {
 
     val keyboardTarget: dom.EventTarget = if(captureKeyboardOnCanvas) canvas else globalKeyboardTarget
 
+    def gameKey(e: dom.KeyboardEvent): Option[Input.Keys.Key] = key(e).filterNot(browserKeys)
+
     listen(keyboardTarget, "keydown") { event =>
       val e = event.asInstanceOf[dom.KeyboardEvent]
-      key(e).foreach { k =>
+      gameKey(e).foreach { k =>
         if(keyboardPreventDefault) e.preventDefault()
         onUserInteraction()
         if(!pressedKeys(k)) {
           pressedKeys += k
           Input.inputProcessor.keyDown(k)
+        } else if(e.repeat) {
+          Input.inputProcessor.keyRepeated(k)
         }
+      }
+      typedText(e).foreach { text =>
+        onUserInteraction()
+        // Keys that no game is told of may be for the browser.
+        if(Input.inputProcessor.textInput(text) && keyboardPreventDefault) e.preventDefault()
       }
     }
     listen(keyboardTarget, "keyup") { event =>
       val e = event.asInstanceOf[dom.KeyboardEvent]
-      key(e).foreach { k =>
+      gameKey(e).foreach { k =>
         if(keyboardPreventDefault) e.preventDefault()
         onUserInteraction()
         if(pressedKeys.remove(k)) {
@@ -399,13 +417,36 @@ private[html5] object Html5DomInputAdapter {
     case other => Input.MouseButtons.Other(other)
   }
 
+  /** The character that a key types. What input methods, dead keys and the
+    * keyboards of phones write does not come by the key, and is not seen.
+    */
+  private def typedText(e: dom.KeyboardEvent): Option[String] = {
+    // AltGr may be told of as control and alt too, and types characters as the
+    // alt of a Mac does.
+    val altGraph = e.getModifierState("AltGraph")
+    val onMac = dom.window.navigator.platform.startsWith("Mac")
+    val shortcut = e.metaKey || (!altGraph && (e.ctrlKey || (e.altKey && !onMac)))
+    // Keys that type no character have a longer name.
+    val text = e.key
+    if(shortcut || e.isComposing || text.codePointCount(0, text.length) != 1) None else Some(text)
+  }
+
   // TODO: will need to make it more cross-browser compatible.
   private def key(e: dom.KeyboardEvent): Option[Input.Keys.Key] = e.keyCode match {
     case 8 => Some(Input.Keys.Backspace)
     case 13 => Some(if(e.location == dom.KeyboardEvent.DOM_KEY_LOCATION_NUMPAD) Input.Keys.NumpadEnter else Input.Keys.Enter)
     case 16 => Some(if(e.location == dom.KeyboardEvent.DOM_KEY_LOCATION_RIGHT) Input.Keys.RightShift else Input.Keys.LeftShift)
+    case 17 => Some(if(e.location == dom.KeyboardEvent.DOM_KEY_LOCATION_RIGHT) Input.Keys.RightControl else Input.Keys.LeftControl)
+    case 18 => Some(if(e.location == dom.KeyboardEvent.DOM_KEY_LOCATION_RIGHT) Input.Keys.RightAlt else Input.Keys.LeftAlt)
     case 27 => Some(Input.Keys.Escape)
     case 32 => Some(Input.Keys.Space)
+
+    case 9 => Some(Input.Keys.Tab)
+    case 33 => Some(Input.Keys.PageUp)
+    case 34 => Some(Input.Keys.PageDown)
+    case 35 => Some(Input.Keys.End)
+    case 36 => Some(Input.Keys.Home)
+    case 46 => Some(Input.Keys.Delete)
 
     case 37 => Some(Input.Keys.Left)
     case 38 => Some(Input.Keys.Up)
@@ -449,6 +490,19 @@ private[html5] object Html5DomInputAdapter {
     case 88 => Some(Input.Keys.X)
     case 89 => Some(Input.Keys.Y)
     case 90 => Some(Input.Keys.Z)
+
+    case 112 => Some(Input.Keys.F1)
+    case 113 => Some(Input.Keys.F2)
+    case 114 => Some(Input.Keys.F3)
+    case 115 => Some(Input.Keys.F4)
+    case 116 => Some(Input.Keys.F5)
+    case 117 => Some(Input.Keys.F6)
+    case 118 => Some(Input.Keys.F7)
+    case 119 => Some(Input.Keys.F8)
+    case 120 => Some(Input.Keys.F9)
+    case 121 => Some(Input.Keys.F10)
+    case 122 => Some(Input.Keys.F11)
+    case 123 => Some(Input.Keys.F12)
 
     case _ => None
   }

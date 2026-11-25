@@ -22,18 +22,26 @@ trait NativeInputProvider {
     event.type_ match {
       case SDL_KEYDOWN =>
         val keyEvent = event.key
-        if(keyEvent.repeat == 0.toUByte) //SDL2 re-trigger events when holding the key for some time
-          keycodeToEvent
-          .andThen(key =>
-            Input.inputProcessor.keyDown(key))
-          .applyOrElse(keyEvent.keysym.sym,
-                       (keycode: SDL_Keycode) => logger.debug("ignoring event with keycode: " + keycode))
+        //SDL2 re-trigger events when holding the key for some time
+        val repeated = keyEvent.repeat != 0.toUByte
+        keycodeToEvent
+        .andThen(key =>
+          if(repeated) Input.inputProcessor.keyRepeated(key) else Input.inputProcessor.keyDown(key))
+        .applyOrElse(keyEvent.keysym.sym,
+                     (keycode: SDL_Keycode) => logger.debug("ignoring event with keycode: " + keycode))
       case SDL_KEYUP =>
         keycodeToEvent
         .andThen(key =>
           Input.inputProcessor.keyUp(key))
         .applyOrElse(event.key.keysym.sym,
                      (keycode: SDL_Keycode) => logger.debug("ignoring event with keycode: " + keycode))
+
+      case SDL_TEXTINPUT =>
+        // With the left alt key it is a shortcut: the right one is AltGr.
+        val modifiers = SDL_GetModState()
+        val text = fromCString(event.text.at4.asInstanceOf[CString], java.nio.charset.StandardCharsets.UTF_8)
+        if(text.nonEmpty && !text.exists(Character.isISOControl) && (modifiers & (KMOD_LALT | KMOD_GUI)) == 0.toUInt)
+          Input.inputProcessor.textInput(text)
 
       case SDL_MOUSEBUTTONDOWN =>
         //TODO: check 'which' field to ignore TOUCH events
@@ -124,6 +132,28 @@ trait NativeInputProvider {
     case SDLK_BACKSPACE => Input.Keys.Backspace
     case SDLK_LSHIFT => Input.Keys.LeftShift
     case SDLK_RSHIFT => Input.Keys.RightShift
+    case SDLK_LCTRL => Input.Keys.LeftControl
+    case SDLK_RCTRL => Input.Keys.RightControl
+    case SDLK_LALT => Input.Keys.LeftAlt
+    case SDLK_RALT => Input.Keys.RightAlt
+    case SDLK_TAB => Input.Keys.Tab
+    case SDLK_DELETE => Input.Keys.Delete
+    case SDLK_HOME => Input.Keys.Home
+    case SDLK_END => Input.Keys.End
+    case SDLK_PAGEUP => Input.Keys.PageUp
+    case SDLK_PAGEDOWN => Input.Keys.PageDown
+    case SDLK_F1 => Input.Keys.F1
+    case SDLK_F2 => Input.Keys.F2
+    case SDLK_F3 => Input.Keys.F3
+    case SDLK_F4 => Input.Keys.F4
+    case SDLK_F5 => Input.Keys.F5
+    case SDLK_F6 => Input.Keys.F6
+    case SDLK_F7 => Input.Keys.F7
+    case SDLK_F8 => Input.Keys.F8
+    case SDLK_F9 => Input.Keys.F9
+    case SDLK_F10 => Input.Keys.F10
+    case SDLK_F11 => Input.Keys.F11
+    case SDLK_F12 => Input.Keys.F12
 
     case SDLK_UP => Input.Keys.Up
     case SDLK_DOWN => Input.Keys.Down

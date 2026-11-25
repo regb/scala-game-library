@@ -59,6 +59,16 @@ trait HeadlessOpenGLApp extends LwjglWindowProvider
       if(pressedKeys.remove(key)) Input.inputProcessor.keyUp(key)
     }
 
+    /** Repeats a key that is down. */
+    def keyRepeated(key: Input.Keys.Key): Unit = enqueueInput {
+      if(pressedKeys.contains(key)) Input.inputProcessor.keyRepeated(key)
+    }
+
+    /** Types some text, without the keys for it. */
+    def textInput(text: String): Unit = enqueueInput {
+      Input.inputProcessor.textInput(text)
+    }
+
     def mouseMoved(x: Int, y: Int): Unit = enqueueInput {
       mouseX = x
       mouseY = y

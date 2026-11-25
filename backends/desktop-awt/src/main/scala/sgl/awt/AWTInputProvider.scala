@@ -23,6 +23,8 @@ object InputEvent {
 
   case object KeyPressed extends EventType
   case object KeyReleased extends EventType
+  case object KeyRepeated extends EventType
+  case object KeyTyped extends EventType
 }
 
 trait AWTInputProvider {
@@ -31,6 +33,8 @@ trait AWTInputProvider {
   private val pool = new Pool(() => new InputEvent, 15)
 
   val inputEventsQueue = new Queue[InputEvent]
+
+  private val typedText = new AWTTypedText
 
   def processInputEvents(): Unit = {
     while(inputEventsQueue.nonEmpty) {
@@ -63,6 +67,16 @@ trait AWTInputProvider {
           val e = event.keyEvent
           keyEventKey(e).foreach(key => {
             Input.inputProcessor.keyUp(key)
+          })
+        }
+        case InputEvent.KeyRepeated => {
+          keyEventKey(event.keyEvent).foreach(key => {
+            Input.inputProcessor.keyRepeated(key)
+          })
+        }
+        case InputEvent.KeyTyped => {
+          typedText.add(event.keyEvent).foreach(text => {
+            Input.inputProcessor.textInput(text)
           })
         }
       }
@@ -122,6 +136,29 @@ trait AWTInputProvider {
     case KeyEvent.VK_BACK_SPACE => Some(Input.Keys.Backspace)
     case KeyEvent.VK_SHIFT =>
       Some(if(e.getKeyLocation == KeyEvent.KEY_LOCATION_RIGHT) Input.Keys.RightShift else Input.Keys.LeftShift)
+    case KeyEvent.VK_CONTROL =>
+      Some(if(e.getKeyLocation == KeyEvent.KEY_LOCATION_RIGHT) Input.Keys.RightControl else Input.Keys.LeftControl)
+    case KeyEvent.VK_ALT =>
+      Some(if(e.getKeyLocation == KeyEvent.KEY_LOCATION_RIGHT) Input.Keys.RightAlt else Input.Keys.LeftAlt)
+    case KeyEvent.VK_ALT_GRAPH => Some(Input.Keys.RightAlt)
+    case KeyEvent.VK_TAB => Some(Input.Keys.Tab)
+    case KeyEvent.VK_DELETE => Some(Input.Keys.Delete)
+    case KeyEvent.VK_HOME => Some(Input.Keys.Home)
+    case KeyEvent.VK_END => Some(Input.Keys.End)
+    case KeyEvent.VK_PAGE_UP => Some(Input.Keys.PageUp)
+    case KeyEvent.VK_PAGE_DOWN => Some(Input.Keys.PageDown)
+    case KeyEvent.VK_F1 => Some(Input.Keys.F1)
+    case KeyEvent.VK_F2 => Some(Input.Keys.F2)
+    case KeyEvent.VK_F3 => Some(Input.Keys.F3)
+    case KeyEvent.VK_F4 => Some(Input.Keys.F4)
+    case KeyEvent.VK_F5 => Some(Input.Keys.F5)
+    case KeyEvent.VK_F6 => Some(Input.Keys.F6)
+    case KeyEvent.VK_F7 => Some(Input.Keys.F7)
+    case KeyEvent.VK_F8 => Some(Input.Keys.F8)
+    case KeyEvent.VK_F9 => Some(Input.Keys.F9)
+    case KeyEvent.VK_F10 => Some(Input.Keys.F10)
+    case KeyEvent.VK_F11 => Some(Input.Keys.F11)
+    case KeyEvent.VK_F12 => Some(Input.Keys.F12)
 
     case KeyEvent.VK_0 => Some(Input.Keys.Num0)
     case KeyEvent.VK_1 => Some(Input.Keys.Num1)
@@ -181,6 +218,8 @@ trait AWTInputProvider {
       }
     })
 
+    // Tab is a key like others, instead of moving the focus.
+    gameCanvas.setFocusTraversalKeysEnabled(false)
     gameCanvas.addKeyListener(new KeyListener() {
       // By location too, as both shift keys have the same code.
       private val currentlyPressed = new HashSet[(Int, Int)]
@@ -189,17 +228,12 @@ trait AWTInputProvider {
       override def keyPressed(e: KeyEvent): Unit = {
         // keyPressed event will actually automatically repeat the key event
         // if it's remaining pressed for some time. This seems to be an OS-behavior
-        // and might even be JVM-platform-dependent. For us, all we want is to
-        // prevent such a repeat from being exposed to the game code, so we detect
-        // these and filter out.
+        // and might even be JVM-platform-dependent. The game is told of a repeat
+        // as such, so we detect these.
         // Also, as far as my tests go, even if the KeyPressed is repeated, the
         // KeyReleased event will only occur once, at the very end.
-        if(currentlyPressed.contains(pressed(e)))
-          return
-        currentlyPressed.add(pressed(e))
-
         val event = pool.acquire()
-        event.eventType = InputEvent.KeyPressed
+        event.eventType = if(currentlyPressed.add(pressed(e))) InputEvent.KeyPressed else InputEvent.KeyRepeated
         event.keyEvent = e
         inputEventsQueue.enqueue(event)
       }
@@ -210,9 +244,37 @@ trait AWTInputProvider {
         event.keyEvent = e
         inputEventsQueue.enqueue(event)
       }
-      override def keyTyped(e: KeyEvent): Unit = {}
+      override def keyTyped(e: KeyEvent): Unit = {
+        val event = pool.acquire()
+        event.eventType = InputEvent.KeyTyped
+        event.keyEvent = e
+        inputEventsQueue.enqueue(event)
+      }
     })
 
   }
 
+}
+
+/** Makes text of what AWT says is typed. It comes by the char, so that the
+  * characters that are made of two come in halves.
+  */
+private[awt] final class AWTTypedText(onMac: Boolean = java.lang.System.getProperty("os.name").startsWith("Mac")) {
+  private var firstHalf: Option[Char] = None
+
+  /** The text that is complete with this event, if any. */
+  def add(e: KeyEvent): Option[String] = {
+    val c = e.getKeyChar
+    // AltGr is control and alt together on Windows, and types characters as the
+    // alt of a Mac does.
+    val shortcut = e.isMetaDown || (!e.isAltGraphDown && (e.isControlDown || (e.isAltDown && !onMac)))
+    val before = firstHalf
+    firstHalf = None
+    if(c == KeyEvent.CHAR_UNDEFINED || Character.isISOControl(c) || shortcut) None
+    else if(Character.isHighSurrogate(c)) {
+      firstHalf = Some(c)
+      None
+    } else if(Character.isLowSurrogate(c)) before.map(first => s"$first$c")
+    else Some(c.toString)
+  }
 }

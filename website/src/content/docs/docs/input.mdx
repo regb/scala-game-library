@@ -42,8 +42,12 @@ Input.setInputProcessor(new InputProcessor {
 ```
 
 Keys cover the letters `A` to `Z`, `Num0` to `Num9`, `Space`, `Enter`, `NumpadEnter`,
-`Escape`, `Backspace`, `LeftShift`, `RightShift`, the arrow keys, and the gamepad buttons
+`Escape`, `Backspace`, `Delete`, `Tab`, `Home`, `End`, `PageUp`, `PageDown`, `F1` to `F12`, left and
+right `Shift`, `Control` and `Alt` (`LeftShift`, and so on), the arrow keys, and the gamepad buttons
 `ButtonStart` and `ButtonSelect`.
+
+In browsers, `Tab`, `F5`, `F11` and `F12` are left to the browser, and the game is not told of them.
+Override `Html5BrowserKeys` to choose others.
 
 Mouse buttons are `Left`, `Right` and `Middle`, and the others are `Other(number)`, with the number
 that the platform has for them.
@@ -52,9 +56,38 @@ Scrolling comes as the platform counts it, with its unit: `Notches` on the deskt
 `Pixels` in browsers, or `Lines` and `Pages`. Amounts are positive to the right and down, and can
 have fractions. How much a unit moves is for the game to say.
 
-The callbacks are `keyDown`, `keyUp`, `mouseMoved`, `mouseDown`, `mouseUp`, `mouseScrolled`,
+The callbacks are `keyDown`, `keyUp`, `keyRepeated`, `textInput`, `mouseMoved`, `mouseDown`, `mouseUp`, `mouseScrolled`,
 `touchDown`, `touchMoved`, `touchUp`, and `systemAction`. You can replace the processor at any
 time, for example when the game switches screens.
+
+### Typed text
+
+`textInput` is what the player typed, by the layout of their keyboard and with their modifiers. Use it
+for names and the like, and `keyRepeated` for the keys that edit, which repeat as long as they are held:
+
+```scala
+override def textInput(text: String): Boolean = {
+  name += text
+  true
+}
+
+override def keyDown(key: Input.Keys.Key): Boolean = edit(key)
+override def keyRepeated(key: Input.Keys.Key): Boolean = edit(key)
+
+private def edit(key: Input.Keys.Key): Boolean = key match {
+  case Input.Keys.Backspace =>
+    // A character can be two chars.
+    if(name.nonEmpty) name = name.substring(0, name.offsetByCodePoints(name.length, -1))
+    true
+  case _ => false
+}
+```
+
+The keys come as well: the one for a letter is in `keyDown` before it is in `textInput`. Return `true`
+from `textInput` to keep the browser from acting on it too.
+
+Text comes from every desktop backend and from HTML5. In browsers it has nothing from input methods,
+accents typed as separate keys, or the keyboards of phones, and Android has no text yet.
 
 <Aside type="note" title="Threading">
 Events are always delivered on the game thread and outside `frame`, so callbacks can update game
@@ -99,5 +132,5 @@ override def systemAction(action: InputActions.Action): Boolean = action match {
 ## Headless control
 
 The [headless OpenGL backend](/docs/testing/#headless-opengl) has a `Controller` that injects
-keyboard, mouse, touch, scroll, and system-action events. Tests and automation can use it to drive
+keyboard, text, mouse, touch, scroll, and system-action events. Tests and automation can use it to drive
 a game.

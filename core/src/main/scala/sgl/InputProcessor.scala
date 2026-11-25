@@ -25,6 +25,26 @@ trait InputProcessor {
   def keyUp(key: Keys.Key): Boolean = {
     false
   }
+  /** A key that is held down repeats, as it does in a text field.
+    *
+    * When it starts to and how often is a setting of the user, and most
+    * platforms only repeat the last key that went down. The key has been down
+    * all along: this is not followed by a `keyUp` of its own.
+    */
+  def keyRepeated(key: Keys.Key): Boolean = {
+    false
+  }
+
+  /** The player typed some text, mostly one character.
+    *
+    * It follows the keyboard layout and the modifiers, and has no control
+    * characters, such as the line break of Enter. The keys typed for it are told
+    * of too, by `keyDown` or `keyRepeated`. Keys that are shortcuts, with control
+    * for example, type nothing.
+    */
+  def textInput(text: String): Boolean = {
+    false
+  }
 
   // Mouse events, no "drag" events as this is simply derived from down + moved events.
   def mouseMoved(x: Int, y: Int): Boolean = {
@@ -87,6 +107,14 @@ class CombinedInputProcessor(
   final override def keyUp(key: Keys.Key): Boolean = {
     firstProcessor.keyUp(key) ||
     secondProcessor.keyUp(key)
+  }
+  final override def keyRepeated(key: Keys.Key): Boolean = {
+    firstProcessor.keyRepeated(key) ||
+    secondProcessor.keyRepeated(key)
+  }
+  final override def textInput(text: String): Boolean = {
+    firstProcessor.textInput(text) ||
+    secondProcessor.textInput(text)
   }
 
   // Mouse events, no "drag" events as this is simply derived from down + moved events.
