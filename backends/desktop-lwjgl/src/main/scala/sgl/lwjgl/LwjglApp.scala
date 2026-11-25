@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 
 import org.lwjgl.glfw.GLFW._
 import org.lwjgl.opengl.GL
-import org.lwjgl.system.Platform
+import org.lwjgl.system.{MemoryStack, MemoryUtil, Platform}
 
 trait LwjglApp extends LwjglGlfwWindowProvider with LwjglRenderThreadDispatcher with LwjglOpenGLProvider with LwjglAudioProvider with SingleThreadSchedulerProvider with LwjglFrameCapture {
   this: Application with LoggingProvider with DesktopSystemProvider =>
@@ -39,8 +39,19 @@ trait LwjglApp extends LwjglGlfwWindowProvider with LwjglRenderThreadDispatcher 
     }
   }
 
+  /** What GLFW has to say about its last failure, if anything. */
+  private def glfwError(): String = {
+    val stack = MemoryStack.stackPush()
+    try {
+      val description = stack.mallocPointer(1)
+      val code = glfwGetError(description)
+      if(code == GLFW_NO_ERROR || description.get(0) == 0L) ""
+      else ": " + MemoryUtil.memUTF8(description.get(0))
+    } finally stack.close()
+  }
+
   def main(args: Array[String]): Unit = {
-    if(!glfwInit()) throw new RuntimeException("Failed to initialize GLFW")
+    if(!glfwInit()) throw new RuntimeException("Failed to initialize GLFW" + glfwError())
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3)
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE)
@@ -51,8 +62,9 @@ trait LwjglApp extends LwjglGlfwWindowProvider with LwjglRenderThreadDispatcher 
 
     val window = glfwCreateWindow(frameDimension._1, frameDimension._2, windowTitle, 0L, 0L)
     if(window == 0L) {
+      val reason = glfwError()
       glfwTerminate()
-      throw new RuntimeException("Failed to create GLFW window")
+      throw new RuntimeException("Failed to create GLFW window" + reason)
     }
     setLwjglWindow(window)
     WindowInitialPosition.foreach { case (x, y) => glfwSetWindowPos(window, x, y) }

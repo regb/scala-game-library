@@ -71,7 +71,7 @@ trait AWTInputProvider {
       Input.MouseButtons.Left
     else if(javax.swing.SwingUtilities.isRightMouseButton(e))
       Input.MouseButtons.Right
-    else if(javax.swing.SwingUtilities.isRightMouseButton(e))
+    else if(javax.swing.SwingUtilities.isMiddleMouseButton(e))
       Input.MouseButtons.Middle
     else
       Input.MouseButtons.Left

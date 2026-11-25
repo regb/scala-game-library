@@ -60,7 +60,7 @@ trait NativeAppBase extends NativeSystemProvider with NativeRenderThreadDispatch
   def main(args: Array[String]): Unit = {
     if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0) {
       logger.error("Failed to init SDL: " + fromCString(SDL_GetError()))
-      sys.exit()
+      sys.exit(1)
     }
 
     configureGLContext()
@@ -72,7 +72,7 @@ trait NativeAppBase extends NativeSystemProvider with NativeRenderThreadDispatch
     if(window == null) {
       logger.error("Failed to create a window: " + fromCString(SDL_GetError()))
       SDL_Quit()
-      sys.exit()
+      sys.exit(1)
     }
 
     val glContext = SDL_GL_CreateContext(window)
@@ -80,7 +80,7 @@ trait NativeAppBase extends NativeSystemProvider with NativeRenderThreadDispatch
       logger.error("Could not create OpenGL context: " + fromCString(SDL_GetError()))
       SDL_DestroyWindow(window)
       SDL_Quit()
-      sys.exit()
+      sys.exit(1)
     }
     SDL_GL_SetSwapInterval(1)
 
@@ -90,7 +90,7 @@ trait NativeAppBase extends NativeSystemProvider with NativeRenderThreadDispatch
       SDL_GL_DeleteContext(glContext)
       SDL_DestroyWindow(window)
       SDL_Quit()
-      sys.exit()
+      sys.exit(1)
     }
 
     var rendererInitialized = false

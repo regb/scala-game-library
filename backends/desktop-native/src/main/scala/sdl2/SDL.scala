@@ -417,6 +417,7 @@ object SDL {
 
   def SDL_LoadBMP_RW(src: Ptr[SDL_RWops], freesrc: CInt): Ptr[SDL_Surface] = extern
   def SDL_FreeSurface(surface: Ptr[SDL_Surface]): Unit = extern
+  def SDL_ConvertSurfaceFormat(src: Ptr[SDL_Surface], pixel_format: UInt, flags: UInt): Ptr[SDL_Surface] = extern
 
   /**************************************
    ************ SDL_render.h *************

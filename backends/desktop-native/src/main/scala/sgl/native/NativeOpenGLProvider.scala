@@ -377,7 +377,12 @@ trait NativeOpenGLProvider extends OpenGLProvider {
       val path = nativeAssetPath(resourceName)
       val surface = IMG_Load(toCString(path))
       if(surface == null) throw new RuntimeException("Could not load texture " + path + ": " + fromCString(SDL_GetError()))
-      surface
+      // Images can also have a palette, gray levels, or no alpha. What is
+      // uploaded is always RGBA, a byte each.
+      val converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_ABGR8888, 0.toUInt)
+      SDL_FreeSurface(surface)
+      if(converted == null) throw new RuntimeException("Could not convert texture " + path + ": " + fromCString(SDL_GetError()))
+      converted
     }
 
     private def uploadTextureSurface(surface: Ptr[SDL_Surface], filter: TextureFilter, generateMipmaps: Boolean): Texture = {
@@ -388,8 +393,7 @@ trait NativeOpenGLProvider extends OpenGLProvider {
       texParameteri(Texture2D, TextureMagFilter, sampling)
       texParameteri(Texture2D, TextureWrapS, ClampToEdge)
       texParameteri(Texture2D, TextureWrapT, ClampToEdge)
-      val format = if(surface.format.BytesPerPixel == 4.toUByte) 0x1908 else 0x1907
-      GLES3.glTexImage2D(Texture2D.toUInt, 0, format, surface.w, surface.h, 0, format.toUInt, 0x1401.toUInt, surface.pixels)
+      GLES3.glTexImage2D(Texture2D.toUInt, 0, 0x1908, surface.w, surface.h, 0, 0x1908.toUInt, 0x1401.toUInt, surface.pixels)
       if(generateMipmaps) GLES3.glGenerateMipmap(Texture2D.toUInt)
       texture
     }
