@@ -15,7 +15,12 @@ import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import sgl.ads.AdObserver
 import sgl.ads.AdsProvider
+import sgl.ads.ConsentAds
 import sgl.ads.ObservableAds
+import com.google.android.ump.ConsentForm
+import com.google.android.ump.ConsentInformation
+import com.google.android.ump.ConsentRequestParameters
+import com.google.android.ump.UserMessagingPlatform
 import scala.Function1
 import scala.runtime.BoxedUnit
 
@@ -25,7 +30,7 @@ class AndroidAdMobAds(
     private val alwaysPreload: Boolean = true,
     private val interstitialAdUnitId: String = TEST_INTERSTITIAL_AD_UNIT_ID,
     private val rewardedAdUnitId: String = TEST_REWARDED_AD_UNIT_ID,
-) : AdsProvider.Ads, ObservableAds {
+) : AdsProvider.Ads, ObservableAds, ConsentAds {
     private val activity = context as? Activity ?: error("AndroidAdMobAds requires an Activity context")
     @Volatile private var observer: AdObserver? = null
     @Volatile private var interstitial: InterstitialAd? = null
@@ -49,15 +54,70 @@ class AndroidAdMobAds(
 
     init {
         activity.application.registerActivityLifecycleCallbacks(lifecycleCallbacks)
-        activity.runOnUiThread {
+        // Without preloading the SDK starts with the first load, which a game may delay until it
+        // has the player's consent.
+        if (alwaysPreload) activity.runOnUiThread {
             MobileAds.initialize(activity.applicationContext) {
                 activity.runOnUiThread {
-                    if (alwaysPreload && !destroyed && !activity.isDestroyed) {
+                    if (!destroyed && !activity.isDestroyed) {
                         loadInterstitial()
                         loadRewarded()
                     }
                 }
             }
+        }
+    }
+
+    private var initialized = alwaysPreload
+    private fun ensureInitialized() { // UI thread
+        if (!initialized) {
+            initialized = true
+            MobileAds.initialize(activity.applicationContext) {}
+        }
+    }
+
+    private val consentInformation by lazy { UserMessagingPlatform.getConsentInformation(activity) }
+    @Volatile private var consentForm: ConsentForm? = null
+    @Volatile private var consentUpdated = false
+
+    override fun updateConsent(onDone: Function1<Any, BoxedUnit>) = activity.runOnUiThread {
+        if (destroyed || activity.isDestroyed) return@runOnUiThread
+        consentInformation.requestConsentInfoUpdate(activity, ConsentRequestParameters.Builder().build(), {
+            consentUpdated = true
+            if (consentInformation.consentStatus == ConsentInformation.ConsentStatus.REQUIRED &&
+                consentInformation.isConsentFormAvailable) {
+                UserMessagingPlatform.loadConsentForm(activity, {
+                    consentForm = it
+                    onDone.apply(0)
+                }, { onDone.apply(it.errorCode) })
+            } else onDone.apply(0)
+        }, {
+            // The choice of an earlier launch still counts.
+            consentUpdated = true
+            onDone.apply(it.errorCode)
+        })
+    }
+
+    override fun canRequestAds(): Boolean = consentUpdated && consentInformation.canRequestAds()
+
+    override fun isConsentFormReady(): Boolean = consentForm != null
+
+    override fun showConsentForm(onClosed: Function1<Any, BoxedUnit>): Boolean {
+        val form = consentForm ?: return false
+        consentForm = null
+        activity.runOnUiThread {
+            if (!destroyed && !activity.isDestroyed) form.show(activity) { onClosed.apply(it?.errorCode ?: 0) }
+        }
+        return true
+    }
+
+    override fun isPrivacyOptionsRequired(): Boolean = consentUpdated &&
+        consentInformation.privacyOptionsRequirementStatus ==
+            ConsentInformation.PrivacyOptionsRequirementStatus.REQUIRED
+
+    override fun showPrivacyOptions(onClosed: Function1<Any, BoxedUnit>) = activity.runOnUiThread {
+        if (!destroyed && !activity.isDestroyed) {
+            UserMessagingPlatform.showPrivacyOptionsForm(activity) { onClosed.apply(it?.errorCode ?: 0) }
         }
     }
 
@@ -76,6 +136,7 @@ class AndroidAdMobAds(
         interstitialLoading = true
         activity.runOnUiThread {
             if (destroyed || activity.isDestroyed) return@runOnUiThread
+            ensureInitialized()
             observer?.onRequest("interstitial", interstitialAdUnitId)
             InterstitialAd.load(activity, interstitialAdUnitId, AdRequest.Builder().build(),
                 object : InterstitialAdLoadCallback() {
@@ -131,6 +192,7 @@ class AndroidAdMobAds(
         rewardedLoading = true
         activity.runOnUiThread {
             if (destroyed || activity.isDestroyed) return@runOnUiThread
+            ensureInitialized()
             observer?.onRequest("rewarded", rewardedAdUnitId)
             RewardedAd.load(activity, rewardedAdUnitId, AdRequest.Builder().build(),
                 object : RewardedAdLoadCallback() {
