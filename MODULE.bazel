@@ -113,3 +113,7 @@ use_repo(maven, maven = "sgl_maven")
 # Tiled tool extension
 tiled = use_extension("//bazel/tiled:extensions.bzl", "tiled_extension")
 use_repo(tiled, "tiled_tool")
+
+# The browser of the HTML5 tests, downloaded when one is built.
+chrome = use_extension("//backends/html5/browser-testing/chrome:extension.bzl", "chrome")
+use_repo(chrome, "sgl_chrome_linux64")

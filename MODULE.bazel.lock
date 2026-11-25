@@ -301,6 +301,19 @@
   },
   "selectedYankedVersions": {},
   "moduleExtensions": {
+    "//backends/html5/browser-testing/chrome:extension.bzl%chrome": {
+      "general": {
+        "bzlTransitiveDigest": "lvJLey9D5mRSdC21xsth+08ITIa7i0/vnnCQV4g51AE=",
+        "usagesDigest": "cuBONeuIbgl/nEeWT5FkUs4gar3YP0k/fzZzXvk/13E=",
+        "recordedInputs": [],
+        "generatedRepoSpecs": {
+          "sgl_chrome_linux64": {
+            "repoRuleId": "@@//backends/html5/browser-testing/chrome:extension.bzl%_chrome_linux64",
+            "attributes": {}
+          }
+        }
+      }
+    },
     "//bazel/tiled:extensions.bzl%tiled_extension": {
       "general": {
         "bzlTransitiveDigest": "GR2xe9HJkJ2xz8URy3CG8PJDhjdHm3Ff8B2O46ONVdU=",
