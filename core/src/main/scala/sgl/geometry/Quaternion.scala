@@ -7,6 +7,26 @@ final case class Quaternion(x: Float, y: Float, z: Float, w: Float) {
     w * that.z + x * that.y - y * that.x + z * that.w,
     w * that.w - x * that.x - y * that.y - z * that.z,
   )
+
+  /** Turns from this rotation, when `t` is 0, to another, when it is 1, at a
+    * constant speed and along the shortest turn. Both must be unit quaternions.
+    */
+  def slerp(to: Quaternion, t: Float): Quaternion = {
+    val dot = x * to.x + y * to.y + z * to.z + w * to.w
+    // A quaternion and its opposite are the same rotation: go to the nearer one.
+    val sign = if(dot < 0f) -1f else 1f
+    val cos = scala.math.abs(dot)
+    val (a, b) =
+      if(cos > 0.9995f) (1f - t, t * sign) // nearly the same rotation, where the sine is too small to divide by
+      else {
+        val angle = scala.math.acos(cos)
+        val sin = scala.math.sin(angle)
+        ((scala.math.sin((1f - t) * angle) / sin).toFloat, (scala.math.sin(t * angle) / sin).toFloat * sign)
+      }
+    val q = Quaternion(x * a + to.x * b, y * a + to.y * b, z * a + to.z * b, w * a + to.w * b)
+    val norm = scala.math.sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w).toFloat
+    Quaternion(q.x / norm, q.y / norm, q.z / norm, q.w / norm)
+  }
 }
 
 object Quaternion {

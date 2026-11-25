@@ -25,6 +25,16 @@ case class Vec2(x: Float, y: Float) {
     Vec2(x/n, y/n)
   }
 
+  /** Linear interpolation: this when `t` is 0, `to` when it is 1. */
+  def lerp(to: Vec2, t: Float): Vec2 = this * (1f - t) + to * t
+
+  /** Moves towards `target` by at most `maxStep`, without passing it. */
+  def moveTowards(target: Vec2, maxStep: Float): Vec2 = {
+    val delta = target - this
+    val distance = delta.norm
+    if(distance <= maxStep) target else this + delta * (maxStep / distance)
+  }
+
   def isZero: Boolean = x == 0 && y == 0
   def nonZero: Boolean = !isZero
 

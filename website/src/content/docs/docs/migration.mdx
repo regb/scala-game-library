@@ -28,6 +28,9 @@ legacyUpdate((dt * 1000.0).toLong)
 `sgl.math` with `sgl.geometry` in imports, and `math.Vec2` and similar names with `geometry.Vec2`.
 `import scala.math` next to `import sgl._` is no longer needed.
 
+`sgl.util.Math` was removed for the same reason: use `degrees.toRadians` and `radians.toDegrees`, which
+are part of Scala. `sgl.util.MathUtils` has `clamp`, `lerp`, and similar helpers.
+
 ## Resource paths to typed assets
 
 Old application code often loaded resources by path:

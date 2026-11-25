@@ -2,7 +2,7 @@ package sgl
 package tiled
 
 import sgl.assets.{AssetRuntime, DrawableAsset}
-import sgl.util.{Loader, Math}
+import sgl.util.Loader
 
 trait TiledMapRendererComponent {
   this: SystemProvider with CanvasProvider with WindowProvider with AssetRuntime =>
@@ -169,7 +169,7 @@ trait TiledMapRendererComponent {
             val tl = ts.tiles(ts.getTileByGlobalId(gid).tileId(totalTime))
             val sx = w / ts.tileWidth.toFloat
             val sy = h / ts.tileHeight.toFloat
-            val theta = Math.degreeToRadian(rot).toFloat
+            val theta = rot.toRadians.toFloat
             canvas.withSave{
               // The slightly tricky part is that (x,y) is the bottom-left
               // position of the (non-rotated) tile in the world. To address

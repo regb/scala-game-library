@@ -9,6 +9,16 @@ final case class Vec3(x: Float, y: Float, z: Float) {
     val len = length
     if(len == 0f) Vec3.Zero else this * (1f / len)
   }
+
+  /** Linear interpolation: this when `t` is 0, `to` when it is 1. */
+  def lerp(to: Vec3, t: Float): Vec3 = this * (1f - t) + to * t
+
+  /** Moves towards `target` by at most `maxStep`, without passing it. */
+  def moveTowards(target: Vec3, maxStep: Float): Vec3 = {
+    val delta = target - this
+    val distance = delta.length
+    if(distance <= maxStep) target else this + delta * (maxStep / distance)
+  }
 }
 
 object Vec3 {
