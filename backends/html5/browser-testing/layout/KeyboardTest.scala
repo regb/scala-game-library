@@ -204,6 +204,27 @@ class KeyboardTest extends BrowserSuite {
     }
   }
 
+  // Only canvas-focused sets keyboard_prevent_shortcuts.
+  for(site <- Vector("canvas-fixed", "canvas-focused", "webgl-fixed", "webgl-focused")) {
+    test(s"$site: the game has keys pressed with Ctrl or Alt, and the browser does too unless the game says") {
+      withGame(site) { page =>
+        val _ = focus(page, "#game")
+        // After the game's own listeners.
+        page.evaluate("window.prevented = []; window.addEventListener('keydown', e => prevented.push(e.defaultPrevented)); 1")
+        val d = Key.letter('d')
+        page.keyboard.down(d)
+        page.keyboard.up(d)
+        page.keyboard.down(d, modifiers = 2)
+        page.keyboard.up(d, modifiers = 2)
+        page.keyboard.down(d, modifiers = 1)
+        page.keyboard.up(d, modifiers = 1)
+        assert(keys(page) == Vector.fill(3)(Vector("key down D", "key up D")).flatten)
+        val shortcuts = site == "canvas-focused"
+        assert(page.evaluate("prevented.join(' ')").string == s"true $shortcuts $shortcuts")
+      }
+    }
+  }
+
   // These do not set keyboard_capture.
   for(site <- Vector("canvas-fixed", "webgl-fixed")) {
     test(s"$site: a game takes its keys from the whole page by default") {

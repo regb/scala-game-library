@@ -47,7 +47,9 @@ right `Shift`, `Control` and `Alt` (`LeftShift`, and so on), the arrow keys, and
 `ButtonStart` and `ButtonSelect`.
 
 In browsers, `Tab`, `F5`, `F11` and `F12` are left to the browser, and the game is not told of them.
-Override `Html5BrowserKeys` to choose others.
+Override `Html5BrowserKeys` to choose others. Keys pressed with `Control`, `Alt` or `Meta` are told to
+the game and also left to the browser, whose shortcuts they are. Set `keyboard_prevent_shortcuts` to
+keep them from it.
 
 Mouse buttons are `Left`, `Right` and `Middle`, and the others are `Other(number)`, with the number
 that the platform has for them.

@@ -14,6 +14,7 @@ object {{MAIN_CLASS}} extends _root_.sgl.html5.Html5CanvasApp {{SCREEN2D_MIXIN}}
 
   override protected val Html5KeyboardCapture: _root_.sgl.html5.Html5KeyboardCaptureMode = {{KEYBOARD_CAPTURE}}
   override protected val Html5KeyboardPreventDefault: Boolean = {{KEYBOARD_PREVENT_DEFAULT}}
+  override protected val Html5KeyboardPreventShortcuts: Boolean = {{KEYBOARD_PREVENT_SHORTCUTS}}
   override protected val Html5MousePreventDefault: Boolean = {{MOUSE_PREVENT_DEFAULT}}
   override protected val Html5WheelPreventDefault: Boolean = {{WHEEL_PREVENT_DEFAULT}}
   override protected val Html5TouchPreventDefault: Boolean = {{TOUCH_PREVENT_DEFAULT}}

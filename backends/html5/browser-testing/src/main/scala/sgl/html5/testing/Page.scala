@@ -133,10 +133,11 @@ final class Page private[testing] (devTools: DevTools) extends AutoCloseable {
   }
 
   object keyboard {
-    def down(key: Key): Unit = event("rawKeyDown", key)
+    /** @param modifiers held with the key: alt is 1, control 2, meta 4 and shift 8, added up */
+    def down(key: Key, modifiers: Int = 0): Unit = event("rawKeyDown", key, "modifiers" -> modifiers)
     /** A key that is down repeats. */
     def repeat(key: Key): Unit = event("rawKeyDown", key, "autoRepeat" -> true)
-    def up(key: Key): Unit = event("keyUp", key)
+    def up(key: Key, modifiers: Int = 0): Unit = event("keyUp", key, "modifiers" -> modifiers)
     /** Presses a letter, which is typed in what has the focus. */
     def typeLetter(c: Char): Unit = {
       val key = Key.letter(c)

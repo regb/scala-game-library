@@ -48,6 +48,12 @@ trait Html5InputProvider {
   protected val Html5BrowserKeys: Set[Input.Keys.Key] =
     Set(Input.Keys.Tab, Input.Keys.F5, Input.Keys.F11, Input.Keys.F12)
 
+  /** Whether that also goes for keys pressed with Ctrl, Alt or Meta, which are
+    * the shortcuts of the browser: reloading, closing the tab, and so on. The
+    * game gets those keys either way.
+    */
+  protected val Html5KeyboardPreventShortcuts: Boolean = false
+
   /** Whether mouse events captured by the game should prevent browser defaults. */
   protected val Html5MousePreventDefault: Boolean = true
 
@@ -110,6 +116,7 @@ trait Html5InputProvider {
       globalKeyboardTarget = Html5GlobalKeyboardTarget,
       keyboardPreventDefault = Html5KeyboardPreventDefault,
       browserKeys = Html5BrowserKeys,
+      keyboardPreventShortcuts = Html5KeyboardPreventShortcuts,
       mousePreventDefault = Html5MousePreventDefault,
       wheelPreventDefault = Html5WheelPreventDefault,
       touchPreventDefault = Html5TouchPreventDefault,
@@ -136,6 +143,7 @@ private[html5] object Html5DomInputAdapter {
     globalKeyboardTarget: dom.EventTarget = dom.document,
     keyboardPreventDefault: Boolean = true,
     browserKeys: Set[Input.Keys.Key] = Set.empty,
+    keyboardPreventShortcuts: Boolean = false,
     mousePreventDefault: Boolean = true,
     wheelPreventDefault: Boolean = true,
     touchPreventDefault: Boolean = true,
@@ -336,13 +344,15 @@ private[html5] object Html5DomInputAdapter {
     }
 
     val keyboardTarget: dom.EventTarget = if(captureKeyboardOnCanvas) canvas else globalKeyboardTarget
+    def preventKey(e: dom.KeyboardEvent): Unit =
+      if(keyboardPreventDefault && (keyboardPreventShortcuts || !isShortcut(e))) e.preventDefault()
 
     def gameKey(e: dom.KeyboardEvent): Option[Input.Keys.Key] = key(e).filterNot(browserKeys)
 
     listen(keyboardTarget, "keydown") { event =>
       val e = event.asInstanceOf[dom.KeyboardEvent]
       gameKey(e).foreach { k =>
-        if(keyboardPreventDefault) e.preventDefault()
+        preventKey(e)
         onUserInteraction()
         if(!pressedKeys(k)) {
           pressedKeys += k
@@ -360,7 +370,7 @@ private[html5] object Html5DomInputAdapter {
     listen(keyboardTarget, "keyup") { event =>
       val e = event.asInstanceOf[dom.KeyboardEvent]
       gameKey(e).foreach { k =>
-        if(keyboardPreventDefault) e.preventDefault()
+        preventKey(e)
         onUserInteraction()
         if(pressedKeys.remove(k)) {
           Input.inputProcessor.keyUp(k)
@@ -417,18 +427,22 @@ private[html5] object Html5DomInputAdapter {
     case other => Input.MouseButtons.Other(other)
   }
 
-  /** The character that a key types. What input methods, dead keys and the
-    * keyboards of phones write does not come by the key, and is not seen.
-    */
-  private def typedText(e: dom.KeyboardEvent): Option[String] = {
+  /** Whether a key is pressed with what makes it a shortcut, rather than a character. */
+  private def isShortcut(e: dom.KeyboardEvent): Boolean = {
     // AltGr may be told of as control and alt too, and types characters as the
     // alt of a Mac does.
     val altGraph = e.getModifierState("AltGraph")
     val onMac = dom.window.navigator.platform.startsWith("Mac")
-    val shortcut = e.metaKey || (!altGraph && (e.ctrlKey || (e.altKey && !onMac)))
+    e.metaKey || (!altGraph && (e.ctrlKey || (e.altKey && !onMac)))
+  }
+
+  /** The character that a key types. What input methods, dead keys and the
+    * keyboards of phones write does not come by the key, and is not seen.
+    */
+  private def typedText(e: dom.KeyboardEvent): Option[String] = {
     // Keys that type no character have a longer name.
     val text = e.key
-    if(shortcut || e.isComposing || text.codePointCount(0, text.length) != 1) None else Some(text)
+    if(isShortcut(e) || e.isComposing || text.codePointCount(0, text.length) != 1) None else Some(text)
   }
 
   // TODO: will need to make it more cross-browser compatible.

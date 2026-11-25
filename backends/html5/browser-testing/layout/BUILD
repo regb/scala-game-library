@@ -59,6 +59,7 @@ sgl_html5_app(
     html_output_name = "index.html",
     html_template = "page.html",
     keyboard_capture = "canvas_focused",
+    keyboard_prevent_shortcuts = True,
     main_class = "Probe",
     output_name = "canvas-focused.js",
     package = "sgl.html5.testing.layout.canvas",
