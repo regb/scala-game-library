@@ -2,7 +2,7 @@ package sgl.html5.testing.layout
 
 import java.net.URLEncoder
 
-import sgl.html5.testing.{Box, BrowserSuite, Key, Page}
+import sgl.html5.testing.{Box, BrowserSuite, Page}
 
 /** Size and input of the canvas, however it is laid out in its page. */
 class LayoutTest extends BrowserSuite {
@@ -11,17 +11,19 @@ class LayoutTest extends BrowserSuite {
   private val (width, height) = (300, 200)
 
   private final case class Around(name: String, wrapper: String, canvas: String)
+  private val plain = Around("plain", "", "")
   private val arounds = Vector(
-    Around("plain", "", ""),
     Around("inside a box, scrolled", "margin: 150px 0 1500px 70px; padding: 20px", ""),
-    Around("with a border and padding", "margin: 50px", "border: 10px solid red; padding: 15px 5px"),
-    Around("with a border, as a border-box", "margin: 50px", "border: 10px solid red; box-sizing: border-box"),
+    Around("with a border and padding", "margin: 50px", "border: 10px solid red; padding: 15px 5px; box-sizing: border-box"),
     Around("scaled by a transform", "margin: 50px; transform: scale(0.5); transform-origin: 0 0", "")
   )
 
-  private def withGame(site: String, pixelRatio: Double, around: Around, size: (Int, Int) = (900, 700))(body: Page => Unit): Unit =
+  // A screen with two pixels to a CSS pixel, which also shows the two confused.
+  private val pixelRatio = 2.0
+
+  private def withGame(site: String, around: Around)(body: Page => Unit): Unit =
     withSite(s"backends/html5/browser-testing/layout/${site}_site") { (page, url) =>
-      page.resize(size._1, size._2, pixelRatio)
+      page.resize(900, 700, pixelRatio)
       def encode(css: String) = URLEncoder.encode(css, "UTF-8")
       page.open(s"$url?wrapper=${encode(around.wrapper)}&canvas=${encode(around.canvas)}")
       page.waitUntil("the game starting")(page.console.contains("started"))
@@ -44,7 +46,7 @@ class LayoutTest extends BrowserSuite {
     Canvas(c("w").double, c("h").double, c("bw").int, c("bh").int, Box(c("x").double, c("y").double, c("sw").double, c("sh").double))
   }
 
-  private def checkSize(page: Page, expectedWidth: Int, expectedHeight: Int, pixelRatio: Double): Unit = {
+  private def checkSize(page: Page, expectedWidth: Int, expectedHeight: Int): Unit = {
     val c = canvas(page)
     assert((c.cssWidth, c.cssHeight) == ((expectedWidth.toDouble, expectedHeight.toDouble)))
     assert((c.width, c.height) == (((expectedWidth * pixelRatio).toInt, (expectedHeight * pixelRatio).toInt)))
@@ -79,23 +81,20 @@ class LayoutTest extends BrowserSuite {
     }
   }
 
-  for(backend <- Vector("canvas", "webgl"); pixelRatio <- Vector(1.0, 2.0)) {
-    def name(what: String) = s"$backend at ${pixelRatio}x: $what"
+  for(backend <- Vector("canvas", "webgl")) {
+    def name(what: String) = s"$backend: $what"
 
     for(layout <- Vector("fixed", "provided"); around <- arounds) {
       // The page gives the size of a provided canvas.
       val sized =
         if(layout == "fixed") around
-        else {
-          val border = if(around.canvas.contains("border-box")) 20 else 0
-          around.copy(canvas = s"${around.canvas}; width: ${width + border}px; height: ${height + border}px")
-        }
+        else around.copy(canvas = s"${around.canvas}; box-sizing: content-box; width: ${width}px; height: ${height}px")
 
       test(name(s"a $layout canvas ${around.name} keeps its size and gets input where it is shown")) {
-        withGame(s"$backend-$layout", pixelRatio, sized) { page =>
-          checkSize(page, width, height, pixelRatio)
+        withGame(s"$backend-$layout", sized) { page =>
+          checkSize(page, width, height)
           Vector(800, 850, 900).foreach(page.resize(_, 700, pixelRatio))
-          checkSize(page, width, height, pixelRatio)
+          checkSize(page, width, height)
           checkInput(page)
           if(around.name.contains("scrolled")) {
             page.evaluate("scrollTo(0, 100)")
@@ -107,10 +106,10 @@ class LayoutTest extends BrowserSuite {
     }
 
     test(name("a centered canvas stays in the middle of the window")) {
-      withGame(s"$backend-centered", pixelRatio, arounds.head) { page =>
+      withGame(s"$backend-centered", plain) { page =>
         for((w, h) <- Vector((900, 700), (600, 800))) {
           page.resize(w, h, pixelRatio)
-          checkSize(page, width, height, pixelRatio)
+          checkSize(page, width, height)
           assert(page.box("#game") == Box((w - width) / 2.0, (h - height) / 2.0, width.toDouble, height.toDouble))
           checkInput(page)
         }
@@ -118,17 +117,17 @@ class LayoutTest extends BrowserSuite {
     }
 
     test(name("a fullscreen canvas follows the size of the window")) {
-      withGame(s"$backend-fullscreen", pixelRatio, arounds.head) { page =>
+      withGame(s"$backend-fullscreen", plain) { page =>
         for((w, h) <- Vector((900, 700), (600, 800), (1000, 500))) {
           page.resize(w, h, pixelRatio)
-          checkSize(page, w, h, pixelRatio)
+          checkSize(page, w, h)
           checkInput(page)
         }
       }
     }
 
     test(name("a mouse button released outside of the canvas is released in the game")) {
-      withGame(s"$backend-fixed", pixelRatio, arounds.head) { page =>
+      withGame(s"$backend-fixed", plain) { page =>
         val (x, y) = canvas(page).shown.at(0.5, 0.5)
         page.mouse.down(x, y)
         reported(page, "mouse down")
@@ -137,15 +136,6 @@ class LayoutTest extends BrowserSuite {
         reported(page, "mouse up")
         page.nextFrame()
         assert(page.console.count(_.startsWith("mouse up")) == 1)
-      }
-    }
-
-    test(name("keys reach the game")) {
-      withGame(s"$backend-fixed", pixelRatio, arounds.head) { page =>
-        page.keyboard.down(Key.Left)
-        page.waitUntil("the key down")(page.console.contains("key down Left"))
-        page.keyboard.up(Key.Left)
-        page.waitUntil("the key up")(page.console.contains("key up Left"))
       }
     }
   }

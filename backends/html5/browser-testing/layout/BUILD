@@ -53,7 +53,6 @@ LAYOUTS = [
 html5_browser_test(
     name = "layout-test",
     size = "medium",
-    timeout = "long",
     srcs = ["LayoutTest.scala"],
     scalacopts = SGL_SCALACOPTS,
     sites = [

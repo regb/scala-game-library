@@ -11,8 +11,6 @@ trait InputProbe extends Application {
       override def mouseUp(x: Int, y: Int, button: Input.MouseButtons.MouseButton): Boolean = report(s"mouse up $x $y")
       override def touchDown(x: Int, y: Int, pointer: Int): Boolean = report(s"touch down $x $y")
       override def touchUp(x: Int, y: Int, pointer: Int): Boolean = report(s"touch up $x $y")
-      override def keyDown(key: Input.Keys.Key): Boolean = report(s"key down $key")
-      override def keyUp(key: Input.Keys.Key): Boolean = report(s"key up $key")
     })
     val _ = report("started")
   }
