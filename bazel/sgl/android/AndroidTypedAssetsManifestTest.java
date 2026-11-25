@@ -57,7 +57,7 @@ public final class AndroidTypedAssetsManifestTest {
         rejectText(properties, "android.newDsl=false");
         rejectText(properties, "suppressUnsupportedCompileSdk");
         String resourceKeep = Files.readString(project.resolve("app/src/main/res/raw/sgl_keep.xml"));
-        requireText(resourceKeep, "tools:keep=\"@drawable/*\"");
+        requireText(resourceKeep, "tools:keep=\"@drawable/*,@string/sgl_admob_*,@bool/sgl_admob_*\"");
         String androidManifest = Files.readString(project.resolve("app/src/main/AndroidManifest.xml"));
         rejectText(androidManifest, "firebase_analytics_collection_enabled");
         rejectText(androidManifest, "google_analytics_default_allow_");
