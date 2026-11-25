@@ -66,7 +66,12 @@ class OpenGLRendererSuite extends AnyFunSuite {
     override val Window: Window = new FakeWindow
 
     object FakeGL extends OpenGL {
-      type Shader = Int; type Program = Int; type Buffer = Int; type VertexArray = Int; type Texture = Int
+      type Shader = Int; type Program = Int; type Buffer = Int; type VertexArray = Int; type Texture = Int; type Framebuffer = Int
+      override def createRenderTexture(width: Int, height: Int): Int = { nextTexture += 1; nextTexture }
+      override def genFramebuffer(texture: Int): Int = texture
+      override def bindFramebuffer(framebuffer: Int): Unit = ()
+      override def unbindFramebuffer(): Unit = ()
+      override def deleteFramebuffer(framebuffer: Int): Unit = ()
       type UniformLocation = Int; type AttributeLocation = Int
       type ShaderType = Int; type ShaderParameter = Int; type ProgramParameter = Int; type Capability = Int
       type Face = Int; type BlendFactor = Int; type BufferTarget = Int; type BufferUsage = Int

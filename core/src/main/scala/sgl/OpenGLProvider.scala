@@ -31,6 +31,7 @@ trait OpenGLProvider {
     type Buffer
     type VertexArray
     type Texture
+    type Framebuffer
     type UniformLocation
     type AttributeLocation
 
@@ -178,6 +179,19 @@ trait OpenGLProvider {
     }
 
     def createTextureImage2D(width: Int, height: Int, rgba: Array[Byte]): TextureImage
+
+    /** An empty texture that can be drawn into, smoothed and clamped to its edges. */
+    def createRenderTexture(width: Int, height: Int): Texture
+
+    /** Something to draw into instead of the screen: what is drawn while it is
+      * bound ends up in the texture. It has no depth.
+      */
+    def genFramebuffer(texture: Texture): Framebuffer
+    def bindFramebuffer(framebuffer: Framebuffer): Unit
+    /** Drawings go to the screen again. */
+    def unbindFramebuffer(): Unit
+    def deleteFramebuffer(framebuffer: Framebuffer): Unit
+
     def loadTextureImage2D(asset: DrawableAsset): Loader[TextureImage]
     def loadTextureImage2D(asset: RawImageAsset): Loader[TextureImage]
     final def loadTexture2D(asset: DrawableAsset): Loader[Texture] = loadTextureImage2D(asset).map(_.texture)

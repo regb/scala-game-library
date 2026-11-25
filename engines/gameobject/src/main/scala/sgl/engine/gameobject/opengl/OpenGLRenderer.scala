@@ -7,7 +7,7 @@ import scala.util.control.NonFatal
 import sgl.{ClipRect, OpenGLProvider, PortableFont, SystemProvider, VertexBatch, WindowProvider}
 import sgl.engine.gameobject.{ClearColor, Color, CompositionError, Scope, World}
 import sgl.assets.{AssetChange, AssetChangeListener, AssetReloads, DrawableAsset, RawImageAsset, TextureFilter}
-import sgl.engine.gameobject.render2d.{Baked2D, Camera2D, Painter2D, Render2D, Texture2D}
+import sgl.engine.gameobject.render2d.{Baked2D, Bloom, Camera2D, Effect2D, Painter2D, Render2D, Texture2D}
 import sgl.engine.gameobject.render3d._
 import sgl.geometry.{Mat4, Vec2, Vec3}
 import sgl.util.{DefaultLoader, Loader}
@@ -104,6 +104,13 @@ final class OpenGLRenderer(
   private val regionLocation: GLUniformLocation = requireUniform(program, "u_region")
   private val viewProjection3DLocation: GLUniformLocation = requireUniform(paint3D.program, "u_viewProjection")
   private val placementLocation: GLUniformLocation = requireUniform(paint2D.program, "u_placement")
+  // An effect is another program over the same vertices.
+  private final class EffectProgram(val program: GLProgram) {
+    val placement: GLUniformLocation = requireUniform(program, "u_placement")
+    // Not there when the effect has no use for what is in it.
+    val values: Option[GLUniformLocation] = GL.getUniformLocation(program, "u_effect")
+  }
+  private val effects = mutable.HashSet.empty[Effect2D]
   private val vao2D: GLVertexArray = GL.genVertexArray()
   private val vbo2D: GLBuffer = GL.genBuffer()
   // Buffers of the painted 3D drawings, made by the first frame that has any.
@@ -356,6 +363,51 @@ final class OpenGLRenderer(
   private def compiledFor(baked: Baked2D): Compiled = baked.compiled match {
     case compiled: Compiled if !baked.stale && compiled.pages.forall { case (key, texture) => loadedPage(key) == texture } => compiled
     case _ => compile(baked)
+  }
+
+  override def createEffect2D(source: String)(using scope: Scope): Effect2D = owned(scope) {
+    val program = createPaintProgram(
+      "Effect", "vec2",
+      "uniform mat4 u_placement;\n      uniform mat4 u_effect;\n      out vec2 v_position;",
+      // Where the vertex is in the space of the drawing, baked or not.
+      "vec4(a_position * u_placement[0].xy + u_placement[0].zw, 0.0, 1.0);\n        v_position = (gl_Position.xy - u_effect[0].zw) / u_effect[0].xy",
+      "a_color * u_placement[1]",
+      effect = Some(source)
+    )
+    GL.useProgram(program)
+    (0 until textureSlots).foreach(i => GL.getUniformLocation(program, s"u_texture$i").foreach(GL.uniform1i(_, i)))
+    GL.useNoProgram()
+    val effect = new Effect2D
+    effect.compiled = new EffectProgram(program)
+    effects += effect
+    effect
+  }(releaseEffect2D)
+
+  override def releaseEffect2D(effect: Effect2D): Unit =
+    if(effects.remove(effect)) deleteEffect(effect)
+
+  private def deleteEffect(effect: Effect2D): Unit = effect.compiled match {
+    case compiled: EffectProgram =>
+      GL.deleteProgram(compiled.program)
+      effect.compiled = null
+    case _ => ()
+  }
+
+  // The effect shapes are being painted with, and its numbers.
+  private var painting: Option[(EffectProgram, Array[Float])] = None
+  // The placement of the program in use, while the batch is being drawn.
+  private var placementNow: GLUniformLocation = placementLocation
+
+  // Between the draw calls of the 2D batch.
+  private def startEffect(effect: Option[(EffectProgram, Array[Float])]): Unit = effect match {
+    case Some((program, values)) =>
+      GL.useProgram(program.program)
+      program.values.foreach(GL.uniformMatrix4fv(_, transpose = false, values))
+      placementNow = program.placement
+      GL.uniformMatrix4fv(placementNow, transpose = false, placed)
+    case None =>
+      GL.useProgram(paint2D.program)
+      placementNow = placementLocation
   }
 
   // What a texture shows does not change while a frame is drawn, so it is only
@@ -624,6 +676,24 @@ final class OpenGLRenderer(
       finally addedSlots = before
     }
 
+    override def effect(effect: Effect2D, a: Float, b: Float, c: Float, d: Float)(draw: => Unit): Unit = {
+      if(baking.nonEmpty) throw new CompositionError("A baked drawing cannot use effects: draw it within one")
+      effect.compiled match {
+        case compiled: EffectProgram =>
+          val before = painting
+          val now = Some((compiled, Array(scaleX, scaleY, offsetX, offsetY, a, b, c, d, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f)))
+          painting = now
+          batch.between(() => startEffect(now))
+          try draw
+          finally {
+            painting = before
+            batch.between(() => startEffect(before))
+          }
+        // It was released.
+        case _ => draw
+      }
+    }
+
     override def baked(baked: Baked2D, x: Float, y: Float, scale: Float, tint: Color): Unit = {
       if(baking.nonEmpty) throw new CompositionError("A baked drawing cannot draw another one")
       if(bakedDrawings.contains(baked)) {
@@ -803,20 +873,196 @@ final class OpenGLRenderer(
     val viewport = camera.map(_.viewportSize).getOrElse(Vec2(app.Window.width.toFloat, app.Window.height.toFloat))
 
     val screenSize = Vec2(app.Window.width.toFloat, app.Window.height.toFloat)
-    val (screenDrawings, worldDrawings) = queue2D.toVector.partition(_.screen)
-    GL.disable(GL.DepthTest)
-    paintWith(paint2D, vao2D, vbo2D) { batch =>
+    val (screenDrawings, worldDrawings) = queue2D.toVector.sortBy(_.key).partition(_.screen)
+    def paint(worldDrawings: Iterable[Queued2D], screenDrawings: Iterable[Queued2D]): Unit = paintWith(paint2D, vao2D, vbo2D) { batch =>
       GL.uniformMatrix4fv(placementLocation, transpose = false, placed)
+      painting = None
+      placementNow = placementLocation
       val worldPainter = new Painter(
         batch,
         cameraPosition.x - viewport.x / 2f, cameraPosition.y - viewport.y / 2f, viewport,
         cameraPosition, viewport, screenSize
       )
       val screenPainter = new Painter(batch, 0f, 0f, screenSize, cameraPosition, viewport, screenSize)
-      worldDrawings.sortBy(_.key).foreach(_.draw(worldPainter))
-      screenDrawings.sortBy(_.key).foreach(_.draw(screenPainter))
+      worldDrawings.foreach(_.draw(worldPainter))
+      screenDrawings.foreach(_.draw(screenPainter))
+    }
+    GL.disable(GL.DepthTest)
+    // The world goes through the glow, which needs it in a texture. Meshes have
+    // already been drawn on the screen, so a world with any stays there.
+    val bloom = world.globals.getOption[Bloom]
+      .filter(b => b.intensity > 0f && queueMeshes.isEmpty && queue3D.isEmpty && worldDrawings.nonEmpty)
+    bloom match {
+      case Some(bloom) =>
+        val target = glowTarget(app.Window.width, app.Window.height)
+        GL.bindFramebuffer(target.scene)
+        try {
+          GL.clear(GL.clearMask(GL.ColorBufferBit))
+          paint(worldDrawings, Nil)
+        } finally GL.unbindFramebuffer()
+        glow(target, bloom)
+        paint(Nil, screenDrawings)
+      case None => paint(worldDrawings, screenDrawings)
     }
     GL.enable(GL.DepthTest)
+  }
+
+  private final class GlowTarget(val width: Int, val height: Int) {
+    private val divisor = 4
+    val smallWidth: Int = scala.math.max(1, width / divisor)
+    val smallHeight: Int = scala.math.max(1, height / divisor)
+    val sceneTexture: GLTexture = GL.createRenderTexture(width, height)
+    val scene: GL.Framebuffer = GL.genFramebuffer(sceneTexture)
+    val firstTexture: GLTexture = GL.createRenderTexture(smallWidth, smallHeight)
+    val first: GL.Framebuffer = GL.genFramebuffer(firstTexture)
+    val secondTexture: GLTexture = GL.createRenderTexture(smallWidth, smallHeight)
+    val second: GL.Framebuffer = GL.genFramebuffer(secondTexture)
+    def delete(): Unit = {
+      Vector(scene, first, second).foreach(GL.deleteFramebuffer)
+      Vector(sceneTexture, firstTexture, secondTexture).foreach(GL.deleteTexture)
+    }
+  }
+  private final class GlowPrograms {
+    private val vertex = """
+      layout(location = 0) in vec2 a_position;
+      out vec2 v_uv;
+      void main() {
+        gl_Position = vec4(a_position, 0.0, 1.0);
+        v_uv = a_position * 0.5 + 0.5;
+      }
+    """
+    // What is brighter than the threshold, averaged over the pixels it stands for.
+    val bright: GLProgram = link(vertex, """
+      in vec2 v_uv;
+      uniform sampler2D u_texture0;
+      uniform mat4 u_values;
+      out vec4 out_color;
+      vec3 excess(vec2 uv) {
+        vec3 c = texture(u_texture0, uv).rgb;
+        float most = max(c.r, max(c.g, c.b));
+        return c * max(0.0, most - u_values[0].z) / max(most, 0.001);
+      }
+      void main() {
+        vec2 o = u_values[0].xy;
+        out_color = vec4((excess(v_uv + o) + excess(v_uv - o) + excess(v_uv + vec2(o.x, -o.y)) + excess(v_uv + vec2(-o.x, o.y))) * 0.25, 1.0);
+      }
+    """)
+    val blur: GLProgram = link(vertex, """
+      in vec2 v_uv;
+      uniform sampler2D u_texture0;
+      uniform mat4 u_values;
+      out vec4 out_color;
+      void main() {
+        vec2 o = u_values[0].xy;
+        vec3 c = texture(u_texture0, v_uv).rgb * 0.227;
+        c += (texture(u_texture0, v_uv + o * 1.385).rgb + texture(u_texture0, v_uv - o * 1.385).rgb) * 0.316;
+        c += (texture(u_texture0, v_uv + o * 3.231).rgb + texture(u_texture0, v_uv - o * 3.231).rgb) * 0.0703;
+        out_color = vec4(c, 1.0);
+      }
+    """)
+    val join: GLProgram = link(vertex, """
+      in vec2 v_uv;
+      uniform sampler2D u_texture0;
+      uniform sampler2D u_texture1;
+      uniform mat4 u_values;
+      out vec4 out_color;
+      void main() {
+        vec4 scene = texture(u_texture0, v_uv);
+        out_color = vec4(scene.rgb + texture(u_texture1, v_uv).rgb * u_values[0].x, 1.0);
+      }
+    """)
+    val vertexArray: GLVertexArray = GL.genVertexArray()
+    private val buffer: GLBuffer = GL.genBuffer()
+    GL.bindVertexArray(vertexArray)
+    GL.bindBuffer(GL.ArrayBuffer, buffer)
+    GL.bufferDataFloat(GL.ArrayBuffer, Array(-1f, -1f, 3f, -1f, -1f, 3f), GL.StaticDraw)
+    GL.getAttribLocation(bright, "a_position").foreach { location =>
+      GL.enableVertexAttribArray(location)
+      GL.vertexAttribPointer(location, 2, GL.FloatType, normalized = false, 8, 0L)
+    }
+    GL.unbindVertexArray()
+    Vector(bright, blur, join).foreach { program =>
+      GL.useProgram(program)
+      GL.getUniformLocation(program, "u_texture0").foreach(GL.uniform1i(_, 0))
+      GL.getUniformLocation(program, "u_texture1").foreach(GL.uniform1i(_, 1))
+    }
+    GL.useNoProgram()
+
+    private def link(vertexSource: String, fragmentSource: String): GLProgram = {
+      val vertexShader = compileShader(GL.VertexShader, GL.ShaderHeader + vertexSource)
+      val fragmentShader = compileShader(GL.FragmentShader, GL.ShaderHeader + fragmentSource)
+      val program = GL.createProgram()
+      GL.attachShader(program, vertexShader)
+      GL.attachShader(program, fragmentShader)
+      GL.linkProgram(program)
+      if(GL.getProgramParameter(program, GL.LinkStatus) == 0) throw new RuntimeException("Glow program link failed: " + GL.getProgramInfoLog(program))
+      GL.deleteShader(vertexShader)
+      GL.deleteShader(fragmentShader)
+      program
+    }
+    def pass(program: GLProgram, a: Float, b: Float, c: Float): Unit = {
+      GL.useProgram(program)
+      GL.getUniformLocation(program, "u_values").foreach(GL.uniformMatrix4fv(_, transpose = false, Array(a, b, c, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f)))
+      GL.drawArrays(GL.Triangles, 0, 3)
+    }
+    def delete(): Unit = {
+      Vector(bright, blur, join).foreach(GL.deleteProgram)
+      GL.deleteBuffer(buffer)
+      GL.deleteVertexArray(vertexArray)
+    }
+  }
+  private var glowTargets: Option[GlowTarget] = None
+  private var glowPrograms: Option[GlowPrograms] = None
+
+  private def glowTarget(width: Int, height: Int): GlowTarget = glowTargets match {
+    case Some(target) if target.width == width && target.height == height => target
+    case old =>
+      old.foreach(_.delete())
+      val target = new GlowTarget(scala.math.max(1, width), scala.math.max(1, height))
+      glowTargets = Some(target)
+      target
+  }
+
+  // From the texture of the world to the screen, with what glows added.
+  private def glow(target: GlowTarget, bloom: Bloom): Unit = {
+    val programs = glowPrograms.getOrElse {
+      val created = new GlowPrograms
+      glowPrograms = Some(created)
+      created
+    }
+    val dx = 1f / target.smallWidth
+    val dy = 1f / target.smallHeight
+    def from(texture: GLTexture): Unit = {
+      GL.activeTexture(GL.Texture0)
+      GL.bindTexture(GL.Texture2D, texture)
+    }
+    GL.bindVertexArray(programs.vertexArray)
+    GL.viewport(0, 0, target.smallWidth, target.smallHeight)
+    GL.bindFramebuffer(target.first)
+    from(target.sceneTexture)
+    programs.pass(programs.bright, 1f / target.width, 1f / target.height, bloom.threshold)
+    var i = 0
+    while(i < 2) {
+      GL.bindFramebuffer(target.second)
+      from(target.firstTexture)
+      programs.pass(programs.blur, dx * (1f + i), 0f, 0f)
+      GL.bindFramebuffer(target.first)
+      from(target.secondTexture)
+      programs.pass(programs.blur, 0f, dy * (1f + i), 0f)
+      i += 1
+    }
+    GL.unbindFramebuffer()
+    GL.viewport(0, 0, target.width, target.height)
+    GL.activeTexture(GL.textureUnit(1))
+    GL.bindTexture(GL.Texture2D, target.firstTexture)
+    from(target.sceneTexture)
+    programs.pass(programs.join, bloom.intensity, 0f, 0f)
+    GL.unbindTexture(GL.Texture2D)
+    GL.activeTexture(GL.textureUnit(1))
+    GL.unbindTexture(GL.Texture2D)
+    GL.activeTexture(GL.Texture0)
+    GL.unbindVertexArray()
+    GL.useNoProgram()
   }
 
   private def active2DCamera(world: World): Option[Camera2D] =
@@ -944,7 +1190,7 @@ final class OpenGLRenderer(
 
   // Between the draw calls of the 2D batch, whose vertex array is bound again.
   private def drawCompiled(compiled: Compiled, placement: Array[Float]): Unit = {
-    GL.uniformMatrix4fv(placementLocation, transpose = false, placement)
+    GL.uniformMatrix4fv(placementNow, transpose = false, placement)
     GL.bindVertexArray(compiled.vertexArray)
     compiled.runs.foreach { run =>
       run.textures.indices.foreach(i => bindUnit(i, run.textures(i)))
@@ -952,7 +1198,7 @@ final class OpenGLRenderer(
       GL.drawArrays(GL.Triangles, run.first, run.count)
     }
     GL.bindVertexArray(vao2D)
-    GL.uniformMatrix4fv(placementLocation, transpose = false, placed)
+    GL.uniformMatrix4fv(placementNow, transpose = false, placed)
   }
 
   private def findCamera(world: World): Option[Camera3D] = {
@@ -1023,6 +1269,10 @@ final class OpenGLRenderer(
     fontTextures.values.foreach(GL.deleteTexture)
     fontTextures.clear()
 
+    effects.foreach(deleteEffect)
+    effects.clear()
+    glowTargets.foreach(_.delete())
+    glowPrograms.foreach(_.delete())
     bakedDrawings.foreach(deleteCompiled)
     bakedDrawings.clear()
 
@@ -1100,13 +1350,14 @@ final class OpenGLRenderer(
   }
 
   // Colored or textured shapes, in 2D or 3D depending on their positions.
-  private def createPaintProgram(name: String, positionType: String, uniforms: String, projected: String, color: String): GLProgram = {
+  private def createPaintProgram(name: String, positionType: String, uniforms: String, projected: String, color: String, effect: Option[String] = None): GLProgram = {
     val vertexShaderSource = GL.ShaderHeader + s"""
 
-      in $positionType a_position;
-      in vec4 a_color;
-      in vec2 a_uv;
-      in float a_slot;
+      // In fixed places, since effects share the vertex arrays.
+      layout(location = 0) in $positionType a_position;
+      layout(location = 1) in vec4 a_color;
+      layout(location = 2) in vec2 a_uv;
+      layout(location = 3) in float a_slot;
       $uniforms
       out vec4 v_color;
       out vec2 v_uv;
@@ -1120,7 +1371,7 @@ final class OpenGLRenderer(
       }
     """
 
-    val fragmentShaderSource = VertexBatch.fragmentShader(GL.ShaderHeader, textureSlots, additive = true)
+    val fragmentShaderSource = VertexBatch.fragmentShader(GL.ShaderHeader, textureSlots, additive = true, effect)
 
     val vertexShader = compileShader(GL.VertexShader, vertexShaderSource)
     val fragmentShader = compileShader(GL.FragmentShader, fragmentShaderSource)

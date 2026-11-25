@@ -2,7 +2,7 @@ package sgl.engine.gameobject.render3d
 
 import sgl.assets.{DrawableAsset, RawImageAsset}
 import sgl.engine.gameobject.{ComponentOf, Scope, World}
-import sgl.engine.gameobject.render2d.{Baked2D, Painter2D, Render2D, Texture2D}
+import sgl.engine.gameobject.render2d.{Baked2D, Effect2D, Painter2D, Render2D, Texture2D}
 import sgl.engine.gameobject.spatial3d.{GameObject3D, Spatial3D}
 import sgl.geometry.Mat4
 import sgl.util.Loader
@@ -91,10 +91,25 @@ trait Renderer {
     */
   def bake2D(draw: Painter2D => Unit)(using Scope): Baked2D
 
+  /** Compiles an effect, to be used with `Painter2D.effect`. The source defines
+    *
+    * {{{
+    * vec4 effect(vec4 color, vec2 uv, vec2 position, vec4 params)
+    * }}}
+    *
+    * in the language of OpenGL ES 3.0 shaders, without a header. `color` is what
+    * would be drawn, with alpha not premultiplied, and the result is drawn
+    * instead. `position` is in the units of the drawing, and `params` are the
+    * numbers given to `Painter2D.effect`. `uv` is within the texture, which may
+    * be an atlas page. A source that does not compile is an error right away.
+    */
+  def createEffect2D(source: String)(using Scope): Effect2D
+
   def releaseMesh(mesh: Mesh): Unit
   def releaseTexture(texture: Texture2D): Unit
   def releaseMaterial(material: Material): Unit
   def releaseBaked(baked: Baked2D): Unit
+  def releaseEffect2D(effect: Effect2D): Unit
 
   def resize(width: Int, height: Int): Unit = {}
 

@@ -153,8 +153,12 @@ private[sgl] object VertexBatch {
     * With `additive`, colors come out multiplied by their alpha, to be blended
     * with (One, OneMinusSrcAlpha): what it does depends on the alpha that is
     * left, so that shapes which cover and shapes which add share draw calls.
+    *
+    * An effect is the source of a function `vec4 effect(vec4 color, vec2 uv, vec2
+    * position, vec4 params)` that changes the color. It takes `v_position`, and
+    * the parameters in the second column of `u_effect`.
     */
-  def fragmentShader(header: String, slots: Int, additive: Boolean = false): String = {
+  def fragmentShader(header: String, slots: Int, additive: Boolean = false, effect: Option[String] = None): String = {
     // Textures have no mipmaps in use, so naming the level changes nothing, and
     // it lets them be read in a branch.
     val samplers = (0 until slots).map(i => s"uniform sampler2D u_texture$i;").mkString("\n      ")
@@ -166,14 +170,18 @@ private[sgl] object VertexBatch {
       in vec2 v_uv;
       flat in float v_slot;
       $samplers
+      ${if(effect.isEmpty) "" else "in vec2 v_position;\n      uniform mat4 u_effect;"}
       out vec4 out_color;
+      ${effect.getOrElse("")}
 
       void main() {
         int slot = int(v_slot + 0.5);
         ${if(additive) s"float covers = slot >= ${AdditiveSlots.toInt} ? 0.0 : 1.0;\n        if(slot >= ${AdditiveSlots.toInt}) slot -= ${AdditiveSlots.toInt};" else ""}
         vec4 texel = vec4(1.0);
         $branches
-        ${if(additive) "vec4 color = texel * v_color;\n        out_color = vec4(color.rgb * color.a, color.a * covers);" else "out_color = texel * v_color;"}
+        vec4 color = texel * v_color;
+        ${if(effect.isEmpty) "" else "color = effect(color, v_uv, v_position, u_effect[1]);"}
+        out_color = ${if(additive) "vec4(color.rgb * color.a, color.a * covers)" else "color"};
       }
     """
   }

@@ -66,6 +66,11 @@ private[native] object GLES3 {
   def glTexParameteri(target: UInt, pname: UInt, param: CInt): Unit = extern
   def glTexImage2D(target: UInt, level: CInt, internalFormat: CInt, width: CInt, height: CInt, border: CInt, format: UInt, dataType: UInt, pixels: Ptr[Byte]): Unit = extern
   def glGenerateMipmap(target: UInt): Unit = extern
+  def glGenFramebuffers(n: CInt, framebuffers: Ptr[UInt]): Unit = extern
+  def glDeleteFramebuffers(n: CInt, framebuffers: Ptr[UInt]): Unit = extern
+  def glBindFramebuffer(target: UInt, framebuffer: UInt): Unit = extern
+  def glFramebufferTexture2D(target: UInt, attachment: UInt, textureTarget: UInt, texture: UInt, level: CInt): Unit = extern
+  def glCheckFramebufferStatus(target: UInt): UInt = extern
   def glGetIntegerv(pname: UInt, params: Ptr[CInt]): Unit = extern
 
   def glDrawArrays(mode: UInt, first: CInt, count: CInt): Unit = extern
@@ -81,6 +86,7 @@ trait NativeOpenGLProvider extends OpenGLProvider {
     type Buffer = Int
     type VertexArray = Int
     type Texture = Int
+    type Framebuffer = Int
     type UniformLocation = Int
     type AttributeLocation = Int
 
@@ -325,6 +331,36 @@ trait NativeOpenGLProvider extends OpenGLProvider {
       GLES3.glTexImage2D(Texture2D.toUInt, 0, 0x1908, width, height, 0, 0x1908.toUInt, 0x1401.toUInt, nativePixels)
       stdlib.free(nativePixels)
       new TextureImage(texture, width, height)
+    }
+
+    override def createRenderTexture(width: Int, height: Int): Texture = {
+      val texture = genTexture()
+      bindTexture(Texture2D, texture)
+      texParameteri(Texture2D, TextureMinFilter, Linear)
+      texParameteri(Texture2D, TextureMagFilter, Linear)
+      texParameteri(Texture2D, TextureWrapS, ClampToEdge)
+      texParameteri(Texture2D, TextureWrapT, ClampToEdge)
+      GLES3.glTexImage2D(Texture2D.toUInt, 0, 0x1908, width, height, 0, 0x1908.toUInt, 0x1401.toUInt, null)
+      texture
+    }
+    // GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 and GL_FRAMEBUFFER_COMPLETE.
+    override def genFramebuffer(texture: Texture): Framebuffer = {
+      val name = stackalloc[UInt]()
+      GLES3.glGenFramebuffers(1, name)
+      val framebuffer = (!name).toInt
+      bindFramebuffer(framebuffer)
+      GLES3.glFramebufferTexture2D(0x8D40.toUInt, 0x8CE0.toUInt, Texture2D.toUInt, texture.toUInt, 0)
+      val complete = GLES3.glCheckFramebufferStatus(0x8D40.toUInt) == 0x8CD5.toUInt
+      unbindFramebuffer()
+      if(!complete) throw new RuntimeException("Could not draw into the texture")
+      framebuffer
+    }
+    override def bindFramebuffer(framebuffer: Framebuffer): Unit = GLES3.glBindFramebuffer(0x8D40.toUInt, framebuffer.toUInt)
+    override def unbindFramebuffer(): Unit = GLES3.glBindFramebuffer(0x8D40.toUInt, 0.toUInt)
+    override def deleteFramebuffer(framebuffer: Framebuffer): Unit = {
+      val name = stackalloc[UInt]()
+      !name = framebuffer.toUInt
+      GLES3.glDeleteFramebuffers(1, name)
     }
 
     override def loadTextureImage2D(asset: DrawableAsset): Loader[TextureImage] = {

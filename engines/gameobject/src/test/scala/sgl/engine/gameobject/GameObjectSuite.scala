@@ -1398,6 +1398,8 @@ class GameObjectSuite extends AnyFunSuite {
   private final class RecordingRenderer extends Renderer {
     override def bake2D(draw: render2d.Painter2D => Unit)(using Scope): render2d.Baked2D = new render2d.Baked2D(draw)
     override def releaseBaked(baked: render2d.Baked2D): Unit = ()
+    override def createEffect2D(source: String)(using Scope): render2d.Effect2D = new render2d.Effect2D
+    override def releaseEffect2D(effect: render2d.Effect2D): Unit = ()
     var renderedObjectNames: Vector[Vector[String]] = Vector.empty
 
     override def createMesh(data: MeshData)(using Scope): Mesh = new Mesh(0)

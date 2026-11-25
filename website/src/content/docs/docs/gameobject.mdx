@@ -602,6 +602,23 @@ draw.world(z = 0f)(painter => painter.baked(chunk, tint = Color(1f, 1f, 1f, 0.5f
 It is painted when it is first drawn, again when its images are loaded or reloaded, and after
 `chunk.invalidate()`. Like a texture it belongs to the scope it is created in.
 
+An effect changes the colors of drawings on the GPU, pixel by pixel: for water, heat, or shields. It
+is a function in the language of OpenGL ES 3.0 shaders, given the color that would be drawn, where it
+is in the units of the drawing, and four numbers of your own:
+
+```scala
+val ripple: Effect2D = renderer.createEffect2D("""
+  vec4 effect(vec4 color, vec2 uv, vec2 position, vec4 params) {
+    float wave = 0.5 + 0.5 * sin(position.x * 0.1 + params.x);
+    return vec4(color.rgb * (0.8 + 0.2 * wave), color.a);
+  }
+""")
+draw.world(z = 0f)(painter => painter.effect(ripple, a = time)(painter.baked(chunk)))
+```
+
+With a `Bloom(intensity, threshold)` among the globals, the bright parts of the 2D world glow, while
+what is drawn on the screen stays sharp.
+
 A scene that should appear with its textures already loaded waits for them in the `preload` of an
 [`AsyncScene`](#scenes-that-load-first).
 

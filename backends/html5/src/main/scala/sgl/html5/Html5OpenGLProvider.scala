@@ -35,6 +35,7 @@ trait Html5OpenGLProvider extends OpenGLProvider {
     type Buffer = dom.WebGLBuffer
     type VertexArray = js.Object
     type Texture = dom.WebGLTexture
+    type Framebuffer = dom.WebGLFramebuffer
     type UniformLocation = dom.WebGLUniformLocation
     type AttributeLocation = Int
 
@@ -166,6 +167,29 @@ trait Html5OpenGLProvider extends OpenGLProvider {
       webgl.texImage2D(Texture2D, 0, WebGLRenderingContext.RGBA, width, height, 0, WebGLRenderingContext.RGBA, WebGLRenderingContext.UNSIGNED_BYTE, pixels)
       new TextureImage(texture, width, height)
     }
+
+    override def createRenderTexture(width: Int, height: Int): Texture = {
+      val texture = genTexture()
+      bindTexture(Texture2D, texture)
+      texParameteri(Texture2D, TextureMinFilter, Linear)
+      texParameteri(Texture2D, TextureMagFilter, Linear)
+      texParameteri(Texture2D, TextureWrapS, ClampToEdge)
+      texParameteri(Texture2D, TextureWrapT, ClampToEdge)
+      webgl.texImage2D(Texture2D, 0, WebGLRenderingContext.RGBA, width, height, 0, WebGLRenderingContext.RGBA, WebGLRenderingContext.UNSIGNED_BYTE, null)
+      texture
+    }
+    override def genFramebuffer(texture: Texture): Framebuffer = {
+      val framebuffer = webgl.createFramebuffer().asInstanceOf[dom.WebGLFramebuffer]
+      webgl.bindFramebuffer(WebGLRenderingContext.FRAMEBUFFER, framebuffer)
+      webgl.framebufferTexture2D(WebGLRenderingContext.FRAMEBUFFER, WebGLRenderingContext.COLOR_ATTACHMENT0, Texture2D, texture, 0)
+      val complete = webgl.checkFramebufferStatus(WebGLRenderingContext.FRAMEBUFFER).asInstanceOf[Int] == WebGLRenderingContext.FRAMEBUFFER_COMPLETE
+      unbindFramebuffer()
+      if(!complete) throw new RuntimeException("Could not draw into the texture")
+      framebuffer
+    }
+    override def bindFramebuffer(framebuffer: Framebuffer): Unit = webgl.bindFramebuffer(WebGLRenderingContext.FRAMEBUFFER, framebuffer)
+    override def unbindFramebuffer(): Unit = webgl.bindFramebuffer(WebGLRenderingContext.FRAMEBUFFER, null)
+    override def deleteFramebuffer(framebuffer: Framebuffer): Unit = webgl.deleteFramebuffer(framebuffer)
 
     override def loadTextureImage2D(asset: DrawableAsset): Loader[TextureImage] = {
       val variant = asset.bestVariantForDpi(Window.logicalPpi)

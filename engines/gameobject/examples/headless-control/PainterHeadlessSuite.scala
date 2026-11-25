@@ -140,6 +140,79 @@ class PainterHeadlessSuite extends AnyFunSuite {
       assert(pixel(frame, 45, 35) == ((0, 255, 0)))
     } finally app.stop()
   }
+
+  test("effects change colors by position and parameters, also of baked drawings, and end") {
+    val (app, capture, _) = drawing { context =>
+      val effect = context.engine.renderer.createEffect2D(
+        "vec4 effect(vec4 color, vec2 uv, vec2 position, vec4 params) { return position.x < params.x ? vec4(0.0, 1.0, 0.0, color.a) : color; }"
+      )
+      val baked = context.engine.renderer.bake2D(_.rect(0f, 0f, 40f, 10f, Blue))
+      painter => {
+        painter.rect(0f, 0f, 64f, 64f, Red)
+        painter.effect(effect, a = 20f) {
+          painter.rect(0f, 0f, 40f, 10f, Color.White)
+          painter.baked(baked, 0f, 20f)
+        }
+        painter.rect(0f, 40f, 40f, 10f, Blue)
+      }
+    }
+    try {
+      val frame = capture()
+      assert(pixel(frame, 10, 5) == ((0, 255, 0)))
+      assert(pixel(frame, 30, 5) == ((255, 255, 255)))
+      assert(pixel(frame, 10, 25) == ((0, 255, 0)))
+      assert(pixel(frame, 30, 25) == ((0, 0, 255)))
+      assert(pixel(frame, 10, 45) == ((0, 0, 255)))
+      assert(pixel(frame, 50, 55) == ((255, 0, 0)))
+    } finally app.stop()
+  }
+
+  test("bloom spreads what is bright in the world, the right way up, and leaves the screen sharp") {
+    val (app, capture, _) = drawing { context =>
+      context.setGlobal(Bloom(intensity = 1f, threshold = 0.5f))
+      painter => {
+        painter.rect(0f, 0f, 64f, 64f, Color(0.1f, 0f, 0f))
+        painter.rect(28f, 8f, 8f, 8f, Color.White)
+      }
+    }
+    try {
+      val frame = capture()
+      assert(pixel(frame, 32, 12) == ((255, 255, 255)))
+      // A glow around it, none far away.
+      assert(pixel(frame, 24, 12)._2 > 2)
+      assert(pixel(frame, 32, 56)._2 == 0)
+      assert((pixel(frame, 32, 60)._1 - 26).abs <= 2)
+    } finally app.stop()
+  }
+
+  test("effects go on in clips, and clips in effects") {
+    val (app, capture, _) = drawing { context =>
+      val effect = context.engine.renderer.createEffect2D(
+        "vec4 effect(vec4 color, vec2 uv, vec2 position, vec4 params) { return vec4(0.0, 1.0, 0.0, 1.0); }"
+      )
+      painter => {
+        painter.effect(effect) {
+          painter.clip(Vec2(0f, 0f), Vec2(10f, 10f)) { painter.rect(0f, 0f, 20f, 20f, Red) }
+          painter.rect(0f, 30f, 10f, 10f, Red)
+        }
+        painter.clip(Vec2(30f, 0f), Vec2(20f, 10f)) {
+          painter.effect(effect) { painter.rect(30f, 0f, 10f, 20f, Red) }
+          painter.rect(40f, 0f, 10f, 20f, Red)
+        }
+        painter.rect(30f, 30f, 10f, 10f, Red)
+      }
+    }
+    try {
+      val frame = capture()
+      assert(pixel(frame, 5, 5) == ((0, 255, 0)))
+      assert(pixel(frame, 15, 5) == ((0, 0, 0)))
+      assert(pixel(frame, 5, 35) == ((0, 255, 0)))
+      assert(pixel(frame, 35, 5) == ((0, 255, 0)))
+      assert(pixel(frame, 35, 15) == ((0, 0, 0)))
+      assert(pixel(frame, 45, 5) == ((255, 0, 0)))
+      assert(pixel(frame, 35, 35) == ((255, 0, 0)))
+    } finally app.stop()
+  }
 }
 
 private final class Painting(setup: GameContext => Scope ?=> Painter2D => Unit) {

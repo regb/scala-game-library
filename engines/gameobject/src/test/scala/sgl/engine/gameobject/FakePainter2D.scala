@@ -1,6 +1,6 @@
 package sgl.engine.gameobject
 
-import sgl.engine.gameobject.render2d.{Baked2D, Painter2D, Texture2D}
+import sgl.engine.gameobject.render2d.{Baked2D, Effect2D, Painter2D, Texture2D}
 import sgl.geometry.Vec2
 
 /** A painter of a screen of 100 by 100, for tests to override what they expect
@@ -29,5 +29,6 @@ abstract class FakePainter2D extends Painter2D {
   ): Unit = unexpected
   override def line(x0: Float, y0: Float, x1: Float, y1: Float, thickness: Float, color: Color): Unit = unexpected
   override def additive(draw: => Unit): Unit = unexpected
+  override def effect(effect: Effect2D, a: Float, b: Float, c: Float, d: Float)(draw: => Unit): Unit = unexpected
   override def baked(baked: Baked2D, x: Float, y: Float, scale: Float, tint: Color): Unit = unexpected
 }

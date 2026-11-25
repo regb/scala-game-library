@@ -111,11 +111,31 @@ trait Painter2D {
     */
   def additive(draw: => Unit): Unit
 
+  /** Runs what `draw` paints through an effect, with four numbers for it. */
+  def effect(effect: Effect2D, a: Float = 0f, b: Float = 0f, c: Float = 0f, d: Float = 0f)(draw: => Unit): Unit
+
   /** Draws what was baked, scaled, then moved by an offset, and multiplied by a
     * color.
     */
   def baked(baked: Baked2D, x: Float = 0f, y: Float = 0f, scale: Float = 1f, tint: Color = Color.White): Unit
 }
+
+/** A change to the colors of drawings, worked out on the GPU for each pixel: for
+  * water, heat, shields and the like. Made by `Renderer.createEffect2D`.
+  */
+final class Effect2D private[gameobject] () {
+  // What the renderer has made of it.
+  private[gameobject] var compiled: AnyRef = null
+
+  override def toString: String = "Effect2D(<opaque>)"
+}
+
+/** Set among the globals, makes the bright parts of the 2D world glow: what is
+  * brighter than `threshold` is blurred and added by `intensity`. Drawings on
+  * the screen, such as an interface, stay sharp. A world with 3D drawings does
+  * not glow.
+  */
+final case class Bloom(intensity: Float, threshold: Float = 0.75f)
 
 /** A drawing that stays on the GPU: painted once, then drawn as it is for
   * little more than the cost of one draw call, however much there is to it.

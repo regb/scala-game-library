@@ -22,6 +22,7 @@ trait LwjglOpenGLProvider extends OpenGLProvider {
     type Buffer = Int
     type VertexArray = Int
     type Texture = Int
+    type Framebuffer = Int
     type UniformLocation = Int
     type AttributeLocation = Int
 
@@ -160,6 +161,29 @@ trait LwjglOpenGLProvider extends OpenGLProvider {
       GL11C.glTexImage2D(Texture2D, 0, GL11C.GL_RGBA, width, height, 0, GL11C.GL_RGBA, GL11C.GL_UNSIGNED_BYTE, pixels)
       new TextureImage(texture, width, height)
     }
+
+    override def createRenderTexture(width: Int, height: Int): Texture = {
+      val texture = genTexture()
+      bindTexture(Texture2D, texture)
+      texParameteri(Texture2D, TextureMinFilter, Linear)
+      texParameteri(Texture2D, TextureMagFilter, Linear)
+      texParameteri(Texture2D, TextureWrapS, ClampToEdge)
+      texParameteri(Texture2D, TextureWrapT, ClampToEdge)
+      GL11C.glTexImage2D(Texture2D, 0, GL11C.GL_RGBA8, width, height, 0, GL11C.GL_RGBA, GL11C.GL_UNSIGNED_BYTE, 0L)
+      texture
+    }
+    override def genFramebuffer(texture: Texture): Framebuffer = {
+      val framebuffer = GL30C.glGenFramebuffers()
+      GL30C.glBindFramebuffer(GL30C.GL_FRAMEBUFFER, framebuffer)
+      GL30C.glFramebufferTexture2D(GL30C.GL_FRAMEBUFFER, GL30C.GL_COLOR_ATTACHMENT0, Texture2D, texture, 0)
+      val complete = GL30C.glCheckFramebufferStatus(GL30C.GL_FRAMEBUFFER) == GL30C.GL_FRAMEBUFFER_COMPLETE
+      unbindFramebuffer()
+      if(!complete) throw new RuntimeException("Could not draw into the texture")
+      framebuffer
+    }
+    override def bindFramebuffer(framebuffer: Framebuffer): Unit = GL30C.glBindFramebuffer(GL30C.GL_FRAMEBUFFER, framebuffer)
+    override def unbindFramebuffer(): Unit = GL30C.glBindFramebuffer(GL30C.GL_FRAMEBUFFER, 0)
+    override def deleteFramebuffer(framebuffer: Framebuffer): Unit = GL30C.glDeleteFramebuffers(framebuffer)
 
     override def loadTextureImage2D(asset: DrawableAsset): Loader[TextureImage] = {
       val variant = asset.bestVariantForDpi(Window.logicalPpi)
