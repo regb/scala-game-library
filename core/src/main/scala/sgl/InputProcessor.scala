@@ -36,8 +36,14 @@ trait InputProcessor {
   def mouseUp(x: Int, y: Int, mouseButton: MouseButtons.MouseButton): Boolean = {
     false
   }
-  //middle button scrolled, amount +/- depending on direction
-  def mouseScrolled(amount: Int): Boolean = {
+  /** The wheel or a trackpad scrolled, as the platform says.
+    *
+    * Amounts are positive when scrolling to the right and down, and often have
+    * a fraction. They are not converted: desktop platforms count in notches,
+    * and browsers mostly in pixels, about 100 for a notch, or in lines. The
+    * system can have them reversed, and scaled, by a setting of the user.
+    */
+  def mouseScrolled(amountX: Float, amountY: Float, unit: ScrollUnits.ScrollUnit): Boolean = {
     false
   }
 
@@ -96,9 +102,9 @@ class CombinedInputProcessor(
     firstProcessor.mouseUp(x, y, mouseButton) ||
     secondProcessor.mouseUp(x, y, mouseButton)
   }
-  final override def mouseScrolled(amount: Int): Boolean = {
-    firstProcessor.mouseScrolled(amount) ||
-    secondProcessor.mouseScrolled(amount)
+  final override def mouseScrolled(amountX: Float, amountY: Float, unit: ScrollUnits.ScrollUnit): Boolean = {
+    firstProcessor.mouseScrolled(amountX, amountY, unit) ||
+    secondProcessor.mouseScrolled(amountX, amountY, unit)
   }
 
   final override def systemAction(action: InputActions.Action): Boolean = {

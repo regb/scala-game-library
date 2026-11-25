@@ -109,8 +109,13 @@ final class Page private[testing] (devTools: DevTools) extends AutoCloseable {
       down(x, y)
       up(x, y)
     }
-    def wheel(x: Double, y: Double, deltaY: Double): Unit = {
-      val _ = devTools.send("Input.dispatchMouseEvent", "type" -> "mouseWheel", "x" -> x, "y" -> y, "deltaX" -> 0, "deltaY" -> deltaY)
+    /** @param button "left", "middle", "right", "back" or "forward" */
+    def press(x: Double, y: Double, button: String): Unit = {
+      event("mousePressed", x, y, button)
+      event("mouseReleased", x, y, button)
+    }
+    def wheel(x: Double, y: Double, deltaY: Double, deltaX: Double = 0): Unit = {
+      val _ = devTools.send("Input.dispatchMouseEvent", "type" -> "mouseWheel", "x" -> x, "y" -> y, "deltaX" -> deltaX, "deltaY" -> deltaY)
     }
     private def event(kind: String, x: Double, y: Double, button: String): Unit = {
       val _ = devTools.send("Input.dispatchMouseEvent",
@@ -130,9 +135,18 @@ final class Page private[testing] (devTools: DevTools) extends AutoCloseable {
   object keyboard {
     def down(key: Key): Unit = event("rawKeyDown", key)
     def up(key: Key): Unit = event("keyUp", key)
+    /** Presses a letter, which is typed in what has the focus. */
+    def typeLetter(c: Char): Unit = {
+      val key = Key.letter(c)
+      val _ = devTools.send("Input.dispatchKeyEvent", "type" -> "keyDown", "text" -> c.toString,
+        "key" -> key.key, "code" -> key.code, "windowsVirtualKeyCode" -> key.keyCode)
+      up(key)
+    }
     private def event(kind: String, key: Key): Unit = {
       val _ = devTools.send("Input.dispatchKeyEvent", "type" -> kind,
-        "key" -> key.key, "code" -> key.code, "windowsVirtualKeyCode" -> key.keyCode)
+        "key" -> key.key, "code" -> key.code, "windowsVirtualKeyCode" -> key.keyCode,
+        // The numeric keypad is not a location to the protocol.
+        "location" -> (if(key.location == 3) 0 else key.location), "isKeypad" -> (key.location == 3))
     }
   }
 
@@ -149,8 +163,11 @@ final class Page private[testing] (devTools: DevTools) extends AutoCloseable {
   }
 }
 
-/** A key of the keyboard. */
-final case class Key(key: String, code: String, keyCode: Int)
+/** A key of the keyboard.
+  *
+  * @param location which one of several, as `KeyboardEvent.location`
+  */
+final case class Key(key: String, code: String, keyCode: Int, location: Int = 0)
 
 object Key {
   val Space: Key = Key(" ", "Space", 32)
@@ -158,5 +175,9 @@ object Key {
   val Up: Key = Key("ArrowUp", "ArrowUp", 38)
   val Right: Key = Key("ArrowRight", "ArrowRight", 39)
   val Down: Key = Key("ArrowDown", "ArrowDown", 40)
+  val Enter: Key = Key("Enter", "Enter", 13)
+  val NumpadEnter: Key = Key("Enter", "NumpadEnter", 13, location = 3)
+  val LeftShift: Key = Key("Shift", "ShiftLeft", 16, location = 1)
+  val RightShift: Key = Key("Shift", "ShiftRight", 16, location = 2)
   def letter(c: Char): Key = Key(c.toLower.toString, s"Key${c.toUpper}", c.toUpper.toInt)
 }

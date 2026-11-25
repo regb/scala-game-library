@@ -34,12 +34,23 @@ Input.setInputProcessor(new InputProcessor {
     case _ => false
   }
 
-  override def mouseScrolled(amount: Int): Boolean = { zoom(amount); true }
+  override def mouseScrolled(amountX: Float, amountY: Float, unit: Input.ScrollUnits.ScrollUnit): Boolean = {
+    zoom(amountY, unit)
+    true
+  }
 })
 ```
 
-Keys cover the letters `A` to `Z`, `Num0` to `Num9`, `Space`, the arrow keys, and the gamepad
-buttons `ButtonStart` and `ButtonSelect`.
+Keys cover the letters `A` to `Z`, `Num0` to `Num9`, `Space`, `Enter`, `NumpadEnter`,
+`Escape`, `Backspace`, `LeftShift`, `RightShift`, the arrow keys, and the gamepad buttons
+`ButtonStart` and `ButtonSelect`.
+
+Mouse buttons are `Left`, `Right` and `Middle`, and the others are `Other(number)`, with the number
+that the platform has for them.
+
+Scrolling comes as the platform counts it, with its unit: `Notches` on the desktop, and mostly
+`Pixels` in browsers, or `Lines` and `Pages`. Amounts are positive to the right and down, and can
+have fractions. How much a unit moves is for the game to say.
 
 The callbacks are `keyDown`, `keyUp`, `mouseMoved`, `mouseDown`, `mouseUp`, `mouseScrolled`,
 `touchDown`, `touchMoved`, `touchUp`, and `systemAction`. You can replace the processor at any

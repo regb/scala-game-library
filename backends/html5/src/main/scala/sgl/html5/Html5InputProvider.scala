@@ -208,7 +208,12 @@ private[html5] object Html5DomInputAdapter {
     listen(canvas, "wheel") { event =>
       val e = event.asInstanceOf[dom.WheelEvent]
       if(wheelPreventDefault) e.preventDefault()
-      Input.inputProcessor.mouseScrolled(e.deltaY.toInt)
+      val unit = e.deltaMode match {
+        case dom.WheelEvent.DOM_DELTA_LINE => Input.ScrollUnits.Lines
+        case dom.WheelEvent.DOM_DELTA_PAGE => Input.ScrollUnits.Pages
+        case _ => Input.ScrollUnits.Pixels
+      }
+      Input.inputProcessor.mouseScrolled(e.deltaX.toFloat, e.deltaY.toFloat, unit)
     }
     if(releaseMouseOnWindowMouseUp) {
       listen(dom.window, "mouseup") { event =>
@@ -379,13 +384,17 @@ private[html5] object Html5DomInputAdapter {
 
   private def mouseButton(button: Int): Input.MouseButtons.MouseButton = button match {
     case 1 => Input.MouseButtons.Middle
+    case 0 => Input.MouseButtons.Left
     case 2 => Input.MouseButtons.Right
-    // TODO: log unexpected button codes.
-    case _ => Input.MouseButtons.Left
+    case other => Input.MouseButtons.Other(other)
   }
 
   // TODO: will need to make it more cross-browser compatible.
   private def key(e: dom.KeyboardEvent): Option[Input.Keys.Key] = e.keyCode match {
+    case 8 => Some(Input.Keys.Backspace)
+    case 13 => Some(if(e.location == dom.KeyboardEvent.DOM_KEY_LOCATION_NUMPAD) Input.Keys.NumpadEnter else Input.Keys.Enter)
+    case 16 => Some(if(e.location == dom.KeyboardEvent.DOM_KEY_LOCATION_RIGHT) Input.Keys.RightShift else Input.Keys.LeftShift)
+    case 27 => Some(Input.Keys.Escape)
     case 32 => Some(Input.Keys.Space)
 
     case 37 => Some(Input.Keys.Left)

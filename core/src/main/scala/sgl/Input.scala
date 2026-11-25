@@ -281,11 +281,28 @@ object Input {
     }
   }
 
+  /** What a platform counts scrolling in. See [[InputProcessor.mouseScrolled]]. */
+  object ScrollUnits {
+    sealed trait ScrollUnit
+    /** Steps of a wheel. Trackpads and smooth wheels send parts of one. */
+    case object Notches extends ScrollUnit
+    case object Pixels extends ScrollUnit
+    /** Lines of text, of no particular height. */
+    case object Lines extends ScrollUnit
+    case object Pages extends ScrollUnit
+  }
+
   object MouseButtons {
     sealed trait MouseButton
     case object Left extends MouseButton
     case object Right extends MouseButton
     case object Middle extends MouseButton
+    /** Another button, with the number that the platform has for it. The same
+      * button can have another number on another platform: the one that goes
+      * back is 3 with GLFW and in browsers, 4 with SDL, and 6 with AWT on X11,
+      * where 4 and 5 are scrolling to the sides.
+      */
+    final case class Other(number: Int) extends MouseButton
   }
 
   object Keys {
@@ -357,6 +374,12 @@ object Input {
     case object Num9 extends NumKey
 
     case object Space extends Key
+    case object Enter extends Key
+    case object NumpadEnter extends Key
+    case object Escape extends Key
+    case object Backspace extends Key
+    case object LeftShift extends Key
+    case object RightShift extends Key
 
     case object Left extends Key
     case object Up extends Key

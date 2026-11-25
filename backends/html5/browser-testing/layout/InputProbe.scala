@@ -7,8 +7,12 @@ import _root_.sgl.{Application, Input, InputProcessor}
 trait InputProbe extends Application {
   override def create(): Unit = {
     Input.setInputProcessor(new InputProcessor {
-      override def mouseDown(x: Int, y: Int, button: Input.MouseButtons.MouseButton): Boolean = report(s"mouse down $x $y")
-      override def mouseUp(x: Int, y: Int, button: Input.MouseButtons.MouseButton): Boolean = report(s"mouse up $x $y")
+      override def keyDown(key: Input.Keys.Key): Boolean = report(s"key down $key")
+      override def keyUp(key: Input.Keys.Key): Boolean = report(s"key up $key")
+      override def mouseScrolled(amountX: Float, amountY: Float, unit: Input.ScrollUnits.ScrollUnit): Boolean =
+        report(s"scrolled $amountX $amountY $unit")
+      override def mouseDown(x: Int, y: Int, button: Input.MouseButtons.MouseButton): Boolean = report(s"mouse down $button $x $y")
+      override def mouseUp(x: Int, y: Int, button: Input.MouseButtons.MouseButton): Boolean = report(s"mouse up $button $x $y")
       override def touchDown(x: Int, y: Int, pointer: Int): Boolean = report(s"touch down $x $y")
       override def touchUp(x: Int, y: Int, pointer: Int): Boolean = report(s"touch up $x $y")
     })

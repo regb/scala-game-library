@@ -50,6 +50,55 @@ LAYOUTS = [
     deps = [":core"],
 ) for layout in LAYOUTS]
 
+sgl_html5_app(
+    name = "canvas-focused",
+    canvas_height = 200,
+    canvas_width = 300,
+    center_canvas = False,
+    core_abstract_class = "sgl.html5.testing.layout.core.InputProbe",
+    html_output_name = "index.html",
+    html_template = "page.html",
+    keyboard_capture = "canvas_focused",
+    main_class = "Probe",
+    output_name = "canvas-focused.js",
+    package = "sgl.html5.testing.layout.canvas",
+    use_screen2d = False,
+    deps = [":core"],
+)
+
+sgl_html5_opengl_app(
+    name = "webgl-focused",
+    canvas_height = 200,
+    canvas_width = 300,
+    center_canvas = False,
+    core_abstract_class = "sgl.html5.testing.layout.core.InputProbe",
+    export_name = "Probe",
+    html_output_name = "index.html",
+    html_template = "page.html",
+    keyboard_capture = "canvas_focused",
+    main_class = "Main",
+    output_name = "webgl-focused.js",
+    package = "sgl.html5.testing.layout.webgl",
+    deps = [":core"],
+)
+
+html5_browser_test(
+    name = "keyboard-test",
+    size = "medium",
+    srcs = ["KeyboardTest.scala"],
+    scalacopts = SGL_SCALACOPTS,
+    sites = [
+        ":canvas-fixed_site",
+        ":canvas-focused_site",
+        ":webgl-fixed_site",
+        ":webgl-focused_site",
+    ],
+    target_compatible_with = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+    ],
+)
+
 html5_browser_test(
     name = "layout-test",
     size = "medium",

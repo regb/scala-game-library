@@ -96,6 +96,12 @@ trait LwjglApp extends LwjglGlfwWindowProvider with LwjglRenderThreadDispatcher 
         case GLFW_KEY_W => Some(Input.Keys.W)
         case GLFW_KEY_S => Some(Input.Keys.S)
         case GLFW_KEY_SPACE => Some(Input.Keys.Space)
+        case GLFW_KEY_ENTER => Some(Input.Keys.Enter)
+        case GLFW_KEY_KP_ENTER => Some(Input.Keys.NumpadEnter)
+        case GLFW_KEY_ESCAPE => Some(Input.Keys.Escape)
+        case GLFW_KEY_BACKSPACE => Some(Input.Keys.Backspace)
+        case GLFW_KEY_LEFT_SHIFT => Some(Input.Keys.LeftShift)
+        case GLFW_KEY_RIGHT_SHIFT => Some(Input.Keys.RightShift)
         case GLFW_KEY_B => Some(Input.Keys.B)
         case GLFW_KEY_C => Some(Input.Keys.C)
         case GLFW_KEY_E => Some(Input.Keys.E)
@@ -148,20 +154,23 @@ trait LwjglApp extends LwjglGlfwWindowProvider with LwjglRenderThreadDispatcher 
     })
 
     glfwSetMouseButtonCallback(window, (_, button, action, _) => {
-      val mapped = button match {
-        case GLFW_MOUSE_BUTTON_LEFT => Some(Input.MouseButtons.Left)
-        case GLFW_MOUSE_BUTTON_RIGHT => Some(Input.MouseButtons.Right)
-        case GLFW_MOUSE_BUTTON_MIDDLE => Some(Input.MouseButtons.Middle)
-        case _ => None
+      val b = button match {
+        case GLFW_MOUSE_BUTTON_LEFT => Input.MouseButtons.Left
+        case GLFW_MOUSE_BUTTON_RIGHT => Input.MouseButtons.Right
+        case GLFW_MOUSE_BUTTON_MIDDLE => Input.MouseButtons.Middle
+        case other => Input.MouseButtons.Other(other)
       }
-      mapped.foreach { b =>
-        if(action == GLFW_PRESS) {
-          activeMouseButtons += b
-          Input.inputProcessor.mouseDown(mouseX, mouseY, b)
-        } else if(action == GLFW_RELEASE && activeMouseButtons.remove(b)) {
-          Input.inputProcessor.mouseUp(mouseX, mouseY, b)
-        }
+      if(action == GLFW_PRESS) {
+        activeMouseButtons += b
+        Input.inputProcessor.mouseDown(mouseX, mouseY, b)
+      } else if(action == GLFW_RELEASE && activeMouseButtons.remove(b)) {
+        Input.inputProcessor.mouseUp(mouseX, mouseY, b)
       }
+    })
+
+    // GLFW counts up and to the left.
+    glfwSetScrollCallback(window, (_, x, y) => {
+      Input.inputProcessor.mouseScrolled(0f - x.toFloat, 0f - y.toFloat, Input.ScrollUnits.Notches)
     })
 
     glfwSetCursorEnterCallback(window, (_, entered) => {

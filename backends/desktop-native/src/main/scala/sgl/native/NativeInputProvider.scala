@@ -38,31 +38,33 @@ trait NativeInputProvider {
       case SDL_MOUSEBUTTONDOWN =>
         //TODO: check 'which' field to ignore TOUCH events
         val mouseButtonEvent = event.button
-        buttonToMouseButton(mouseButtonEvent.button).foreach(mb =>
-          Input.inputProcessor.mouseDown(mouseButtonEvent.x, mouseButtonEvent.y, mb)
-        )
+        Input.inputProcessor.mouseDown(mouseButtonEvent.x, mouseButtonEvent.y, buttonToMouseButton(mouseButtonEvent.button))
 
       case SDL_MOUSEBUTTONUP =>
         //TODO: check 'which' field to ignore TOUCH events
         val mouseButtonEvent = event.button
-        buttonToMouseButton(mouseButtonEvent.button).foreach(mb =>
-          Input.inputProcessor.mouseUp(mouseButtonEvent.x, mouseButtonEvent.y, mb)
-        )
+        Input.inputProcessor.mouseUp(mouseButtonEvent.x, mouseButtonEvent.y, buttonToMouseButton(mouseButtonEvent.button))
 
       case SDL_MOUSEMOTION =>
         val motionEvent = event.motion
         Input.inputProcessor.mouseMoved(motionEvent.x, motionEvent.y)
+
+      case SDL_MOUSEWHEEL =>
+        // SDL counts to the right, and up.
+        val wheelEvent = event.wheel
+        Input.inputProcessor.mouseScrolled(wheelEvent.x.toFloat, (-wheelEvent.y).toFloat, Input.ScrollUnits.Notches)
 
       case _ =>
         ()
     }
   }
 
-  private def buttonToMouseButton(mouseButton: UByte): Option[Input.MouseButtons.MouseButton] =
+  private def buttonToMouseButton(mouseButton: UByte): Input.MouseButtons.MouseButton =
     mouseButton match {
-      case SDL_BUTTON_LEFT => Some(Input.MouseButtons.Left)
-      case SDL_BUTTON_MIDDLE => Some(Input.MouseButtons.Middle)
-      case SDL_BUTTON_RIGHT => Some(Input.MouseButtons.Right)
+      case SDL_BUTTON_LEFT => Input.MouseButtons.Left
+      case SDL_BUTTON_MIDDLE => Input.MouseButtons.Middle
+      case SDL_BUTTON_RIGHT => Input.MouseButtons.Right
+      case other => Input.MouseButtons.Other(other.toInt)
     }
 
   private def keycodeToEvent: PartialFunction[SDL_Keycode, Input.Keys.Key] = {
@@ -116,6 +118,12 @@ trait NativeInputProvider {
     case SDLK_KP_9 => Input.Keys.Num9
 
     case SDLK_SPACE => Input.Keys.Space
+    case SDLK_RETURN => Input.Keys.Enter
+    case SDLK_KP_ENTER => Input.Keys.NumpadEnter
+    case SDLK_ESCAPE => Input.Keys.Escape
+    case SDLK_BACKSPACE => Input.Keys.Backspace
+    case SDLK_LSHIFT => Input.Keys.LeftShift
+    case SDLK_RSHIFT => Input.Keys.RightShift
 
     case SDLK_UP => Input.Keys.Up
     case SDLK_DOWN => Input.Keys.Down

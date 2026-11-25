@@ -77,8 +77,8 @@ trait HeadlessOpenGLApp extends LwjglWindowProvider
       if(pressedMouseButtons.remove(button)) Input.inputProcessor.mouseUp(x, y, button)
     }
 
-    def mouseScrolled(amount: Int): Unit = enqueueInput {
-      Input.inputProcessor.mouseScrolled(amount)
+    def mouseScrolled(amountX: Float, amountY: Float, unit: Input.ScrollUnits.ScrollUnit): Unit = enqueueInput {
+      Input.inputProcessor.mouseScrolled(amountX, amountY, unit)
     }
 
     def touchDown(x: Int, y: Int, pointer: Int): Unit = {

@@ -19,6 +19,7 @@ object InputEvent {
   case object MousePressed extends EventType
   case object MouseReleased extends EventType
   case object MouseMoved extends EventType
+  case object MouseScrolled extends EventType
 
   case object KeyPressed extends EventType
   case object KeyReleased extends EventType
@@ -48,6 +49,10 @@ trait AWTInputProvider {
           val e = event.mouseEvent
           Input.inputProcessor.mouseMoved(e.getX, e.getY)
         }
+        case InputEvent.MouseScrolled => {
+          val e = event.mouseEvent.asInstanceOf[MouseWheelEvent]
+          Input.inputProcessor.mouseScrolled(0f, e.getPreciseWheelRotation.toFloat, Input.ScrollUnits.Notches)
+        }
         case InputEvent.KeyPressed => {
           val e = event.keyEvent
           keyEventKey(e).foreach(key => {
@@ -66,15 +71,11 @@ trait AWTInputProvider {
     }
   }
 
-  private def mouseEventButton(e: MouseEvent): Input.MouseButtons.MouseButton = {
-    if(javax.swing.SwingUtilities.isLeftMouseButton(e))
-      Input.MouseButtons.Left
-    else if(javax.swing.SwingUtilities.isRightMouseButton(e))
-      Input.MouseButtons.Right
-    else if(javax.swing.SwingUtilities.isMiddleMouseButton(e))
-      Input.MouseButtons.Middle
-    else
-      Input.MouseButtons.Left
+  private def mouseEventButton(e: MouseEvent): Input.MouseButtons.MouseButton = e.getButton match {
+    case MouseEvent.BUTTON1 => Input.MouseButtons.Left
+    case MouseEvent.BUTTON2 => Input.MouseButtons.Middle
+    case MouseEvent.BUTTON3 => Input.MouseButtons.Right
+    case other => Input.MouseButtons.Other(other)
   }
 
   // TODO: probably leads to lots of garbage collection, we should not create all
@@ -114,6 +115,13 @@ trait AWTInputProvider {
     case KeyEvent.VK_X => Some(Input.Keys.X)
     case KeyEvent.VK_Y => Some(Input.Keys.Y)
     case KeyEvent.VK_Z => Some(Input.Keys.Z)
+
+    case KeyEvent.VK_ENTER =>
+      Some(if(e.getKeyLocation == KeyEvent.KEY_LOCATION_NUMPAD) Input.Keys.NumpadEnter else Input.Keys.Enter)
+    case KeyEvent.VK_ESCAPE => Some(Input.Keys.Escape)
+    case KeyEvent.VK_BACK_SPACE => Some(Input.Keys.Backspace)
+    case KeyEvent.VK_SHIFT =>
+      Some(if(e.getKeyLocation == KeyEvent.KEY_LOCATION_RIGHT) Input.Keys.RightShift else Input.Keys.LeftShift)
 
     case KeyEvent.VK_0 => Some(Input.Keys.Num0)
     case KeyEvent.VK_1 => Some(Input.Keys.Num1)
@@ -164,8 +172,19 @@ trait AWTInputProvider {
       }
     })
 
+    gameCanvas.addMouseWheelListener(new MouseAdapter() {
+      override def mouseWheelMoved(e: MouseWheelEvent): Unit = {
+        val event = pool.acquire()
+        event.eventType = InputEvent.MouseScrolled
+        event.mouseEvent = e
+        inputEventsQueue.enqueue(event)
+      }
+    })
+
     gameCanvas.addKeyListener(new KeyListener() {
-      private val currentlyPressed = new HashSet[Int]
+      // By location too, as both shift keys have the same code.
+      private val currentlyPressed = new HashSet[(Int, Int)]
+      private def pressed(e: KeyEvent): (Int, Int) = (e.getKeyCode, e.getKeyLocation)
 
       override def keyPressed(e: KeyEvent): Unit = {
         // keyPressed event will actually automatically repeat the key event
@@ -175,9 +194,9 @@ trait AWTInputProvider {
         // these and filter out.
         // Also, as far as my tests go, even if the KeyPressed is repeated, the
         // KeyReleased event will only occur once, at the very end.
-        if(currentlyPressed.contains(e.getKeyCode))
+        if(currentlyPressed.contains(pressed(e)))
           return
-        currentlyPressed.add(e.getKeyCode)
+        currentlyPressed.add(pressed(e))
 
         val event = pool.acquire()
         event.eventType = InputEvent.KeyPressed
@@ -185,7 +204,7 @@ trait AWTInputProvider {
         inputEventsQueue.enqueue(event)
       }
       override def keyReleased(e: KeyEvent): Unit = {
-        currentlyPressed.remove(e.getKeyCode)
+        currentlyPressed.remove(pressed(e))
         val event = pool.acquire()
         event.eventType = InputEvent.KeyReleased
         event.keyEvent = e

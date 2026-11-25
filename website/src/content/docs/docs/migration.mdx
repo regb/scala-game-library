@@ -45,6 +45,11 @@ save_component = "MemorySaveComponent"     # or, as before, until the game stops
 `FileSave` now throws an `IOException` when it cannot read or write its file. It used to report no
 save, and to lose what was written. Existing files still read.
 
+## Scrolling
+
+`mouseScrolled(amount: Int)` is now `mouseScrolled(amountX: Float, amountY: Float, unit)`, and comes
+from every desktop backend too. What was `amount`, in browsers, is `amountY` in `Pixels`.
+
 ## Resource paths to typed assets
 
 Old application code often loaded resources by path:

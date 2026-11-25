@@ -206,8 +206,10 @@ object SDL {
   type SDL_MouseButtonEvent =
     CStruct10[UInt, UInt, UInt, UInt, UByte, UByte, UByte, UByte, Int, Int]
 
+  type SDL_MouseWheelEvent =
+    CStruct7[UInt, UInt, UInt, UInt, Int, Int, UInt]
+
   //TODO:
-  //type SDL_MouseWheelEvent
   //type SDL_JoyAxisEvent
   //type SDL_JoyBallEvent
   //type SDL_JoyHatEvent
