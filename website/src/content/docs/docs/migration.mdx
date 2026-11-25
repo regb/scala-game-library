@@ -31,6 +31,20 @@ legacyUpdate((dt * 1000.0).toLong)
 `sgl.util.Math` was removed for the same reason: use `degrees.toRadians` and `radians.toDegrees`, which
 are part of Scala. `sgl.util.MathUtils` has `clamp`, `lerp`, and similar helpers.
 
+## Saves on the desktop are explicit
+
+`sgl_desktop_awt_app` and `sgl_desktop_lwjgl_app` kept saves in memory when `file_save` was not
+set, which lost them when the game stopped. A game that needs a `SaveComponent` now has to say
+how it saves, or it does not compile:
+
+```python
+file_save = "mygame.save"                  # in a file
+save_component = "MemorySaveComponent"     # or, as before, until the game stops
+```
+
+`FileSave` now throws an `IOException` when it cannot read or write its file. It used to report no
+save, and to lose what was written. Existing files still read.
+
 ## Resource paths to typed assets
 
 Old application code often loaded resources by path:

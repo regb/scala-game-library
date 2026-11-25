@@ -20,6 +20,19 @@ class SaveComponentSuite extends AnyFunSuite {
   }
 
 
+  test("Save can be used while traits are being initialized") {
+    trait Game {
+      this: SaveComponent =>
+      val runs: Int = Save.incInt("runs")
+    }
+    object memory extends Game with MemorySaveComponent
+    assert(memory.runs === 1)
+    assert(memory.Save.getInt("runs") === Some(1))
+    object none extends Game with NoSaveComponent
+    assert(none.runs === 1)
+    assert(none.Save.getInt("runs") === None)
+  }
+
   test("Testing SavedValue") {
     var getIntCalled = false
     val save = new MemorySaveComponent {

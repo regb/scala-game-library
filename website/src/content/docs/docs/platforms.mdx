@@ -11,11 +11,11 @@ of them. Each backend has a Bazel rule that generates the entry point, as descri
 
 | Backend | Rule | Rendering | Audio | Saves (default) |
 | --- | --- | --- | --- | --- |
-| Desktop AWT | `sgl_desktop_awt_app` | Canvas (Java2D) | JavaSound | File (`file_save`) or memory |
-| Desktop LWJGL | `sgl_desktop_lwjgl_app` | OpenGL 3.3 core, plus Canvas through `OpenGLCanvasProvider` | OpenAL | File (`file_save`) or memory |
+| Desktop AWT | `sgl_desktop_awt_app` | Canvas (Java2D) | JavaSound | `file_save` or `save_component`, none by default |
+| Desktop LWJGL | `sgl_desktop_lwjgl_app` | OpenGL 3.3 core, plus Canvas through `OpenGLCanvasProvider` | OpenAL | `file_save` or `save_component`, none by default |
 | HTML5 Canvas | `sgl_html5_app` | Canvas 2D context | HTML5 audio | `localStorage` |
 | HTML5 WebGL | `sgl_html5_opengl_app` | WebGL 2, plus Canvas through `OpenGLCanvasProvider` | HTML5 audio | Not included |
-| Scala Native | `sgl_desktop_native_app` | SDL2 with OpenGL ES 3. `NativeApp` for Canvas, `NativeOpenGLApp` for OpenGL. | SDL2 audio | Not included |
+| Scala Native | `sgl_desktop_native_app` | SDL2 with OpenGL ES 3. `NativeApp` for Canvas, `NativeOpenGLApp` for OpenGL. | SDL2 audio | `file_save` or `save_component`, none by default |
 | Android | `sgl_android_app` | Android Canvas through the proxy platform | Android | SharedPreferences |
 | Headless | `//backends/headless-opengl` | OpenGL through Mesa EGL, without a display | Silent (`FakeAudioProvider`) | Not included |
 

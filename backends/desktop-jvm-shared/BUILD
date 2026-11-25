@@ -10,6 +10,7 @@ scala_library(
     srcs = glob(["src/main/**/*.scala"]),
     scalacopts = SGL_SCALACOPTS,
     visibility = ["//visibility:public"],
+    exports = ["//backends/desktop-shared"],
     deps = [
         "//backends/jvm-shared",
         "//core:sgl-core",

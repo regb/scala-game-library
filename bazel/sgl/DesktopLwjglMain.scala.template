@@ -3,8 +3,7 @@ package {{PACKAGE}}.desktop
 object {{MAIN_CLASS}} extends _root_.sgl.lwjgl.LwjglApp with {{CORE_ABSTRACT_CLASS}}{{EXTRA_MIXINS}}
   with _root_.sgl.DesktopSystemProvider
   with _root_.sgl.desktop.util.LiftJsonProvider
-  with _root_.sgl.desktop.util.VerboseStdErrLoggingProvider
-  with {{SAVE_COMPONENT}} {
+  with _root_.sgl.desktop.util.VerboseStdErrLoggingProvider{{SAVE_MIXIN}} {
 
   override val TargetFps: Option[Int] = {{TARGET_FPS}}
 
@@ -12,5 +11,5 @@ object {{MAIN_CLASS}} extends _root_.sgl.lwjgl.LwjglApp with {{CORE_ABSTRACT_CLA
 
   override val windowTitle: String = "{{WINDOW_TITLE}}"
 
-  {{SAVE_COMPONENT_INIT}}
+  {{SAVE_MEMBER}}
 }

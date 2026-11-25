@@ -156,7 +156,9 @@ trait NoSaveComponent extends SaveComponent {
     override def getString(name: String): Option[String] = None
   }
   type Save = NoSave
-  override val Save: Save = new NoSave
+  // Usable while traits are being initialized, and overridable with a val.
+  private lazy val noSave = new NoSave
+  override def Save: Save = noSave
 }
 
 /** A save implementation that stores data in RAM.
@@ -187,5 +189,7 @@ trait MemorySaveComponent extends SaveComponent {
     override def getString(name: String): Option[String] = stringStore.get(name)
   }
   type Save = MemorySave
-  override val Save: Save = new MemorySave
+  // Usable while traits are being initialized, and overridable with a val.
+  private lazy val memorySave = new MemorySave
+  override def Save: Save = memorySave
 }

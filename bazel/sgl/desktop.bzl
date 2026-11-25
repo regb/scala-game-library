@@ -1,5 +1,6 @@
 load("@rules_scala//scala:scala.bzl", "scala_binary")
 load("//bazel:scala_opts.bzl", "SGL_SCALACOPTS")
+load(":save.bzl", "save_substitutions")
 
 def _absolute_scala_type(type_name):
     return type_name if type_name.startswith("_root_.") else "_root_." + type_name
@@ -35,18 +36,7 @@ def _desktop_awt_main_impl(ctx):
         "{{SCREEN2D_MIXIN}}": "with _root_.sgl.Screen2DGameApp" if ctx.attr.use_screen2d else "",
     }
 
-    if ctx.attr.save_component:
-        substitutions["{{SAVE_COMPONENT}}"] = _absolute_scala_type(ctx.attr.save_component)
-        substitutions["{{SAVE_COMPONENT_INIT}}"] = ""
-    elif ctx.attr.file_save:
-        substitutions["{{SAVE_COMPONENT}}"] = "_root_.sgl.SaveComponent"
-        substitutions["{{SAVE_COMPONENT_INIT}}"] = """
-  type Save = _root_.sgl.desktop.FileSave
-  override val Save: Save = new _root_.sgl.desktop.FileSave("{}")
-  """.format(ctx.attr.file_save)
-    else:
-        substitutions["{{SAVE_COMPONENT}}"] = "_root_.sgl.MemorySaveComponent"
-        substitutions["{{SAVE_COMPONENT_INIT}}"] = ""
+    substitutions.update(save_substitutions(ctx.attr.file_save, ctx.attr.save_component))
 
     output = ctx.actions.declare_file(ctx.attr.name + ".scala")
     ctx.actions.expand_template(
@@ -78,12 +68,12 @@ desktop_awt_main = rule(
         ),
         "file_save": attr.string(
             mandatory = False,
-            doc = "A filename to use for saving the game progress. Will be written to by the game. If empty, the game will save in memory unless save_component is set.",
+            doc = "A file for the game to save in, relative to where it is started. A game that needs a SaveComponent has to have this or save_component set.",
             default = "",
         ),
         "save_component": attr.string(
             mandatory = False,
-            doc = "A SaveComponent implementation to mix into the generated desktop app, such as NoSaveComponent or MemorySaveComponent. If set, file_save is ignored.",
+            doc = "A SaveComponent to mix into the generated app instead, such as MemorySaveComponent, which forgets everything when the game stops.",
             default = "",
         ),
         "frame_width": attr.int(
@@ -132,6 +122,7 @@ def sgl_desktop_awt_app(
         runtime_jdk = Label("@rules_java//toolchains:remotejdk_17")):
     full_deps = deps + [
         Label("//core:sgl-core"),
+        Label("//backends/desktop-shared:desktop-shared"),
         Label("//backends/jvm-shared:jvm-shared"),
         Label("//backends/desktop-jvm-shared:desktop-jvm-shared"),
         Label("//backends/desktop-awt:sgl-desktop-awt"),

@@ -7,10 +7,8 @@ object {{MAIN_CLASS}} extends _root_.sgl.awt.AWTApp {{SCREEN2D_MIXIN}} with {{CO
   {{GAME_LOOP_STATISTICS_MIXIN}}
   with _root_.sgl.util.metrics.DefaultInstrumentationProvider
   with _root_.sgl.ads.NoAdsProvider
-  with _root_.sgl.analytics.LoggedAnalyticsProvider
-  {{TILED_MIXINS}}{{EXTRA_MIXINS}}
-  with {{SAVE_COMPONENT}}
-{
+  with _root_.sgl.analytics.LoggedAnalyticsProvider{{TILED_MIXINS}}{{EXTRA_MIXINS}}{{SAVE_MIXIN}} {
+
   override val TargetFps: Option[Int] = Some(60)
 
   override val frameDimension = ({{FRAME_WIDTH}}, {{FRAME_HEIGHT}})
@@ -19,5 +17,5 @@ object {{MAIN_CLASS}} extends _root_.sgl.awt.AWTApp {{SCREEN2D_MIXIN}} with {{CO
 
   override val SimulatedSafeAreaInsets: Option[(Int, Int, Int, Int)] = {{SIMULATED_SAFE_AREA_INSETS}}
 
-  {{SAVE_COMPONENT_INIT}}
+  {{SAVE_MEMBER}}
 }

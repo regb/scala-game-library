@@ -21,7 +21,6 @@ scala_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
-        "//backends/jvm-shared",
         "//core:sgl-core",
         "//engines:sgl-screen2d",
         "@maven//:org_scala_native_auxlib_native0_5_3",

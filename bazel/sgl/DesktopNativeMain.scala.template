@@ -2,7 +2,7 @@ package {{PACKAGE}}.desktop
 
 object {{MAIN_CLASS}} extends {{BACKEND_APP}} {{SCREEN2D_MIXIN}} with {{CORE_ABSTRACT_CLASS}}
   with _root_.sgl.native.util.VerboseStdErrLoggingProvider
-  {{TILED_MIXINS}}{{EXTRA_MIXINS}} {
+  {{TILED_MIXINS}}{{EXTRA_MIXINS}}{{SAVE_MIXIN}} {
 
   override val TargetFps: Option[Int] = {{TARGET_FPS}}
 
@@ -13,4 +13,6 @@ object {{MAIN_CLASS}} extends {{BACKEND_APP}} {{SCREEN2D_MIXIN}} with {{CORE_ABS
   {{SCREEN_FORCE_PPI}}
 
   {{RESOURCE_ROOTS}}
+
+  {{SAVE_MEMBER}}
 }

@@ -1,5 +1,6 @@
 load("//bazel:cross.bzl", sgl_scala_library = "scala_library")
 load("//bazel:scalanative.bzl", "scala_native_binary")
+load(":save.bzl", "save_substitutions")
 
 def _path_to_vector(path):
     parts = [p for p in path.strip("/").split("/") if p]
@@ -37,6 +38,7 @@ def _desktop_native_main_impl(ctx):
         "{{TILED_MIXINS}}": tiled_mixins,
         "{{EXTRA_MIXINS}}": extra_mixins,
     }
+    substitutions.update(save_substitutions(ctx.attr.file_save, ctx.attr.save_component))
 
     output = ctx.actions.declare_file(ctx.attr.name + ".scala")
     ctx.actions.expand_template(
@@ -62,6 +64,8 @@ desktop_native_main = rule(
         "frame_height": attr.int(default = 800),
         "window_title": attr.string(default = "SGL Native App"),
         "target_fps": attr.int(default = 60),
+        "file_save": attr.string(default = "", doc = "A file for the game to save in, relative to where it is started. A game that needs a SaveComponent has to have this or save_component set."),
+        "save_component": attr.string(default = "", doc = "A SaveComponent to mix into the generated app instead, such as MemorySaveComponent, which forgets everything when the game stops."),
         "resources_root": attr.string(default = ""),
         "multi_dpi_resources_root": attr.string(default = ""),
         "use_extension_tiled": attr.bool(default = False),
@@ -86,6 +90,8 @@ def sgl_desktop_native_app(
         frame_height = 800,
         window_title = "SGL Native App",
         target_fps = 60,
+        file_save = "",
+        save_component = "",
         backend_app = "NativeApp",
         linkopts = None,
         use_extension_tiled = False,
@@ -99,7 +105,7 @@ def sgl_desktop_native_app(
 
     full_deps = deps + [
         Label("//core:sgl-core"),
-        Label("//backends/jvm-shared:jvm-shared"),
+        Label("//backends/desktop-shared:desktop-shared"),
         Label("//backends/desktop-native:sgl-desktop-native"),
     ]
     if use_screen2d:
@@ -120,6 +126,8 @@ def sgl_desktop_native_app(
         frame_height = frame_height,
         window_title = window_title,
         target_fps = target_fps,
+        file_save = file_save,
+        save_component = save_component,
         backend_app = backend_app,
         resources_root = resources_root,
         multi_dpi_resources_root = multi_dpi_resources_root,
