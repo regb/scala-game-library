@@ -1,5 +1,7 @@
 package sgl
 
+import sgl.util.Loader
+
 /** Immutable distances from the edges of a region, in pixels.
   *
   * Unlike the mutable geometry types in sgl.geometry, Insets never change after
@@ -122,6 +124,26 @@ trait WindowProvider {
       * or system UI, so games should not cache it.
       */
     def safeArea: Insets = Insets.Zero
+
+    /** Whether the game can go to the full screen and back by itself. */
+    def canFullscreen: Boolean = false
+
+    /** Whether it is on the full screen. */
+    def isFullscreen: Boolean = false
+
+    /** Goes to the full screen or back to a window, where it can. The game is
+      * told of its new size through `resize`. Browsers only allow it shortly
+      * after the player has pressed something.
+      */
+    def setFullscreen(fullscreen: Boolean): Unit = {}
+
+    /** Puts a text on the clipboard, where there is one. */
+    def copyText(text: String): Unit = {}
+
+    /** The text on the clipboard. Fails where there is none, where it is not a
+      * text, or when the player does not allow it.
+      */
+    def pasteText(): Loader[String] = Loader.failed(new UnsupportedOperationException("There is no clipboard"))
 
     /** The exact horizontal number of pixels per inch.
       *

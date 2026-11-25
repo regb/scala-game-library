@@ -72,6 +72,13 @@ trait AWTWindowProvider extends WindowProvider {
     override def width: Int = gameCanvas.getWidth
     override def height: Int = gameCanvas.getHeight
 
+    override def copyText(text: String): Unit =
+      java.awt.Toolkit.getDefaultToolkit.getSystemClipboard.setContents(new java.awt.datatransfer.StringSelection(text), null)
+    override def pasteText(): sgl.util.Loader[String] =
+      try sgl.util.Loader.successful(
+        java.awt.Toolkit.getDefaultToolkit.getSystemClipboard.getData(java.awt.datatransfer.DataFlavor.stringFlavor).toString
+      ) catch { case scala.util.control.NonFatal(error) => sgl.util.Loader.failed(error) }
+
     override def safeArea: Insets = SimulatedSafeAreaInsets match {
       case None => super.safeArea
       case Some((left, top, right, bottom)) =>

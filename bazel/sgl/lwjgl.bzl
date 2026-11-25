@@ -17,6 +17,7 @@ def _desktop_lwjgl_main_impl(ctx):
         "{{FRAME_HEIGHT}}": str(ctx.attr.frame_height),
         "{{WINDOW_TITLE}}": ctx.attr.window_title,
         "{{TARGET_FPS}}": "Some({})".format(ctx.attr.target_fps) if ctx.attr.target_fps > 0 else "None",
+        "{{RESIZABLE}}": "true" if ctx.attr.resizable else "false",
     }
     substitutions.update(save_substitutions(ctx.attr.file_save, ctx.attr.save_component))
 
@@ -68,6 +69,11 @@ desktop_lwjgl_main = rule(
             default = 60,
             doc = "Target FPS. Use 0 for uncapped/requested by backend.",
         ),
+        "resizable": attr.bool(
+            mandatory = False,
+            default = False,
+            doc = "Whether the player can resize the window. The game is told of it through resize.",
+        ),
         "file_save": attr.string(
             mandatory = False,
             default = "",
@@ -100,6 +106,7 @@ def sgl_desktop_lwjgl_app(
         target_fps = 60,
         file_save = "",
         save_component = "",
+        resizable = False,
         extra_mixins = []):
     full_deps = deps + [
         Label("//core:sgl-core"),
@@ -119,6 +126,7 @@ def sgl_desktop_lwjgl_app(
         target_fps = target_fps,
         file_save = file_save,
         save_component = save_component,
+        resizable = resizable,
         extra_mixins = extra_mixins,
     )
 

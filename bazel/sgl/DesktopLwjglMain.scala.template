@@ -9,6 +9,8 @@ object {{MAIN_CLASS}} extends _root_.sgl.lwjgl.LwjglApp with {{CORE_ABSTRACT_CLA
 
   override val frameDimension: (Int, Int) = ({{FRAME_WIDTH}}, {{FRAME_HEIGHT}})
 
+  override val WindowResizable: Boolean = {{RESIZABLE}}
+
   override val windowTitle: String = "{{WINDOW_TITLE}}"
 
   {{SAVE_MEMBER}}

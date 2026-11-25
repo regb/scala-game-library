@@ -50,7 +50,7 @@ A provider is a trait that exposes one platform service as an inner object:
 | --- | --- |
 | `CanvasProvider` | `Graphics`: bitmaps, paints, fonts, text, and `withFrameCanvas` |
 | `OpenGLProvider` | `OpenGL`: an OpenGL ES 3 / WebGL 2 style API |
-| `WindowProvider` | `Window`: size, pixel density, and the safe area |
+| `WindowProvider` | `Window`: size, pixel density, the safe area, full screen (`setFullscreen`, on LWJGL and HTML5), and the clipboard (`copyText`, `pasteText`) |
 | `AudioProvider` | `Audio`: sounds and music |
 | `SystemProvider` | `System`: text and binary asset loading, time, `exit`, opening URLs |
 | `SchedulerProvider` | `Scheduler`: cooperative `ChunkedTask` background work |

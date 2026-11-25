@@ -59,6 +59,19 @@ class HeadlessOpenGLAppSuite extends AnyFunSuite {
     } finally app.stop()
   }
 
+  test("the clipboard of a window that is not shown is its own") {
+    object app extends HeadlessOpenGLApp with Application with DesktopSystemProvider with NoLoggingProvider {
+      override val frameDimension: (Int, Int) = (8, 6)
+      override def create(): Unit = ()
+      override def frame(dt: Double): Unit = ()
+      override def dispose(): Unit = ()
+    }
+    assert(app.Window.pasteText().value.exists(_.isFailure))
+    app.Window.copyText("Hi é")
+    assert(app.Window.pasteText().value.exists(_.toOption.contains("Hi é")))
+    assert(!app.Window.canFullscreen)
+  }
+
   private def assertEveryPixel(frame: CapturedFrame, red: Int, green: Int, blue: Int, alpha: Int): Unit = {
     var offset = 0
     while(offset < frame.rgba.length) {

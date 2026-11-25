@@ -627,6 +627,11 @@ object SDL {
   def SDL_RestoreWIndow(window: Ptr[SDL_Window]): Unit = extern
   def SDL_SetWindowFullscreen(window: Ptr[SDL_Window], flags: UInt): CInt = extern
 
+  def SDL_SetClipboardText(text: CString): CInt = extern
+  // The text is freed with SDL_free.
+  def SDL_GetClipboardText(): CString = extern
+  def SDL_free(memory: Ptr[Byte]): Unit = extern
+
   def SDL_GetWindowSurface(window: Ptr[SDL_Window]): Ptr[SDL_Surface] = extern
   def SDL_UpdateWindowSurface(window: Ptr[SDL_Window]): Ptr[SDL_Surface] = extern
   def SDL_UpdateWindowSurfaceRects(window: Ptr[SDL_Window],

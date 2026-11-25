@@ -18,6 +18,15 @@ class WindowProviderSuite extends AnyFunSuite {
     assert(window.safeArea.vertical == 56)
   }
 
+  test("a window has no full screen and no clipboard unless the backend has") {
+    val window = testWindow(None)
+    assert(!window.canFullscreen && !window.isFullscreen)
+    window.setFullscreen(true)
+    assert(!window.isFullscreen)
+    window.copyText("lost")
+    assert(window.pasteText().value.exists(_.isFailure))
+  }
+
   private def testWindow(safeInsets: Option[Insets]): WindowProvider#AbstractWindow = {
     val provider = new WindowProvider {
       class TestWindow extends AbstractWindow {

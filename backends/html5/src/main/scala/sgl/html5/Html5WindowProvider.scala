@@ -3,6 +3,10 @@ package html5
 
 import org.scalajs.dom
 
+import sgl.util.{DefaultLoader, Loader}
+
+import scala.scalajs.js
+
 trait Html5WindowProvider extends WindowProvider {
 
   /** The browser <canvas> element backing this HTML5 app.
@@ -15,6 +19,34 @@ trait Html5WindowProvider extends WindowProvider {
   class Html5Window extends AbstractWindow {
     override def width: Int = htmlCanvas.width
     override def height: Int = htmlCanvas.height
+
+    private def document = js.Dynamic.global.document
+    override def canFullscreen: Boolean = !js.isUndefined(document.fullscreenEnabled) && document.fullscreenEnabled.asInstanceOf[Boolean]
+    override def isFullscreen: Boolean = !js.isUndefined(document.fullscreenElement) && document.fullscreenElement != null
+    override def setFullscreen(fullscreen: Boolean): Unit = if(canFullscreen && fullscreen != isFullscreen) {
+      // The page rather than the canvas, whose size is up to the theme.
+      val request = if(fullscreen) document.documentElement.requestFullscreen() else document.exitFullscreen()
+      // Older browsers return nothing.
+      if(!js.isUndefined(request)) { val _ = request.applyDynamic("catch")((_: js.Any) => ()) }
+    }
+
+    private def clipboard: Option[js.Dynamic] = {
+      val found = js.Dynamic.global.navigator.clipboard
+      if(js.isUndefined(found) || found == null) None else Some(found)
+    }
+    override def copyText(text: String): Unit = clipboard.foreach { c =>
+      val _ = c.writeText(text).applyDynamic("catch")((_: js.Any) => ())
+    }
+    override def pasteText(): Loader[String] = clipboard match {
+      case None => super.pasteText()
+      case Some(c) =>
+        val promise = new DefaultLoader[String]
+        val _ = c.readText().applyDynamic("then")(
+          ((text: js.Any) => { promise.success(text.toString); () }): js.Function1[js.Any, Unit],
+          ((error: js.Any) => { promise.failure(new RuntimeException("Could not read the clipboard: " + error)); () }): js.Function1[js.Any, Unit]
+        )
+        promise.loader
+    }
 
     /*
      * On the web, pixels units are CSS pixels and are defined to be 1/96 of an

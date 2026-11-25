@@ -20,6 +20,11 @@ trait LwjglApp extends LwjglGlfwWindowProvider with LwjglRenderThreadDispatcher 
   def viewportWidth: Int = Window.width
   def viewportHeight: Int = Window.height
 
+  /** Whether the player can resize the window. The game is told of a new size
+    * through `resize`.
+    */
+  val WindowResizable: Boolean = false
+
   val WindowInitialPosition: Option[(Int, Int)] = None
 
   private val renderThreadTasks = new ConcurrentLinkedQueue[() => Unit]
@@ -56,7 +61,7 @@ trait LwjglApp extends LwjglGlfwWindowProvider with LwjglRenderThreadDispatcher 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3)
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE)
     if(Platform.get() == Platform.MACOSX) glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE)
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE)
+    glfwWindowHint(GLFW_RESIZABLE, if(WindowResizable) GLFW_TRUE else GLFW_FALSE)
     glfwWindowHint(GLFW_FLOATING, GLFW_TRUE)
     glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE)
 

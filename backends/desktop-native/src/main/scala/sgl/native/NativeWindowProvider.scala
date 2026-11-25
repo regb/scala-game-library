@@ -2,6 +2,7 @@ package sgl
 package native
 
 import _root_.sgl._
+import _root_.sgl.util.Loader
 import scalanative.unsafe._
 
 import sdl2.SDL._
@@ -16,6 +17,19 @@ trait NativeWindowProvider extends WindowProvider {
   class NativeWindow extends AbstractWindow {
     override def width: Int = frameDimension._1
     override def height: Int = frameDimension._2
+
+    override def copyText(text: String): Unit = Zone.acquire { implicit zone =>
+      val _ = SDL_SetClipboardText(toCString(text, java.nio.charset.StandardCharsets.UTF_8))
+    }
+    override def pasteText(): Loader[String] = {
+      val text = SDL_GetClipboardText()
+      if(text == null) super.pasteText()
+      else {
+        val value = fromCString(text, java.nio.charset.StandardCharsets.UTF_8)
+        SDL_free(text)
+        Loader.successful(value)
+      }
+    }
 
     // TODO: should refresh when Window is resized or dpis changes.
     private var _xppi: Float = 0f
