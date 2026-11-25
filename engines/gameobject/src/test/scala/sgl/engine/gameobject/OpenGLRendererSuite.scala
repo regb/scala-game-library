@@ -69,7 +69,7 @@ class OpenGLRendererSuite extends AnyFunSuite {
 
       override val ShaderHeader: String = ""
       override val ColorBufferBit, DepthBufferBit, FloatType, UnsignedShortType, Triangles = 0
-      override val DepthTest, ScissorTest, CullFace, Back, Blend, SrcAlpha, OneMinusSrcAlpha = 0
+      override val DepthTest, ScissorTest, CullFace, Back, Blend, One, SrcAlpha, OneMinusSrcAlpha = 0
       override val VertexShader, FragmentShader, CompileStatus, LinkStatus = 0
       override val ArrayBuffer, ElementArrayBuffer, StaticDraw = 0
       override val Texture2D, Texture0, TextureMinFilter, TextureMagFilter, TextureWrapS, TextureWrapT = 0
@@ -82,6 +82,7 @@ class OpenGLRendererSuite extends AnyFunSuite {
       override def scissor(x: Int, y: Int, width: Int, height: Int): Unit = ()
       override def cullFace(mode: Int): Unit = ()
       override def blendFunc(source: Int, destination: Int): Unit = ()
+      override def blendFuncSeparate(sourceRGB: Int, destinationRGB: Int, sourceAlpha: Int, destinationAlpha: Int): Unit = ()
       override def depthMask(write: Boolean): Unit = depthWrites = write
       override def clearColor(red: Float, green: Float, blue: Float, alpha: Float): Unit = ()
       override def clear(mask: Int): Unit = ()

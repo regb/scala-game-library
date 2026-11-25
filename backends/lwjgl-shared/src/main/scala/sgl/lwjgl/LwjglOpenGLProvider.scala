@@ -5,7 +5,7 @@ import sgl.assets.{DrawableAsset, RawImageAsset, TextureFilter}
 import sgl.util.{DefaultLoader, Loader}
 
 import org.lwjgl.BufferUtils
-import org.lwjgl.opengl.{GL11C, GL13C, GL15C, GL20C, GL30C}
+import org.lwjgl.opengl.{GL11C, GL13C, GL14C, GL15C, GL20C, GL30C}
 import org.lwjgl.stb.STBImage
 import org.lwjgl.system.MemoryStack
 
@@ -54,6 +54,7 @@ trait LwjglOpenGLProvider extends OpenGLProvider {
     override val Blend: Int = GL11C.GL_BLEND
     override val ScissorTest: Int = GL11C.GL_SCISSOR_TEST
     override val SrcAlpha: Int = GL11C.GL_SRC_ALPHA
+    override val One: Int = GL11C.GL_ONE
     override val OneMinusSrcAlpha: Int = GL11C.GL_ONE_MINUS_SRC_ALPHA
     override val VertexShader: Int = GL20C.GL_VERTEX_SHADER
     override val FragmentShader: Int = GL20C.GL_FRAGMENT_SHADER
@@ -79,6 +80,8 @@ trait LwjglOpenGLProvider extends OpenGLProvider {
     override def disable(capability: Int): Unit = GL11C.glDisable(capability)
     override def cullFace(mode: Int): Unit = GL11C.glCullFace(mode)
     override def blendFunc(source: Int, destination: Int): Unit = GL11C.glBlendFunc(source, destination)
+    override def blendFuncSeparate(sourceRGB: Int, destinationRGB: Int, sourceAlpha: Int, destinationAlpha: Int): Unit =
+      GL14C.glBlendFuncSeparate(sourceRGB, destinationRGB, sourceAlpha, destinationAlpha)
     override def depthMask(write: Boolean): Unit = GL11C.glDepthMask(write)
     override def scissor(x: Int, y: Int, width: Int, height: Int): Unit = GL11C.glScissor(x, y, width, height)
     override def clearColor(red: Float, green: Float, blue: Float, alpha: Float): Unit = GL11C.glClearColor(red, green, blue, alpha)

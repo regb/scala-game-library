@@ -64,6 +64,7 @@ trait OpenGLProvider {
     val Back: Face
     val Blend: Capability
     val ScissorTest: Capability
+    val One: BlendFactor
     val SrcAlpha: BlendFactor
     val OneMinusSrcAlpha: BlendFactor
 
@@ -93,6 +94,21 @@ trait OpenGLProvider {
     def disable(capability: Capability): Unit
     def cullFace(mode: Face): Unit
     def blendFunc(source: BlendFactor, destination: BlendFactor): Unit
+
+    /** Like blendFunc, with other factors for the alpha channel. */
+    def blendFuncSeparate(
+        sourceRGB: BlendFactor, destinationRGB: BlendFactor,
+        sourceAlpha: BlendFactor, destinationAlpha: BlendFactor
+    ): Unit
+
+    /** Blends by the source alpha, and keeps an opaque frame opaque.
+      *
+      * With blendFunc(SrcAlpha, OneMinusSrcAlpha), translucent drawings lower
+      * the alpha of the frame: a web page then shows through the canvas, and
+      * captured frames are translucent.
+      */
+    final def blendSourceOver(): Unit =
+      blendFuncSeparate(SrcAlpha, OneMinusSrcAlpha, One, OneMinusSrcAlpha)
 
     /** Whether drawing writes to the depth buffer. */
     def depthMask(write: Boolean): Unit

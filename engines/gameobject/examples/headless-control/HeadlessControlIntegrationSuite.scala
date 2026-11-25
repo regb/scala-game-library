@@ -106,6 +106,36 @@ class HeadlessControlIntegrationSuite extends AnyFunSuite {
     } finally app.stop()
   }
 
+  test("translucent GameObject drawings leave the frame opaque") {
+    object app extends HeadlessOpenGLApp
+        with TranslucentGame
+        with DesktopSystemProvider
+        with NoLoggingProvider {
+      override val frameDimension: (Int, Int) = (64, 64)
+    }
+
+    app.start()
+    try {
+      val frame = captureNextStep(app)
+      // Half white over black, over an opaque frame.
+      assertPixel(frame, 6, 6, red = 128, green = 128, blue = 128, alpha = 255)
+    } finally app.stop()
+  }
+
+  test("translucent Canvas drawings leave the frame opaque") {
+    object app extends HeadlessOpenGLApp
+        with OpenGLCanvasProvider
+        with TranslucentCanvasGame
+        with DesktopSystemProvider
+        with NoLoggingProvider {
+      override val frameDimension: (Int, Int) = (32, 32)
+    }
+
+    app.start()
+    try assertPixel(captureNextStep(app), 12, 12, red = 128, green = 128, blue = 128, alpha = 255)
+    finally app.stop()
+  }
+
   private def captureNextStep(app: HeadlessOpenGLApp): CapturedFrame = {
     val capture = app.captureNextFrame()
     app.step(1.0 / 60.0)
@@ -208,6 +238,35 @@ trait HardCodedCanvasGame extends Application {
           .withColor(Graphics.Color.White)
           .withFont(Graphics.Font.Monospace.withSize(7)))
     }
+  }
+}
+
+trait TranslucentGame extends OpenGLGameObjectApp {
+  override def configure(builder: GameBuilder): Unit = {
+    builder
+      .install(Render2DModule)
+      .install(TextOverlayModule)
+      .setGlobal(ClearColor(0f, 0f, 0f, 1f))
+      .setInitialScene(TranslucentScene)
+  }
+}
+
+object TranslucentScene extends Scene {
+  override def load(context: GameContext)(using Scope): Unit = {
+    context.spawn2D("Camera").attach(new Camera2D(_, Vec2(64f, 64f)))
+    context.spawn("Overlay")
+      .attach(new TextOverlay(_, Vector(" "), x = 2f, y = 2f, scale = 1f, background = Color(1f, 1f, 1f, 128f / 255f)))
+  }
+}
+
+trait TranslucentCanvasGame extends Application {
+  this: CanvasProvider with WindowProvider =>
+
+  override def frame(dt: Double): Unit = withFrameCanvas { canvas =>
+    canvas.drawRect(0f, 0f, Window.width.toFloat, Window.height.toFloat,
+      Graphics.defaultPaint.withColor(Graphics.Color.Black))
+    canvas.drawRect(8f, 8f, 8f, 8f,
+      Graphics.defaultPaint.withColor(Graphics.Color.rgba(255, 255, 255, 128)))
   }
 }
 

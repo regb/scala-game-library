@@ -450,7 +450,7 @@ final class OpenGLRenderer(
   private def paintWith(paint: PaintProgram, vertexArray: GLVertexArray, buffer: GLBuffer)(draw: Batch => Unit): Unit = {
     val stride = paint.floatsPerVertex * 4
     GL.enable(GL.Blend)
-    GL.blendFunc(GL.SrcAlpha, GL.OneMinusSrcAlpha)
+    GL.blendSourceOver()
     GL.useProgram(paint.program)
     GL.bindVertexArray(vertexArray)
     GL.bindBuffer(GL.ArrayBuffer, buffer)

@@ -67,6 +67,7 @@ trait Html5OpenGLProvider extends OpenGLProvider {
     override val Blend: Int = WebGLRenderingContext.BLEND
     override val ScissorTest: Int = WebGLRenderingContext.SCISSOR_TEST
     override val SrcAlpha: Int = WebGLRenderingContext.SRC_ALPHA
+    override val One: Int = WebGLRenderingContext.ONE
     override val OneMinusSrcAlpha: Int = WebGLRenderingContext.ONE_MINUS_SRC_ALPHA
     override val VertexShader: Int = WebGLRenderingContext.VERTEX_SHADER
     override val FragmentShader: Int = WebGLRenderingContext.FRAGMENT_SHADER
@@ -92,6 +93,8 @@ trait Html5OpenGLProvider extends OpenGLProvider {
     override def disable(capability: Int): Unit = webgl.disable(capability)
     override def cullFace(mode: Int): Unit = webgl.cullFace(mode)
     override def blendFunc(source: Int, destination: Int): Unit = webgl.blendFunc(source, destination)
+    override def blendFuncSeparate(sourceRGB: Int, destinationRGB: Int, sourceAlpha: Int, destinationAlpha: Int): Unit =
+      webgl.blendFuncSeparate(sourceRGB, destinationRGB, sourceAlpha, destinationAlpha)
     override def depthMask(write: Boolean): Unit = webgl.depthMask(write)
     override def scissor(x: Int, y: Int, width: Int, height: Int): Unit = webgl.scissor(x, y, width, height)
     override def clearColor(red: Float, green: Float, blue: Float, alpha: Float): Unit = webgl.clearColor(red, green, blue, alpha)

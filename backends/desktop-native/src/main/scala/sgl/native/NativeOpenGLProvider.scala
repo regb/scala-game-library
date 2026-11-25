@@ -21,6 +21,7 @@ private[native] object GLES3 {
   def glDisable(cap: UInt): Unit = extern
   def glCullFace(mode: UInt): Unit = extern
   def glBlendFunc(sfactor: UInt, dfactor: UInt): Unit = extern
+  def glBlendFuncSeparate(sfactorRGB: UInt, dfactorRGB: UInt, sfactorAlpha: UInt, dfactorAlpha: UInt): Unit = extern
   def glDepthMask(flag: UByte): Unit = extern
   def glScissor(x: CInt, y: CInt, width: CInt, height: CInt): Unit = extern
   def glClearColor(red: CFloat, green: CFloat, blue: CFloat, alpha: CFloat): Unit = extern
@@ -114,6 +115,7 @@ trait NativeOpenGLProvider extends OpenGLProvider {
     override val Blend: Int = 0x0BE2
     override val ScissorTest: Int = 0x0C11
     override val SrcAlpha: Int = 0x0302
+    override val One: Int = 1
     override val OneMinusSrcAlpha: Int = 0x0303
 
     override val VertexShader: Int = 0x8B31
@@ -144,6 +146,8 @@ trait NativeOpenGLProvider extends OpenGLProvider {
     override def disable(capability: Int): Unit = GLES3.glDisable(capability.toUInt)
     override def cullFace(mode: Int): Unit = GLES3.glCullFace(mode.toUInt)
     override def blendFunc(source: Int, destination: Int): Unit = GLES3.glBlendFunc(source.toUInt, destination.toUInt)
+    override def blendFuncSeparate(sourceRGB: Int, destinationRGB: Int, sourceAlpha: Int, destinationAlpha: Int): Unit =
+      GLES3.glBlendFuncSeparate(sourceRGB.toUInt, destinationRGB.toUInt, sourceAlpha.toUInt, destinationAlpha.toUInt)
     override def depthMask(write: Boolean): Unit = GLES3.glDepthMask(if(write) 1.toUByte else 0.toUByte)
     override def scissor(x: Int, y: Int, width: Int, height: Int): Unit = GLES3.glScissor(x, y, width, height)
 

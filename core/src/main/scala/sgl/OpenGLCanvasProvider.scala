@@ -330,7 +330,7 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
     OpenGL.disable(OpenGL.CullFace)
     OpenGL.disable(OpenGL.ScissorTest)
     OpenGL.enable(OpenGL.Blend)
-    OpenGL.blendFunc(OpenGL.SrcAlpha, OpenGL.OneMinusSrcAlpha)
+    OpenGL.blendSourceOver()
     OpenGL.useProgram(program)
     OpenGL.bindVertexArray(vertexArray)
 
