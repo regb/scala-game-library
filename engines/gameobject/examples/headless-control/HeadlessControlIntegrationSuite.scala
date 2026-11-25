@@ -135,6 +135,32 @@ class HeadlessControlIntegrationSuite extends AnyFunSuite {
     } finally app.stop()
   }
 
+  test("sprite animations play and particles move with the frames of the game") {
+    object app extends HeadlessOpenGLApp
+        with AnimatedGame
+        with DesktopSystemProvider
+        with NoLoggingProvider {
+      override val frameDimension: (Int, Int) = (64, 64)
+    }
+
+    app.start()
+    try {
+      val first = captureNextStep(app)
+      assertPixel(first, 32, 40, red = 255, green = 0, blue = 0, alpha = 255)
+      assertPixel(first, 12, 4, red = 0, green = 0, blue = 255, alpha = 255)
+      assertPixel(first, 20, 4, red = 0, green = 0, blue = 0, alpha = 255)
+
+      val second = captureNextStep(app)
+      assertPixel(second, 32, 40, red = 0, green = 255, blue = 0, alpha = 255)
+      assertPixel(second, 12, 4, red = 0, green = 0, blue = 0, alpha = 255)
+      assertPixel(second, 20, 4, red = 0, green = 0, blue = 255, alpha = 255)
+
+      // The particle has lived its two and a half frames.
+      val third = captureNextStep(app)
+      assertPixel(third, 28, 4, red = 0, green = 0, blue = 0, alpha = 255)
+    } finally app.stop()
+  }
+
   test("translucent GameObject drawings leave the frame opaque") {
     object app extends HeadlessOpenGLApp
         with TranslucentGame
@@ -267,6 +293,36 @@ trait HardCodedCanvasGame extends Application {
           .withColor(Graphics.Color.White)
           .withFont(Graphics.Font.Monospace.withSize(7)))
     }
+  }
+}
+
+trait AnimatedGame extends OpenGLGameObjectApp {
+  override def configure(builder: GameBuilder): Unit = {
+    builder
+      .install(Render2DModule)
+      .install(SpriteAnimationModule)
+      .install(ParticlesModule)
+      .setGlobal(ClearColor(0f, 0f, 0f, 1f))
+      .setInitialScene(AnimatedScene)
+  }
+}
+
+object AnimatedScene extends Scene {
+  override def load(context: GameContext)(using Scope): Unit = {
+    context.spawn2D("Camera").attach(new Camera2D(_, Vec2(64f, 64f)))
+    val red: SpriteVisual = SpriteVisual.Triangle(Color(1f, 0f, 0f))
+    val green: SpriteVisual = SpriteVisual.Triangle(Color(0f, 1f, 0f))
+    context.spawn2D("Sprite")
+      .attach(new SpriteRenderer(_, red, 40f, 40f))
+      .attach(new SpriteAnimation(_, Animation(Vector(red, green), secondsPerFrame = 1.5 / 60.0)))
+    // 8 pixels a frame, to the right.
+    val spec = ParticleSpec(
+      minSeconds = 2.5f / 60f, maxSeconds = 2.5f / 60f, minSpeed = 480f, maxSpeed = 480f, spread = 0f,
+      startSize = 4f, endSize = 4f, startColor = Color(0f, 0f, 1f), endColor = Color(0f, 0f, 1f)
+    )
+    context.spawn2D("Emitter", Transform2D(Vec2(-28f, -28f)))
+      .attach(new ParticleEmitter(_, spec))
+      .get[ParticleEmitter].burst(1)
   }
 }
 

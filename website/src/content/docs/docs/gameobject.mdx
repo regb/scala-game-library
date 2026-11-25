@@ -505,12 +505,29 @@ Render components:
 A `SpriteRenderer` and a `TileQuad` have a `color` that multiplies what they draw. What the camera
 does not show of a map is not sent to the GPU, so a map can be much larger than the screen.
 
-The `extras` package has two more, each with its own module to install:
+The `extras` package has more, each with its own module to install:
 
 | Component | Module | Draws |
 | --- | --- | --- |
 | `TextOverlay` | `TextOverlayModule` | Screen-space lines of text with a background |
 | `CircleMaskTransition` | `CircleMaskModule` | A circular wipe for scene transitions |
+| `SpriteAnimation` | `SpriteAnimationModule` | An `Animation` on the object's `SpriteRenderer` |
+| `ParticleEmitter` | `ParticlesModule` | Particles sent from where the object is |
+
+```scala
+val walk = Animation(frames.map(f => SpriteVisual.Texture(sheet, f.u0, f.v0, f.u1, f.v1)), secondsPerFrame = 0.1)
+val fire = ParticleSpec(direction = -1.57f, spread = 0.4f,
+  startColor = Color(1f, 0.8f, 0.2f), endColor = Color(1f, 0.1f, 0f, 0f))
+
+context.spawn2D("Torch")
+  .attach(new SpriteRenderer(_, SpriteVisual.Texture(sheet), 16f, 16f))
+  .attach(new SpriteAnimation(_, walk))
+  .attach(new ParticleEmitter(_, fire, initialRate = 20f, z = 1f))
+```
+
+`Animation` holds frames of anything, for a game that animates by itself. `Particles` is particles
+without an object, which a game updates and paints itself: for example an explosion, which outlives
+what exploded, while the particles of an emitter are gone with its object.
 
 ### Drawing your own components
 
@@ -569,6 +586,33 @@ A scene that should appear with its textures already loaded waits for them in th
 
 Drawables packed with [`sgl_texture_atlas`](/docs/assets/#texture-atlases) are drawn from shared
 pages, and consecutive draws are batched, even across a few textures.
+
+### Interfaces
+
+`Ui` in the `extras` package is a layer of an interface, made anew every frame from a system of the
+`Render` stage. Widgets are calls: a button returns whether it was tapped. They take what they use
+from the input, so layers on top are made first, and what is left is for the game.
+
+```scala
+object MenuSystem extends GameSystem {
+  override val id: SystemId = SystemId("game.menu")
+  private val items = new UiScroll
+
+  override def run(context: GameContext)(using Scope): Unit = {
+    // The game fills these from its InputProcessor.
+    val ui = new Ui(new UiInput(taps, hover, scrolls))
+    val panel = UiBox(20f, 20f, 300f, 240f)
+    ui.panel(panel)
+    if(ui.button(UiBox(30f, 30f, 120f, 40f), "Play")) start()
+    ui.scroll(UiBox(30f, 80f, 280f, 160f), items) { top =>
+      names.zipWithIndex.foreach { case (name, i) => ui.text(name, 30f, top + i * 24f) }
+      names.size * 24f
+    }
+    ui.block(panel)
+    ui.submit(context.global[Render2D], order = 10)
+  }
+}
+```
 
 ## 3D
 
