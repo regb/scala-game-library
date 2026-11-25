@@ -94,6 +94,7 @@ def sgl_desktop_native_app(
         save_component = "",
         backend_app = "NativeApp",
         linkopts = None,
+        gc = "immix",
         use_extension_tiled = False,
         use_screen2d = True,
         screen_force_ppi = 0,
@@ -150,5 +151,6 @@ def sgl_desktop_native_app(
         deps = [":" + name + "-lib"],
         data = assets,
         linkopts = linkopts if linkopts != None else ["-lSDL2", "-lSDL2_image", "-lGL"],
+        gc = gc,
         main_class = package + ".desktop." + main_class,
     )

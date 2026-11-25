@@ -34,6 +34,7 @@ def _scala_native_binary_impl(ctx):
     args.add(ctx.attr.main_class)
     args.add(workdir.path)
     args.add(native_output.path)
+    args.add(ctx.attr.gc)
     args.add_all(ctx.attr.linkopts)
 
     ctx.actions.run(
@@ -79,6 +80,11 @@ scala_native_binary = rule(
         "main_class": attr.string(mandatory = True),
         "linkopts": attr.string_list(default = ["-lSDL2", "-lSDL2_image", "-lGL", "-lGLESv2"]),
         "data": attr.label_list(allow_files = True),
+        "gc": attr.string(
+            default = "immix",
+            values = ["immix", "commix", "none"],
+            doc = "The garbage collector of the app. With none, memory is never freed.",
+        ),
         "linker": attr.label(default = Label("//bazel/scalanative:linker"), executable = True, cfg = "exec"),
     },
     executable = True,

@@ -127,6 +127,7 @@ machines without clang and SDL2 can still build everything else. Build them by n
 | `file_save` | `""` | Save file path |
 | `save_component` | `""` | A `SaveComponent` to mix in instead, such as `MemorySaveComponent`. A game that needs saves does not compile without one of the two. |
 | `linkopts` | `["-lSDL2", "-lSDL2_image", "-lGL"]` | OpenGL apps link `-lGLESv2` instead of `-lGL` |
+| `gc` | `"immix"` | Garbage collector: `"immix"`, `"commix"` (Immix on several threads), or `"none"`, which never frees memory |
 | `use_screen2d` | `True` | Mixes in `Screen2DGameApp` |
 | `screen_force_ppi` | `0` | Override the detected pixel density |
 

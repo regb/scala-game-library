@@ -5,8 +5,8 @@ import scala.scalanative.util.Scope
 
 object ScalaNativeLinker {
   def main(args: Array[String]): Unit = {
-    if (args.length < 4) {
-      System.err.println("usage: ScalaNativeLinker <classpath> <mainClass> <workDir> <output> [linkopts...]")
+    if (args.length < 5) {
+      System.err.println("usage: ScalaNativeLinker <classpath> <mainClass> <workDir> <output> <gc> [linkopts...]")
       System.exit(2)
     }
 
@@ -14,7 +14,8 @@ object ScalaNativeLinker {
     val mainClass = args(1)
     val workDir = Paths.get(args(2))
     val output = Paths.get(args(3))
-    val linkopts = args.drop(4).toSeq
+    val gc = GC(args(4))
+    val linkopts = args.drop(5).toSeq
 
     Files.createDirectories(workDir)
     Files.createDirectories(output.getParent)
@@ -31,7 +32,7 @@ object ScalaNativeLinker {
       .withClang(Paths.get("/usr/bin/clang"))
       .withClangPP(Paths.get("/usr/bin/clang++"))
       .withMode(Mode.debug)
-      .withGC(GC.none)
+      .withGC(gc)
       .withLinkingOptions(linkopts)
       .withBaseName(output.getFileName.toString)
 
