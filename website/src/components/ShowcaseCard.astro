@@ -5,10 +5,9 @@ import type { ShowcaseEntry } from '../data/showcase';
 
 interface Props {
   entry: ShowcaseEntry;
-  showRun?: boolean;
 }
 
-const { entry, showRun = false } = Astro.props;
+const { entry } = Astro.props;
 ---
 
 <a class="show-card" href={entry.href}>
@@ -18,6 +17,5 @@ const { entry, showRun = false } = Astro.props;
     <h3>{entry.title}</h3>
     <p>{entry.body}</p>
     <div class="meta">{entry.platforms.map((platform) => <span>{platform}</span>)}</div>
-    {showRun && entry.run && <code>bazel run {entry.run}</code>}
   </div>
 </a>

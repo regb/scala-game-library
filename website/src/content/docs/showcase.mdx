@@ -1,57 +1,30 @@
 ---
 title: Showcase
-description: Games and examples built with the Scala Game Library.
+description: Games built with the Scala Game Library.
 template: splash
 editUrl: false
 lastUpdated: false
 ---
 
 import ShowcaseCard from '../../components/ShowcaseCard.astro';
-import { examples, games, repo, studio } from '../../data/showcase';
+import { games, repo, studio } from '../../data/showcase';
 
 <div class="not-content">
   <div class="page-intro">
     <p class="section-lead">
-      Games and runnable examples built with SGL. Every example lives in the repository and has
-      desktop, web, and native targets.
+      Finished games built with SGL.
     </p>
   </div>
 
   <section class="page-section">
-    <h2>Games</h2>
     <p>
-      Complete games written with SGL. Rat Trap and WinSmash are published by
+      Rat Trap and WinSmash are published by
       {' '}<a href={studio.href}>{studio.name}</a>, a studio making small puzzle and arcade games
       for Android and the web. You can try Rat Trap <a href="https://smartdinogames.com/games/rat-trap/play/">in your browser</a>.
     </p>
     <div class="show-grid featured">
       {games.map((entry) => <ShowcaseCard entry={entry} />)}
     </div>
-  </section>
-
-  <section class="page-section">
-    <h2>Examples</h2>
-    <p>
-      Clone the repository and run any of these with one command. Replace <code>desktop-lwjgl</code>
-      with <code>html5</code> to run the same example in the browser.
-    </p>
-    <div class="show-grid">
-      {examples.map((entry) => <ShowcaseCard entry={entry} showRun />)}
-    </div>
-  </section>
-
-  <section class="page-section">
-    <h2>More examples</h2>
-    <p>Smaller examples for the Canvas API, the Screen2D engine, and development tools.</p>
-    <ul class="link-list">
-      <li><a href={`${repo}/tree/master/examples/hello-canvas`}><strong>Hello Canvas</strong><span>Canvas drawing, typed images and audio, pointer input, text</span></a></li>
-      <li><a href={`${repo}/tree/master/examples/snake`}><strong>Snake</strong><span>A small complete game with safe-area layout and Android targets</span></a></li>
-      <li><a href={`${repo}/tree/master/engines/screen2d/examples/platformer`}><strong>Platformer</strong><span>Screen2D with a map imported from Tiled</span></a></li>
-      <li><a href={`${repo}/tree/master/engines/screen2d/examples/board`}><strong>Board</strong><span>Viewport scaling and camera movement</span></a></li>
-      <li><a href={`${repo}/tree/master/engines/screen2d/examples/menu`}><strong>Menu</strong><span>scene2d menus and buttons</span></a></li>
-      <li><a href={`${repo}/tree/master/examples/live-config`}><strong>Live config</strong><span>Tuning values in development, none in release</span></a></li>
-    </ul>
-    <p class="section-more"><a href="/docs/examples/">All examples and their targets →</a></p>
   </section>
 
   <section class="landing-section cta">

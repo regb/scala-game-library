@@ -706,15 +706,6 @@ h1#_top {
   font-size: 0.7rem;
 }
 
-.show-card code {
-  display: block;
-  margin-top: 0.75rem;
-  color: var(--sl-color-gray-3);
-  font-family: var(--sl-font-mono);
-  font-size: 0.72rem;
-  word-break: break-all;
-}
-
 .section-more {
   margin-top: 1.5rem;
 }

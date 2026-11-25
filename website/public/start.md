@@ -61,7 +61,7 @@ the game, and `test/` plays it.
 For each step:
 
 1. Change the game. Take API usage from `game/Game.scala` and from the examples in the SGL source.
-   `AGENTS.md` says where the source is. If you cannot read files outside of the project, see below.
+   `AGENTS.md` says where the source is.
 2. Run `bazel build //...`. A compile error about the components of an object, such as "This object
    is not known to have a Collider", means that the composition is wrong. Fix it, and do not cast.
 3. Add a test for what you added, and run `bazel test //...`. The test presses keys, steps frames,
@@ -69,15 +69,6 @@ For each step:
 4. Look at the captured frame in `bazel-testlogs/game_test/test.outputs/` to see what the game draws.
 
 Start with something playable: one object that moves. Then add the rest.
-
-To read the SGL source from inside the project, download the commit that `MODULE.bazel` pins into
-`.sgl-src`, which Git and Bazel ignore:
-
-```bash
-mkdir .sgl-src
-curl -fsSL https://github.com/regb/scala-game-library/archive/<commit>.tar.gz -o .sgl-src/sgl.tar.gz
-tar xzf .sgl-src/sgl.tar.gz --strip-components=1 -C .sgl-src
-```
 
 ## 6. Finish
 

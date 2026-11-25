@@ -1,8 +1,5 @@
 import type { ImageMetadata } from 'astro';
 
-import asteroids from '../assets/showcase/asteroids.png';
-import helloAtlas from '../assets/showcase/hello-atlas.png';
-import helloScalagl from '../assets/showcase/hello-scalagl.png';
 import ratTrap from '../assets/showcase/rat-trap.png';
 import scalavator from '../assets/showcase/scalavator.jpg';
 import winsmash from '../assets/showcase/winsmash.png';
@@ -21,8 +18,6 @@ export interface ShowcaseEntry {
   image: ImageMetadata;
   imageAlt: string;
   href: string;
-  /** Bazel target to run it from a clone of the repository. */
-  run?: string;
   platforms: string[];
 }
 
@@ -53,38 +48,5 @@ export const games: ShowcaseEntry[] = [
     imageAlt: 'Scalavator: a red spring-shaped hero jumps between grassy platforms under a sunset sky, with a bee flying nearby',
     href: 'https://github.com/regb/scalavator',
     platforms: ['Android', 'Web', 'Desktop'],
-  },
-];
-
-export const examples: ShowcaseEntry[] = [
-  {
-    title: 'Asteroids',
-    tag: 'GameObject 2D',
-    body: 'Compile-time checked composition, systems, scenes, and the 2D OpenGL renderer.',
-    image: asteroids,
-    imageAlt: 'Asteroids example: a white ship among grey asteroids, with a score overlay',
-    href: `${repo}/tree/master/engines/gameobject/examples/asteroids`,
-    run: '//engines/gameobject/examples/asteroids:desktop-lwjgl',
-    platforms: ['Desktop', 'Web', 'Native'],
-  },
-  {
-    title: 'Hello ScalaGL',
-    tag: 'Core · OpenGL',
-    body: 'Raw OpenGL on every target: shaders, buffers, textures, and a drag-to-orbit camera.',
-    image: helloScalagl,
-    imageAlt: 'Hello ScalaGL example: a textured cube rendered with OpenGL',
-    href: `${repo}/tree/master/examples/hello-scalagl`,
-    run: '//examples/hello-scalagl:desktop-lwjgl',
-    platforms: ['Desktop', 'Web', 'Native'],
-  },
-  {
-    title: 'Hello Atlas',
-    tag: 'Assets',
-    body: 'Sprites and tilemaps drawn from one texture atlas page packed at build time.',
-    image: helloAtlas,
-    imageAlt: 'Hello Atlas example: pixel-art coin, gem, heart, and a row of tiles',
-    href: `${repo}/tree/master/examples/hello-atlas`,
-    run: '//examples/hello-atlas:desktop-lwjgl',
-    platforms: ['Desktop', 'Web', 'Native'],
   },
 ];
