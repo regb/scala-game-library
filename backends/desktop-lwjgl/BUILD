@@ -1,4 +1,4 @@
-load("@rules_scala//scala:scala.bzl", "scala_library")
+load("@rules_scala//scala:scala.bzl", "scala_library", "scala_test")
 load("//bazel:scala_opts.bzl", "SGL_SCALACOPTS")
 
 scala_library(
@@ -34,4 +34,22 @@ scala_library(
         ],
         "//conditions:default": [],
     }),
+)
+
+scala_test(
+    name = "sgl-desktop-lwjgl-tests",
+    srcs = glob(["src/test/**/*.scala"]),
+    # OpenAL's device without output, so that no audio hardware is needed.
+    env = {"ALSOFT_DRIVERS": "null"},
+    resources = ["src/test/resources/silence.wav"],
+    scalacopts = SGL_SCALACOPTS,
+    target_compatible_with = ["@platforms//os:linux"],
+    deps = [
+        ":sgl-desktop-lwjgl",
+        "//backends/desktop-jvm-shared",
+        "//core:sgl-core",
+        "@maven//:org_lwjgl_lwjgl",
+        "@maven//:org_lwjgl_lwjgl_openal",
+        "@maven//:org_scalatest_scalatest_3",
+    ],
 )

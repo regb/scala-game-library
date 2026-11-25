@@ -158,6 +158,8 @@ trait LwjglAudioProvider extends AudioProvider {
         if(disposed) return None
         initOpenAL()
         val source = AL10.alGenSources()
+        // A device has a limited number of sources, and this is 0 when none is left.
+        if(source == 0) return None
         AL10.alSourcei(source, AL10.AL_BUFFER, buffer.id)
         AL10.alSourcef(source, AL10.AL_GAIN, volume)
         AL10.alSourcef(source, AL10.AL_PITCH, rate)
