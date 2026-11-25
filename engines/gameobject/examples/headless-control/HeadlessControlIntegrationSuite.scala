@@ -30,6 +30,35 @@ class HeadlessControlIntegrationSuite extends AnyFunSuite {
     } finally app.stop()
   }
 
+  test("the painter of the GameObject engine only draws inside of a clip") {
+    object app extends HeadlessOpenGLApp
+        with ClippedGame
+        with DesktopSystemProvider
+        with NoLoggingProvider {
+      override val frameDimension: (Int, Int) = (64, 64)
+    }
+
+    app.start()
+    try {
+      captureNextStep(app)
+      // Frames clear the whole screen whatever was clipped in the one before.
+      val frame = captureNextStep(app)
+      val colors = Map(
+        'b' -> (0, 0, 255), 'r' -> (255, 0, 0), 'g' -> (0, 255, 0), 'w' -> (255, 255, 255), '.' -> (0, 0, 0)
+      )
+      for(x <- 0 until 64; y <- 0 until 64) {
+        val expected =
+          if(x >= 14 && x < 24 && y >= 10 && y < 20) 'g'
+          else if(x >= 4 && x < 24 && y >= 10 && y < 30) 'r'
+          else if(x >= 40 && x < 52 && y >= 8 && y < 16) 'b'
+          else if(x >= 4 && x < 8 && y >= 50 && y < 54) 'w'
+          else '.'
+        val (red, green, blue) = colors(expected)
+        assertPixel(frame, x, y, red, green, blue, alpha = 255)
+      }
+    } finally app.stop()
+  }
+
   test("one Right input moves a Canvas rectangle exactly 16 pixels") {
     object app extends HeadlessOpenGLApp
         with OpenGLCanvasProvider
@@ -297,6 +326,37 @@ object HardCodedMovementScene extends Scene {
     context.spawn2D("Triangle", Transform2D(position = Vec2(-16f, 0f)))
       .attach(new MoveRight(_))
       .attach(new SpriteRenderer(_, SpriteVisual.Triangle(Color(0.2f, 0.8f, 1f, 1f)), 10f, 10f))
+  }
+}
+
+/** Clips on the left half of a screen of 64 by 64, and in the world on the right. */
+trait ClippedGame extends OpenGLGameObjectApp {
+  override def configure(builder: GameBuilder): Unit = {
+    builder
+      .install(Render2DModule)
+      .setGlobal(ClearColor(0f, 0f, 0f, 1f))
+      .setInitialScene(ClippedScene)
+  }
+}
+
+object ClippedScene extends Scene {
+  private def fill(painter: Painter2D, color: Color): Unit =
+    painter.quad(Vec2(-200f, -200f), Vec2(200f, -200f), Vec2(200f, 200f), Vec2(-200f, 200f), color)
+
+  override def load(context: GameContext)(using Scope): Unit = {
+    // Two pixels per unit.
+    context.spawn2D("Camera", Transform2D(Vec2(100f, 0f))).attach(new Camera2D(_, Vec2(32f, 32f)))
+    context.addSystem(Stage.Render, GameSystem("clipped") {
+      val draw = summon[GameContext].global[Render2D]
+      draw.world(0f)(painter => painter.clip(Vec2(104f, -12f), Vec2(6f, 4f))(fill(painter, Color(0f, 0f, 1f))))
+      draw.screen() { painter =>
+        painter.clip(Vec2(4f, 10f), Vec2(20f, 20f)) {
+          fill(painter, Color(1f, 0f, 0f))
+          painter.clip(Vec2(14f, 0f), Vec2(40f, 20f))(fill(painter, Color(0f, 1f, 0f)))
+        }
+        painter.quad(Vec2(4f, 50f), Vec2(8f, 50f), Vec2(8f, 54f), Vec2(4f, 54f), Color.White)
+      }
+    })
   }
 }
 

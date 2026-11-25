@@ -1,8 +1,11 @@
 package sgl.examples.gameobject.headlesscontrol
 
 import org.scalatest.funsuite.AnyFunSuite
-import sgl.{Application, CanvasProvider, CapturedFrame, DesktopSystemProvider, OpenGLCanvasProvider, WindowProvider}
+import sgl.{Application, CanvasProvider, CapturedFrame, DesktopSystemProvider, OpenGLCanvasProvider, PortableFont, WindowProvider}
 import sgl.awt.{AWTCanvasProvider, AWTWindowProvider}
+import sgl.engine.gameobject._
+import sgl.engine.gameobject.render2d.{Render2D, Text2D}
+import sgl.geometry.Vec2
 import sgl.headless.opengl.HeadlessOpenGLApp
 import sgl.util.NoLoggingProvider
 
@@ -21,6 +24,59 @@ class PortableCanvasFontConformanceSuite extends AnyFunSuite {
     assert(math.abs(openGL.bounds.top - awt.bounds.top) <= 1)
     assert(math.abs(openGL.bounds.right - awt.bounds.right) <= 1)
     assert(math.abs(openGL.bounds.bottom - awt.bounds.bottom) <= 1)
+  }
+
+  test("the painter of the GameObject engine draws the same text as the OpenGL Canvas") {
+    val line = "The quick brown fox, 0123!"
+
+    trait CanvasGame extends Application {
+      this: CanvasProvider with WindowProvider =>
+      override def frame(dt: Double): Unit = withFrameCanvas { canvas =>
+        canvas.drawRect(0f, 0f, 256f, 128f, Graphics.defaultPaint.withColor(Graphics.Color.Black))
+        for((font, y) <- Vector(Graphics.Font.SansSerif -> 12f, Graphics.Font.SansSerif.withStyle(Graphics.Font.Bold) -> 60f)) {
+          val paint = Graphics.defaultPaint.withColor(Graphics.Color.White).withFont(font.withSize(18))
+          // Where a baseline is in a line box.
+          canvas.drawString(line, 10f, y + PortableFont.face(font.isBold).ascent * PortableFont.scale(18), paint)
+        }
+      }
+    }
+    object canvasApp extends HeadlessOpenGLApp with OpenGLCanvasProvider with CanvasGame
+        with DesktopSystemProvider with NoLoggingProvider {
+      override val frameDimension: (Int, Int) = (256, 128)
+    }
+
+    trait EngineGame extends OpenGLGameObjectApp {
+      override def configure(builder: GameBuilder): Unit =
+        builder
+          .setGlobal(ClearColor(0f, 0f, 0f, 1f))
+          .addSystem(Stage.Render, GameSystem("text") {
+            summon[GameContext].global[Render2D].screen() { painter =>
+              painter.text(line, Vec2(10f, 12f), 18f)
+              painter.text(line, Vec2(10f, 60f), 18f, bold = true)
+            }
+          })
+    }
+    object engineApp extends HeadlessOpenGLApp with EngineGame
+        with DesktopSystemProvider with NoLoggingProvider {
+      override val frameDimension: (Int, Int) = (256, 128)
+    }
+
+    val expected = draw(canvasApp)
+    val drawn = draw(engineApp)
+    val bounds = coloredBounds(drawn)
+    assert(bounds.right <= 10f + scala.math.max(Text2D.width(line, 18f), Text2D.width(line, 18f, bold = true)))
+    val difference = expected.rgba.indices.map(i => ((expected.rgba(i) & 0xff) - (drawn.rgba(i) & 0xff)).abs).max
+    assert(difference <= 2)
+  }
+
+  private def draw(app: HeadlessOpenGLApp): CapturedFrame = {
+    app.start()
+    try {
+      app.step(1.0 / 60.0)
+      val capture = app.captureNextFrame()
+      app.step(1.0 / 60.0)
+      capture.value.flatMap(_.toOption).getOrElse(throw new IllegalStateException("Frame capture did not complete"))
+    } finally app.stop()
   }
 
   private def renderWithAwt(): RenderResult = {

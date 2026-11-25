@@ -4,9 +4,8 @@ import scala.collection.mutable
 import scala.util.{Failure, Success}
 import scala.util.control.NonFatal
 
-import sgl.{OpenGLProvider, SystemProvider, VertexBatch, WindowProvider}
+import sgl.{ClipRect, OpenGLProvider, PortableFont, SystemProvider, VertexBatch, WindowProvider}
 import sgl.engine.gameobject.{ClearColor, Color, CompositionError, Scope, World}
-import sgl.engine.gameobject.spatial2d.Spatial2D
 import sgl.assets.{AssetChange, AssetChangeListener, AssetReloads, DrawableAsset, RawImageAsset, TextureFilter}
 import sgl.engine.gameobject.render2d.{Camera2D, Painter2D, Render2D, Texture2D}
 import sgl.engine.gameobject.render3d._
@@ -259,6 +258,20 @@ final class OpenGLRenderer(
     queue3D.clear()
   }
 
+  // Glyphs of the built-in font, uploaded by the first text drawn with them.
+  private val fontTextures = mutable.HashMap.empty[Boolean, GLTexture]
+
+  private def fontTexture(bold: Boolean): GLTexture = fontTextures.getOrElseUpdate(bold, {
+    val face = PortableFont.face(bold)
+    GL.activeTexture(GL.Texture0)
+    val texture = GL.createTextureImage2D(face.atlasWidth, face.atlasHeight, face.rgba).texture
+    GL.bindTexture(GL.Texture2D, texture)
+    GL.texParameteri(GL.Texture2D, GL.TextureMinFilter, GL.Linear)
+    GL.texParameteri(GL.Texture2D, GL.TextureMagFilter, GL.Linear)
+    GL.unbindTexture(GL.Texture2D)
+    texture
+  })
+
   // Turns points of one space, world or screen, into batched vertices.
   private final class Painter(
       batch: Batch,
@@ -267,6 +280,20 @@ final class OpenGLRenderer(
       override val viewport: Vec2,
       override val screenSize: Vec2
   ) extends Painter2D {
+    // The edges of the screen.
+    private val left = if(inWorld) camera.x - viewport.x / 2f else 0f
+    private val right = if(inWorld) camera.x + viewport.x / 2f else screenSize.x
+    private val top = if(inWorld) camera.y - viewport.y / 2f else 0f
+    private val bottom = if(inWorld) camera.y + viewport.y / 2f else screenSize.y
+    private var currentClip: Option[ClipRect] = None
+
+    // Maps are often much larger than what is shown of them.
+    private def offScreen(a: Vec2, b: Vec2, c: Vec2, d: Vec2): Boolean =
+      (a.x < left && b.x < left && c.x < left && d.x < left) ||
+        (a.x > right && b.x > right && c.x > right && d.x > right) ||
+        (a.y < top && b.y < top && c.y < top && d.y < top) ||
+        (a.y > bottom && b.y > bottom && c.y > bottom && d.y > bottom)
+
     private def put(p: Vec2, color: Color, u: Float, v: Float): Unit = {
       val out = batch.values
       val offset = batch.next()
@@ -310,12 +337,59 @@ final class OpenGLRenderer(
           textured(None, a, b, c, d, u0, v0, u1, v1, color)
       }
 
+    override def clip(position: Vec2, size: Vec2)(body: => Unit): Unit = {
+      def pixelX(x: Float): Float = if(inWorld) (x - left) / viewport.x * screenSize.x else x
+      def pixelY(y: Float): Float = if(inWorld) (y - top) / viewport.y * screenSize.y else y
+      val inner = ClipRect(
+        pixelX(scala.math.min(position.x, position.x + size.x)),
+        pixelY(scala.math.min(position.y, position.y + size.y)),
+        pixelX(scala.math.max(position.x, position.x + size.x)),
+        pixelY(scala.math.max(position.y, position.y + size.y))
+      )
+      val outer = currentClip
+      setClip(Some(outer.fold(inner)(_.intersect(inner))))
+      try body
+      finally setClip(outer)
+    }
+
+    private def setClip(clip: Option[ClipRect]): Unit = {
+      // What was drawn so far was drawn in the other clip.
+      flush(batch)
+      currentClip = clip
+      ClipRect.set(GL, clip, app.Window.width, app.Window.height)
+    }
+
+    override def text(value: String, position: Vec2, size: Float, color: Color, bold: Boolean): Unit = {
+      val face = PortableFont.face(bold)
+      val texture = Some(fontTexture(bold))
+      val scale = size / PortableFont.SourcePixelSize
+      val baseline = position.y + face.ascent * scale
+      var cursor = position.x
+      PortableFont.foreachCodePoint(value) { codePoint =>
+        val glyph = face.glyph(codePoint)
+        if(glyph.width > 0 && glyph.height > 0) {
+          val x0 = cursor + glyph.bearingX * scale
+          val y0 = baseline + glyph.bearingY * scale
+          val x1 = x0 + glyph.width * scale
+          val y1 = y0 + glyph.height * scale
+          textured(
+            texture,
+            Vec2(x0, y0), Vec2(x1, y0), Vec2(x1, y1), Vec2(x0, y1),
+            glyph.x.toFloat / face.atlasWidth, glyph.y.toFloat / face.atlasHeight,
+            (glyph.x + glyph.width).toFloat / face.atlasWidth, (glyph.y + glyph.height).toFloat / face.atlasHeight,
+            color
+          )
+        }
+        cursor += glyph.advance * scale
+      }
+    }
+
     private def textured(
         texture: Option[GLTexture],
         a: Vec2, b: Vec2, c: Vec2, d: Vec2,
         u0: Float, v0: Float, u1: Float, v1: Float,
         color: Color
-    ): Unit = {
+    ): Unit = if(!offScreen(a, b, c, d)) {
       batch.begin(texture, 6)
       put(a, color, u0, v0)
       put(b, color, u1, v0)
@@ -475,7 +549,7 @@ final class OpenGLRenderer(
 
   private def draw2D(world: World): Unit = {
     val camera = active2DCamera(world)
-    val cameraPosition = camera.flatMap(_.owner.component[Spatial2D]).map(_.global.position).getOrElse(Vec2(0f, 0f))
+    val cameraPosition = camera.map(_.position).getOrElse(Vec2(0f, 0f))
     val viewport = camera.map(_.viewportSize).getOrElse(Vec2(app.Window.width.toFloat, app.Window.height.toFloat))
 
     val screenSize = Vec2(app.Window.width.toFloat, app.Window.height.toFloat)
@@ -668,6 +742,8 @@ final class OpenGLRenderer(
     }
     pages.clear()
     pageUses.clear()
+    fontTextures.values.foreach(GL.deleteTexture)
+    fontTextures.clear()
 
     GL.deleteBuffer(vbo2D)
     GL.deleteVertexArray(vao2D)

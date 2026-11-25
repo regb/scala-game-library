@@ -9,7 +9,9 @@ import _root_.sgl.engine.gameobject.spatial3d._
 import _root_.sgl.geometry.{Mat4, Vec2, Vec3}
 import _root_.sgl.util.Loader
 
-/** Sprites red, green, red, then a green mesh with a translucent blue quad over it. */
+/** Sprites red, green, red, then a green mesh with a translucent blue quad over it.
+  * Below, a clipped blue strip, a tinted sprite, and text.
+  */
 trait Game extends OpenGLGameObjectApp with AssetsProvider {
 
   private final case class Images(red: Texture2D, green: Texture2D)
@@ -27,6 +29,17 @@ trait Game extends OpenGLGameObjectApp with AssetsProvider {
         context.spawn2D("sprite", Transform2D(Vec2(-110f + i * 60f, 0f)))
           .attach(new SpriteRenderer(_, SpriteVisual.Texture(image), 40f, 40f, z = i.toFloat))
       }
+
+      context.spawn2D("tinted", Transform2D(Vec2(-50f, 40f)))
+        .attach(new SpriteRenderer(_, SpriteVisual.Texture(images.red), 10f, 10f, color = Color(0.5f, 1f, 1f)))
+      context.addSystem(Stage.Render, GameSystem("draw-2d") {
+        summon[GameContext].global[Render2D].screen() { painter =>
+          painter.clip(Vec2(20f, 80f), Vec2(40f, 10f))(
+            painter.quad(Vec2(0f, 0f), Vec2(300f, 0f), Vec2(300f, 100f), Vec2(0f, 100f), Color(0f, 0f, 1f))
+          )
+          painter.text("III", Vec2(200f, 76f), 20f)
+        }
+      })
 
       // 50 pixels per unit around the origin.
       context.spawn3D("camera", Transform3D(Vec3(0f, 0f, 5f)))

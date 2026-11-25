@@ -502,6 +502,9 @@ Render components:
 | `Tilemap` | A batch of `TileQuad`s, typically from a Tiled map |
 | `Camera2D` | The view. The active camera with the highest `priority` wins. |
 
+A `SpriteRenderer` and a `TileQuad` have a `color` that multiplies what they draw. What the camera
+does not show of a map is not sent to the GPU, so a map can be much larger than the screen.
+
 The `extras` package has two more, each with its own module to install:
 
 | Component | Module | Draws |
@@ -539,9 +542,13 @@ builder.addSystem(Stage.Render, SparkRenderSystem)
 
 `draw.world(z)` takes points in world units, seen through the active camera. `draw.screen(order)`
 takes screen pixels from the top left and goes over every world drawing. The painter has
-`triangle`, `quad`, and `image` for a textured quad, plus the `camera` position, the `viewport`
-size, and the `screenSize`. `TextOverlay` and `CircleMaskTransition` are written this way and are
-short examples to read.
+`triangle`, `quad`, `image` for a textured quad, `text` for a line of text, and `clip` to only show
+what is inside of a rectangle, plus the `camera` position, the `viewport` size, and the
+`screenSize`. `Text2D` measures and wraps text. `TextOverlay` and `CircleMaskTransition` are written
+this way and are short examples to read.
+
+`Camera2D.screenToWorld` and `worldToScreen` map between the two spaces, for example to find the tile
+that was tapped.
 
 Textures are loaded from typed assets through the renderer, usually while a scene loads:
 

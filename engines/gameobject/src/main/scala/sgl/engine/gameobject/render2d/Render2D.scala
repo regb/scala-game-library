@@ -1,5 +1,6 @@
 package sgl.engine.gameobject.render2d
 
+import sgl.{PortableFont, TextWrapping}
 import sgl.engine.gameobject.Color
 import sgl.geometry.Vec2
 
@@ -64,4 +65,35 @@ trait Painter2D {
       u0: Float = 0f, v0: Float = 0f, u1: Float = 1f, v1: Float = 1f,
       color: Color = Color(1f, 1f, 1f, 1f)
   ): Unit
+
+  /** Only shows what `body` draws inside of a rectangle, along the axes of the
+    * screen. Clips within clips show what is inside of all of them.
+    */
+  def clip(position: Vec2, size: Vec2)(body: => Unit): Unit
+
+  /** One line of text, `position` being the top left of its line box. `size`
+    * is the font size, in the units of the drawing. See [[Text2D]] to measure
+    * or wrap text.
+    */
+  def text(value: String, position: Vec2, size: Float, color: Color = Color.White, bold: Boolean = false): Unit
+}
+
+/** Measures of the text that [[Painter2D.text]] draws, in the same units as the
+  * font size. It is drawn with the font built into SGL, on every platform.
+  */
+object Text2D {
+  private val SourceSize = PortableFont.SourcePixelSize
+
+  def width(value: String, size: Float, bold: Boolean = false): Float =
+    PortableFont.measure(value, PortableFont.face(bold), SourceSize.toInt) * (size / SourceSize)
+
+  /** From the top of a line to the top of the next one. */
+  def lineHeight(size: Float, bold: Boolean = false): Float =
+    PortableFont.face(bold).lineHeight * (size / SourceSize)
+
+  /** The lines of a text that has to fit in a width. Breaks between words when
+    * it can, and where the text has line breaks.
+    */
+  def wrap(value: String, maxWidth: Float, size: Float, bold: Boolean = false): Vector[String] =
+    TextWrapping.wrap(value, maxWidth, width(_, size, bold)).lines.map(_.replaceAll("\\s+$", ""))
 }

@@ -101,7 +101,7 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
 
     final class OpenGLCanvas extends AbstractCanvas {
       private var transform = Transform.Identity
-      private var clip: Option[Clip] = None
+      private var clip: Option[ClipRect] = None
 
       private[OpenGLCanvasProvider] def reset(): Unit = {
         transform = Transform.Identity
@@ -134,7 +134,7 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
           transform(x + width, y + height),
           transform(x, y + height)
         )
-        val requested = Clip(
+        val requested = ClipRect(
           corners.map(_._1).min,
           corners.map(_._2).min,
           corners.map(_._1).max,
@@ -460,25 +460,8 @@ trait OpenGLCanvasProvider extends CanvasProvider with Application {
     batch.clear()
   }
 
-  private def applyClip(clip: Option[Clip]): Unit = clip match {
-    case Some(value) =>
-      val left = scala.math.max(0, scala.math.floor(value.left).toInt)
-      val top = scala.math.max(0, scala.math.floor(value.top).toInt)
-      val right = scala.math.min(Window.width, scala.math.ceil(value.right).toInt)
-      val bottom = scala.math.min(Window.height, scala.math.ceil(value.bottom).toInt)
-      OpenGL.enable(OpenGL.ScissorTest)
-      OpenGL.scissor(left, Window.height - bottom, scala.math.max(0, right - left), scala.math.max(0, bottom - top))
-    case None => OpenGL.disable(OpenGL.ScissorTest)
-  }
-
-  private final case class Clip(left: Float, top: Float, right: Float, bottom: Float) {
-    def intersect(other: Clip): Clip = Clip(
-      scala.math.max(left, other.left),
-      scala.math.max(top, other.top),
-      scala.math.min(right, other.right),
-      scala.math.min(bottom, other.bottom)
-    )
-  }
+  private def applyClip(clip: Option[ClipRect]): Unit =
+    ClipRect.set(OpenGL, clip, Window.width, Window.height)
 
   private final case class Transform(a: Float, b: Float, c: Float, d: Float, tx: Float, ty: Float) {
     def x(px: Float, py: Float): Float = a * px + c * py + tx

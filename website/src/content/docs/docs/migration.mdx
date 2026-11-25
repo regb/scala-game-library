@@ -179,6 +179,7 @@ gameObject.component[Spatial2D].foreach { spatial =>
   `spatial2d`, `spatial3d`, `render2d`, `render3d`, and `extras` packages are unchanged.
 - Colors are a `Color(red, green, blue, alpha = 1f)` instead of a tuple of four floats: write
   `SpriteVisual.Triangle(Color(1f, 1f, 1f))`. `ClearColor` is unchanged.
+- `TileQuad` has a `color` instead of an `alpha`: write `color = Color.White.withAlpha(0.5f)`.
 - A frame's delta time is capped by the new `MaxDeltaTime` global (0.25 s by default).
 - `context.setGlobal(value)` sets a global for the lifetime of the current scope, and `Scene` gained
   `pause` and `resume`.

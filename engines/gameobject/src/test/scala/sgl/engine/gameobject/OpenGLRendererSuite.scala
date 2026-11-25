@@ -8,7 +8,7 @@ import sgl.{OpenGLProvider, PartsResourcePathProvider, SystemProvider, WindowPro
 import sgl.assets.{AssetChange, AssetFactory, AssetReloadHub, BinaryAsset, DrawableAsset, TextAsset, TextureFilter}
 import sgl.engine.gameobject.opengl.OpenGLRenderer
 import sgl.engine.gameobject.spatial2d._
-import sgl.engine.gameobject.render2d.{Render2DModule, SpriteRenderSystem, SpriteRenderer, SpriteVisual, Texture2D, TileQuad, Tilemap, TilemapRenderSystem}
+import sgl.engine.gameobject.render2d.{Camera2D, Painter2D, Render2DModule, SpriteRenderSystem, SpriteRenderer, SpriteVisual, Text2D, Texture2D, TileQuad, Tilemap, TilemapRenderSystem}
 import sgl.engine.gameobject.render3d.{Camera3D, MeshData, Render3DModule}
 import sgl.engine.gameobject.spatial3d._
 import sgl.geometry.{Mat4, Vec2, Vec3}
@@ -23,6 +23,12 @@ class OpenGLRendererSuite extends AnyFunSuite {
     }
     val uploads = mutable.ArrayBuffer.empty[Upload]
     val deleted = mutable.ArrayBuffer.empty[Int]
+    var clipped = false
+    private var scissorBox = (0, 0, 0, 0)
+    /** What each draw call was clipped to. */
+    val drawScissors = mutable.ArrayBuffer.empty[Option[(Int, Int, Int, Int)]]
+    /** Textures made from pixels: their handle and size. */
+    val created = mutable.ArrayBuffer.empty[(Int, Int, Int)]
     /** One entry per consecutive vertices of a texture (0 when none), without their slot. */
     val draws = mutable.ArrayBuffer.empty[(Int, Array[Float])]
     private var nextTexture = 100
@@ -69,7 +75,8 @@ class OpenGLRendererSuite extends AnyFunSuite {
 
       override val ShaderHeader: String = ""
       override val ColorBufferBit, DepthBufferBit, FloatType, UnsignedShortType, Triangles = 0
-      override val DepthTest, ScissorTest, CullFace, Back, Blend, One, SrcAlpha, OneMinusSrcAlpha = 0
+      override val ScissorTest = 1
+      override val DepthTest, CullFace, Back, Blend, One, SrcAlpha, OneMinusSrcAlpha = 0
       override val VertexShader, FragmentShader, CompileStatus, LinkStatus = 0
       override val ArrayBuffer, ElementArrayBuffer, StaticDraw = 0
       override val Texture2D, Texture0, TextureMinFilter, TextureMagFilter, TextureWrapS, TextureWrapT = 0
@@ -77,9 +84,12 @@ class OpenGLRendererSuite extends AnyFunSuite {
 
       override def clearMask(mask: Int, masks: Int*): Int = mask
       override def viewport(x: Int, y: Int, width: Int, height: Int): Unit = ()
-      override def enable(capability: Int): Unit = ()
-      override def disable(capability: Int): Unit = ()
-      override def scissor(x: Int, y: Int, width: Int, height: Int): Unit = ()
+      override def enable(capability: Int): Unit = if(capability == ScissorTest) clipped = true
+      override def disable(capability: Int): Unit = if(capability == ScissorTest) clipped = false
+      override def scissor(x: Int, y: Int, width: Int, height: Int): Unit = {
+        assert(width >= 0 && height >= 0)
+        scissorBox = (x, y, width, height)
+      }
       override def cullFace(mode: Int): Unit = ()
       override def blendFunc(source: Int, destination: Int): Unit = ()
       override def blendFuncSeparate(sourceRGB: Int, destinationRGB: Int, sourceAlpha: Int, destinationAlpha: Int): Unit = ()
@@ -131,7 +141,11 @@ class OpenGLRendererSuite extends AnyFunSuite {
       override def unbindTexture(target: Int): Unit = bindTexture(target, 0)
       override def deleteTexture(texture: Int): Unit = deleted += texture
       override def texParameteri(target: Int, parameter: Int, value: Int): Unit = ()
-      override def createTextureImage2D(width: Int, height: Int, rgba: Array[Byte]): TextureImage = fail("Renderer should load physical images")
+      override def createTextureImage2D(width: Int, height: Int, rgba: Array[Byte]): TextureImage = {
+        nextTexture += 1
+        created += ((nextTexture, width, height))
+        new TextureImage(nextTexture, width, height)
+      }
       override def loadTextureImage2D(asset: DrawableAsset): Loader[TextureImage] = fail("Renderer should load physical images")
       // An image uploaded on its own, as the renderer does for a scope.
       override def loadTextureImage2D(asset: sgl.assets.RawImageAsset): Loader[TextureImage] = {
@@ -151,6 +165,7 @@ class OpenGLRendererSuite extends AnyFunSuite {
         val floats = stride / 4
         assert((first + count) * floats <= buffer.length)
         drawCalls += 1
+        drawScissors += Option.when(clipped)(scissorBox)
         // Split by the slot each vertex ends with, which is then dropped.
         var rest = buffer.slice(first * floats, (first + count) * floats).grouped(floats).toVector
         while(rest.nonEmpty) {
@@ -382,7 +397,7 @@ class OpenGLRendererSuite extends AnyFunSuite {
     val green = Color(0f, 1f, 0f, 1f)
     val blue = Color(0f, 0f, 1f, 1f)
     val white = Color(1f, 1f, 1f, 1f)
-    def corner(painter: sgl.engine.gameobject.render2d.Painter2D, color: Color): Unit =
+    def corner(painter: Painter2D, color: Color): Unit =
       painter.triangle(Vec2(0f, 0f), Vec2(1f, 0f), Vec2(0f, 1f), color)
 
     renderer.beginFrame(world)
@@ -440,6 +455,174 @@ class OpenGLRendererSuite extends AnyFunSuite {
     val quad = uvs(app.draws.head._2)
     assert(quad.head == ((18f / 64f, 2f / 32f)))
     assert(quad(2) == ((10f / 64f, 18f / 32f)))
+  }
+
+  test("sprites and tiles are multiplied by their color") {
+    val app = new FakeGLApp
+    val renderer = new OpenGLRenderer(app)
+    val world = renderWorld()
+    val loading = load(renderer, standalone)
+    app.uploads.foreach(_.complete())
+    val texture = loaded(loading)
+    val tint = Color(1f, 0.5f, 0.25f, 0.5f)
+    Seq(SpriteVisual.Texture(texture), SpriteVisual.Triangle(Color(0.5f, 0.5f, 1f)), SpriteVisual.Circle(Color(0f, 1f, 1f, 0.5f)))
+      .zipWithIndex
+      .foreach { case (visual, i) =>
+        world.spawn2D("sprite")(using world.globalScope)
+          .attach(new SpriteRenderer(_, visual, 8f, 8f, z = i * 0.1f, color = tint))
+      }
+    val quad = TileQuad(texture, 0f, 0f, 8f, 8f, 0f, 0f, 1f, 1f, color = Color(0f, 1f, 0.5f, 0.25f))
+    world.spawn2D("map")(using world.globalScope).attach(new Tilemap(_, Vector(quad), z = 1f))
+    drawFrame(renderer, world)
+    val colors = app.draws.flatMap(_._2.grouped(8).map(_.slice(2, 6).toVector)).distinct
+    assert(colors == Seq(
+      Vector(1f, 0.5f, 0.25f, 0.5f), Vector(0.5f, 0.25f, 0.25f, 0.5f), Vector(0f, 0.5f, 0.25f, 0.25f),
+      Vector(0f, 1f, 0.5f, 0.25f)
+    ))
+  }
+
+  test("text is drawn a quad per visible character, from a font uploaded once") {
+    val app = new FakeGLApp
+    val renderer = new OpenGLRenderer(app)
+    val world = renderWorld()
+    def draw(bold: Boolean): Array[Float] = {
+      app.draws.clear()
+      renderer.beginFrame(world)
+      renderer.render2D.screen()(_.text("Hi you", Vec2(10f, 20f), 16f, Color(1f, 0f, 0f), bold))
+      renderer.endFrame(world)
+      assert(app.draws.size == 1)
+      assert(app.draws.head._1 == app.created.last._1)
+      app.draws.head._2
+    }
+    val vertices = draw(bold = false)
+    assert(vertices.length == 5 * 6 * 8)
+    assert(vertices.grouped(8).forall(_.slice(2, 6).toVector == Vector(1f, 0f, 0f, 1f)))
+    // Within the box that Text2D measures, in the pixels of the 200x100 screen.
+    val xs = vertices.grouped(8).map(v => (v(0) + 1f) * 100f).toVector
+    val ys = vertices.grouped(8).map(v => (1f - v(1)) * 50f).toVector
+    assert(xs.min >= 10f && xs.max <= 10f + Text2D.width("Hi you", 16f))
+    assert(ys.min >= 20f && ys.max <= 20f + Text2D.lineHeight(16f))
+
+    val _ = draw(bold = false)
+    assert(app.created.size == 1)
+    val _ = draw(bold = true)
+    assert(app.created.size == 2)
+    renderer.dispose()
+    assert(app.created.forall(font => app.deleted.contains(font._1)))
+  }
+
+  test("text is wrapped between words, and measured in proportion to its size") {
+    assert((Text2D.width("Hello", 32f) - 2f * Text2D.width("Hello", 16f)).abs < 0.01f)
+    for(size <- Vector(16f, 0.5f)) {
+      val lines = Text2D.wrap("one two three\n\nfour", Text2D.width("one two ", size) * 1.01f, size)
+      assert(lines == Vector("one two", "three", "", "four"))
+    }
+  }
+
+  test("images that the camera does not show are not drawn") {
+    val app = new FakeGLApp
+    val renderer = new OpenGLRenderer(app)
+    val world = renderWorld()
+    val loading = load(renderer, standalone)
+    app.uploads.foreach(_.complete())
+    val texture = loaded(loading)
+    // A hundred tiles of 10, of which the camera shows 40 by 20 around (500, 5).
+    val quads = Vector.tabulate(100)(i => TileQuad(texture, i * 10f, 0f, 10f, 10f, 0f, 0f, 1f, 1f))
+    val camera = world.spawn2D("camera", Transform2D(Vec2(500f, 5f)))(using world.globalScope).attach(new Camera2D(_, Vec2(40f, 20f)))
+    val map = world.spawn2D("map")(using world.globalScope)
+    map.attach(new Tilemap(_, quads))
+    def drawn(): Int = {
+      app.draws.clear()
+      drawFrame(renderer, world)
+      app.draws.map(_._2.length / (6 * 8)).sum
+    }
+    // Four, and the two that touch the edges.
+    assert(drawn() == 6)
+    // Where the tiles end up is what counts.
+    map.spatial.local = Transform2D(Vec2(0f, 100f))
+    assert(drawn() == 0)
+    map.spatial.local = Transform2D(Vec2(500f, 5f), rotation = (scala.math.Pi / 2).toFloat)
+    assert(drawn() == 2)
+    // One larger than the screen has all of its corners off it.
+    map.spatial.local = Transform2D(Vec2(-500f, 5f), scale = Vec2(100f, 100f))
+    camera.spatial.local = Transform2D(Vec2(0f, 500f))
+    assert(drawn() == 1)
+  }
+
+  test("an image that failed to load is an error even where the camera does not show it") {
+    val app = new FakeGLApp
+    val renderer = new OpenGLRenderer(app)
+    val world = renderWorld()
+    val texture = renderer.loadTexture2D(standalone)(using world.globalScope)
+    app.uploads.foreach(_.loader.failure(new RuntimeException("no such image")))
+    world.spawn2D("sprite", Transform2D(Vec2(10000f, 0f)))(using world.globalScope)
+      .attach(new SpriteRenderer(_, SpriteVisual.Texture(texture), 10f, 10f))
+    val error = intercept[RuntimeException](drawFrame(renderer, world))
+    assert(error.getMessage == "no such image")
+  }
+
+  private def shape(painter: Painter2D, at: Vec2 = Vec2(0f, 0f)): Unit =
+    painter.triangle(at, at + Vec2(1f, 0f), at + Vec2(0f, 1f), Color.White)
+
+  test("a clip is where it is on the screen, within the one around it") {
+    val app = new FakeGLApp
+    val renderer = new OpenGLRenderer(app)
+    val world = renderWorld()
+    renderer.beginFrame(world)
+    renderer.render2D.screen() { painter =>
+      shape(painter)
+      painter.clip(Vec2(10f, 20f), Vec2(50f, 30f)) {
+        shape(painter)
+        painter.clip(Vec2(40f, 0f), Vec2(100f, 40f))(shape(painter))
+        shape(painter)
+        // Beside the one around it, and it shows nothing.
+        painter.clip(Vec2(100f, 20f), Vec2(50f, 30f))(shape(painter))
+      }
+      shape(painter)
+    }
+    renderer.endFrame(world)
+    // From the bottom of a screen of 200 by 100. A clip is set again when the
+    // one inside of it ends.
+    assert(app.drawScissors == Seq(
+      None, Some((10, 50, 50, 30)), Some((40, 60, 20, 20)), Some((10, 50, 50, 30)), Some((100, 50, 0, 30)), None
+    ))
+    assert(!app.clipped)
+  }
+
+  test("a clip of a drawing in the world is where the camera shows it") {
+    val app = new FakeGLApp
+    val renderer = new OpenGLRenderer(app)
+    val world = renderWorld()
+    // Five pixels per unit.
+    world.spawn2D("camera", Transform2D(Vec2(500f, 5f)))(using world.globalScope).attach(new Camera2D(_, Vec2(40f, 20f)))
+    renderer.beginFrame(world)
+    renderer.render2D.world(0f)(painter => painter.clip(Vec2(490f, 0f), Vec2(4f, 10f))(shape(painter)))
+    // Its size can be negative, and ends off the screen.
+    renderer.render2D.world(1f)(painter => painter.clip(Vec2(482f, 17f), Vec2(-10f, -4f))(shape(painter)))
+    renderer.render2D.screen()(shape(_))
+    renderer.endFrame(world)
+    assert(app.drawScissors == Seq(Some((50, 25, 20, 50)), Some((0, 0, 10, 10)), None))
+  }
+
+  test("a clip ends with what is drawn in it, even when that fails") {
+    val app = new FakeGLApp
+    val renderer = new OpenGLRenderer(app)
+    val world = renderWorld()
+    renderer.beginFrame(world)
+    renderer.render2D.screen()(_.clip(Vec2(0f, 0f), Vec2(1f, 1f))(throw new RuntimeException("drawing")))
+    val _ = intercept[RuntimeException](renderer.endFrame(world))
+    assert(!app.clipped)
+  }
+
+  test("a camera maps the screen to the world and back") {
+    val world = renderWorld()
+    val camera = world.spawn2D("camera", Transform2D(Vec2(100f, 50f)))(using world.globalScope)
+      .attach(new Camera2D(_, Vec2(40f, 20f))).get[Camera2D]
+    val screen = Vec2(400f, 200f)
+    assert(camera.position == Vec2(100f, 50f))
+    assert(camera.screenToWorld(Vec2(200f, 100f), screen) == Vec2(100f, 50f))
+    assert(camera.screenToWorld(Vec2(0f, 200f), screen) == Vec2(80f, 60f))
+    assert(camera.worldToScreen(Vec2(80f, 60f), screen) == Vec2(0f, 200f))
   }
 
   test("draws are batched only when consecutive, so z order is preserved") {
@@ -503,9 +686,9 @@ class OpenGLRendererSuite extends AnyFunSuite {
     val gemTexture = load(renderer, gem)
     val obj = world.spawn2D("map")
     obj.attach(new Tilemap(_, Vector(
-      TileQuad(coinTexture, 0f, 0f, 8f, 8f, 0f, 0f, 0.5f, 0.5f, alpha = 0.25f),
-      TileQuad(loaded(gemTexture), 0f, 0f, 8f, 8f, 0f, 0f, 1f, 1f, alpha = 0.5f),
-      TileQuad(coinTexture, 0f, 0f, 8f, 8f, 0.5f, 0.5f, 1f, 1f, alpha = 0.75f),
+      TileQuad(coinTexture, 0f, 0f, 8f, 8f, 0f, 0f, 0.5f, 0.5f, color = Color.White.withAlpha(0.25f)),
+      TileQuad(loaded(gemTexture), 0f, 0f, 8f, 8f, 0f, 0f, 1f, 1f, color = Color.White.withAlpha(0.5f)),
+      TileQuad(coinTexture, 0f, 0f, 8f, 8f, 0.5f, 0.5f, 1f, 1f, color = Color.White.withAlpha(0.75f)),
     )))
     drawFrame(renderer, world)
     assert(app.draws.size == 1)
@@ -528,9 +711,9 @@ class OpenGLRendererSuite extends AnyFunSuite {
     val coinTexture = loaded(coinLoader)
     val heroTexture = loaded(heroLoader)
     world.spawn2D("map").attach(new Tilemap(_, Vector(
-      TileQuad(coinTexture, 0f, 0f, 8f, 8f, 0f, 0f, 1f, 1f, alpha = 0.25f),
-      TileQuad(heroTexture, 0f, 0f, 8f, 8f, 0f, 0f, 1f, 1f, alpha = 0.5f),
-      TileQuad(coinTexture, 0f, 0f, 8f, 8f, 0f, 0f, 1f, 1f, alpha = 0.75f)
+      TileQuad(coinTexture, 0f, 0f, 8f, 8f, 0f, 0f, 1f, 1f, color = Color.White.withAlpha(0.25f)),
+      TileQuad(heroTexture, 0f, 0f, 8f, 8f, 0f, 0f, 1f, 1f, color = Color.White.withAlpha(0.5f)),
+      TileQuad(coinTexture, 0f, 0f, 8f, 8f, 0f, 0f, 1f, 1f, color = Color.White.withAlpha(0.75f))
     )))
     drawFrame(renderer, world)
     assert(app.draws.map(_._1) == Seq(app.uploads(0).texture, app.uploads(1).texture, app.uploads(0).texture))

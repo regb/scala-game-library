@@ -17,7 +17,30 @@ final class Camera2D(
     var viewportSize: Vec2,
     var active: Boolean = true,
     var priority: Int = 0
-) extends ComponentOf(obj) with Rendered2D
+) extends ComponentOf(obj) with Rendered2D {
+
+  /** Where the camera is, in world units: its object's position, if it has one. */
+  def position: Vec2 =
+    owner.component[Spatial2D].map(_.global.position).getOrElse(Vec2(0f, 0f))
+
+  /** The point of the world seen at a pixel of a screen of that size. */
+  def screenToWorld(point: Vec2, screenSize: Vec2): Vec2 = {
+    val center = position
+    Vec2(
+      center.x + (point.x / screenSize.x - 0.5f) * viewportSize.x,
+      center.y + (point.y / screenSize.y - 0.5f) * viewportSize.y
+    )
+  }
+
+  /** The pixel, on a screen of that size, where a point of the world is seen. */
+  def worldToScreen(point: Vec2, screenSize: Vec2): Vec2 = {
+    val center = position
+    Vec2(
+      ((point.x - center.x) / viewportSize.x + 0.5f) * screenSize.x,
+      ((point.y - center.y) / viewportSize.y + 0.5f) * screenSize.y
+    )
+  }
+}
 
 
 sealed trait SpriteVisual
@@ -27,17 +50,20 @@ object SpriteVisual {
   final case class Circle(color: Color, segments: Int = 18) extends SpriteVisual
 }
 
+/** Draws a visual, whatever it is, multiplied by `color`. */
 final class SpriteRenderer(
     obj: GameObject2D,
     var visual: SpriteVisual,
     var width: Float,
     var height: Float,
-    var z: Float = 0f
+    var z: Float = 0f,
+    var color: Color = Color.White
 ) extends ComponentOf(obj) with Rendered2D {
   val spatial: Spatial2D = obj.spatial
 }
 
 
+/** A tile of a [[Tilemap]]: part of an image, multiplied by `color`. */
 final case class TileQuad(
     texture: Texture2D,
     x: Float,
@@ -48,7 +74,7 @@ final case class TileQuad(
     v0: Float,
     u1: Float,
     v1: Float,
-    alpha: Float = 1f
+    color: Color = Color.White
 )
 
 final class Tilemap(

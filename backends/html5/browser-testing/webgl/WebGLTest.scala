@@ -37,6 +37,25 @@ class WebGLTest extends BrowserSuite {
     }
   }
 
+  test("a game clips, tints, and writes text") {
+    withSite(site) { (page, url) =>
+      open(page, url)
+      val shot = page.screenshot()
+      def color(x: Int, y: Int) = {
+        val rgb = shot.getRGB(x, y)
+        ((rgb >> 16) & 0xff, (rgb >> 8) & 0xff, rgb & 0xff)
+      }
+      val clipped = for(x <- 0 until 80; y <- 72 until 100 if color(x, y) == blue) yield (x, y)
+      assert(clipped == (for(x <- 20 until 60; y <- 80 until 90) yield (x, y)))
+      val (r, g, b) = color(100, 90)
+      assert((r - 128).abs <= 2 && g == 0 && b == 0)
+      // Three bars, in what is otherwise black.
+      val bars = (195 until 230).map(x => color(x, 88)._1 > 128)
+      assert(bars.sliding(2).count(pair => !pair.head && pair.last) == 3, bars)
+      assert(page.errors.isEmpty)
+    }
+  }
+
   // The manifest and the pack are both cached, and must be fetched again.
   test("a hot reload takes a changed image from a changed pack") {
     val copy = Files.createTempDirectory("site")

@@ -117,6 +117,14 @@ object Scenarios {
       context.spawn2D("map").attach(new Tilemap(_, quads))
     }),
 
+    new EngineScenario("tilemap-scrolled", "a single tilemap of as many tiles, about 4% of it on screen")((setup, context) => {
+      val quads = (0 until setup.count).map { i =>
+        val at = setup.place(i) * 5f
+        TileQuad(setup.coin, at.x, at.y, 50f, 50f, 0f, 0f, 1f, 1f)
+      }.toVector
+      context.spawn2D("map").attach(new Tilemap(_, quads))
+    }),
+
     new EngineScenario("churn", "static sprites, with 1% destroyed and replaced every frame")((setup, context) => {
       val sprites = Array.tabulate(setup.count)(i => sprite(setup, context, i, setup.coin).gameObject)
       var next = 0

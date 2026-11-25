@@ -1,6 +1,6 @@
 package sgl.engine.gameobject.render2d
 
-import sgl.engine.gameobject.{Color, GameSetup, GameContext, GameModule, Globals, RequiresGlobals, Scope, Stage, GameSystem, SystemId, World}
+import sgl.engine.gameobject.{GameSetup, GameContext, GameModule, Globals, RequiresGlobals, Scope, Stage, GameSystem, SystemId, World}
 
 /** Mixed into the components that only do something with [[Render2DModule]]
   * installed: attaching one without it is an error instead of an object that
@@ -35,12 +35,14 @@ object SpriteRenderSystem extends GameSystem {
         painter.image(
           texture,
           at(-halfWidth, -halfHeight), at(halfWidth, -halfHeight), at(halfWidth, halfHeight), at(-halfWidth, halfHeight),
-          u0, v0, u1, v1
+          u0, v0, u1, v1,
+          sprite.color
         )
       case SpriteVisual.Triangle(color) =>
-        painter.triangle(at(0f, -halfHeight), at(-halfWidth, halfHeight), at(halfWidth, halfHeight), color)
+        painter.triangle(at(0f, -halfHeight), at(-halfWidth, halfHeight), at(halfWidth, halfHeight), sprite.color * color)
       case SpriteVisual.Circle(color, segments) =>
         val center = at(0f, 0f)
+        val tinted = sprite.color * color
         var i = 0
         while(i < segments) {
           val a0 = (i.toFloat / segments.toFloat) * scala.math.Pi.toFloat * 2f
@@ -49,7 +51,7 @@ object SpriteRenderSystem extends GameSystem {
             center,
             at(scala.math.cos(a0).toFloat * halfWidth, scala.math.sin(a0).toFloat * halfWidth),
             at(scala.math.cos(a1).toFloat * halfWidth, scala.math.sin(a1).toFloat * halfWidth),
-            color
+            tinted
           )
           i += 1
         }
@@ -75,7 +77,7 @@ object TilemapRenderSystem extends GameSystem {
             at(quad.x, quad.y), at(quad.x + quad.width, quad.y),
             at(quad.x + quad.width, quad.y + quad.height), at(quad.x, quad.y + quad.height),
             quad.u0, quad.v0, quad.u1, quad.v1,
-            Color(1f, 1f, 1f, quad.alpha)
+            quad.color
           )
         }
       }

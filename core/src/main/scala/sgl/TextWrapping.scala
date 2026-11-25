@@ -10,7 +10,7 @@ private[sgl] object TextWrapping {
     * width is split at character boundaries. `overflowed` is true only when a
     * single character is wider than the requested width.
     */
-  def wrap(text: String, width: Int, measure: String => Float): Result = {
+  def wrap(text: String, width: Float, measure: String => Float): Result = {
     require(width > 0, "Text layout width must be greater than zero")
 
     val result = Vector.newBuilder[String]
