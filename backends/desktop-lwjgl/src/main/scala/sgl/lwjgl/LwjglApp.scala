@@ -62,7 +62,6 @@ trait LwjglApp extends LwjglGlfwWindowProvider with LwjglRenderThreadDispatcher 
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE)
     if(Platform.get() == Platform.MACOSX) glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE)
     glfwWindowHint(GLFW_RESIZABLE, if(WindowResizable) GLFW_TRUE else GLFW_FALSE)
-    glfwWindowHint(GLFW_FLOATING, GLFW_TRUE)
     glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE)
 
     val window = glfwCreateWindow(frameDimension._1, frameDimension._2, windowTitle, 0L, 0L)
