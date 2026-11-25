@@ -33,10 +33,10 @@ Pick a folder name for the game, and make sure that it does not exist yet:
 
 ```bash
 mkdir my-game
-curl -fsSL https://github.com/regb/sgl-starter-project/archive/refs/heads/master.tar.gz \
-  | tar xz --strip-components=1 -C my-game
+curl -fsSL https://github.com/regb/sgl-starter-project/archive/refs/heads/master.tar.gz -o starter.tar.gz
+tar xzf starter.tar.gz --strip-components=1 -C my-game
+git init -b main my-game
 cd my-game
-git init -b main
 ```
 
 Check that it works before changing anything. The first build takes several minutes, so allow a
@@ -61,6 +61,7 @@ the game, and `test/` plays it.
 For each step:
 
 1. Change the game. Take API usage from `game/Game.scala` and from the examples in the SGL source.
+   `AGENTS.md` says where the source is. If you cannot read files outside of the project, see below.
 2. Run `bazel build //...`. A compile error about the components of an object, such as "This object
    is not known to have a Collider", means that the composition is wrong. Fix it, and do not cast.
 3. Add a test for what you added, and run `bazel test //...`. The test presses keys, steps frames,
@@ -69,10 +70,23 @@ For each step:
 
 Start with something playable: one object that moves. Then add the rest.
 
+To read the SGL source from inside the project, download the commit that `MODULE.bazel` pins into
+`.sgl-src`, which Git and Bazel ignore:
+
+```bash
+mkdir .sgl-src
+curl -fsSL https://github.com/regb/scala-game-library/archive/<commit>.tar.gz -o .sgl-src/sgl.tar.gz
+tar xzf .sgl-src/sgl.tar.gz --strip-components=1 -C .sgl-src
+```
+
 ## 6. Finish
 
-- Rename what still says Coin Dash: the titles and the export name in `BUILD.bazel`, and the README.
+- Rename what is still the template's: the titles and the export name in `BUILD.bazel`, the module
+  name in `MODULE.bazel`, `README.md`, and the description of the game in `AGENTS.md`. Ask the user
+  which license they want.
 - `bazel build //...` and `bazel test //...` pass.
+- Check the browser build too, if you can: serve it with `bazel run //:web` and take a screenshot
+  with a headless browser.
 - Tell the user how to play: `bazel run //:desktop`, or `bazel run //:web` and
   http://localhost:8080. Say what you tested and what you did not.
 - Do not publish or push anything unless the user asks.
