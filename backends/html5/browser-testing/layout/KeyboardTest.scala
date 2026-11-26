@@ -185,10 +185,13 @@ class KeyboardTest extends BrowserSuite {
     test(s"$site: every mouse button is told apart") {
       withGame(site) { page =>
         val (x, y) = page.box("#game").at(0.5, 0.5)
+        val _ = page.evaluate("window.menus = []; document.addEventListener('contextmenu', e => setTimeout(() => window.menus.push(e.defaultPrevented))); 0")
         Vector("left", "middle", "right", "back", "forward").foreach(page.mouse.press(x, y, _))
         settle(page)
         val buttons = page.console.filter(_.startsWith("mouse down")).map(_.split(' ')(2)).toVector
         assert(buttons == Vector("Left", "Middle", "Right", "Other(3)", "Other(4)"))
+        // Without the menu of the browser.
+        assert(page.evaluate("window.menus.join()").string == "true")
       }
     }
 
