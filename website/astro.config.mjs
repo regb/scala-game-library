@@ -169,7 +169,7 @@ export default defineConfig({
           label: 'Reference',
           items: [
             { label: 'Bazel rules', slug: 'docs/bazel-rules' },
-            { label: 'API sources', slug: 'docs/api' },
+            { label: 'API reference', slug: 'docs/api' },
             { label: 'Migration notes', slug: 'docs/migration' },
           ],
         },

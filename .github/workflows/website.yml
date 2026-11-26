@@ -3,10 +3,24 @@ name: Website
 on:
   push:
     branches: [master]
-    paths: ["website/**", ".github/workflows/website.yml"]
+    paths:
+      - "website/**"
+      - "bazel/scaladoc/**"
+      - "core/src/main/**"
+      - "engines/**/src/main/**"
+      - "modules/**/src/main/**"
+      - "extensions/**/src/main/**"
+      - ".github/workflows/website.yml"
   pull_request:
     branches: [master]
-    paths: ["website/**", ".github/workflows/website.yml"]
+    paths:
+      - "website/**"
+      - "bazel/scaladoc/**"
+      - "core/src/main/**"
+      - "engines/**/src/main/**"
+      - "modules/**/src/main/**"
+      - "extensions/**/src/main/**"
+      - ".github/workflows/website.yml"
   workflow_dispatch:
 
 permissions:
@@ -31,6 +45,17 @@ jobs:
           # The docs show each page's last update, read from the git history.
           fetch-depth: 0
 
+      - name: Set up Bazel
+        uses: bazel-contrib/setup-bazel@0.19.0
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}
+          repository-cache: true
+
+      - name: Build Scaladoc
+        working-directory: .
+        run: bazel build //website:scaladoc
+
       - name: Set up pnpm
         uses: pnpm/action-setup@v6
         with:
@@ -48,6 +73,13 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Copy Scaladoc into site output
+        working-directory: .
+        run: |
+          if [ -d website/dist/api ]; then chmod -R u+w website/dist/api && rm -rf website/dist/api; fi
+          cp -rL bazel-bin/website/scaladoc website/dist/api
+          chmod -R u+w website/dist/api
 
       # master deploys to production; other branches get a preview URL.
       # Pull requests from forks have no access to the secrets and skip this.

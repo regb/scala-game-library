@@ -108,6 +108,25 @@ maven.install(
 # Preserve SGL-local labels without exporting a shared resolution namespace.
 use_repo(maven, maven = "sgl_maven")
 
+# Dev-only Scaladoc toolchain for generating website API reference docs.
+docs_maven = use_extension(
+    "@rules_jvm_external//:extensions.bzl",
+    "maven",
+    dev_dependency = True,
+)
+docs_maven.install(
+    name = "sgl_docs_maven",
+    artifacts = [
+        "org.scala-lang:scaladoc_3:3.3.8",
+    ],
+    fail_if_repin_required = True,
+    lock_file = "//third_party:docs_maven_install.json",
+    repositories = [
+        "https://repo1.maven.org/maven2",
+    ],
+)
+use_repo(docs_maven, "sgl_docs_maven")
+
 #register_toolchains("//:my_toolchain")
 
 # Tiled tool extension

@@ -244,21 +244,21 @@ h1#_top {
 /* Copyable CLI / agent command ------------------------------------------- */
 
 .sgl-cli {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.75rem;
-  max-width: 100%;
+  display: grid;
+  gap: 0.45rem;
+  max-width: 34rem;
   margin-top: 1.5rem;
   border: 1px solid var(--sgl-border);
-  border-radius: 0.6rem;
-  padding: 0.55rem 0.6rem 0.55rem 0.9rem;
+  border-radius: 0.65rem;
+  padding: 0.65rem 0.75rem 0.65rem 0.9rem;
   background: var(--sgl-surface);
 }
 
-.sgl-cli-body {
-  display: grid;
-  gap: 0.25rem;
-  min-width: 0;
+.sgl-cli-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
 .sgl-cli .cli-label {
@@ -266,20 +266,42 @@ h1#_top {
   font-family: var(--sl-font);
   font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
+.sgl-cli .cli-link {
+  color: var(--sl-color-gray-3);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.sgl-cli .cli-link:hover {
+  color: var(--sl-color-accent);
+  text-decoration: underline;
+}
+
+.sgl-cli-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
 .sgl-cli code {
-  overflow-x: auto;
+  min-width: 0;
   color: var(--sl-color-gray-2);
   font-family: var(--sl-font-mono);
   font-size: var(--sl-text-xs);
-  white-space: nowrap;
+  line-height: 1.5;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .sgl-cli code a {
-  color: inherit;
+  color: var(--sl-color-white);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -724,16 +746,10 @@ h1#_top {
 }
 
 .show-grid.featured {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-@media (max-width: 60rem) {
-  .show-grid.featured {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 38rem) {
+@media (max-width: 44rem) {
   .show-grid.featured {
     grid-template-columns: minmax(0, 1fr);
   }

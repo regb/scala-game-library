@@ -20,7 +20,10 @@ import { games, repo, studio } from '../../data/showcase';
     <p>
       Rat Trap and WinSmash are published by
       {' '}<a href={studio.href}>{studio.name}</a>, a studio making small puzzle and arcade games
-      for Android and the web. You can try Rat Trap <a href="https://smartdinogames.com/games/rat-trap/play/">in your browser</a>.
+      for Android and the web. Hearthwheel and Scalavator are open-source games built with SGL.
+      Play <a href="https://smartdinogames.com/games/rat-trap/play/">Rat Trap</a>,
+      {' '}<a href="https://regb.github.io/hearthwheel/">Hearthwheel</a>, or
+      {' '}<a href="https://regb.github.io/scalavator/">Scalavator</a> directly in your browser.
     </p>
     <div class="show-grid featured">
       {games.map((entry) => <ShowcaseCard entry={entry} />)}

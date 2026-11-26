@@ -1,28 +1,44 @@
 ---
-title: API sources
-description: Where each public API is defined in the source tree.
+title: API reference
+description: Browse the generated Scala 3 Scaladoc API reference and source packages for SGL.
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+import { Aside, LinkCard } from '@astrojs/starlight/components';
 
-Scaladoc is not published yet. Until it is, the sources and their doc comments are the API
-reference.
+Full Scala 3 Scaladoc for SGL's core, engines, modules, and extensions is generated from the
+compiled `.tasty` artifacts on every deployment and published at [`/api/`](/api/).
 
-| Package | Source | Contents |
-| --- | --- | --- |
-| `sgl` | [`core/src/main/scala/sgl`](https://github.com/regb/scala-game-library/tree/master/core/src/main/scala/sgl) | `Application`, providers, `Input`, `InputProcessor`, saves, frame capture |
-| `sgl.assets` | [`core/.../sgl/assets`](https://github.com/regb/scala-game-library/tree/master/core/src/main/scala/sgl/assets) | Typed asset handles and `AssetRuntime` |
-| `sgl.geometry` | [`core/.../sgl/geometry`](https://github.com/regb/scala-game-library/tree/master/core/src/main/scala/sgl/geometry) | `Vec2`, `Vec3`, `Mat4`, `Quaternion`, shapes, `Collisions` |
-| `sgl.util` | [`core/.../sgl/util`](https://github.com/regb/scala-game-library/tree/master/core/src/main/scala/sgl/util) | `Loader`, scheduler, logging, JSON, random, tweening, `MathUtils` (`clamp`, `lerp`, `damp`, angles), pools, metrics |
-| `sgl.engine.gameobject` | [`engines/gameobject`](https://github.com/regb/scala-game-library/tree/master/engines/gameobject/src/main/scala/sgl/engine/gameobject) | World, components, `TypedObject`, runtime, schedule, spatial, renderers |
-| `sgl` (Screen2D) | [`engines/screen2d`](https://github.com/regb/scala-game-library/tree/master/engines/screen2d/src/main/scala/sgl) | `Screen2DGameApp`, `GameScreen`, game loop, `Viewport` |
-| `sgl.scene` | [`modules/scene2d`](https://github.com/regb/scala-game-library/tree/master/modules/scene2d/src/main/scala/sgl/scene) | Scene graph, actions, UI widgets |
-| `sgl.dev` | [`modules/live-config`](https://github.com/regb/scala-game-library/tree/master/modules/live-config) | Live configuration registry and the JVM properties adapter |
-| `sgl.tiled` | [`extensions/tiled`](https://github.com/regb/scala-game-library/tree/master/extensions/tiled) | Tiled map model, parser, and resolution |
-| `sgl.tiled.gameobject` | [`extensions/tiled-gameobject`](https://github.com/regb/scala-game-library/tree/master/extensions/tiled-gameobject) | Tilemaps and object spawning for GameObject |
+<LinkCard
+  title="Open full Scaladoc (/api/)"
+  description="Searchable Scala 3 API documentation with types, signatures, doc comments, and GitHub source links."
+  href="/api/"
+/>
+
+## Packages
+
+| Package | Scaladoc | Source | Contents |
+| --- | --- | --- | --- |
+| `sgl` | [`sgl`](/api/sgl.html) | [`core/src/main/scala/sgl`](https://github.com/regb/scala-game-library/tree/master/core/src/main/scala/sgl) | `Application`, providers, `Input`, `InputProcessor`, saves, frame capture, Screen2D |
+| `sgl.assets` | [`sgl.assets`](/api/sgl/assets.html) | [`core/.../sgl/assets`](https://github.com/regb/scala-game-library/tree/master/core/src/main/scala/sgl/assets) | Typed asset handles and `AssetRuntime` |
+| `sgl.geometry` | [`sgl.geometry`](/api/sgl/geometry.html) | [`core/.../sgl/geometry`](https://github.com/regb/scala-game-library/tree/master/core/src/main/scala/sgl/geometry) | `Vec2`, `Vec3`, `Mat4`, `Quaternion`, shapes, `Collisions` |
+| `sgl.util` | [`sgl.util`](/api/sgl/util.html) | [`core/.../sgl/util`](https://github.com/regb/scala-game-library/tree/master/core/src/main/scala/sgl/util) | `Loader`, scheduler, logging, JSON, random, tweening, `MathUtils`, pools, metrics |
+| `sgl.engine.gameobject` | [`sgl.engine.gameobject`](/api/sgl/engine/gameobject.html) | [`engines/gameobject`](https://github.com/regb/scala-game-library/tree/master/engines/gameobject/src/main/scala/sgl/engine/gameobject) | `World`, components, `TypedObject`, runtime, schedule, spatial, renderers |
+| `sgl.scene` | [`sgl.scene`](/api/sgl/scene.html) | [`modules/scene2d`](https://github.com/regb/scala-game-library/tree/master/modules/scene2d/src/main/scala/sgl/scene) | Scene graph, actions, UI widgets |
+| `sgl.particles` | [`sgl.particles`](/api/sgl/particles.html) | [`modules/particles`](https://github.com/regb/scala-game-library/tree/master/modules/particles/src/main/scala/sgl/particles) | Particle emitters and effects |
+| `sgl.dev` | [`sgl.dev`](/api/sgl/dev.html) | [`modules/live-config`](https://github.com/regb/scala-game-library/tree/master/modules/live-config) | Live configuration registry and the JVM properties adapter |
+| `sgl.tiled` | [`sgl.tiled`](/api/sgl/tiled.html) | [`extensions/tiled`](https://github.com/regb/scala-game-library/tree/master/extensions/tiled) | Tiled map model, parser, and resolution |
+| `sgl.tiled.gameobject` | [`sgl.tiled.gameobject`](/api/sgl/tiled/gameobject.html) | [`extensions/tiled-gameobject`](https://github.com/regb/scala-game-library/tree/master/extensions/tiled-gameobject) | Tilemaps and object spawning for GameObject |
+
+## Building Scaladoc locally
+
+Generate the same HTML reference directly from the repository with Bazel:
+
+```bash
+bazel build //website:scaladoc
+```
+
+The output is written to `bazel-bin/website/scaladoc/index.html`.
 
 <Aside type="tip" title="Where to start reading">
-`Application`, `CanvasProvider`, `OpenGLProvider`, `AudioProvider`, `Input`, and `util/Loader.scala`
-cover most of the core. For the GameObject engine, start with `Core.scala`, `typed/TypedObject.scala`,
-and `runtime/Runtime.scala`.
+Start with [`Application`](/api/sgl/Application.html), [`CanvasProvider`](/api/sgl/CanvasProvider.html), [`OpenGLProvider`](/api/sgl/OpenGLProvider.html), [`AudioProvider`](/api/sgl/AudioProvider.html), [`Input`](/api/sgl/Input$.html), and [`Loader`](/api/sgl/util/Loader.html) for the core. For the GameObject engine, browse [`sgl.engine.gameobject`](/api/sgl/engine/gameobject.html).
 </Aside>

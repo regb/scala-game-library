@@ -1,5 +1,6 @@
 import type { ImageMetadata } from 'astro';
 
+import hearthwheel from '../assets/showcase/hearthwheel.jpg';
 import ratTrap from '../assets/showcase/rat-trap.png';
 import scalavator from '../assets/showcase/scalavator.jpg';
 import winsmash from '../assets/showcase/winsmash.png';
@@ -45,13 +46,23 @@ export const games: ShowcaseEntry[] = [
     platforms: ['Android'],
   },
   {
+    title: 'Hearthwheel',
+    tag: 'Factory & Defense · Open source',
+    body: 'Build factories with belts, drills, and clockwork, guard the Hearth from the Bramble, and adapt as Spring, Summer, Autumn, and Winter change the rules. Built on the GameObject engine.',
+    image: hearthwheel,
+    imageAlt: 'Hearthwheel: four seasonal slices of a top-down factory with conveyor belts, machines, and a glowing hearth across Spring, Summer, Autumn, and Winter',
+    href: 'https://github.com/regb/hearthwheel',
+    cta: { label: 'Play on regb.github.io ↗', href: 'https://regb.github.io/hearthwheel/' },
+    platforms: ['Web', 'Desktop', 'Native'],
+  },
+  {
     title: 'Scalavator',
     tag: 'Arcade · Open source',
     body: 'Charge, jump, climb: time your jumps between moving platforms and dodge the bugs as the sky turns from day to night. The full source is on GitHub.',
     image: scalavator,
     imageAlt: 'Scalavator: a red spring-shaped hero jumps between grassy platforms under a sunset sky, with a bee flying nearby',
     href: 'https://github.com/regb/scalavator',
-    cta: { label: 'Source on GitHub ↗', href: 'https://github.com/regb/scalavator' },
+    cta: { label: 'Play on regb.github.io ↗', href: 'https://regb.github.io/scalavator/' },
     platforms: ['Android', 'Web', 'Desktop'],
   },
 ];

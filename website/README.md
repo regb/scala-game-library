@@ -17,6 +17,14 @@ pnpm build
 pnpm preview
 ```
 
+To generate Scala 3 Scaladoc locally (published at `/api/` by CI):
+
+```bash
+bazel build //website:scaladoc
+cp -rL bazel-bin/website/scaladoc website/dist/api
+chmod -R u+w website/dist/api
+```
+
 The site is static. `.github/workflows/website.yml` deploys it to the `libsgl`
 Cloudflare Pages project: `master` goes to https://libsgl.com, and pull requests
 from this repository get a preview URL.

@@ -229,9 +229,10 @@ bazel test //engines/gameobject/examples/headless-control:headless-control-integ
     <p class="section-eyebrow">Showcase</p>
     <h2 class="section-title">Shipped games built with SGL.</h2>
     <p class="section-lead">
-      Published games from <a href={studio.href}>{studio.name}</a> (try
-      {' '}<a href="https://smartdinogames.com/games/rat-trap/play/">Rat Trap in your browser</a>),
-      plus the open-source Scalavator.
+      Published games from <a href={studio.href}>{studio.name}</a> and open-source games built on SGL.
+      Play <a href="https://smartdinogames.com/games/rat-trap/play/">Rat Trap</a>,
+      {' '}<a href="https://regb.github.io/hearthwheel/">Hearthwheel</a>, or
+      {' '}<a href="https://regb.github.io/scalavator/">Scalavator</a> right in your browser.
     </p>
     <div class="show-grid featured">
       {games.map((entry) => <ShowcaseCard entry={entry} />)}

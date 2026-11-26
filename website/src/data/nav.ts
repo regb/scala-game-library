@@ -23,7 +23,8 @@ export const footerColumns = [
     title: 'Reference',
     links: [
       { label: 'Bazel rules', href: '/docs/bazel-rules/' },
-      { label: 'API sources', href: '/docs/api/' },
+      { label: 'API reference', href: '/docs/api/' },
+      { label: 'Scaladoc', href: '/api/' },
       { label: 'Migration notes', href: '/docs/migration/' },
       { label: 'SGL Agent Skill', href: `${repo}/blob/master/skills/sgl/SKILL.md` },
       { label: 'llms.txt', href: '/llms.txt' },
