@@ -49,9 +49,9 @@ jobs:
       - name: Build
         run: bazel build //...
 
-      # Native targets are manual, so //... skips them.
+      # Native targets are manual, so //... skips them: every one is built here.
       - name: Build native examples
-        run: bazel build //examples/hello-canvas:desktop-native //examples/hello-scalagl:desktop-native
+        run: bazel build $(bazel query 'attr(name, "desktop-native$", //...)')
 
       - name: Test
         run: bazel test //...
