@@ -229,6 +229,11 @@ private[html5] object Html5DomInputAdapter {
       val button = mouseButton(e.button.toInt)
       if(activeMouseButtons.remove(button)) Input.inputProcessor.mouseUp(x, y, button)
     }
+    // The right button is the game's too, rather than opening the menu of the
+    // browser, which comes from an event of its own.
+    listen(canvas, "contextmenu") { event =>
+      if(mousePreventDefault) event.preventDefault()
+    }
     if(releaseMouseOnLeave) {
       listen(canvas, "mouseleave") { _ => releaseMouse() }
     }
