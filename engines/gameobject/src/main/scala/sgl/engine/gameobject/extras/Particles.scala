@@ -231,10 +231,20 @@ object ParticleRenderSystem extends GameSystem {
 
 /** Moves and draws the particles of [[ParticleEmitter]]s. */
 object ParticlesModule extends GameModule {
-  override def install(setup: GameSetup): Unit = {
+  override def install(setup: GameSetup): Unit = install(setup, GameSystem.always)
+
+  /** The same, for a game that pauses: particles only move, and emitters only
+    * send, while `condition` holds. They are drawn all the same. Install one or
+    * the other.
+    */
+  def when(condition: GameContext => Boolean): GameModule = new GameModule {
+    override def install(setup: GameSetup): Unit = ParticlesModule.install(setup, condition)
+  }
+
+  private def install(setup: GameSetup, condition: GameContext => Boolean): Unit = {
     setup
       .setGlobal[ParticlesModule.type](this)
-      .addSystem(Stage.PostUpdate, ParticleUpdateSystem)
+      .addSystem(Stage.PostUpdate, ParticleUpdateSystem, when = condition)
       .addSystem(Stage.Render, ParticleRenderSystem)
   }
 }

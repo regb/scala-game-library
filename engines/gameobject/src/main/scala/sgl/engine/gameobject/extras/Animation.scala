@@ -96,9 +96,18 @@ object SpriteAnimationSystem extends GameSystem {
 
 /** Plays [[SpriteAnimation]]s, after the game's own updates. */
 object SpriteAnimationModule extends GameModule {
-  override def install(setup: GameSetup): Unit = {
+  override def install(setup: GameSetup): Unit = install(setup, GameSystem.always)
+
+  /** The same, for a game that pauses: animations only play while `condition`
+    * holds. Install one or the other.
+    */
+  def when(condition: GameContext => Boolean): GameModule = new GameModule {
+    override def install(setup: GameSetup): Unit = SpriteAnimationModule.install(setup, condition)
+  }
+
+  private def install(setup: GameSetup, condition: GameContext => Boolean): Unit = {
     setup
       .setGlobal[SpriteAnimationModule.type](this)
-      .addSystem(Stage.PostUpdate, SpriteAnimationSystem)
+      .addSystem(Stage.PostUpdate, SpriteAnimationSystem, when = condition)
   }
 }

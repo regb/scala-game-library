@@ -252,4 +252,51 @@ class ExtrasSuite extends AnyFunSuite {
     obj.gameObject.destroy()
     assert(drawn().isEmpty)
   }
+
+  private final class NoRenderer extends render3d.Renderer {
+    override def bake2D(draw: Painter2D => Unit)(using Scope): Baked2D = new Baked2D(draw)
+    override def releaseBaked(baked: Baked2D): Unit = ()
+    override def createEffect2D(source: String)(using Scope): Effect2D = new Effect2D
+    override def releaseEffect2D(effect: Effect2D): Unit = ()
+    override def createMesh(data: render3d.MeshData)(using Scope): render3d.Mesh = new render3d.Mesh(0)
+    override def loadTexture2D(asset: sgl.assets.DrawableAsset)(using Scope): Texture2D = new Texture2D(0)
+    override def loadTexture2D(asset: sgl.assets.RawImageAsset)(using Scope): Texture2D = new Texture2D(0)
+    override def createMaterial(texture: Texture2D, emissive: Float)(using Scope): render3d.Material = new render3d.Material(0)
+    override def releaseMesh(mesh: render3d.Mesh): Unit = ()
+    override def releaseTexture(texture: Texture2D): Unit = ()
+    override def releaseMaterial(material: render3d.Material): Unit = ()
+    override def beginFrame(world: World): Unit = ()
+    override def endFrame(world: World): Unit = ()
+  }
+  private final class NoEngine extends Engine {
+    override val renderer: render3d.Renderer = new NoRenderer
+  }
+  private final case class Paused(value: Boolean)
+
+  test("animations and particles stand still while their modules are told to") {
+    val paused: GameContext => Boolean = !_.global[Paused].value
+    val runtime = new GameBuilder()
+      .install(Render2DModule)
+      .install(SpriteAnimationModule.when(paused))
+      .install(ParticlesModule.when(paused))
+      .setGlobal(Paused(false))
+      .build(new NoEngine)
+    runtime.startup()
+    val w = runtime.world
+    given Scope = w.globalScope
+    val sprite = w.spawn2D("sprite")
+      .attach(new SpriteRenderer(_, color(0), 1f, 1f))
+      .attach(new SpriteAnimation(_, Animation(Vector(color(1), color(2), color(3)), 0.1)))
+    val fire = emitter(w, "fire", 10f).get[ParticleEmitter]
+    runtime.frame(0.15)
+    assert(sprite.get[SpriteRenderer].visual == color(2) && fire.particles.alive == 1)
+    w.globals.set(Paused(true))
+    runtime.frame(0.15)
+    assert(sprite.get[SpriteRenderer].visual == color(2) && fire.particles.alive == 1)
+    w.globals.set(Paused(false))
+    runtime.frame(0.1)
+    assert(sprite.get[SpriteRenderer].visual == color(3) && fire.particles.alive == 2)
+    // One or the other.
+    assertThrows[CompositionError](new GameBuilder().install(ParticlesModule).install(ParticlesModule.when(paused)).build(new NoEngine))
+  }
 }
