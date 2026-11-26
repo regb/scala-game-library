@@ -531,6 +531,9 @@ context.spawn2D("Torch")
   .attach(new ParticleEmitter(_, fire, initialRate = 20f, z = 1f))
 ```
 
+A game that pauses installs `SpriteAnimationModule.when(condition)` or `ParticlesModule.when(condition)`
+instead, and animations and particles stand still while the condition does not hold.
+
 `Animation` holds frames of anything, for a game that animates by itself. `Particles` is particles
 without an object, which a game updates and paints itself: for example an explosion, which outlives
 what exploded, while the particles of an emitter are gone with its object.
