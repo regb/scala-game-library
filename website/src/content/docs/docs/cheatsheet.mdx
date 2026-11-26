@@ -1,0 +1,191 @@
+---
+title: API cheatsheet
+description: One-page scannable reference for SGL's Core APIs, GameObject engine, Screen2D engine, Bazel rules, and headless testing.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+A single-page map of the SGL APIs you reach for most often. Every type links to the full
+[Scaladoc](/api/).
+
+<Aside type="caution" title="Remember">
+Never load `Assets.*` in a plain `val` on your game trait—`GeneratedAssetsProvider` is mixed in
+after your trait. Load in `create()`, a `lazy val`, or `AsyncScene.preload`.
+</Aside>
+
+## Core lifecycle &amp; providers
+
+| API | Role | Key members |
+| --- | --- | --- |
+| [`Application`](/api/sgl/Application.html) | Entry lifecycle hooks | `create()`, `frame(dt: Double)` *(seconds)*, `resize(w, h)`, `pause()`, `resume()`, `dispose()` |
+| [`CanvasProvider`](/api/sgl/CanvasProvider.html) | Portable 2D Canvas | `withFrameCanvas`, `Graphics.loadImage`, `Graphics.Color`, `Graphics.Font`, `Graphics.Animation` |
+| [`OpenGLProvider`](/api/sgl/OpenGLProvider.html) | Portable OpenGL ES 3 / WebGL 2 | `OpenGL.ShaderHeader`, `createShader`, `createProgram`, `loadTexture2D`, `clear`, `drawArrays` |
+| [`WindowProvider`](/api/sgl/WindowProvider.html) | Viewport &amp; safe area | `Window.width`, `Window.height`, `Window.ppi`, `Window.safeArea` |
+| [`AudioProvider`](/api/sgl/AudioProvider.html) | Sounds &amp; music | `Audio.loadSound(asset)`, `Audio.loadMusic(asset)`, `.play()`, `.dispose()` |
+| [`SystemProvider`](/api/sgl/SystemProvider.html) | Files, time, platform | `System.loadText(asset)`, `System.loadBinary(asset)`, `System.currentTimeMillis`, `System.exit()` |
+| [`SaveComponent`](/api/sgl/SaveComponent.html) | Key-value persistence | `Save.putInt` / `getInt`, `putString` / `getString`, `putBoolean` / `getBoolean` |
+| [`FrameCaptureProvider`](/api/sgl/FrameCaptureProvider.html) | Screenshot capture | `captureNextFrame(): Loader[CapturedFrame]`, `DesktopFrameIO.writePng(frame, path)` |
+
+```scala
+trait AbstractApp extends Application with AssetsProvider {
+  this: CanvasProvider with WindowProvider with AudioProvider with SystemProvider =>
+
+  private lazy val hero = Graphics.loadImage(Assets.drawable.hero)
+
+  override def frame(dt: Double): Unit = withFrameCanvas { canvas =>
+    canvas.drawRect(0, 0, Window.width.toFloat, Window.height.toFloat,
+      Graphics.defaultPaint.withColor(Graphics.Color.Black))
+    if(hero.isLoaded) canvas.drawBitmap(hero.value.get.get, 32f, 32f)
+  }
+}
+```
+
+## Input &amp; async loaders
+
+<div class="cheat-cols">
+
+```scala title="Input (sgl.Input)"
+// Poll each frame
+if(Input.isKeyPressed(Input.Keys.Right)) move(dt)
+if(Input.isPointerPressed) aim(Input.mouseX, Input.mouseY)
+if(Input.isTouched(1)) pinch(Input.touchX(1), Input.touchY(1))
+
+// Event callbacks (return true if handled)
+Input.setInputProcessor(new InputProcessor with PointerInputProcessor {
+  override def keyDown(k: Input.Keys.Key) = k == Input.Keys.P && { pause(); true }
+  override def pointerDown(x: Int, y: Int, p: Int, b: Input.MouseButtons.MouseButton) = {
+    tap(x, y); true
+  }
+  override def systemAction(a: InputActions.Action) = a == InputActions.Back && { back(); true }
+}, Set(InputActions.Back))
+```
+
+```scala title="Loader[A] (sgl.util.Loader)"
+val img: Loader[Graphics.Bitmap] = Graphics.loadImage(Assets.drawable.hero)
+val lvl: Loader[Array[String]]   = System.loadText(Assets.text.level1)
+
+img.isLoaded                             // poll in frame()
+img.value                                // Option[Try[Bitmap]]
+img.onLoad(res => ...)                   // completion callback
+img.zip(lvl).map { case (b, l) => ... }  // compose loaders
+Loader.combine(Seq(a, b, c))             // wait for several loaders
+```
+
+</div>
+
+## GameObject engine (`sgl.engine.gameobject`)
+
+| Concept | Signature / pattern | Notes |
+| --- | --- | --- |
+| App setup | `trait App extends OpenGLGameObjectApp` | Configure modules, globals, systems, initial scene in `configure(builder)` |
+| Typed object | `context.spawn2D("Ship").attach(new Collider(_, 14f)).attach(new Ship(_))` | Missing or duplicate components fail at compile time |
+| Typed component | `final class Ship(obj: TypedObject[Spatial2D & Collider]) extends ComponentOf(obj)` | Read siblings safely with `obj.spatial` / `obj.get[Collider]` |
+| Plain component | `final class Life(override val owner: GameObject) extends Component` | Attached via `.attachPlain(new Life(_))` |
+| System | `object MySystem extends GameSystem` / `GameSystem("id") { ... }` | Query `context.world.index[A]` or `context.world.requireSingle[A]` |
+| Stages | `PreUpdate` → `FixedUpdate` → `Update` → `PostUpdate` → `PreRender` → `Render` | Plus `Startup`, `Pause`, `Resume`; order with `before`/`after` |
+| Scene &amp; scope | `object Level extends Scene` / `AsyncScene[A]` | Objects and GPU assets are destroyed automatically when the scene unloads |
+| Async in scene | `context.whenLoaded(loader) { value => ... }` | Runs on the game thread only while the scene is still active |
+| Modules | `UpdateCapabilitiesModule`, `Render2DModule`, `Render3DModule`, `TextOverlayModule`, `CircleMaskModule` | Required modules are enforced via `RequiresGlobals` |
+
+<div class="cheat-cols">
+
+```scala title="2D GameObject + custom Render2D"
+// Spawn with hierarchy
+val ship = context.spawn2D("Ship", Transform2D(position = Vec2(0f, 0f)))
+  .attach(new Collider(_, 14f))
+  .attach(new SpriteRenderer(_, SpriteVisual.Texture(tex), 32f, 32f))
+
+context.spawn2D("Flame", Transform2D(position = Vec2(0f, 20f)))
+  .childOf(ship)
+  .attach(new SpriteRenderer(_, SpriteVisual.Circle(Color(1f, 0.5f, 0.2f)), 8f, 8f))
+
+// Custom drawing inside Stage.Render
+val draw = context.global[Render2D]
+draw.world(z = 5f) { painter =>
+  painter.quad(p0, p1, p2, p3, (1f, 0.8f, 0.2f, 1f))
+}
+```
+
+```scala title="3D GameObject (spatial3d + render3d)"
+val r = context.engine.renderer
+val mesh = r.createMesh(MeshPrimitives.sphere(32, 18))
+val mat  = r.createMaterial(r.loadTexture2D(Assets.rawImage.earth))
+
+context.spawn3D("Cam", Transform3D.lookAt(Vec3(0, 3, 8), Vec3.Zero, Vec3(0, 1, 0)))
+  .attach(new Camera3D(_))
+
+context.spawn3D("Earth")
+  .attach(new MeshRenderer(_, mesh, mat))
+```
+
+</div>
+
+## Screen2D engine (`//engines:sgl-screen2d`)
+
+```scala
+trait AbstractApp { this: Screen2DGameApp =>
+  override def startingScreen: GameScreen = new TitleScreen
+  class TitleScreen extends GameScreen {
+    override def name = "title"
+    private val img = Graphics.loadImage(Assets.drawable.bg); addPreloading(img)
+    override def update(dt: Long): Unit = () // milliseconds!
+    override def render(canvas: Graphics.Canvas): Unit =
+      viewport.withViewport(canvas) { canvas.drawBitmap(img.value.get.get, 0f, 0f) }
+  }
+}
+// Navigation: gameState.pushScreen(s) · gameState.popScreen() · gameState.newScreen(s)
+```
+
+## Typed assets &amp; Bazel rules
+
+| Rule | Load from | Generated / purpose |
+| --- | --- | --- |
+| `sgl_drawable_assets` | `@sgl//bazel/sgl:assets.bzl` | `Assets.drawable.*` (multi-DPI resizing or supplied densities) |
+| `sgl_raw_image_assets` | `@sgl//bazel/sgl:assets.bzl` | `Assets.rawImage.*` (exact image bytes for OpenGL textures) |
+| `sgl_audio_assets` | `@sgl//bazel/sgl:assets.bzl` | `Assets.audio.*` (`Audio.loadSound` / `Audio.loadMusic`) |
+| `sgl_text_assets` / `sgl_binary_assets` / `sgl_font_assets` | `@sgl//bazel/sgl:assets.bzl` | `Assets.text.*`, `Assets.binary.*`, `Assets.font.*` |
+| `sgl_texture_atlas` | `@sgl//bazel/sgl:assets.bzl` | Packs PNG drawables into shared GPU atlas pages at build time |
+| `sgl_tiled_import` | `@sgl//bazel/tiled:defs.bzl` | Imports `.tmj`/`.tsj` maps and rewrites image URIs to typed drawables |
+| `sgl_core_library` | `@sgl//bazel/sgl:defs.bzl` | Compiles shared Scala core + generates `AssetsProvider` / `GeneratedAssetsProvider` |
+| `sgl_desktop_awt_app` / `sgl_desktop_lwjgl_app` | `@sgl//bazel/sgl:defs.bzl` | JVM desktop targets (AWT Canvas / LWJGL OpenGL 3.3 + OpenAL) |
+| `sgl_html5_app` / `sgl_html5_opengl_app` | `@sgl//bazel/sgl:defs.bzl` | Scala.js web targets + deployable `<name>_site` static directory |
+| `sgl_desktop_native_app` | `@sgl//bazel/sgl:defs.bzl` | Scala Native SDL2 executable (`backend_app = "NativeOpenGLApp"` for OpenGL) |
+| `sgl_android_app` | `@sgl//bazel/sgl:defs.bzl` | Generates Gradle Android project (`-debug`, `-release`, `-bundle`, `-run`) |
+
+## Headless verification, hot reload &amp; CLI
+
+<div class="cheat-cols">
+
+```scala title="Headless OpenGL test (no display/GPU)"
+object app extends HeadlessOpenGLApp
+    with MyGameApp with DesktopSystemProvider with NoLoggingProvider {
+  override val frameDimension = (320, 240)
+}
+app.start()
+try {
+  app.Controller.keyDown(Input.Keys.Right)
+  app.step(1.0 / 60.0)
+  val cap = app.captureNextFrame()
+  app.step(1.0 / 60.0)
+  cap.value.flatMap(_.toOption).foreach(f =>
+    DesktopFrameIO.writePng(f, Paths.get("/tmp/out.png")))
+} finally app.stop()
+```
+
+```bash title="Common commands"
+# Build & test everything
+bazel build //...
+bazel test //...
+
+# Headless OpenGL tests on Linux without X11/Wayland
+DISPLAY="" WAYLAND_DISPLAY="" EGL_PLATFORM=surfaceless \
+  LIBGL_ALWAYS_SOFTWARE=1 bazel test //...
+
+# Desktop screenshot capture
+SGL_SCREENSHOT_PATH=/tmp/frame.png bazel run //examples/hello-scalagl:desktop-lwjgl
+
+# Desktop asset & live-config hot reload
+SGL_ASSET_DIRECTORY=$PWD/assets bazel run //:desktop-dev
+```
+
+</div>

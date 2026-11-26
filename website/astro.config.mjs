@@ -53,9 +53,9 @@ export default defineConfig({
             '- Build and run with Bazel: `bazel build //...`, `bazel test //...`, and `bazel run` on an application target (for example `:desktop-lwjgl` or `:html5`, which serves on http://localhost:8080).',
             '- To verify rendering and input without a display, use the headless OpenGL backend and frame capture (see the AI coding agents and Testing pages).',
           ].join('\n'),
-          promote: ['docs/index', 'docs/why-sgl', 'docs/ai-agents', 'docs/installation', 'docs/getting-started', 'docs/core-concepts'],
-          demote: ['index', 'showcase', 'community', 'docs/migration'],
-          exclude: ['index', 'showcase', 'community', 'docs/migration', 'docs/live-configuration'],
+          promote: ['docs/index', 'docs/why-sgl', 'docs/ai-agents', 'docs/cheatsheet', 'docs/installation', 'docs/getting-started', 'docs/core-concepts'],
+          demote: ['index', 'showcase', 'community', 'brand', 'docs/migration'],
+          exclude: ['index', 'showcase', 'community', 'brand', 'docs/migration', 'docs/live-configuration'],
           customSets: [
             {
               label: 'GameObject engine',
@@ -168,6 +168,7 @@ export default defineConfig({
         {
           label: 'Reference',
           items: [
+            { label: 'API cheatsheet', slug: 'docs/cheatsheet' },
             { label: 'Bazel rules', slug: 'docs/bazel-rules' },
             { label: 'API reference', slug: 'docs/api' },
             { label: 'Migration notes', slug: 'docs/migration' },

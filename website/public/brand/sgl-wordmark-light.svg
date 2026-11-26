@@ -1,0 +1,14 @@
+<svg width="360" height="96" viewBox="0 0 360 96" fill="none" xmlns="http://www.w3.org/2000/svg"><defs>
+  <clipPath id="wl-pad"><path d="M40 28 C27 28 19 37 17 52 L14.5 81 C13 93 21.5 101 31 100 C38.5 99.5 43.5 93 48.5 85 C51.5 80 55 78.5 64 78.5 C73 78.5 76.5 80 79.5 85 C84.5 93 89.5 99.5 97 100 C106.5 101 115 93 113.5 81 L111 52 C109 37 101 28 88 28 C79 28 74 32 64 32 C54 32 49 28 40 28 Z"/></clipPath>
+  <mask id="wl-cut">
+    <rect width="128" height="128" fill="#ffffff"/>
+    <rect x="29.5" y="63.2" width="16" height="5" rx="2" fill="#000000"/>
+    <rect x="35" y="57.7" width="5" height="16" rx="2" fill="#000000"/>
+    <circle cx="80.5" cy="59.5" r="4.1" fill="#000000"/>
+    <circle cx="92" cy="54" r="4.1" fill="#000000"/>
+  </mask>
+</defs><g transform="translate(8, 8) scale(0.625)"><rect width="128" height="128" rx="28" fill="#0b1020"/><g clip-path="url(#wl-pad)" mask="url(#wl-cut)">
+  <path d="M8 20 H120 V35 C94 44 54 50 8 52 Z" fill="#ff3d5a"/>
+  <path d="M8 58 C54 56 94 50 120 41 V61 C94 70 54 76 8 78 Z" fill="#ff6b3d"/>
+  <path d="M8 84 C54 82 94 76 120 67 V106 H8 Z" fill="#ffd166"/>
+</g></g><text x="106" y="54" fill="#0b1020" font-family="Space Grotesk, TeX Gyre Heros, Inter, sans-serif" font-size="38" font-weight="700" letter-spacing="-0.8">SGL</text><text x="108" y="76" fill="#5b6278" font-family="Inter, TeX Gyre Heros, sans-serif" font-size="14" font-weight="500" letter-spacing="0.3">Scala Game Library</text></svg>

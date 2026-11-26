@@ -6,6 +6,7 @@ editUrl: false
 lastUpdated: false
 ---
 
+import ScalavatorEmbed from '../../components/ScalavatorEmbed.astro';
 import ShowcaseCard from '../../components/ShowcaseCard.astro';
 import { games, repo, studio } from '../../data/showcase';
 
@@ -28,6 +29,11 @@ import { games, repo, studio } from '../../data/showcase';
     <div class="show-grid featured">
       {games.map((entry) => <ShowcaseCard entry={entry} />)}
     </div>
+  </section>
+
+  <section class="page-section">
+    <h2>Play live in your browser</h2>
+    <ScalavatorEmbed />
   </section>
 
   <section class="landing-section cta">

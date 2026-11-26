@@ -1,0 +1,91 @@
+---
+import { Image } from 'astro:assets';
+
+import scalavator from '../assets/showcase/scalavator.jpg';
+---
+
+<div class="live-demo not-content" data-live-demo="scalavator">
+  <div class="live-demo-stage">
+    <div class="live-demo-poster">
+      <Image
+        src={scalavator}
+        alt="Scalavator: charge, jump, and climb between moving platforms"
+        widths={[640, 1000]}
+        sizes="(min-width: 52rem) 25rem, 100vw"
+      />
+      <div class="live-demo-overlay">
+        <button type="button" class="sgl-button primary live-demo-launch">
+          ▶ Play Scalavator in browser
+        </button>
+        <span class="live-demo-hint">Loads live Scala.js build from regb.github.io/scalavator</span>
+      </div>
+    </div>
+    <div class="live-demo-frame-wrap" hidden>
+      <div class="live-demo-toolbar">
+        <span>Scalavator · Live Scala.js</span>
+        <div>
+          <a href="https://regb.github.io/scalavator/" target="_blank" rel="noopener noreferrer">Full page ↗</a>
+          <button type="button" class="live-demo-close">Close</button>
+        </div>
+      </div>
+      <div class="live-demo-mount"></div>
+    </div>
+  </div>
+  <div class="live-demo-info">
+    <p class="section-eyebrow">Playable Demo</p>
+    <h3>Try Scalavator right here.</h3>
+    <p>
+      Scalavator is a complete open-source game built with SGL. One Scala 3 core compiles to
+      Android, Desktop JVM, and this live HTML5 build via <code>sgl_html5_app</code>.
+    </p>
+    <ul>
+      <li><strong>Controls:</strong> Hold mouse, touch, or <code>Space</code> to charge a jump; release to leap.</li>
+      <li><strong>Goal:</strong> Land on moving platforms, dodge the bugs, and climb from day into night.</li>
+    </ul>
+    <div class="hero-actions">
+      <a class="sgl-button secondary" href="https://regb.github.io/scalavator/" target="_blank" rel="noopener noreferrer">
+        Open full page ↗
+      </a>
+      <a class="sgl-button secondary" href="https://github.com/regb/scalavator" target="_blank" rel="noopener noreferrer">
+        View source on GitHub
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-live-demo="scalavator"]').forEach((root) => {
+    if (root.dataset.bound) return;
+    root.dataset.bound = '1';
+
+    const poster = root.querySelector<HTMLElement>('.live-demo-poster');
+    const wrap = root.querySelector<HTMLElement>('.live-demo-frame-wrap');
+    const mount = root.querySelector<HTMLElement>('.live-demo-mount');
+    const launch = root.querySelector<HTMLButtonElement>('.live-demo-launch');
+    const close = root.querySelector<HTMLButtonElement>('.live-demo-close');
+
+    launch?.addEventListener('click', () => {
+      if (!poster || !wrap || !mount) return;
+      if (!mount.querySelector('iframe')) {
+        const iframe = document.createElement('iframe');
+        iframe.src = 'https://regb.github.io/scalavator/';
+        iframe.title = 'Scalavator — playable SGL game';
+        iframe.width = '400';
+        iframe.height = '650';
+        iframe.loading = 'eager';
+        iframe.allow = 'autoplay';
+        mount.appendChild(iframe);
+      }
+      poster.hidden = true;
+      wrap.hidden = false;
+      mount.querySelector('iframe')?.focus();
+    });
+
+    close?.addEventListener('click', () => {
+      if (!poster || !wrap || !mount) return;
+      mount.innerHTML = '';
+      wrap.hidden = true;
+      poster.hidden = false;
+    });
+  });
+</script>

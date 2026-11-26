@@ -22,6 +22,7 @@ export const footerColumns = [
   {
     title: 'Reference',
     links: [
+      { label: 'API cheatsheet', href: '/docs/cheatsheet/' },
       { label: 'Bazel rules', href: '/docs/bazel-rules/' },
       { label: 'API reference', href: '/docs/api/' },
       { label: 'Scaladoc', href: '/api/' },
@@ -35,6 +36,7 @@ export const footerColumns = [
     links: [
       { label: 'Showcase', href: '/showcase/' },
       { label: 'Blog', href: '/blog/' },
+      { label: 'Brand & press kit', href: '/brand/' },
       { label: 'Smart Dino Games', href: 'https://smartdinogames.com' },
       { label: 'Community', href: '/community/' },
       { label: 'GitHub', href: repo },

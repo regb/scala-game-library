@@ -1,6 +1,7 @@
 ---
 import { Code, Icon, TabItem, Tabs } from '@astrojs/starlight/components';
 
+import ScalavatorEmbed from './ScalavatorEmbed.astro';
 import ShowcaseCard from './ShowcaseCard.astro';
 import { games, repo, studio } from '../data/showcase';
 
@@ -236,6 +237,9 @@ bazel test //engines/gameobject/examples/headless-control:headless-control-integ
     </p>
     <div class="show-grid featured">
       {games.map((entry) => <ShowcaseCard entry={entry} />)}
+    </div>
+    <div class="section-more">
+      <ScalavatorEmbed />
     </div>
     <div class="hero-actions section-more">
       <a class="sgl-button secondary" href="/showcase/">See the showcase →</a>

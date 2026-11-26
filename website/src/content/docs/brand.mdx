@@ -1,0 +1,189 @@
+---
+title: Brand & Press Kit
+description: Official SGL logos, Built with SGL badges, color tokens, typography, and usage guidelines.
+template: splash
+editUrl: false
+lastUpdated: false
+---
+
+import CopyCommand from '../../components/CopyCommand.astro';
+
+<div class="not-content">
+  <div class="page-intro">
+    <p class="section-eyebrow">Brand Guidelines</p>
+    <h2 class="section-title">SGL Brand &amp; Press Kit</h2>
+    <p class="section-lead">
+      Official logos, colors, naming rules, and <strong>Built with SGL</strong> badges for games,
+      splash screens, blog posts, and store listings. Logo assets are licensed under
+      {' '}<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
+    </p>
+  </div>
+
+  <section class="page-section">
+    <h2>Logos &amp; marks</h2>
+    <p>
+      The SGL mark merges Scala’s three ascending ribbons with a game controller silhouette. Use the
+      rounded icon for favicons and avatars, the unboxed mark on clean solid surfaces, and the
+      monochrome mark for splash screens or print.
+    </p>
+    <div class="brand-grid">
+      <article class="brand-card">
+        <div class="brand-preview dark">
+          <img src="/brand/sgl-icon.svg" alt="SGL rounded icon" width="84" height="84" />
+        </div>
+        <div class="brand-meta">
+          <strong>App Icon</strong>
+          <span>Favicons, GitHub avatar, app tiles</span>
+          <a href="/brand/sgl-icon.svg" download>Download SVG ↓</a>
+        </div>
+      </article>
+      <article class="brand-card">
+        <div class="brand-preview light">
+          <img src="/brand/sgl-mark.svg" alt="SGL unboxed full-color mark" width="96" height="72" />
+        </div>
+        <div class="brand-meta">
+          <strong>Bare Mark (Color)</strong>
+          <span>Transparent cutouts, dark or light</span>
+          <a href="/brand/sgl-mark.svg" download>Download SVG ↓</a>
+        </div>
+      </article>
+      <article class="brand-card">
+        <div class="brand-preview dark">
+          <img src="/brand/sgl-mark-mono-light.svg" alt="SGL monochrome light mark" width="96" height="72" />
+        </div>
+        <div class="brand-meta">
+          <strong>Monochrome (Light)</strong>
+          <span>Dark splash screens and overlays</span>
+          <a href="/brand/sgl-mark-mono-light.svg" download>Download SVG ↓</a>
+        </div>
+      </article>
+      <article class="brand-card">
+        <div class="brand-preview light">
+          <img src="/brand/sgl-mark-mono-dark.svg" alt="SGL monochrome dark mark" width="96" height="72" />
+        </div>
+        <div class="brand-meta">
+          <strong>Monochrome (Dark)</strong>
+          <span>Light backgrounds and print</span>
+          <a href="/brand/sgl-mark-mono-dark.svg" download>Download SVG ↓</a>
+        </div>
+      </article>
+      <article class="brand-card wide">
+        <div class="brand-preview dark">
+          <img src="/brand/sgl-wordmark-dark.svg" alt="SGL wordmark on dark background" width="270" height="72" />
+        </div>
+        <div class="brand-meta">
+          <strong>Wordmark (Dark)</strong>
+          <span>Primary horizontal lockup for dark headers and slides</span>
+          <a href="/brand/sgl-wordmark-dark.svg" download>Download SVG ↓</a>
+        </div>
+      </article>
+      <article class="brand-card wide">
+        <div class="brand-preview light">
+          <img src="/brand/sgl-wordmark-light.svg" alt="SGL wordmark on light background" width="270" height="72" />
+        </div>
+        <div class="brand-meta">
+          <strong>Wordmark (Light)</strong>
+          <span>Primary horizontal lockup for light pages and articles</span>
+          <a href="/brand/sgl-wordmark-light.svg" download>Download SVG ↓</a>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="page-section">
+    <h2>Built with SGL badges</h2>
+    <p>
+      Made a game with SGL? Drop a badge in your README, itch.io page, or game credits. You are
+      encouraged to credit SGL on splash screens and store pages as long as it does not imply
+      official endorsement.
+    </p>
+    <div class="brand-grid two-col">
+      <article class="brand-card">
+        <div class="brand-preview dark">
+          <img src="/brand/built-with-sgl-dark.svg" alt="Built with SGL dark badge" width="176" height="44" />
+        </div>
+        <div class="brand-meta">
+          <strong>Badge (Dark)</strong>
+          <a href="/brand/built-with-sgl-dark.svg" download>Download SVG ↓</a>
+        </div>
+      </article>
+      <article class="brand-card">
+        <div class="brand-preview light">
+          <img src="/brand/built-with-sgl-light.svg" alt="Built with SGL light badge" width="176" height="44" />
+        </div>
+        <div class="brand-meta">
+          <strong>Badge (Light)</strong>
+          <a href="/brand/built-with-sgl-light.svg" download>Download SVG ↓</a>
+        </div>
+      </article>
+    </div>
+    <CopyCommand
+      label="Markdown snippet for READMEs"
+      command="[![Built with SGL](https://libsgl.com/brand/built-with-sgl-dark.svg)](https://libsgl.com)"
+    />
+  </section>
+
+  <section class="page-section">
+    <h2>Color palette</h2>
+    <p>
+      SGL uses a warm crimson-to-gold gradient anchored on deep midnight slate in dark mode, with
+      deeper WCAG-AA-compliant stops in light mode.
+    </p>
+    <div class="swatch-grid">
+      <div class="swatch">
+        <span class="swatch-chip" style="background: #ff3d5a"></span>
+        <strong>Brand Crimson</strong>
+        <code>#FF3D5A</code>
+        <span>Light mode: <code>#C81E3D</code> · Top ribbon, primary accent</span>
+      </div>
+      <div class="swatch">
+        <span class="swatch-chip" style="background: #ff6b3d"></span>
+        <strong>Brand Ember</strong>
+        <code>#FF6B3D</code>
+        <span>Light mode: <code>#D9480F</code> · Middle ribbon, GameObject</span>
+      </div>
+      <div class="swatch">
+        <span class="swatch-chip" style="background: #ffd166"></span>
+        <strong>Brand Gold</strong>
+        <code>#FFD166</code>
+        <span>Light mode: <code>#B45309</code> · Bottom ribbon, Screen2D</span>
+      </div>
+      <div class="swatch">
+        <span class="swatch-chip" style="background: #0b1020"></span>
+        <strong>Canvas Midnight</strong>
+        <code>#0B1020</code>
+        <span>Icon background, dark canvas</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section">
+    <h2>Naming, typography &amp; usage rules</h2>
+    <div class="callout-grid">
+      <article class="callout">
+        <h3>Naming</h3>
+        <ul>
+          <li>Write <strong>SGL</strong> in all caps in prose (never <code>sgl</code> or <code>S.G.L.</code>).</li>
+          <li>Use <strong>Scala Game Library</strong> in title case on first formal mention or in titles (e.g. <em>SGL — Scala Game Library</em>).</li>
+          <li>Refer to the website as <code>libsgl.com</code> and Bazel module identifiers (<code>sgl.bzl</code>, <code>@sgl</code>) in monospace.</li>
+        </ul>
+      </article>
+      <article class="callout">
+        <h3>Typography</h3>
+        <ul>
+          <li><strong>Display headings &amp; wordmark:</strong> Space Grotesk (600 / 700).</li>
+          <li><strong>Body &amp; documentation UI:</strong> Inter (400 / 500 / 600).</li>
+          <li><strong>Code &amp; CLI:</strong> JetBrains Mono (400 / 500).</li>
+        </ul>
+      </article>
+      <article class="callout">
+        <h3>Logo usage</h3>
+        <ul>
+          <li>Keep clear space of at least <strong>0.25×</strong> the mark height on all sides.</li>
+          <li>Minimum digital size: <strong>24 px</strong> for the icon (16 px favicon).</li>
+          <li>Do not stretch, rotate, swap ribbon order, add drop shadows, or place the bare mark over busy artwork without a solid backing pill.</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+</div>
