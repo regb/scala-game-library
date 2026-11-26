@@ -201,14 +201,15 @@ object Input {
     touchPressedY(p)
   }
 
-  private var mousePressed = false
+  private val pressedMouseButtons = scala.collection.mutable.Set.empty[MouseButtons.MouseButton]
   private var _mouseX  = 0
   private var _mouseY = 0
-  //private var _mouseButton: MouseButtons.MouseButton = MouseButtons.Left
 
-  def isMousePressed: Boolean = {
-    mousePressed
-  }
+  /** Whether the left button, the one that points, is down. */
+  def isMousePressed: Boolean = isMousePressed(MouseButtons.Left)
+
+  /** Whether a button of the mouse is down. */
+  def isMousePressed(button: MouseButtons.MouseButton): Boolean = pressedMouseButtons.contains(button)
   /** Return the current x-coordinate for the mouse. Default to 0 if no mouse or
    *  no position detected yet
    */
@@ -221,11 +222,7 @@ object Input {
   def mouseY: Int = {
     _mouseY
   }
-  //def mouseButton: MouseButtons.MouseButton = {
-  //  require(mousePressed)
-  //  _mouseButton
-  //}
-
+  /** Whether the left button of the mouse or the first touch is down. */
   def isPointerPressed: Boolean = isTouched(0) || isMousePressed
 
   /*
@@ -248,17 +245,15 @@ object Input {
       false
     }
     override def mouseDown(x: Int, y: Int, mouseButton: MouseButtons.MouseButton): Boolean = {
-      mousePressed = true
+      pressedMouseButtons += mouseButton
       _mouseX = x
       _mouseY = y
-      //_mouseButton = mouseButton 
       false
     }
     override def mouseUp(x: Int, y: Int, mouseButton: MouseButtons.MouseButton): Boolean = {
-      mousePressed = false
+      pressedMouseButtons -= mouseButton
       _mouseX = x
       _mouseY = y
-      //_mouseButton = mouseButton
       false
     }
 

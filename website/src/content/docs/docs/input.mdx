@@ -17,11 +17,12 @@ The core derives state from the event stream, so a game can query it each frame:
 ```scala
 if(Input.isKeyPressed(Input.Keys.Space)) fire()
 
-if(Input.isPointerPressed) {            // mouse button or first touch
+if(Input.isPointerPressed) {            // left mouse button or first touch
   aimAt(Input.mouseX, Input.mouseY)
 }
 
 if(Input.isTouched(1)) twoFingerGesture(Input.touchX(1), Input.touchY(1))
+if(Input.isMousePressed(Input.MouseButtons.Right)) showMenu()
 ```
 
 ## Handling events

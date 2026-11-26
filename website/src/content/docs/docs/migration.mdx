@@ -50,6 +50,12 @@ save, and to lose what was written. Existing files still read.
 `mouseScrolled(amount: Int)` is now `mouseScrolled(amountX: Float, amountY: Float, unit)`, and comes
 from every desktop backend too. What was `amount`, in browsers, is `amountY` in `Pixels`.
 
+## Mouse buttons
+
+`Input.isMousePressed`, and so `isPointerPressed`, are now about the left button only. They were
+true while any button was down, and false as soon as any came up. `isMousePressed(button)` is
+whether a given one is down.
+
 ## Resource paths to typed assets
 
 Old application code often loaded resources by path:
