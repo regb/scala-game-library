@@ -6,9 +6,10 @@ private[sgl] object TextWrapping {
 
   /** Wrap text while preserving explicit newlines and whitespace.
     *
-    * Lines prefer to break after whitespace. A word wider than the available
-    * width is split at character boundaries. `overflowed` is true only when a
-    * single character is wider than the requested width.
+    * Lines prefer to break after whitespace, which does not count in the width
+    * when it ends a line. A word wider than the available width is split at
+    * character boundaries. `overflowed` is true only when a single character is
+    * wider than the requested width.
     */
   def wrap(text: String, width: Float, measure: String => Float): Result = {
     require(width > 0, "Text layout width must be greater than zero")
@@ -40,6 +41,14 @@ private[sgl] object TextWrapping {
               result += remaining.substring(0, firstCharacterLength)
               remaining = remaining.substring(firstCharacterLength)
               overflowed = true
+            } else if(remaining.charAt(fittingLength).isWhitespace) {
+              // Every word up to here fits: the spaces after them go with the line.
+              val breakAt = remaining.indexWhere(!_.isWhitespace, fittingLength) match {
+                case -1 => remaining.length
+                case next => next
+              }
+              result += remaining.substring(0, breakAt)
+              remaining = remaining.substring(breakAt)
             } else {
               val whitespaceIndex = remaining.substring(0, fittingLength).lastIndexWhere(_.isWhitespace)
               val breakAt = if(whitespaceIndex >= 0) whitespaceIndex + 1 else fittingLength

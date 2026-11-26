@@ -88,6 +88,15 @@ class GraphicsHelperSuite extends AnyFunSuite {
     assert(!wrapped.overflowed)
   }
 
+  test("a line takes every word that fits, without the space after the last one") {
+    // "one two" is 7 wide, "one two " 8.
+    val wrapped = TextWrapping.wrap("one two three", 7, _.length.toFloat)
+    assert(wrapped.lines === Vector("one two ", "three"))
+    assert(TextWrapping.wrap("one two  three", 7, _.length.toFloat).lines === Vector("one two  ", "three"))
+    assert(TextWrapping.wrap("one two three", 6, _.length.toFloat).lines === Vector("one ", "two ", "three"))
+    assert(!wrapped.overflowed)
+  }
+
   test("text wrapping splits long words at character boundaries") {
     val wrapped = TextWrapping.wrap("abcdefgh", 3, _.length.toFloat)
     assert(wrapped.lines === Vector("abc", "def", "gh"))
