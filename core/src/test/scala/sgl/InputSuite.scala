@@ -19,6 +19,25 @@ class InputSuite extends AnyFunSuite {
     } finally Input.clearInputProcessor()
   }
 
+  test("each button of the mouse is down until it comes up, and the pointer is the left one") {
+    import Input.MouseButtons._
+    Input.setInputProcessor(new InputProcessor {})
+    try {
+      val events = Input.inputProcessor
+      events.mouseDown(1, 2, Right)
+      assert(Input.isMousePressed(Right) && !Input.isMousePressed && !Input.isPointerPressed)
+      events.mouseDown(3, 4, Left)
+      events.mouseUp(3, 4, Right)
+      assert(Input.isMousePressed && Input.isPointerPressed && !Input.isMousePressed(Right))
+      assert((Input.mouseX, Input.mouseY) == (3, 4))
+      events.mouseDown(3, 4, Other(8))
+      events.mouseUp(3, 4, Left)
+      assert(!Input.isMousePressed && Input.isMousePressed(Other(8)) && !Input.isPointerPressed)
+      events.mouseUp(3, 4, Other(8))
+      assert(!Input.isMousePressed(Other(8)))
+    } finally Input.clearInputProcessor()
+  }
+
   test("system action declarations follow the active input processor") {
     var configurationChanges = 0
     val listener = new InputConfigurationListener {
