@@ -1,6 +1,6 @@
 # Make a game with SGL
 
-Instructions for coding agents. SGL (Scala Game Library) is a game framework in Scala 3, built with
+Instructions for coding agents. SGL (Scala Game Library) is a game framework in Scala, built with
 Bazel. One game runs on the desktop, in the browser, and as a native executable, and can be tested
 without a display.
 

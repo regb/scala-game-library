@@ -9,7 +9,7 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'SGL',
-      description: 'Code-first, declaratively composed, compiler-verified games in Scala 3. Reliable by construction, built for tight verification loops, and shipping to desktop, web, native, and Android.',
+      description: 'Code-first, declaratively composed, compiler-verified games in Scala. Reliable by construction, built for tight verification loops, and shipping to desktop, web, native, and Android.',
       logo: {
         src: './public/logo.svg',
         alt: 'Scala Game Library',
@@ -40,7 +40,7 @@ export default defineConfig({
         starlightLlmsTxt({
           projectName: 'SGL (Scala Game Library)',
           description:
-            'SGL is a code-first, declaratively composed, compiler-verified game framework in Scala 3. Typed assets, compile-time checked GameObject composition, and headless OpenGL testing make one concise game core reliable to build—by hand or with AI coding agents—and ship via Bazel to desktop JVM, web (Scala.js), native binaries (Scala Native), and Android.',
+            'SGL is a code-first, declaratively composed, compiler-verified game framework in Scala. Typed assets, compile-time checked GameObject composition, and headless OpenGL testing make one concise game core reliable to build—by hand or with AI coding agents—and ship via Bazel to desktop JVM, web (Scala.js), native binaries (Scala Native), and Android.',
           details: [
             'SGL is pre-release (before 0.1) and its API changes often. When the docs and the code disagree, the code wins: read the SGL source and its examples (`examples/`, `engines/*/examples/`) at the commit your project pins.',
             'To make a new game, follow https://libsgl.com/start.md.',

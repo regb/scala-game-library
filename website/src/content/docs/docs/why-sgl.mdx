@@ -13,7 +13,7 @@ That combination is a strong fit for some projects and the wrong fit for others.
 
 | | SGL | [Indigo](https://indigoengine.io/) | [libGDX](https://libgdx.com/) | [Godot](https://godotengine.org/) |
 | --- | --- | --- | --- | --- |
-| **Language** | Scala 3 | Scala 3 | Java (usable from Scala) | GDScript, C#, C++ |
+| **Language** | Scala | Scala | Java (usable from Scala) | GDScript, C#, C++ |
 | **Workflow** | 100% code-first, plain text | 100% code-first, plain text | Code-first | Visual editor + scripts |
 | **Programming style** | Pragmatic core + declaratively composed `GameObject` engine | Purely functional (immutable model, Elm-style updates) | Imperative, unopinionated OOP | Node tree + imperative scripts |
 | **Targets** | Desktop JVM, Web (Scala.js), Native (Scala Native), Android, Headless OpenGL | Web (Scala.js / WebGL), Desktop via Electron | Desktop JVM, Android, iOS, Web (GWT / TeaVM) | Desktop, Web, Android, iOS, consoles |
@@ -27,7 +27,7 @@ Choose **Indigo** if you want **pure functional programming** all the way down�
 
 ### When to choose libGDX
 
-Choose **libGDX** if you need **long-term API stability**, a mature 3D stack, or a large third-party ecosystem of Java plugins and tutorials today. SGL takes inspiration from libGDX and SDL, but is written natively in Scala 3—replacing string asset paths, runtime wiring, and GWT/bridge layers with compile-time typed assets, `TypedObject` component checks, and native Scala.js / Scala Native compilation.
+Choose **libGDX** if you need **long-term API stability**, a mature 3D stack, or a large third-party ecosystem of Java plugins and tutorials today. SGL takes inspiration from libGDX and SDL, but is written natively in Scala—replacing string asset paths, runtime wiring, and GWT/bridge layers with compile-time typed assets, `TypedObject` component checks, and native Scala.js / Scala Native compilation.
 
 ### When to choose Godot
 
@@ -37,7 +37,7 @@ Choose **Godot** if you want a **visual scene editor**, built-in animation/UI/ph
 
 At first glance, Bazel looks unusual for a game library. SGL uses Bazel because cross-platform game builds are **multi-language, multi-toolchain, asset-processing pipelines**—which is exactly what Bazel solves cleanly:
 
-- **Zero manual toolchain setup.** Install [Bazelisk](https://github.com/bazelbuild/bazelisk) once; Bazel downloads the pinned Scala 3 compiler, JDK 17, Scala.js, and Scala Native toolchains automatically.
+- **Zero manual toolchain setup.** Install [Bazelisk](https://github.com/bazelbuild/bazelisk) once; Bazel downloads the pinned Scala compiler, JDK 17, Scala.js, and Scala Native toolchains automatically.
 - **Typed assets generated at build time.** `sgl_drawable_assets`, `sgl_audio_assets`, `sgl_text_assets`, and `sgl_font_assets` scan declared files and generate `Assets.drawable.*` handles before Scala compiles. Renaming or deleting an asset breaks the build instead of crashing at runtime.
 - **Build-time asset processing.** Multi-DPI image resizing, deterministic `sgl_texture_atlas` packing, and `sgl_tiled_import` map rewriting happen automatically in the build graph and are cached between runs.
 - **One command per platform.** `sgl_desktop_awt_app`, `sgl_desktop_lwjgl_app`, `sgl_html5_app`, `sgl_html5_opengl_app`, `sgl_desktop_native_app`, and `sgl_android_app` generate each backend's entry point and verify provider wiring at compile time.

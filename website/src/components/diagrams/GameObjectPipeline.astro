@@ -39,7 +39,7 @@ const { variant } = Astro.props;
       <text x="28" y="135" fill="var(--sl-color-accent)" font-size="12" font-weight="700" font-family="var(--sl-font-mono)">✗ Compile error if Collider is missing or attached after Bullet:</text>
       <text x="28" y="156" fill="var(--sl-color-gray-2)" font-size="12" font-family="var(--sl-font-mono)">"This object is not known to have a Collider"  ·  duplicate attach: "This object already has a Collider"</text>
     </svg>
-    <figcaption>Each <code>attach</code> widens the object’s intersection type with zero runtime overhead. Missing or duplicate components are caught by the Scala 3 compiler.</figcaption>
+    <figcaption>Each <code>attach</code> widens the object’s intersection type with zero runtime overhead. Missing or duplicate components are caught by the Scala compiler.</figcaption>
   </figure>
 ) : (
   <figure class="sgl-diagram not-content">

@@ -17,7 +17,7 @@ pnpm build
 pnpm preview
 ```
 
-To generate Scala 3 Scaladoc locally (published at `/api/` by CI):
+To generate Scaladoc locally (published at `/api/` by CI):
 
 ```bash
 bazel build //website:scaladoc
