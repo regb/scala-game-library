@@ -61,12 +61,20 @@ the game, and `test/` plays it.
 For each step:
 
 1. Change the game. Take API usage from `game/Game.scala` and from the examples in the SGL source.
-   `AGENTS.md` says where the source is.
+   `AGENTS.md` says where the source is. Drive gameplay timers from `context.dt` / `ElapsedTime`
+   (never wall-clock time) so headless tests fast-forward deterministically, and destroy objects
+   with `obj.destroy()` rather than `world.destroy(typedObj)`.
 2. Run `bazel build //...`. A compile error about the components of an object, such as "This object
    is not known to have a Collider", means that the composition is wrong. Fix it, and do not cast.
-3. Add a test for what you added, and run `bazel test //...`. The test presses keys, steps frames,
-   and reads the game's state, without a window.
-4. Look at the captured frame in `bazel-testlogs/game_test/test.outputs/` to see what the game draws.
+   (If your sandbox blocks loopback sockets or network metrics, use
+   `bazel --batch --noexperimental_collect_system_network_usage build //...`.)
+3. Add a test for what you added, and run `bazel test //...`. The test presses keys, steps virtual
+   frames, and reads the game's state, without a window. Cover not only happy-path movement, but
+   also rejected inputs, full win/loss transitions (with frozen input on game over), and clean
+   restarts. If using `AsyncScene`, wait for `load(...)` to finish before capturing frame 0.
+4. **Open and visually inspect** the captured frames in `bazel-testlogs/game_test/test.outputs/`
+   across key states (entry, active play, pause, win/loss)—saving a PNG is not enough to catch HUD
+   overlap, aspect-ratio clipping, or camera framing bugs.
 
 Start with something playable: one object that moves. Then add the rest.
 

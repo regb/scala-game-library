@@ -10,7 +10,7 @@ const platforms = [
   { icon: 'window', name: 'Web', body: 'Scala.js with 2D Canvas or WebGL 2, deployable static sites, and HTML5 audio.', status: 'Supported' },
   { icon: 'linux', name: 'Native', body: 'Scala Native on SDL2 and OpenGL ES. Native executables with no JVM.', status: 'Supported' },
   { icon: 'mobile-android', name: 'Android', body: 'Kotlin host library; Bazel generates the Gradle project, APK, and Play bundle.', status: 'Supported' },
-  { icon: 'setting', name: 'Headless OpenGL', body: 'Mesa surfaceless EGL pbuffer for CI tests, synthetic input, and frame capture.', status: 'Supported' },
+  { icon: 'setting', name: 'Headless OpenGL', body: 'Mesa surfaceless EGL pbuffer for virtual-time playtesting, synthetic input, and PNG frame capture—no display or browser.', status: 'Supported' },
   { icon: 'apple', name: 'iOS', body: 'No native backend yet. Web builds can be packaged as apps with Cordova.', status: 'Via Cordova', experimental: true },
 ] as const;
 
@@ -32,8 +32,8 @@ const verificationSteps = [
   },
   {
     step: '04',
-    title: 'Headless frame verification',
-    body: 'Drive inputs with Controller, step deterministically on HeadlessOpenGLApp, and assert on pixels or inspect captured PNGs.',
+    title: 'Headless playtesting & frame checks',
+    body: 'Drive inputs with Controller, fast-forward virtual time on HeadlessOpenGLApp with no Xvfb or browser, and visually inspect captured PNGs.',
   },
 ] as const;
 
@@ -52,8 +52,8 @@ const features = [
   },
   {
     icon: 'setting',
-    title: 'Deterministic headless testing',
-    body: 'Run real OpenGL headlessly with no display or GPU, inject synthetic input, step fixed frames, and capture RGBA8 screenshots in bazel test.',
+    title: 'Deterministic headless playtesting',
+    body: 'Render real OpenGL headlessly in any sandbox—no display, Xvfb, or browser—inject synthetic input, fast-forward virtual time, and capture PNGs in bazel test.',
     href: '/docs/testing/',
   },
   {

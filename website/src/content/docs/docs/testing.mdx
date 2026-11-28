@@ -16,7 +16,7 @@ captureNextFrame().foreach { frame =>
 ```
 
 The core API returns pixels and does not choose a file format or storage. On the desktop JVM,
-`DesktopFrameIO.writePng(frame, path)` encodes a capture as PNG.
+`sgl.desktop.DesktopFrameIO.writePng(frame, path)` encodes a capture as PNG.
 
 The AWT and LWJGL examples in the SGL repository include an opt-in screenshot mixin, which captures after 30 warm-up
 frames:
@@ -136,6 +136,20 @@ class GameTest extends AnyFunSuite {
 `Vec2` in the probe, rather than keeping components, so the test compares states of different frames.
 The [starter project](https://github.com/regb/sgl-starter-project) has a complete suite that also
 checks the pixels of a captured frame.
+
+## Writing reliable headless tests
+
+A few habits keep headless tests fast, deterministic, and genuinely useful for catching gameplay and visual bugs:
+
+- **Settle `AsyncScene` before frame 0.** An `AsyncScene` finishes `preload` asynchronously before `load(...)` populates the world. Keep any readiness flag unset until `load(...)` runs, and loop `app.step(1.0 / 60.0)` until the scene is ready before capturing initial screenshots or sending input—otherwise frame 0 is blank.
+- **Drive simulation from virtual time.** Use `context.dt`, `ElapsedTime`, or `FixedUpdate` instead of `System.nanoTime()` or `System.currentTimeMillis()`. That lets `app.step(1.0 / 60.0)` fast-forward minutes of gameplay deterministically in milliseconds.
+- **Cover negative paths, endings, and persistence.** Test rejected actions, full win/game-over transitions (including frozen input after terminal states), and clean restarts. When testing `FileSaveComponent`, verify reload in a second fresh process so singleton state (such as `sgl.Input`) cannot mask save/load bugs.
+- **Inspect captured PNGs visually.** Pixel spot-checks catch missing renders, while opening saved PNGs catches HUD overlap, clipped sprites, and camera framing issues.
+- **Restricted sandboxes.** In environments that block loopback sockets or network metrics, pass `--batch --noexperimental_collect_system_network_usage` to Bazel:
+  ```bash
+  DISPLAY="" WAYLAND_DISPLAY="" EGL_PLATFORM=surfaceless LIBGL_ALWAYS_SOFTWARE=1 \
+    bazel --batch --noexperimental_collect_system_network_usage test //...
+  ```
 
 ## Unit tests
 

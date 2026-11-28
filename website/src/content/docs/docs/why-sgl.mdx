@@ -1,25 +1,26 @@
 ---
 title: Why SGL
-description: How SGL compares with Indigo, libGDX, and Godot, why SGL builds with Bazel, and when SGL is the right fit for a project.
+description: How SGL compares with Indigo, libGDX, Godot, browser JS/TS, and Unity/Unreal, why SGL builds with Bazel, and when SGL is the right fit.
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 
-SGL is designed around a specific set of engineering bets: **everything is plain-text code**, **composition and assets are verified by the compiler**, **games can be tested headlessly without a display**, and **one core compiles natively to desktop, web, native binaries, and Android**.
+SGL is designed around a specific set of engineering bets: **everything is plain-text code**, **composition and assets are verified by the compiler**, **games can be playtested and frame-captured headlessly in virtual time without a display**, and **one core compiles natively to desktop, web, native binaries, and Android**.
 
 That combination is a strong fit for some projects and the wrong fit for others. This page lays out the trade-offs directly.
 
-## Comparing with Indigo, libGDX, and Godot
+## Comparing with other engines
 
-| | SGL | [Indigo](https://indigoengine.io/) | [libGDX](https://libgdx.com/) | [Godot](https://godotengine.org/) |
-| --- | --- | --- | --- | --- |
-| **Language** | Scala | Scala | Java (usable from Scala) | GDScript, C#, C++ |
-| **Workflow** | 100% code-first, plain text | 100% code-first, plain text | Code-first | Visual editor + scripts |
-| **Programming style** | Pragmatic core + declaratively composed `GameObject` engine | Purely functional (immutable model, Elm-style updates) | Imperative, unopinionated OOP | Node tree + imperative scripts |
-| **Targets** | Desktop JVM, Web (Scala.js), Native (Scala Native), Android, Headless OpenGL | Web (Scala.js / WebGL), Desktop via Electron | Desktop JVM, Android, iOS, Web (GWT / TeaVM) | Desktop, Web, Android, iOS, consoles |
-| **Asset & wiring safety** | Compile-time typed `Assets.*`, self-type providers, `TypedObject` checks | Strong Scala types; runtime asset loading | Runtime paths & reflection/wiring | Editor-managed resources + runtime paths |
-| **Build system** | Bazel (Bzlmod) | sbt / Mill | Gradle | Godot editor / export templates |
-| **Maturity** | Pre-0.1 (breaking changes expected) | Active, 2D-focused | Very mature (10+ years) | Very mature, production standard |
+| | SGL | [Indigo](https://indigoengine.io/) | [libGDX](https://libgdx.com/) | [Godot](https://godotengine.org/) | Browser JS/TS (Canvas / Three.js) | Unity / Unreal |
+| --- | --- | --- | --- | --- | --- | --- |
+| **Language** | Scala | Scala | Java (usable from Scala) | GDScript, C#, C++ | TypeScript / JavaScript | C# / C++ |
+| **Workflow** | 100% code-first, plain text | 100% code-first, plain text | Code-first | Visual editor + scripts | Code-first, plain text | Heavy visual editor + scripts |
+| **Programming style** | Pragmatic core + declaratively composed `GameObject` engine | Purely functional (immutable model, Elm-style updates) | Imperative, unopinionated OOP | Node tree + imperative scripts | Unopinionated / library-driven | Editor scene graph + components |
+| **Targets** | Desktop JVM, Web (Scala.js), Native (Scala Native), Android, Headless OpenGL | Web (Scala.js / WebGL), Desktop via Electron | Desktop JVM, Android, iOS, Web (GWT / TeaVM) | Desktop, Web, Android, iOS, consoles | Browser (native), desktop/mobile via wrappers | Desktop, Web, mobile, consoles |
+| **Asset & wiring safety** | Compile-time typed `Assets.*`, self-type providers, `TypedObject` checks | Strong Scala types; runtime asset loading | Runtime paths & reflection/wiring | Editor-managed resources + runtime paths | Runtime asset URLs & DOM/canvas wiring | Editor GUIDs + runtime `GetComponent` |
+| **Headless verification** | Built-in virtual-time `HeadlessOpenGLApp` (Mesa CPU OpenGL, no display or browser) | Browser / JS test runner | Headless backend (no graphics rendering) | `--headless` disables rendering; screenshots need display/Xvfb | Headless browser (Playwright); real-time `requestAnimationFrame` | Heavy batchmode editor; slow CI/sandbox startup |
+| **Build system** | Bazel (Bzlmod) | sbt / Mill | Gradle | Godot editor / export templates | Vite / esbuild / npm | Editor project & asset pipeline |
+| **Maturity** | Pre-0.1 (breaking changes expected) | Active, 2D-focused | Very mature (10+ years) | Very mature, production standard | Massive web ecosystem | Production standard |
 
 ### When to choose Indigo
 
@@ -31,7 +32,15 @@ Choose **libGDX** if you need **long-term API stability**, a mature 3D stack, or
 
 ### When to choose Godot
 
-Choose **Godot** if you want a **visual scene editor**, built-in animation/UI/physics editors, or are collaborating closely with artists and level designers who live in a GUI. SGL has no visual editor by design: keeping every scene, asset declaration, and build target in plain-text code makes diffs clean, builds hermetic, and games easy to verify with automated tests and [AI coding agents](/docs/ai-agents/).
+Choose **Godot** if you want a **visual scene editor**, built-in animation/UI/physics editors, or are collaborating closely with artists and level designers who live in a GUI. SGL has no visual editor by design: keeping every scene, asset declaration, and build target in plain-text code makes diffs clean, builds hermetic, and games easy to verify with automated tests and [AI coding agents](/docs/ai-agents/)—including real pixel rendering headlessly without needing Xvfb or a display server.
+
+### When to choose Browser JS/TS (HTML5 Canvas / Three.js)
+
+Choose **TypeScript with HTML5 Canvas, PixiJS, or Three.js** if you only target the browser and want instant edit-refresh loops with the largest possible web ecosystem. Browser engines have low friction for quick web prototypes, and AI agents already know them well. SGL trades that zero-build web start for stronger **compile-time guardrails** (typed `Assets.*`, `TypedObject` component dependencies, and scene `Scope` lifetimes), **in-process deterministic virtual-time rendering** without spinning up Chromium or fighting `requestAnimationFrame` timing, and **native Desktop, Scala Native, and Android targets** alongside WebGL.
+
+### When to choose Unity or Unreal
+
+Choose **Unity or Unreal** for large 3D productions, photorealistic rendering, console publishing, or teams relying on commercial asset stores and GUI tooling. SGL occupies the opposite corner: lightweight plain-text projects with zero editor import overhead, fast terminal builds, and hermetic headless tests that run cleanly inside CI containers and agent sandboxes.
 
 ## Why Bazel?
 
@@ -42,6 +51,8 @@ At first glance, Bazel looks unusual for a game library. SGL uses Bazel because 
 - **Build-time asset processing.** Multi-DPI image resizing, deterministic `sgl_texture_atlas` packing, and `sgl_tiled_import` map rewriting happen automatically in the build graph and are cached between runs.
 - **One command per platform.** `sgl_desktop_awt_app`, `sgl_desktop_lwjgl_app`, `sgl_html5_app`, `sgl_html5_opengl_app`, `sgl_desktop_native_app`, and `sgl_android_app` generate each backend's entry point and verify provider wiring at compile time.
 - **Hermetic headless tests.** `bazel test //...` runs pure unit tests and Mesa software-rendered `HeadlessOpenGLApp` integration tests reproducibly on CI or in an agent sandbox.
+
+The honest trade-off is build latency: warm incremental Scala/Bazel builds take a few seconds—slower than instant interpreted reload in GDScript or browser JS. SGL offsets that cost by catching wiring and asset bugs at compile time, offering [hot reload](/docs/hot-reload/) and [live configuration](/docs/live-configuration/) for art and tuning, and letting headless tests fast-forward minutes of virtual gameplay in milliseconds.
 
 <Aside type="note" title="No sbt or Mill build">
 SGL is built exclusively with Bazel. Maintaining parallel sbt/Mill plugins for asset codegen, density resizing, atlas packing, Android Gradle generation, and four Scala backends would duplicate the entire build pipeline.

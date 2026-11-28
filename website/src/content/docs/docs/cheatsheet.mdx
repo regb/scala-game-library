@@ -24,7 +24,7 @@ after your trait. Load in `create()`, a `lazy val`, or `AsyncScene.preload`.
 | [`AudioProvider`](/api/sgl/AudioProvider.html) | Sounds &amp; music | `Audio.loadSound(asset)`, `Audio.loadMusic(asset)`, `.play()`, `.dispose()` |
 | [`SystemProvider`](/api/sgl/SystemProvider.html) | Files, time, platform | `System.loadText(asset)`, `System.loadBinary(asset)`, `System.currentTimeMillis`, `System.exit()` |
 | [`SaveComponent`](/api/sgl/SaveComponent.html) | Key-value persistence | `Save.putInt` / `getInt`, `putString` / `getString`, `putBoolean` / `getBoolean` |
-| [`FrameCaptureProvider`](/api/sgl/FrameCaptureProvider.html) | Screenshot capture | `captureNextFrame(): Loader[CapturedFrame]`, `DesktopFrameIO.writePng(frame, path)` |
+| [`FrameCaptureProvider`](/api/sgl/FrameCaptureProvider.html) | Screenshot capture | `captureNextFrame(): Loader[CapturedFrame]`, `sgl.desktop.DesktopFrameIO.writePng(frame, path)` |
 
 ```scala
 trait AbstractApp extends Application with AssetsProvider {
@@ -78,7 +78,7 @@ Loader.combine(Seq(a, b, c))             // wait for several loaders
 | Concept | Signature / pattern | Notes |
 | --- | --- | --- |
 | App setup | `trait App extends OpenGLGameObjectApp` | Configure modules, globals, systems, initial scene in `configure(builder)` |
-| Typed object | `context.spawn2D("Ship").attach(new Collider(_, 14f)).attach(new Ship(_))` | Missing or duplicate components fail at compile time |
+| Typed object | `context.spawn2D("Ship").attach(new Collider(_, 14f)).attach(new Ship(_))` | Missing or duplicate components fail at compile time; destroy via `obj.destroy()` (`HasGameObject`) |
 | Typed component | `final class Ship(obj: TypedObject[Spatial2D & Collider]) extends ComponentOf(obj)` | Read siblings safely with `obj.spatial` / `obj.get[Collider]` |
 | Plain component | `final class Life(override val owner: GameObject) extends Component` | Attached via `.attachPlain(new Life(_))` |
 | System | `object MySystem extends GameSystem` / `GameSystem("id") { ... }` | Query `context.world.index[A]` or `context.world.requireSingle[A]` |
@@ -157,6 +157,8 @@ trait AbstractApp { this: Screen2DGameApp =>
 <div class="cheat-cols">
 
 ```scala title="Headless OpenGL test (no display/GPU)"
+import sgl.desktop.DesktopFrameIO
+
 object app extends HeadlessOpenGLApp
     with MyGameApp with DesktopSystemProvider with NoLoggingProvider {
   override val frameDimension = (320, 240)
@@ -180,6 +182,9 @@ bazel test //...
 # Headless OpenGL tests on Linux without X11/Wayland
 DISPLAY="" WAYLAND_DISPLAY="" EGL_PLATFORM=surfaceless \
   LIBGL_ALWAYS_SOFTWARE=1 bazel test //...
+
+# Restricted sandboxes (no loopback sockets / network metrics)
+bazel --batch --noexperimental_collect_system_network_usage test //...
 
 # Desktop screenshot capture
 SGL_SCREENSHOT_PATH=/tmp/frame.png bazel run //examples/hello-scalagl:desktop-lwjgl

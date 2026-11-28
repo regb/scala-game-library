@@ -12,7 +12,7 @@ SGL removes those failure modes by construction:
 - **100% code-first and plain text.** Game logic, scenes, components, asset manifests, and platform targets live in concise, diffable Scala and Bazel files. There is no hidden editor state.
 - **Declarative composition.** Objects are composed as typed chains (`spawn2D(...).attach(...)`), assets are declared in `BUILD`, and platform entry points are generated from declarative Bazel rules.
 - **Compiler-verified correctness.** Missing providers, broken asset names, duplicate or mis-ordered components, and leaked scene scopes fail at compile time with direct error messages—giving an agent exact repair instructions before a single frame runs.
-- **Deterministic headless verification.** The headless OpenGL backend renders on CPU (Mesa `llvmpipe`) with no display or GPU, accepts synthetic input, steps frames deterministically, and captures RGBA8 frames that tests or multimodal agents can inspect.
+- **Deterministic headless verification.** Unlike engines whose `--headless` flag disables rendering or browser setups tied to real-time `requestAnimationFrame`, SGL's headless OpenGL backend renders real pixels on CPU (Mesa `llvmpipe`) with no display, Xvfb, or browser, accepts synthetic input, fast-forwards virtual time deterministically, and captures RGBA8 frames that tests or multimodal agents can inspect.
 
 ## Start a game with one prompt
 
@@ -65,11 +65,12 @@ Instead of debugging silent runtime bugs, the compiler turns the most common AI-
 
 ## Headless playtesting and visual checks
 
-The [headless OpenGL backend](/docs/testing/#headless-opengl) closes the "runtime-blindness" gap. An agent can compile a game, send inputs, step frames deterministically, assert on rendered pixels, and write PNG screenshots to inspect visually—with no X11, Wayland, or GPU:
+The [headless OpenGL backend](/docs/testing/#headless-opengl) closes the artifact-to-play gap. Compiling code is not enough to prove a game is playable: an agent needs to drive inputs, fast-forward simulation time deterministically, assert on game state, and inspect real rendered frames. SGL does all of this in-process with no X11, Wayland, Xvfb, browser, or GPU:
 
 ```scala
 import java.nio.file.Paths
-import sgl.{DesktopFrameIO, DesktopSystemProvider, Input}
+import sgl.{DesktopSystemProvider, Input}
+import sgl.desktop.DesktopFrameIO
 import sgl.headless.opengl.HeadlessOpenGLApp
 import sgl.util.NoLoggingProvider
 
@@ -82,7 +83,7 @@ object app extends HeadlessOpenGLApp
 
 app.start()
 try {
-  // Advance and capture initial frame
+  // Advance and capture initial frame (wait for AsyncScene.load() first if using AsyncScene)
   val before = app.captureNextFrame()
   app.step(1.0 / 60.0)
 
@@ -107,7 +108,26 @@ DISPLAY="" WAYLAND_DISPLAY="" EGL_PLATFORM=surfaceless LIBGL_ALWAYS_SOFTWARE=1 \
   bazel test //engines/gameobject/examples/headless-control:headless-control-integration-test
 ```
 
+<Aside type="note" title="Restricted agent sandboxes">
+If your agent runs inside a network-restricted sandbox that blocks loopback sockets or system network metrics (for example, Codex `workspace-write`), run Bazel in batch mode with network metrics disabled:
+
+```bash
+bazel --batch --noexperimental_collect_system_network_usage test //...
+```
+
+Pre-warming the workspace Bazel cache before entering an offline sandbox also avoids cold-start timeouts.
+</Aside>
+
 See [`HeadlessControlIntegrationSuite.scala`](https://github.com/regb/scala-game-library/blob/master/engines/gameobject/examples/headless-control/HeadlessControlIntegrationSuite.scala) for complete assertions over both Canvas and GameObject scenes.
+
+## Verification checklist for complete games
+
+In practice, agents that pass a compile check still make predictable gameplay and layout mistakes unless their test loop checks the full runtime contract:
+
+- **Actually inspect captured PNGs.** Writing a screenshot to disk proves only that the frame rendered, not that it looks right. Have the agent open and visually inspect captures of the entry screen, active play, pause overlay, and win/loss screens to catch HUD overlap, bezel or viewport clipping, and mis-scaled sprites.
+- **Settle `AsyncScene` before frame 0.** Keep any "ready" or "playing" state unset until `AsyncScene.load(...)` has run, and step frames in tests until the scene is populated before taking initial screenshots—otherwise frame 0 captures a blank screen.
+- **Keep simulation on virtual time.** Drive timers, cooldowns, and animations from `context.dt`, `ElapsedTime`, or `FixedUpdate` rather than `System.nanoTime()` so `app.step(1.0 / 60.0)` can fast-forward full rounds in milliseconds.
+- **Test full lifecycles and rejected actions.** Don't stop at happy-path movement: write tests for blocked/invalid inputs, complete win and game-over endings (including frozen gameplay input after game over), clean restarts with reset state, and—when using `FileSaveComponent`—reloading saved progress in a fresh process.
 
 ## SGL Agent Skill
 

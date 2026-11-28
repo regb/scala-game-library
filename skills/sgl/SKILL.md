@@ -29,10 +29,11 @@ Pick **at most one** engine on top of `//core:sgl-core`:
    - `"This object already has a X"` → remove the duplicate `attach`.
    - Extend `ComponentOf(obj)` for typed components; use `attachPlain` only for plain `owner: GameObject` components.
    - `GameObject2D` is `TypedObject[Spatial2D]`; `GameObject3D` is `TypedObject[Spatial3D]`.
-4. **Propagate `(using Scope)` explicitly.** Scene objects live in the scene's `Scope` and are destroyed on scene change. Never create objects inside `loader.foreach` / `loader.onLoad` (wrong thread, survives scene change); use `AsyncScene` or `context.whenLoaded(loader) { ... }`.
+   - Destroy objects with `obj.destroy()` or `component.destroy()` (via `HasGameObject`), not `world.destroy(typedObj)`—`World.destroy` expects a raw `GameObject` (`obj.gameObject`).
+4. **Propagate `(using Scope)` explicitly and respect `AsyncScene` readiness.** Scene objects live in the scene's `Scope` and are destroyed on scene change. Never create objects inside `loader.foreach` / `loader.onLoad` (wrong thread, survives scene change); use `AsyncScene` or `context.whenLoaded(loader) { ... }`. In `AsyncScene`, keep any ready/playing state `false` until `load(...)` runs, and step until ready before capturing frame 0 so initial frames are not blank.
 5. **Install required engine modules.** `Updatable`/`FixedUpdatable` require `UpdateCapabilitiesModule`; 2D sprites/tilemaps require `Render2DModule`; 3D meshes/cameras require `Render3DModule`; `TextOverlay` requires `TextOverlayModule`; `CircleMaskTransition` requires `CircleMaskModule`. Missing modules throw `CompositionError` on attach.
 6. **Set `use_screen2d = False` for Core and GameObject targets** on rules that default to `True` (`sgl_desktop_awt_app`, `sgl_html5_app`, `sgl_desktop_native_app`).
-7. **Frame delta time units:** `Application.frame(dt)` and GameObject (`context.dt: Float`, `DeltaTime.seconds: Double`) use **seconds**. `Screen2D` `GameScreen.update(dt: Long)` uses **milliseconds**.
+7. **Frame delta time and virtual time:** `Application.frame(dt)` and GameObject (`context.dt: Float`, `DeltaTime.seconds: Double`) use **seconds**. `Screen2D` `GameScreen.update(dt: Long)` uses **milliseconds**. Drive gameplay timers and animations from `context.dt` / `ElapsedTime` / `FixedUpdate`—never `System.nanoTime()`—so `HeadlessOpenGLApp.step(dt)` fast-forwards deterministically.
 
 ## Closed Verification Loop
 
@@ -43,20 +44,26 @@ Follow this loop on every change rather than guessing whether rendering or gamep
    bazel build //...
    ```
    Treat compiler errors (missing provider, unknown `Assets.*`, `TypedObject` mismatch, missing `using Scope`) as exact repair specs—fix the declaration or composition cleanly.
+   Inside restricted sandboxes that block loopback sockets or network metrics, invoke Bazel with:
+   ```bash
+   bazel --batch --noexperimental_collect_system_network_usage build //...
+   ```
 2. **Run unit and headless OpenGL integration tests:**
    ```bash
    bazel test //...
    ```
-   To verify gameplay, input handling, and rendering without a window or GPU, mix `HeadlessOpenGLApp` (from `//backends/headless-opengl:sgl-headless-opengl`) with your game trait, drive synthetic inputs via `app.Controller` (`keyDown`, `keyUp`, `mouseDown`, `touchDown`, etc.), advance deterministic frames with `app.step(1.0 / 60.0)`, and capture RGBA8 pixels with `app.captureNextFrame()`.
+   To verify gameplay, input handling, and rendering without a window, Xvfb, or GPU, mix `HeadlessOpenGLApp` (from `//backends/headless-opengl:sgl-headless-opengl`) with your game trait, drive synthetic inputs via `app.Controller` (`keyDown`, `keyUp`, `mouseDown`, `touchDown`, etc.), advance deterministic virtual frames with `app.step(1.0 / 60.0)`, and capture RGBA8 pixels with `app.captureNextFrame()`.
+   Cover more than happy-path movement: test rejected/invalid inputs, full win and game-over transitions (including frozen input after terminal states), clean restarts, and—when using `FileSaveComponent`—reloading saves in a fresh process so leaked singleton state (such as `Input`) cannot hide persistence bugs.
    On Linux without a display, run with:
    ```bash
    DISPLAY="" WAYLAND_DISPLAY="" EGL_PLATFORM=surfaceless LIBGL_ALWAYS_SOFTWARE=1 bazel test //...
    ```
 3. **Inspect rendered frames visually when checking art, layout, or shaders:**
-   Write a `CapturedFrame` to PNG with `DesktopFrameIO.writePng(frame, path)` in a headless test, or capture a desktop example directly:
+   Write a `CapturedFrame` to PNG with `sgl.desktop.DesktopFrameIO.writePng(frame, path)` in a headless test (after waiting for any `AsyncScene` to finish `load()`), or capture a desktop example directly:
    ```bash
    SGL_SCREENSHOT_PATH=/tmp/frame.png bazel run //examples/hello-scalagl:desktop-lwjgl
    ```
+   **Saving a PNG is not verification by itself—open and visually inspect the rendered images** across key states (entry, active play, pause, win/loss) to catch HUD overlap, aspect-ratio clipping, and camera framing issues.
 4. **Format Bazel files after `BUILD`/`.bzl` edits:**
    ```bash
    bazel run @buildifier_prebuilt//:buildifier -- -mode=check -lint=warn -r .
