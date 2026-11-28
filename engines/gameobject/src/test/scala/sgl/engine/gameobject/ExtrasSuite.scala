@@ -274,11 +274,11 @@ class ExtrasSuite extends AnyFunSuite {
   private final case class Paused(value: Boolean)
 
   test("animations and particles stand still while their modules are told to") {
-    val paused: GameContext => Boolean = !_.global[Paused].value
+    val running: GameContext => Boolean = !_.global[Paused].value
     val runtime = new GameBuilder()
       .install(Render2DModule)
-      .install(SpriteAnimationModule.when(paused))
-      .install(ParticlesModule.when(paused))
+      .install(SpriteAnimationModule.when(running))
+      .install(ParticlesModule.when(running))
       .setGlobal(Paused(false))
       .build(new NoEngine)
     runtime.startup()
@@ -297,6 +297,6 @@ class ExtrasSuite extends AnyFunSuite {
     runtime.frame(0.1)
     assert(sprite.get[SpriteRenderer].visual == color(3) && fire.particles.alive == 2)
     // One or the other.
-    assertThrows[CompositionError](new GameBuilder().install(ParticlesModule).install(ParticlesModule.when(paused)).build(new NoEngine))
+    assertThrows[CompositionError](new GameBuilder().install(ParticlesModule).install(ParticlesModule.when(running)).build(new NoEngine))
   }
 }
