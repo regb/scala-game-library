@@ -107,4 +107,15 @@ class FileSaveSuite extends AnyFunSuite {
       assert(Files.isSymbolicLink(link) && new FileSave(file.toString).getString("name") == Some("b"))
     }
   }
+
+  test("a relative save is in the user's data folder, in a folder named after it") {
+    val env = Map("XDG_DATA_HOME" -> "/data", "APPDATA" -> "C:\\Users\\me\\AppData\\Roaming")
+    def at(os: String, environment: Map[String, String] = env) =
+      FileSave.location("game.save", os, environment.get, "/home/me")
+    assert(at("Linux") == Paths.get("/data/game/game.save"))
+    assert(at("Linux", Map("XDG_DATA_HOME" -> "relative")) == Paths.get("/home/me/.local/share/game/game.save"))
+    assert(at("Mac OS X") == Paths.get("/home/me/Library/Application Support/game/game.save"))
+    assert(at("Windows 11", Map.empty) == Paths.get("/home/me/AppData/Roaming/game/game.save"))
+    assert(FileSave.location("/saves/game.save", "Linux", env.get, "/home/me") == Paths.get("/saves/game.save"))
+  }
 }

@@ -64,7 +64,7 @@ desktop_native_main = rule(
         "frame_height": attr.int(default = 800),
         "window_title": attr.string(default = "SGL Native App"),
         "target_fps": attr.int(default = 60),
-        "file_save": attr.string(default = "", doc = "A file for the game to save in, relative to where it is started. A game that needs a SaveComponent has to have this or save_component set."),
+        "file_save": attr.string(default = "", doc = "A file for the game to save in. A relative name is in the user's data folder, in a folder named after the file, such as ~/.local/share/mygame/mygame.save on Linux. A game that needs a SaveComponent has to have this or save_component set."),
         "save_component": attr.string(default = "", doc = "A SaveComponent to mix into the generated app instead, such as MemorySaveComponent, which forgets everything when the game stops."),
         "resources_root": attr.string(default = ""),
         "multi_dpi_resources_root": attr.string(default = ""),

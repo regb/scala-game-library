@@ -68,7 +68,7 @@ desktop_awt_main = rule(
         ),
         "file_save": attr.string(
             mandatory = False,
-            doc = "A file for the game to save in, relative to where it is started. A game that needs a SaveComponent has to have this or save_component set.",
+            doc = "A file for the game to save in. A relative name is in the user's data folder, in a folder named after the file, such as ~/.local/share/mygame/mygame.save on Linux. A game that needs a SaveComponent has to have this or save_component set.",
             default = "",
         ),
         "save_component": attr.string(

@@ -59,7 +59,7 @@ JVM, AWT Canvas, JavaSound. `bazel run` opens a window.
 | --- | --- | --- |
 | `frame_width`, `frame_height` | `800`, `800` | Window size |
 | `use_screen2d` | `True` | Mixes in `Screen2DGameApp` |
-| `file_save` | `""` | Save file path |
+| `file_save` | `""` | Save file name, in the user's data folder unless absolute (see [migration](/docs/migration/)) |
 | `save_component` | `""` | A `SaveComponent` to mix in instead, such as `MemorySaveComponent`. A game that needs saves does not compile without one of the two. |
 | `simulated_safe_area_insets` | `[]` | `[left, top, right, bottom]` insets to test safe-area layouts |
 | `runtime_jdk` | remote JDK 17 | Java runtime used by `bazel run` |
@@ -75,7 +75,7 @@ JVM, GLFW, OpenGL 3.3, OpenAL.
 | `window_title` | `"SGL LWJGL App"` | Window title |
 | `target_fps` | `60` | Frame rate cap |
 | `data` | `[]` | Asset targets available at runtime |
-| `file_save` | `""` | Save file path |
+| `file_save` | `""` | Save file name, in the user's data folder unless absolute (see [migration](/docs/migration/)) |
 | `save_component` | `""` | A `SaveComponent` to mix in instead, such as `MemorySaveComponent`. A game that needs saves does not compile without one of the two. |
 | `resizable` | `False` | Whether the player can resize the window. The game is told through `resize`. |
 
@@ -126,7 +126,7 @@ machines without clang and SDL2 can still build everything else. Build them by n
 | `frame_width`, `frame_height` | `800`, `800` | Window size |
 | `window_title` | `"SGL Native App"` | Window title |
 | `target_fps` | `60` | Frame rate cap |
-| `file_save` | `""` | Save file path |
+| `file_save` | `""` | Save file name, in the user's data folder unless absolute (see [migration](/docs/migration/)) |
 | `save_component` | `""` | A `SaveComponent` to mix in instead, such as `MemorySaveComponent`. A game that needs saves does not compile without one of the two. |
 | `linkopts` | `["-lSDL2", "-lSDL2_image", "-lGL"]` | OpenGL apps link `-lGLESv2` instead of `-lGL` |
 | `gc` | `"immix"` | Garbage collector: `"immix"`, `"commix"` (Immix on several threads), or `"none"`, which never frees memory |

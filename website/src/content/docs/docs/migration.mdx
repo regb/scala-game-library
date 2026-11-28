@@ -45,6 +45,12 @@ save_component = "MemorySaveComponent"     # or, as before, until the game stops
 `FileSave` now throws an `IOException` when it cannot read or write its file. It used to report no
 save, and to lose what was written. Existing files still read.
 
+A relative `file_save` is now in the user's data folder, in a folder named after the file, instead
+of the folder the game is started from: `mygame.save` is `~/.local/share/mygame/mygame.save` on
+Linux (or under `$XDG_DATA_HOME`), `~/Library/Application Support/mygame/mygame.save` on macOS,
+and `%APPDATA%\mygame\mygame.save` on Windows. A save found in the folder the game is started
+from is copied there the first time. An absolute `file_save` is used as is.
+
 ## Scrolling
 
 `mouseScrolled(amount: Int)` is now `mouseScrolled(amountX: Float, amountY: Float, unit)`, and comes

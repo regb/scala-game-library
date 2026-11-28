@@ -38,6 +38,7 @@ class FileSave(filename: String) extends AbstractSave {
     // Written next to the file and moved over it once it is complete. The file
     // can be a link to the real one.
     val target = if(Files.exists(path)) path.toRealPath() else path.toAbsolutePath
+    Option(target.getParent).filter(Files.notExists(_)).foreach(Files.createDirectories(_))
     val temporary = Paths.get(target.toString + ".tmp")
     val _ = Files.write(temporary, FileSave.format(newEntries).getBytes(UTF_8))
     val _ = Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING)
@@ -84,6 +85,42 @@ class FileSave(filename: String) extends AbstractSave {
 }
 
 private object FileSave {
+
+  /** Where a game keeps the save named `filename`: in the user's data folder, in a folder
+    * named after the file, unless `filename` is absolute.
+    */
+  def location(filename: String, osName: String, env: String => Option[String], home: String): Path = {
+    val file = Paths.get(filename)
+    if(file.isAbsolute) file
+    else {
+      val name = file.getFileName.toString
+      val game = name.lastIndexOf('.') match {
+        case dot if dot > 0 => name.substring(0, dot)
+        case _ => name
+      }
+      def folder(variable: String): Option[Path] =
+        env(variable).filter(_.nonEmpty).map(Paths.get(_)).filter(_.isAbsolute)
+      val os = osName.toLowerCase
+      val data =
+        if(os.startsWith("windows")) folder("APPDATA").getOrElse(Paths.get(home, "AppData", "Roaming"))
+        else if(os.startsWith("mac")) Paths.get(home, "Library", "Application Support")
+        else folder("XDG_DATA_HOME").getOrElse(Paths.get(home, ".local", "share"))
+      data.resolve(game).resolve(file)
+    }
+  }
+
+  /** The location of `filename` on this system. A save that is not there yet starts as a copy of
+    * `filename` in the folder the game is started from, where saves used to be.
+    */
+  def userLocation(filename: String): Path = {
+    val path = location(filename, System.getProperty("os.name", ""), sys.env.get, System.getProperty("user.home", "."))
+    val previous = Paths.get(filename).toAbsolutePath
+    if(Files.notExists(path) && previous != path && Files.isRegularFile(previous)) {
+      Option(path.getParent).foreach(Files.createDirectories(_))
+      val _ = Files.copy(previous, path)
+    }
+    path
+  }
   // Has no colon, so an SGL from before there was one skips it.
   private val HeaderStart = "#sgl-save-"
   private val Header = HeaderStart + "2"
@@ -130,11 +167,14 @@ private object FileSave {
 
 /** Saves in a file. */
 trait FileSaveComponent extends SaveComponent {
-  /** Relative to where the game is started from, unless it is absolute. */
+  /** In the user's data folder, unless it is absolute: `mygame.save` is
+    * `~/.local/share/mygame/mygame.save` on Linux, `~/Library/Application Support/mygame/mygame.save`
+    * on macOS, and `%APPDATA%\mygame\mygame.save` on Windows.
+    */
   protected def saveFile: String
 
   override type Save = FileSave
   // Usable while traits are being initialized, and overridable with a val.
-  private lazy val fileSave = new FileSave(saveFile)
+  private lazy val fileSave = new FileSave(FileSave.userLocation(saveFile).toString)
   override def Save: Save = fileSave
 }
