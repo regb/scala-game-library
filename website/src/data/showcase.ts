@@ -3,6 +3,7 @@ import type { ImageMetadata } from 'astro';
 import hearthwheel from '../assets/showcase/hearthwheel.jpg';
 import ratTrap from '../assets/showcase/rat-trap.png';
 import scalavator from '../assets/showcase/scalavator.jpg';
+import sunkenObservatory from '../assets/showcase/sunken-observatory.png';
 import winsmash from '../assets/showcase/winsmash.png';
 
 export const repo = 'https://github.com/regb/scala-game-library';
@@ -64,5 +65,15 @@ export const games: ShowcaseEntry[] = [
     href: 'https://github.com/regb/scalavator',
     cta: { label: 'Play on regb.github.io ↗', href: 'https://regb.github.io/scalavator/' },
     platforms: ['Android', 'Web', 'Desktop'],
+  },
+  {
+    title: 'Sunken Observatory',
+    tag: 'Roguelike · Open source',
+    body: 'A turn-based dungeon crawl down eight generated floors of a flooded tower: find the Lodestar at the bottom and carry it back out while the water rises. Built on the GameObject engine.',
+    image: sunkenObservatory,
+    imageAlt: 'Sunken Observatory: the game title under a golden star, with a knight and three monsters in pixel art between flooded stone towers',
+    href: 'https://github.com/regb/sunken-observatory',
+    cta: { label: 'Play on regb.github.io ↗', href: 'https://regb.github.io/sunken-observatory/' },
+    platforms: ['Web', 'Desktop', 'Native'],
   },
 ];
