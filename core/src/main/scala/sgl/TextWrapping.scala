@@ -6,8 +6,9 @@ private[sgl] object TextWrapping {
 
   /** Wrap text while preserving explicit newlines and whitespace.
     *
-    * Lines prefer to break after whitespace, which does not count in the width
-    * when it ends a line. A word wider than the available width is split at
+    * Lines prefer to break at whitespace, which is dropped from the end of a
+    * line that wraps, so no line is wider than `width` unless a single
+    * character is. A word wider than the available width is split at
     * character boundaries. `overflowed` is true only when a single character is
     * wider than the requested width.
     */
@@ -42,17 +43,17 @@ private[sgl] object TextWrapping {
               remaining = remaining.substring(firstCharacterLength)
               overflowed = true
             } else if(remaining.charAt(fittingLength).isWhitespace) {
-              // Every word up to here fits: the spaces after them go with the line.
+              // Every word up to here fits: the line ends before the spaces that follow.
               val breakAt = remaining.indexWhere(!_.isWhitespace, fittingLength) match {
                 case -1 => remaining.length
                 case next => next
               }
-              result += remaining.substring(0, breakAt)
+              result += stripTrailingWhitespace(remaining.substring(0, fittingLength))
               remaining = remaining.substring(breakAt)
             } else {
               val whitespaceIndex = remaining.substring(0, fittingLength).lastIndexWhere(_.isWhitespace)
               val breakAt = if(whitespaceIndex >= 0) whitespaceIndex + 1 else fittingLength
-              result += remaining.substring(0, breakAt)
+              result += stripTrailingWhitespace(remaining.substring(0, breakAt))
               remaining = remaining.substring(breakAt)
             }
           }
@@ -61,6 +62,12 @@ private[sgl] object TextWrapping {
     }
 
     Result(result.result(), overflowed)
+  }
+
+  private def stripTrailingWhitespace(line: String): String = {
+    var end = line.length
+    while(end > 0 && line.charAt(end - 1).isWhitespace) end -= 1
+    line.substring(0, end)
   }
 
   private def nextCodePointIndex(value: String, index: Int): Int = {

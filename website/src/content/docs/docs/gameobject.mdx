@@ -532,7 +532,8 @@ context.spawn2D("Torch")
 ```
 
 A game that pauses installs `SpriteAnimationModule.when(condition)` or `ParticlesModule.when(condition)`
-instead, and animations and particles stand still while the condition does not hold.
+instead, and animations and particles stand still while the condition does not hold. Each call to
+`when` is a module of its own, so install it once, and not next to the plain module.
 
 `Animation` holds frames of anything, for a game that animates by itself. `Particles` is particles
 without an object, which a game updates and paints itself: for example an explosion, which outlives
