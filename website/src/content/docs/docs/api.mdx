@@ -1,12 +1,71 @@
 ---
 title: API reference
-description: Browse the generated Scaladoc API reference and source packages for SGL.
+description: SGL API documentation with usage examples, lifecycle rules, and links to the complete Scala reference.
 ---
 
-import { Aside, LinkCard } from '@astrojs/starlight/components';
+import { Aside, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
-Full Scaladoc for SGL's core, engines, modules, and extensions is generated from the
-compiled `.tasty` artifacts on every deployment and published at [`/api/`](/api/).
+Start with the pages below for API usage, examples, and lifecycle rules. They cover the core
+providers and engines within these docs. For individual overloads, inherited members, and package
+contents, follow their links to the generated [Scaladoc](/api/).
+
+## Core APIs
+
+<CardGrid>
+  <LinkCard
+    title="Application and providers"
+    description="Lifecycle hooks, provider composition, and asynchronous loaders."
+    href="/docs/core-concepts/"
+  />
+  <LinkCard
+    title="Graphics"
+    description="Canvas drawing, bitmaps, text, and portable OpenGL."
+    href="/docs/graphics/"
+  />
+  <LinkCard
+    title="Input"
+    description="Keyboard, mouse, touch, text input, and event processors."
+    href="/docs/input/"
+  />
+  <LinkCard
+    title="Audio"
+    description="Load and play sounds and music, control playback, and dispose resources."
+    href="/docs/audio/"
+  />
+  <LinkCard
+    title="Assets"
+    description="Typed asset handles, loading, texture atlases, and backend packaging."
+    href="/docs/assets/"
+  />
+  <LinkCard
+    title="API cheatsheet"
+    description="A compact lookup for common types, calls, and build rules."
+    href="/docs/cheatsheet/"
+  />
+</CardGrid>
+
+## Engine APIs
+
+<CardGrid>
+  <LinkCard
+    title="GameObject"
+    description="Typed components, systems, scenes, scopes, and 2D and 3D rendering."
+    href="/docs/gameobject/"
+  />
+  <LinkCard
+    title="Screen2D"
+    description="Game screens, screen-stack navigation, loading, and viewports."
+    href="/docs/screen2d/"
+  />
+</CardGrid>
+
+Not sure which engine to use? Read [Choosing an engine](/docs/engines/).
+To learn by building a game, start with the [tutorials](/docs/tutorials/).
+
+## Complete Scala reference
+
+Scaladoc lists the types and members of SGL's core, engines, modules, and extensions. It is generated
+from compiled `.tasty` artifacts on every deployment. It has its own navigation and symbol search.
 
 <LinkCard
   title="Open full Scaladoc (/api/)"
@@ -14,7 +73,7 @@ compiled `.tasty` artifacts on every deployment and published at [`/api/`](/api/
   href="/api/"
 />
 
-## Packages
+### Packages
 
 | Package | Scaladoc | Source | Contents |
 | --- | --- | --- | --- |

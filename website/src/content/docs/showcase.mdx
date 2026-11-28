@@ -8,24 +8,16 @@ lastUpdated: false
 
 import ScalavatorEmbed from '../../components/ScalavatorEmbed.astro';
 import ShowcaseCard from '../../components/ShowcaseCard.astro';
-import { games, repo, studio } from '../../data/showcase';
+import { games, repo } from '../../data/showcase';
 
 <div class="not-content">
   <div class="page-intro">
     <p class="section-lead">
-      Finished games built with SGL.
+      This collection of games built with SGL gives an impression of what the library is capable of.
     </p>
   </div>
 
   <section class="page-section">
-    <p>
-      Rat Trap and WinSmash are published by
-      {' '}<a href={studio.href}>{studio.name}</a>, a studio making small puzzle and arcade games
-      for Android and the web. Hearthwheel and Scalavator are open-source games built with SGL.
-      Play <a href="https://smartdinogames.com/games/rat-trap/play/">Rat Trap</a>,
-      {' '}<a href="https://regb.github.io/hearthwheel/">Hearthwheel</a>, or
-      {' '}<a href="https://regb.github.io/scalavator/">Scalavator</a> directly in your browser.
-    </p>
     <div class="show-grid featured">
       {games.map((entry) => <ShowcaseCard entry={entry} />)}
     </div>

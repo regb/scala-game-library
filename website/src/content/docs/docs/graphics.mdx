@@ -12,6 +12,8 @@ The core has two rendering APIs. Choose one per game, or let an engine choose fo
 | Canvas | `CanvasProvider` | AWT, HTML5 2D canvas, Android, and every OpenGL backend through `OpenGLCanvasProvider` | 2D games, UI, prototypes |
 | OpenGL | `OpenGLProvider` | LWJGL (OpenGL 3.3), HTML5 (WebGL 2), Scala Native (OpenGL ES 3), headless (EGL) | Custom shaders, 3D, and the GameObject renderer |
 
+For full signatures and member details, see [`CanvasProvider`](/api/sgl/CanvasProvider.html), [`OpenGLProvider`](/api/sgl/OpenGLProvider.html), and [`OpenGLCanvasProvider`](/api/sgl/OpenGLCanvasProvider.html) in Scaladoc.
+
 ## Canvas
 
 Draw inside `withFrameCanvas`. The canvas is only valid during that call.
