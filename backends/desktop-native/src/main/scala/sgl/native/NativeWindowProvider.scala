@@ -14,6 +14,11 @@ trait NativeWindowProvider extends WindowProvider {
 
   val ScreenForcePPI: scala.Option[Float] = None
 
+  private object NativeWindow {
+    /** One pixel per density-independent pixel. */
+    val DefaultPpi = 160f
+  }
+
   class NativeWindow extends AbstractWindow {
     override def width: Int = frameDimension._1
     override def height: Int = frameDimension._2
@@ -39,10 +44,12 @@ trait NativeWindowProvider extends WindowProvider {
       val ddpi: Ptr[CFloat] = stackalloc[CFloat]()
       val hdpi: Ptr[CFloat] = stackalloc[CFloat]()
       val vdpi: Ptr[CFloat] = stackalloc[CFloat]()
-      SDL_GetDisplayDPI(0, ddpi, hdpi, vdpi)
-      _xppi = !hdpi
-      _yppi = !vdpi
-      _ppi = !ddpi
+      // Displays without a physical size, as virtual ones, do not have a DPI.
+      val known = SDL_GetDisplayDPI(0, ddpi, hdpi, vdpi) == 0
+      def orDefault(ppi: Float): Float = if(known && ppi > 0f) ppi else NativeWindow.DefaultPpi
+      _xppi = orDefault(!hdpi)
+      _yppi = orDefault(!vdpi)
+      _ppi = orDefault(!ddpi)
     }
 
     override def xppi: Float = ScreenForcePPI.getOrElse {
