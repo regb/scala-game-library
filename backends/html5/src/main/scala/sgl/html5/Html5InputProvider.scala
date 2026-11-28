@@ -54,7 +54,9 @@ trait Html5InputProvider {
     */
   protected val Html5KeyboardPreventShortcuts: Boolean = false
 
-  /** Whether mouse events captured by the game should prevent browser defaults. */
+  /** Whether mouse events captured by the game should prevent browser defaults,
+    * including the menu a right click opens on the canvas.
+    */
   protected val Html5MousePreventDefault: Boolean = true
 
   /** Whether wheel events captured by the game should prevent browser defaults. */
